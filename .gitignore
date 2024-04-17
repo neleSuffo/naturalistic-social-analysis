@@ -570,6 +570,8 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+pretrained_models/
+data/
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -796,7 +798,7 @@ tags
 [._]*.un~
 
 ### vscode ###
-.vscode/*
+.vscode
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json

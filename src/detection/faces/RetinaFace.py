@@ -1,9 +1,10 @@
 import cv2
-from facenet_pytorch import MTCNN
+import torch
+from retinaface import RetinaFace
 
 def detect_faces(video_path):
-    # Initialize MTCNN face detector
-    mtcnn = MTCNN()
+    # Initialize RetinaFace detector
+    detector = RetinaFace(quality="normal")
 
     # Open video file
     cap = cv2.VideoCapture(video_path)
@@ -14,17 +15,17 @@ def detect_faces(video_path):
         if not ret:
             break
 
-        # Convert frame to RGB (MTCNN expects RGB format)
+        # Convert frame to RGB (RetinaFace expects RGB format)
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
         # Detect faces in the frame
-        boxes, _ = mtcnn.detect(rgb_frame)
+        faces = detector.predict(rgb_frame)
 
         # Draw bounding boxes around detected faces
-        if boxes is not None:
-            for box in boxes:
-                x, y, w, h = box.astype(int)
-                cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        if faces is not None:
+            for face in faces:
+                x1, y1, x2, y2, _ = face
+                cv2.rectangle(frame, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
 
         # Display the frame with detected faces
         cv2.imshow('Video', frame)
@@ -36,3 +37,9 @@ def detect_faces(video_path):
     # Release video capture and close windows
     cap.release()
     cv2.destroyAllWindows()
+
+# Path to your video file
+video_path = "path_to_your_video_file.mp4"
+
+# Detect faces in the video using RetinaFace
+detect_faces(video_path)

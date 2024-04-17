@@ -1,6 +1,6 @@
 from persons import det_persons
 from language import det_language
-from faces import det_faces
+from faces import dlib, MTCNN
 
 video_input_path = "data/sample_2_short.mp4"
 video_output_1_path = "runs/sample_2_det_persons.mp4"
@@ -31,7 +31,8 @@ def run_combined_detection(video_input_path: str,
     # Perform language detection on the audio and create a grey bar with green markers
     #language_detection_bar, language_detection_list = det_language.language_detection(video_input_path, video_output_2_path, audio_detection_segment_duration)
 
-    det_faces.detect_faces(video_input_path)
+    #dlib.detect_faces(video_input_path)
+    MTCNN.detect_faces(video_input_path)
 
 
     # Print the percentages of person visible and spoken language
