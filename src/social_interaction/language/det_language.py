@@ -15,7 +15,7 @@ grandparent_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpa
 # Add the grandparent directory to the system path
 sys.path.append(grandparent_dir)
 # Import the utils module
-from detection import utils
+from social_interaction import utils
 
 def language_detection(video_input_path: str, 
                        video_output_path: str,

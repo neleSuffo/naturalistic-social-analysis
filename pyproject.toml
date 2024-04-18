@@ -1,0 +1,30 @@
+[tool.poetry]
+name = "leuphana-IPE"
+version = "0.1.0"
+description = ""
+authors = ["neleSuffo <163427736+neleSuffo@users.noreply.github.com>"]
+readme = "README.md"
+package-mode = false 
+
+[tool.poetry.dependencies]
+python = "^3.10"
+numpy = "^1.26.4"
+pandas = "^2.2.2"
+torch = "^2.2.2"
+torchvision = "^0.17.2"
+tqdm = "^4.66.2"
+tensorflow = "^2.16.1"
+matplotlib = "^3.8.4"
+opencv-python = "^4.9.0.80"
+librosa = "^0.10.1"
+pydub = "^0.25.1"
+moviepy = "^1.0.3"
+speechrecognition = "^3.10.3"
+dlib = "^19.24.4"
+facenet-pytorch = "^2.5.3"
+
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

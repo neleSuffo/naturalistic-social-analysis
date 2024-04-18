@@ -1,6 +1,7 @@
 from persons import det_persons
 from language import det_language
 from faces import dlib, MTCNN
+from moviepy.editor import VideoFileClip
 
 video_input_path = "data/sample_2_short.mp4"
 video_output_1_path = "runs/sample_2_det_persons.mp4"
@@ -32,7 +33,7 @@ def run_combined_detection(video_input_path: str,
     #language_detection_bar, language_detection_list = det_language.language_detection(video_input_path, video_output_2_path, audio_detection_segment_duration)
 
     #dlib.detect_faces(video_input_path)
-    MTCNN.detect_faces(video_input_path)
+    dlib.detect_faces(video_input_path)
 
 
     # Print the percentages of person visible and spoken language
@@ -42,5 +43,26 @@ def run_combined_detection(video_input_path: str,
     # Concatenate the output video containing the bounding boxes with the detection bars
     #utils.concat_video_with_bars(video_storage_path, video_output_path, persons_detection_bar, language_detection_bar)
 
-if __name__ == "__main__":
-    run_combined_detection(video_input_path, video_output_1_path, video_output_2_path)
+#if __name__ == "__main__":
+#    run_combined_detection(video_input_path, video_output_1_path, video_output_2_path)
+
+
+# convert mp4 to wav
+def extract_audio(video_input_path: str, audio_output_path: str):
+    """Extracts the audio from a video file and exports it as a WAV file.
+
+    Parameters
+    ----------
+    video_input_path : str
+        the path to the video file
+    audio_output_path : str
+        the path to export the audio as a WAV file
+    """
+    video = VideoFileClip(video_input_path)
+    audio = video.audio
+    audio.write_audiofile(audio_output_path, codec='pcm_s16le')
+
+# Example usage
+video_input_path = "data/sample_2_short.MP4"
+audio_output_path = "data/sample_2.wav"
+extract_audio(video_input_path, audio_output_path)
