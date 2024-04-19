@@ -1,26 +1,22 @@
-from typing import Tuple
 import cv2
-import numpy as np
 from PIL import Image
 import torch
 import sys
 import os
 
-# Get the grandparent directory of the current file
-grandparent_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
-# Add the grandparent directory to the system path
-sys.path.append(grandparent_dir)
-# Import the utils module
-from social_interaction import utils
+# Get the directory of my_utils.py
+my_utils_dir = os.path.dirname(os.path.realpath('path/to/my_utils.py'))
+# Add the directory to the Python path
+sys.path.append(my_utils_dir)
+# Now you can import my_utils
+import my_utils
 
 def person_detection(video_input_path: str, 
                      video_output_path: str,
-                     bar_height: int=20,
-                     class_name: str='person') -> Tuple[np.ndarray, list]:
+                     class_name: str='person') -> list:
     """
     This function loads a video from a given path and creates a VideoWriter object to write the output video.
-    It performs frame-wise person detection and adds a detection bar to the bottom of the frame. 
-    If a person is detected in the frame, a green marker is added to the detection bar.
+    It performs frame-wise person detection and returns the detection list (1 if a person is detected, 0 otherwise).
 
     Parameters
     ----------
@@ -28,65 +24,46 @@ def person_detection(video_input_path: str,
         the path to the video file
     video_output_path : str
         the path to the output video file
-    bar_height : int, optional
-        the height of the bar, by default 20
     class_name : str, optional
         the class name to detect, by default 'person'
     
     Returns 
     -------
-    np.ndarray
-        the detection bar with green markers if a person is detected
     list
         the results for each frame (1 if a person is detected, 0 otherwise)
     """
     # Load video file and extract properties
-    cap, frame_width, frame_height, frame_count, frames_per_second = utils.get_video_properties(video_input_path)
+    cap, frame_width, frame_height, frames_per_second = my_utils.get_video_properties(video_input_path)
     # Create a VideoWriter object to write the output video
-    out = utils.create_video_writer(video_output_path, frames_per_second, frame_width, frame_height, 0) 
+    out = my_utils.create_video_writer(video_output_path, frames_per_second, frame_width, frame_height) 
 
-    detection_bar, detection_list = frame_wise_person_detection_with_bar(cap, 
-                                                                         frame_width,
-                                                                         frame_count, 
-                                                                         out,
-                                                                         bar_height,
-                                                                         class_name=class_name)
-    return detection_bar, detection_list
+    # Perform frame-wise detection
+    detection_list = frame_wise_detection(cap, 
+                                          out,
+                                          class_name=class_name)
+    return detection_list
 
-def frame_wise_person_detection_with_bar(cap: cv2.VideoCapture, 
-                                         frame_width: int, 
-                                         frame_count: int, 
-                                         out: cv2.VideoWriter, 
-                                         bar_height: int, 
-                                         class_name: str='person') -> Tuple[np.ndarray, list]:
+def frame_wise_detection(cap: cv2.VideoCapture,
+                         out: cv2.VideoWriter,
+                         class_name: str) -> list:
     """
-    This function performs frame-wise person detection and adds a detection bar to the bottom of the frame.
-    If a person is detected in the frame, a green marker is added to the detection bar.
+    This function performs frame-wise person detection on a video.
+    It creates a detection list to store the detection results (1 if a person is detected, 0 otherwise).
 
     Parameters
     ----------
     cap : cv2.VideoCapture
         the video capture object
-    frame_width : int
-        the width of the frame
-    frame_count : int
-        the number of frames in the video
     out : cv2.VideoWriter
         the video writer object
-    bar_height : int
-        the height of the bar
     class_name : str, optional
-        the class name to detect, by default 'person'
+        the class name to detect
 
     Returns
     -------
-    np.ndarray
-        the detection bar with green markers if a person is detected
     list
         the results for each frame (1 if a person is detected, 0 otherwise)
     """
-    # Create a detection bar equivalent to the length of the video
-    detection_bar = np.full((bar_height, frame_width, 3), 128, dtype=np.uint8)
 
     # Initialize detection list to store detection results (1 if a person is detected, 0 otherwise)   
     detection_list = []
@@ -129,9 +106,6 @@ def frame_wise_person_detection_with_bar(cap: cv2.VideoCapture,
                     # Draw bounding box and label 
                     cv2.rectangle(frame, (int(x1), int(y1)), (int(x2), int(y2)), (146,123,45), 2)
                     cv2.putText(frame, f'{model.names[int(cls)]} {conf:.2f}', (int(x1), int(y1 - 10)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (146,123,45), 2)
-                    # Draw a green marker on the detection bar if a person is detected
-                    marker_position = int((cap.get(cv2.CAP_PROP_POS_FRAMES) / frame_count) * frame_width)
-                    cv2.line(detection_bar, (marker_position, 0), (marker_position, bar_height), (146,123,45), thickness=2)
                 
         # Write frame to output video
         out.write(frame)
@@ -146,4 +120,4 @@ def frame_wise_person_detection_with_bar(cap: cv2.VideoCapture,
     cap.release()
     out.release()
     cv2.destroyAllWindows()
-    return detection_bar, detection_list
+    return detection_list
