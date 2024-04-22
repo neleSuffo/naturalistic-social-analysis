@@ -573,6 +573,7 @@ MANIFEST
 pretrained_models/
 data/
 voice_type_classifier/
+output_voice_type_classifier/
 
 # PyInstaller
 #  Usually these files are written by a python script from a template

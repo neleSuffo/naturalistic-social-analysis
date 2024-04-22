@@ -4,7 +4,7 @@ import torch
 import sys
 import os
 # Get the directory of my_utils.py
-my_utils_dir = os.path.dirname(os.path.realpath('path/to/my_utils.py'))
+my_utils_dir = os.path.dirname(os.path.realpath('/Users/nelesuffo/projects/leuphana-IPE/src/social_interaction/my_utils.py'))
 # Add the directory to the Python path
 sys.path.append(my_utils_dir)
 # Now you can import my_utils

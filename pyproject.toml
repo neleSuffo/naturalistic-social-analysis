@@ -24,9 +24,14 @@ dlib = "^19.24.4"
 facenet-pytorch = "^2.5.3"
 sphinx = "^7.3.7"
 recommonmark = "^0.7.1"
+soundfile = "^0.12.1"
 
 
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+
+[tool.system-dependencies]
+global = ["sox"]

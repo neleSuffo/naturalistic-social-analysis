@@ -3,6 +3,14 @@ from typing import Tuple
 from moviepy.editor import VideoFileClip
 import pandas as pd
 import os
+import numpy as np
+import subprocess
+import soundfile as sf
+import tempfile
+import sys
+config_dir = os.path.dirname(os.path.realpath('/Users/nelesuffo/projects/leuphana-IPE/src/config.py'))
+sys.path.append(config_dir)
+from config import vtc_audio_path
 
 
 def total_seconds(df) -> float:
@@ -66,27 +74,28 @@ def rttm_to_dataframe(rttm_file: str) -> pd.DataFrame:
     df['Utterance_End'] = df['Utterance_Start'] + df['Utterance_Duration']
     return df
 
-
-def extract_audio(video_input_path: str, 
-                  audio_output_path: str) -> None:
+def extract_resampled_audio(video: VideoFileClip,
+                            filename: str) -> None:
     """
-    This function extracts the audio from a video file and exports it as a WAV file.
+    This function extracts the audio from a video file and saves it as a 16kHz WAV file.
 
     Parameters
     ----------
-    video_input_path : str
-        the path to the video file
-    audio_output_path : str
-        the path to export the audio as a WAV file
+    video : VideoFileClip
+        the video file
+    filename : str
+        the filename of the video
     """
-    # Load the video and extract the audio
-    video = VideoFileClip(video_input_path)
-    audio = video.audio
-    # Get the filename of the video
-    filename = os.path.basename(video_input_path)
-    # Export the audio as a WAV file
+    # Create a temporary file
+    temp_file = tempfile.NamedTemporaryFile(delete=True)
 
-    audio.write_audiofile(audio_output_path + filename, codec='pcm_s16le')
+    # Extract the audio and save it to the temporary file
+    video.audio.write_audiofile(temp_file.name + '.wav', codec='pcm_s16le')
+
+    # Convert the audio to 16kHz with sox and save it to the output file
+    # The temporary file will be deleted when the NamedTemporaryFile object is garbage collected
+    output_file = os.path.join(vtc_audio_path, f'{filename[:-4]}_16kHz.wav')
+    subprocess.run(['sox', temp_file.name + '.wav', '-r', '16000', output_file], check=True)
 
 def get_duration(file_path) -> float:
     """
@@ -105,10 +114,6 @@ def get_duration(file_path) -> float:
     clip = VideoFileClip(file_path)
     duration = clip.duration
     return duration
-
-video_input_path = "/Users/nelesuffo/projects/leuphana-IPE/data/sample_1.MP4"
-duration = get_duration(video_input_path)
-print(f"The duration of the video is {duration} seconds.")
 
 def get_video_properties(video_path: str) -> Tuple[cv2.VideoCapture, int, int, int, int]:
     """
