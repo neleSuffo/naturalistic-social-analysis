@@ -33,20 +33,7 @@ def run_social_interactions_detection(video_input_path: str,
     #dlib.detect_faces(video_input_path)
     #dlib.detect_faces(video_input_path)
 
-    # Extract audio from the video and save it as a WAV file in the voice-type-classifier repository
-    my_utils.extract_audio(video_input_path, audio_output_path)
-
-    # Define the path to the python executable and the command to run the voice-type-classifier
-    python_path = '/Users/nelesuffo/Library/Caches/pypoetry/virtualenvs/pyannote-afeazePz-py3.8/bin/python'
-    command = '/Users/nelesuffo/projects/leuphana-IPE/voice_type_classifier/run_voice_type_classifier.py'
-    env = os.environ.copy()
-    env["PATH"] = os.path.dirname(python_path) + os.pathsep + env["PATH"]
-
-    # Run the voice-type-classifier in the voice-type-classifier repository
-    subprocess.run([python_path, command], env=env)
     
-    # Convert the output of the voice-type-classifier to a pandas DataFrame
-    voice_type_classifier_df = my_utils.rttm_to_dataframe('output_voice_type_classifier/data/all.rttm')
     
     # Calculate the total seconds of spoken language
     total_seconds_language = my_utils.total_seconds(voice_type_classifier_df)
