@@ -3,7 +3,6 @@ from PIL import Image
 import torch
 import sys
 import os
-
 # Get the directory of my_utils.py
 my_utils_dir = os.path.dirname(os.path.realpath('path/to/my_utils.py'))
 # Add the directory to the Python path

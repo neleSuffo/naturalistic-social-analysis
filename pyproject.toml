@@ -22,6 +22,8 @@ moviepy = "^1.0.3"
 speechrecognition = "^3.10.3"
 dlib = "^19.24.4"
 facenet-pytorch = "^2.5.3"
+sphinx = "^7.3.7"
+recommonmark = "^0.7.1"
 
 
 
