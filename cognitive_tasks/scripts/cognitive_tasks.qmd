@@ -1,0 +1,60 @@
+---
+title: "Cognitive Tasks"
+format: html
+editor: visual
+---
+
+```{r}
+knitr::opts_chunk$set(echo = F, warning = F, message = F)
+
+library(tidyverse)
+library(ggthemes)
+library(jsonlite)
+library(readxl)
+library(tidyboot)
+library(ggpubr)
+library(ggcorrplot)
+```
+
+```{r}
+data <- read_csv("../data/data.csv")
+```
+
+```{r}
+data%>%
+  group_by(id, task, age)%>%
+  summarise(perf = mean(abs(response)))%>%
+  filter(!is.na(task))%>%
+  ggplot(aes(x = age, y = perf))+
+  geom_point(pch = 1)+
+  geom_smooth(method = "glm")+
+  facet_wrap(~task, scales = "free")+
+  #ylim(0,1)+
+  labs(x = "Age in years", y = "Performance")+
+  theme_bw()
+```
+
+```{r}
+data%>%
+  group_by(id, task)%>%
+  summarise(perf = mean(abs(response)))%>%
+  filter(!is.na(task))%>%
+  left_join(data %>%
+              rename("task2"= task)%>%
+              filter(!is.na(task2))%>%
+              group_by(id, task2)%>%
+              summarise(perf2 = mean(abs(response))))%>%
+  filter(task != task2)%>%
+  rowwise()%>%
+  mutate(tid = paste(sort(c(task, task2)), collapse = " - "))%>%
+  ungroup()%>%
+  distinct(id,tid, .keep_all = T)%>%
+  ggplot(aes(x = perf, y = perf2))+
+  #geom_abline(intercept = 0, slope = 1, lty = 3, alpha = .75)+
+  geom_smooth(method = "lm")+
+  geom_point(pch = 1)+
+  facet_wrap(task ~ task2, scales = "free")+
+  stat_cor()+
+  theme_few()
+```
+
