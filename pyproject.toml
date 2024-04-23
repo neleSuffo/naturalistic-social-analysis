@@ -25,6 +25,8 @@ facenet-pytorch = "^2.5.3"
 sphinx = "^7.3.7"
 recommonmark = "^0.7.1"
 soundfile = "^0.12.1"
+pyarrow = "^16.0.0"
+fastparquet = "^2024.2.0"
 
 
 

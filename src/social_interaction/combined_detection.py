@@ -1,47 +1,72 @@
-from persons import det_persons
-from faces import dlib
-import my_utils
-import subprocess
 import os
 
+from faces import MTCNN
+from language import detect_voices
 
-video_input_path = "/Users/nelesuffo/projects/leuphana-IPE/data/sample_1.MP4"
-audio_output_path = '/Users/nelesuffo/projects/leuphana-IPE/voice_type_classifier/data/raw'
-video_output_1_path = "runs/sample_1_det_person.mp4"
+from config import video_face_output_path, videos_input_path
 
 
-def run_social_interactions_detection(video_input_path: str,
-                                      audio_output_path: str,
-                                      video_output_1_path: str) -> None:
+def run_social_interactions_detection(video_input_path: str) -> None:  # noqa: E501
     """
-    This function runs the combined detection of persons and spoken language in a video file.
-    It then prints the percentages of person visible relative to the total frames and spoken language relative to the length of the audio file.
+    This function runs the combined detection of persons
+    and spoken language in a video file.
+    It then prints the percentages of person visible relative
+    to the total frames and spoken language
+    relative to the length of the audio file.
 
     Parameters
     ----------
     video_input_path : str
         the path to the video file
-    audio_output_path : str
-        the path to export the audio as a WAV file
-    video_output_1_path : str
-        the path to the output video file for person detection  
     """
-
+    # PERSONS
     # Perform person detection on the video
-    #person_detection_list = det_persons.person_detection(video_input_path, video_output_1_path)
+    # person_detection_list = det_persons.person_detection(video_input_path, video_person_output_path)  # noqa: E501
+    # Get the percentage of person visible relative to the total frames
+    # person_percentage = sum(person_detection_list) / len(person_detection_list)*100  # noqa: E501
+    # print(f'Percentages of at least one person visible relative to the total frames: {person_percentage}')  # noqa: E501
 
-    #dlib.detect_faces(video_input_path)
-    #dlib.detect_faces(video_input_path)
+    # FACES
+    face_detection_list = MTCNN.face_detection(
+        video_input_path, video_face_output_path
+    )  # noqa: E501
+    # Get the percentage of face visible relative to the total frames
+    face_percentage = sum(face_detection_list) / len(face_detection_list) * 100
+    print(
+        f"Percentages of at least one face visible relative to the total frames: {face_percentage:.2f}"  # noqa: E501, E231
+    )  # noqa: E501, E231
+    print(
+        f"Total number of frames: {len(face_detection_list)}, Number of frames with faces: {sum(face_detection_list)}"  # noqa: E501
+    )  # noqa: E501, E231
 
-    
-    
-    # Calculate the total seconds of spoken language
-    total_seconds_language = my_utils.total_seconds(voice_type_classifier_df)
-    # Calculate the length of the audio file
-    length_audio = my_utils.get_duration(video_input_path)
-    # Print the percentages of person visible and spoken language
-    #print(f'Percentages of person visbile relative to the total frames: {sum(person_detection_list) / len(person_detection_list)*100}')
-    print(f'Percentages of spoken language relative to the length of the audio file: {total_seconds_language / length_audio*100}')
-    print(total_seconds_language, length_audio)
+    # VOICE
+    (
+        total_video_duration,
+        voice_duration_sum,
+    ) = detect_voices.extract_speech_duration(  # noqa: E501
+        video_input_path
+    )
+    # Get the percentage of spoken language relative to the length of the audio file  # noqa: E501
+    # TODO: Adjust percentage calculation when more than one file is processed
+    voice_percentage = voice_duration_sum / total_video_duration * 100
+    print(
+        f"Percentages of spoken language relative to the length of the audio file: {voice_percentage:.2f}%"  # noqa: E501, E231
+    )
+    print(
+        f"Total video duration: {total_video_duration:.2f}, Total voice duration: {voice_duration_sum:.2f}"  # noqa: E501, E231
+    )  # noqa: E501, E231
+
+    # PROXIMITY
+
+
 if __name__ == "__main__":
-    run_social_interactions_detection(video_input_path, audio_output_path, video_output_1_path)
+    # Get a list of all video files in the folder
+    video_files = [
+        f
+        for f in os.listdir(videos_input_path)
+        if f.lower().endswith(".mp4")  # noqa: E501
+    ]
+    # Process each video file
+    for video_file in video_files:
+        video_path = os.path.join(videos_input_path, video_file)  # noqa: E501
+        run_social_interactions_detection(video_path)

@@ -1,8 +1,8 @@
 import os
 import subprocess
 import sys
+from typing import Tuple
 
-import pandas as pd
 from moviepy.editor import VideoFileClip
 
 # Get the directory of my_utils.py and config.py and add it to the Python path
@@ -18,15 +18,12 @@ config_dir = os.path.dirname(
     os.path.realpath("/Users/nelesuffo/projects/leuphana-IPE/src/config.py")
 )  # noqa: E501
 sys.path.append(config_dir)
-from config import videos_input_path  # noqa: E402
 from config import vtc_environment_path  # noqa: E402
 from config import vtc_execution_file_path  # noqa: E402
 from config import vtc_output_file_path  # noqa: E402
 
-pd.set_option("display.max_rows", None)
 
-
-def extract_speech_duration(video_input_path: str) -> float:
+def extract_speech_duration(video_input_path: str) -> Tuple[float, float]:
     """
     This function extracts the speech duration from a video file
     using the voice-type-classifier.
@@ -43,6 +40,8 @@ def extract_speech_duration(video_input_path: str) -> float:
 
     Returns
     -------
+    float
+        the total duration of the video file
     float
         the total duration of the utterances in the video
     """
@@ -71,21 +70,3 @@ def extract_speech_duration(video_input_path: str) -> float:
     # Get the total duration of the video file
     total_video_duration = my_utils.get_video_duration(video_input_path)
     return total_video_duration, utterance_duration_sum
-
-
-if __name__ == "__main__":
-    # Get a list of all video files in the folder
-    video_files = [
-        f for f in os.listdir(videos_input_path) if f.lower().endswith(".mp4")
-    ]  # noqa: E501
-
-    # Process each video file
-    for video_file in video_files:
-        video_path = os.path.join(videos_input_path, video_file)  # noqa: E501
-        total_video_duration, utterance_duration_sum = extract_speech_duration(
-            video_path
-        )  # noqa: E501
-        percentage = utterance_duration_sum / total_video_duration * 100
-        print(
-            f"Percentages of spoken language relative to the length of the audio file: {percentage:.2f}%"  # noqa: E501, E231
-        )
