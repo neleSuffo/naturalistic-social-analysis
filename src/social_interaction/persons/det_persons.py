@@ -46,13 +46,11 @@ def person_detection(
         frame_width,
         frame_height,
         frames_per_second,
-    ) = my_utils.get_video_properties(  # noqa: E501
-        video_input_path
-    )  # noqa: E501
+    ) = my_utils.get_video_properties(video_input_path)
     # Create a VideoWriter object to write the output video
     out = my_utils.create_video_writer(
         video_output_path, frames_per_second, frame_width, frame_height
-    )  # noqa: E501
+    )
 
     # Perform frame-wise detection
     detection_list = frame_wise_person_detection(
@@ -137,7 +135,7 @@ def frame_wise_person_detection(
                         (int(x1), int(y1)),
                         (int(x2), int(y2)),
                         (146, 123, 45),
-                        2,  # noqa: E501
+                        2,
                     )
                     cv2.putText(
                         frame,

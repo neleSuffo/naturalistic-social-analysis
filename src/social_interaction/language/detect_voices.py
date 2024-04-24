@@ -1,8 +1,8 @@
 import os
-import subprocess
 import sys
 from typing import Tuple
 
+from language import call_vtc
 from moviepy.editor import VideoFileClip
 
 # Get the directory of my_utils.py and config.py and add it to the Python path
@@ -18,12 +18,13 @@ config_dir = os.path.dirname(
     os.path.realpath("/Users/nelesuffo/projects/leuphana-IPE/src/config.py")
 )  # noqa: E501
 sys.path.append(config_dir)
-from config import vtc_environment_path  # noqa: E402
-from config import vtc_execution_file_path  # noqa: E402
+from config import vtc_audio_path  # noqa: E402
 from config import vtc_output_file_path  # noqa: E402
 
 
-def extract_speech_duration(video_input_path: str) -> Tuple[float, float]:
+def extract_speech_duration(
+    video_input_path: str,
+) -> Tuple[float, float, list]:  # noqa: E501
     """
     This function extracts the speech duration from a video file
     using the voice-type-classifier.
@@ -44,29 +45,46 @@ def extract_speech_duration(video_input_path: str) -> Tuple[float, float]:
         the total duration of the video file
     float
         the total duration of the utterances in the video
+    list
+        the voice detection list indicating the presence of voice in each frame
+        (1 if voice is present, 0 otherwise)
     """
     # Load the video file and get the filename
-    video = VideoFileClip(video_input_path)
-    filename = os.path.basename(video_input_path)
+    with VideoFileClip(video_input_path) as video:
+        # Get the video properties
+        filename = os.path.basename(video_input_path)
+        (
+            _,
+            _,
+            _,
+            frames_per_second,
+            number_of_frames,
+        ) = my_utils.get_video_properties(video_input_path, nr_frames=True)
+        total_video_duration = my_utils.get_video_duration(video_input_path)
+        # Extract audio from the video and save it as a 16kHz WAV file
+        my_utils.extract_resampled_audio(video, filename)
 
-    # Extract audio from the video and save it as a 16kHz WAV file
-    my_utils.extract_resampled_audio(video, filename)
+    # Run the voice-type-classifier
+    call_vtc.call_voice_type_classifier()
 
-    # Define the path to the python executable and the command to run the voice-type-classifier  # noqa: E501
-    env = os.environ.copy()
-    env["PATH"] = (
-        os.path.dirname(vtc_environment_path) + os.pathsep + env["PATH"]
-    )  # noqa: E501
-
-    # Run the voice-type-classifier using the voice-type-classifier environment
-    subprocess.run([vtc_environment_path, vtc_execution_file_path], env=env)
+    # Delete the no longer needed audio file(s)
+    my_utils.delete_files_in_directory(vtc_audio_path)
 
     # Convert the output of the voice-type-classifier to a pandas DataFrame
     vtc_output_df = my_utils.rttm_to_dataframe(vtc_output_file_path)
 
     # Get the total duration of the utterances
-    utterance_duration_sum = my_utils.total_seconds(vtc_output_df)
+    utterance_duration_sum = my_utils.get_total_seconds_of_voice(vtc_output_df)
 
-    # Get the total duration of the video file
-    total_video_duration = my_utils.get_video_duration(video_input_path)
-    return total_video_duration, utterance_duration_sum
+    # Generate a frame-wise list of utterances
+    frame_wise_utterance_list = my_utils.generate_frame_wise_utterance_list(
+        total_video_duration,
+        frames_per_second,
+        number_of_frames,
+        vtc_output_df,  # noqa: E501
+    )
+    return (
+        total_video_duration,
+        utterance_duration_sum,
+        frame_wise_utterance_list,
+    )  # noqa: E501

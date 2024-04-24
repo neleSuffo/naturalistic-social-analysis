@@ -4,16 +4,15 @@ import sys
 
 config_dir = os.path.dirname(
     os.path.realpath("/Users/nelesuffo/projects/leuphana-IPE/src/config.py")
-)  # noqa: E501
+)
 sys.path.append(config_dir)
-from config import vtc_audio_path, vtc_execution_command  # noqa: E402
+from config import vtc_audio_path  # noqa: E402
+from config import vtc_execution_command  # noqa: E402
 
 
-# Run the voice-type-classifier
 def run_voice_type_classifier(input_dir: str) -> None:
     """
-    This function runs the voice-type-classifier
-    on the audio file in the input directory.
+    This function runs the voice-type-classifier on the input files.
 
     Parameters
     ----------
