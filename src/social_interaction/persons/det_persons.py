@@ -1,4 +1,5 @@
 import os
+import shutil
 import sys
 
 import cv2
@@ -86,7 +87,12 @@ def frame_wise_person_detection(
     detection_list = []
 
     # Load the YOLOv5 small model
-    model = torch.hub.load("ultralytics/yolov5", "yolov5s")
+    model = torch.hub.load("ultralytics/yolov5", "yolov5s", force_reload=True)
+    # Move the model to the desired location
+    shutil.move(
+        "yolov5s.pt",
+        "/Users/nelesuffo/projects/leuphana-IPE/pretrained_models/yolov5s.pt",
+    )  # noqa: E501
 
     # Get the class labels
     class_list = model.names

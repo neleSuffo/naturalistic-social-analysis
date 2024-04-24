@@ -1,5 +1,7 @@
+import json
 import os
 
+import cv2
 import my_utils
 from faces import my_MTCNN
 from language import detect_voices
@@ -15,7 +17,7 @@ def run_social_interactions_detection(
     face_detection: bool = True,
     voice_detection: bool = True,
     proximity_detection: bool = True,
-) -> None:  # noqa: E501
+) -> None:  # noqa: E125
     """
     This function runs the social interactions detection pipeline.
     It performs person, face, voice, and proximity detection on the video.
@@ -29,35 +31,55 @@ def run_social_interactions_detection(
     video_input_path : str
         the path to the video file
     """
+
+    # Get the number of frames in the video
+    cap = cv2.VideoCapture(video_input_path)
+    number_of_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
     results = {}
+    print("Starting social interactions detection pipeline...")
     if person_detection:
+        print("Performing person detection...")
         # Perform person detection on the video
         results["person"] = det_persons.person_detection(
             video_input_path, video_person_output_path
-        )  # noqa: E501
+        )
+        detection_length = len(results["person"])
     if face_detection:
+        print("Performing face detection...")
         # Perform face detection on the video
         results["face"] = my_MTCNN.face_detection(
             video_input_path, video_face_output_path
-        )  # noqa: E501
+        )
+        detection_length = len(results["face"])
     if voice_detection:
+        print("Performing voice detection...")
+        # Helper variable: true if either person
+        # or face detection is enabled
+        # to ensure that the detection list has the same length
+        # as the person and face detection
+        if face_detection or person_detection:
+            number_of_frames = detection_length
         # Perform voice detection on the video
         (
             total_video_duration,
             voice_duration_sum,
             results["voice"],
-        ) = detect_voices.extract_speech_duration(video_input_path)
+        ) = detect_voices.extract_speech_duration(
+            video_input_path, number_of_frames
+        )  # noqa: E501
     if proximity_detection:
+        print("Performing proximity detection...")
         pass  # Perform proximity detection on the video
+
+    # Save the results to a JSON file
+    with open("output/results.json", "w") as f:
+        json.dump(results, f)
 
     for detection_type, detection_list in results.items():
         my_utils.calculate_percentage_and_print_results(
             detection_list, detection_type
         )  # noqa: E501
-
-        # Get the percentage of spoken language
-        # relative to the length of the audio file
-        # TODO: Adjust percentage calculation when more than one file is processed  # noqa: E501
 
 
 if __name__ == "__main__":

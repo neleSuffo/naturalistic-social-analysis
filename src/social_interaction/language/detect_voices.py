@@ -2,6 +2,7 @@ import os
 import sys
 from typing import Tuple
 
+import cv2
 from language import call_vtc
 from moviepy.editor import VideoFileClip
 
@@ -24,6 +25,7 @@ from config import vtc_output_file_path  # noqa: E402
 
 def extract_speech_duration(
     video_input_path: str,
+    number_of_frames: int,
 ) -> Tuple[float, float, list]:  # noqa: E501
     """
     This function extracts the speech duration from a video file
@@ -38,6 +40,8 @@ def extract_speech_duration(
     ----------
     video_input_path : str
         the path to the video file
+    number_of_frames : int
+        the number of frames in the video
 
     Returns
     -------
@@ -53,14 +57,9 @@ def extract_speech_duration(
     with VideoFileClip(video_input_path) as video:
         # Get the video properties
         filename = os.path.basename(video_input_path)
-        (
-            _,
-            _,
-            _,
-            frames_per_second,
-            number_of_frames,
-        ) = my_utils.get_video_properties(video_input_path, nr_frames=True)
-        total_video_duration = my_utils.get_video_duration(video_input_path)
+        cap = cv2.VideoCapture(video_input_path)
+        frames_per_second = cap.get(cv2.CAP_PROP_FPS)
+        total_video_duration = video.duration
         # Extract audio from the video and save it as a 16kHz WAV file
         my_utils.extract_resampled_audio(video, filename)
 
