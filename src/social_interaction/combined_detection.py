@@ -1,5 +1,6 @@
 import json
 import os
+import time
 
 import cv2
 import my_utils
@@ -7,8 +8,10 @@ from faces import my_MTCNN
 from language import detect_voices
 from persons import det_persons
 
-from config import video_face_output_path  # noqa: E501
-from config import video_person_output_path, videos_input_path
+from social_interaction import config
+
+# Start the timer
+start_time = time.time()
 
 
 def run_social_interactions_detection(
@@ -42,14 +45,14 @@ def run_social_interactions_detection(
         print("Performing person detection...")
         # Perform person detection on the video
         results["person"] = det_persons.person_detection(
-            video_input_path, video_person_output_path
+            video_input_path, config.video_person_output_path
         )
         detection_length = len(results["person"])
     if face_detection:
         print("Performing face detection...")
         # Perform face detection on the video
         results["face"] = my_MTCNN.face_detection(
-            video_input_path, video_face_output_path
+            video_input_path, config.video_face_output_path
         )
         detection_length = len(results["face"])
     if voice_detection:
@@ -86,16 +89,21 @@ if __name__ == "__main__":
     # Get a list of all video files in the folder
     video_files = [
         f
-        for f in os.listdir(videos_input_path)
+        for f in os.listdir(config.videos_input_path)
         if f.lower().endswith(".mp4")  # noqa: E501
     ]
     # Process each video file
     for video_file in video_files:
-        video_path = os.path.join(videos_input_path, video_file)  # noqa: E501
+        video_path = os.path.join(config.videos_input_path, video_file)  # noqa: E501
         run_social_interactions_detection(
             video_path,
-            person_detection=False,
+            person_detection=True,
             face_detection=True,
             voice_detection=True,
             proximity_detection=False,
         )
+
+# Stop the timer and print the runtime
+end_time = time.time()
+runtime = end_time - start_time
+print(f"Runtime: {runtime} seconds")

@@ -1,19 +1,6 @@
-import os
-import sys
-
 import cv2
 from facenet_pytorch import MTCNN
-
-# Get the directory of my_utils.py
-my_utils_dir = os.path.dirname(
-    os.path.realpath(
-        "/Users/nelesuffo/projects/leuphana-IPE/src/social_interaction/my_utils.py"  # noqa: E501
-    )
-)  # noqa: E501
-# Add the directory to the Python path
-sys.path.append(my_utils_dir)
-# Now you can import my_utils
-import my_utils  # noqa: E402
+from faces import my_utils
 
 
 def face_detection(video_input_path: str, video_output_path: str) -> list:
@@ -35,28 +22,35 @@ def face_detection(video_input_path: str, video_output_path: str) -> list:
     list
         the results for each frame (1 if a face is detected, 0 otherwise)
     """
-    # Load video file and extract properties
-    (
-        cap,
-        frame_width,
-        frame_height,
-        frames_per_second,
-    ) = my_utils.get_video_properties(  # noqa: E501
-        video_input_path
-    )  # noqa: E501
-    # Create a VideoWriter object to write the output video
-    out = my_utils.create_video_writer(
-        video_output_path, frames_per_second, frame_width, frame_height
-    )  # noqa: E501
+    # Initialize MTCNN face detector
+    mtcnn = MTCNN()
 
-    # Perform frame-wise detection
-    detection_list = frame_wise_face_detection(cap, out)
+    # Load video and get video properties
+    cap = cv2.VideoCapture(video_input_path)
+    try:
+        frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        frames_per_second = int(cap.get(cv2.CAP_PROP_FPS))
+
+        # Create a VideoWriter object to write the output video
+        out = my_utils.create_video_writer(
+            video_output_path, frames_per_second, frame_width, frame_height
+        )
+        try:
+            # Perform frame-wise detection
+            detection_list = frame_wise_face_detection(mtcnn, cap, out)
+            return detection_list
+        finally:
+            out.release()
+    finally:
+        cap.release()
+
     return detection_list
 
 
 def frame_wise_face_detection(
-    cap: cv2.VideoCapture, out: cv2.VideoWriter
-) -> list:  # noqa: E501
+    mtcnn: MTCNN, cap: cv2.VideoCapture, out: cv2.VideoWriter
+) -> list:
     """
     This function performs frame-wise face detection on a video.
     It creates a detection list to store the detection results
@@ -64,6 +58,8 @@ def frame_wise_face_detection(
 
     Parameters
     ----------
+    mtcnn : MTCNN
+        the MTCNN face detector
     cap : cv2.VideoCapture
         the video capture object
     out : cv2.VideoWriter
@@ -72,14 +68,12 @@ def frame_wise_face_detection(
     Returns
     -------
     list
-        the results for each frame (1 if a face is detected, 0 otherwise)
+        the results for each frame
+        (1 if a face is detected, 0 otherwise)
     """
     # Initialize detection list to store detection results
     # (1 if a person is detected, 0 otherwise)
     detection_list = []
-
-    # Initialize MTCNN face detector
-    mtcnn = MTCNN()
 
     # Iterate over frames in the video
     while cap.isOpened():
@@ -114,8 +108,4 @@ def frame_wise_face_detection(
         # if cv2.waitKey(1) & 0xFF == ord('q'):
         #   break
 
-    # Release video capture and close windows
-    cap.release()
-    out.release()
-    cv2.destroyAllWindows()
     return detection_list

@@ -1,21 +1,11 @@
 import os
 import shutil
-import sys
+from typing import Generator
 
 import cv2
 import torch
+from persons import my_utils
 from PIL import Image
-
-# Get the directory of my_utils.py
-my_utils_dir = os.path.dirname(
-    os.path.realpath(
-        "/Users/nelesuffo/projects/leuphana-IPE/src/social_interaction/my_utils.py"  # noqa: E501
-    )
-)  # noqa: E501
-# Add the directory to the Python path
-sys.path.append(my_utils_dir)
-# Now you can import my_utils
-import my_utils  # noqa: E402
 
 
 def person_detection(
@@ -41,28 +31,49 @@ def person_detection(
     list
         the results for each frame (1 if a person is detected, 0 otherwise)
     """
+    # Load the YOLOv5 small model
+    model = torch.hub.load("ultralytics/yolov5", "yolov5s", force_reload=True)
+
+    # Move the model to the desired location
+    if os.path.exists("yolov5s.pt"):
+        shutil.move(
+            "yolov5s.pt",
+            "/Users/nelesuffo/projects/leuphana-IPE/pretrained_models/yolov5s.pt",  # noqa: E501
+        )
+
     # Load video file and extract properties
-    (
-        cap,
-        frame_width,
-        frame_height,
-        frames_per_second,
-    ) = my_utils.get_video_properties(video_input_path)
+    print(video_input_path)
+    cap = cv2.VideoCapture(video_input_path)
+    frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    frames_per_second = int(cap.get(cv2.CAP_PROP_FPS))
+
     # Create a VideoWriter object to write the output video
     out = my_utils.create_video_writer(
         video_output_path, frames_per_second, frame_width, frame_height
     )
 
+    # Get the class labels and class index
+    class_list = model.names
+    class_index_det = [
+        key for key, value in class_list.items() if value == class_name
+    ][  # noqa: E501
+        0
+    ]
+
     # Perform frame-wise detection
-    detection_list = frame_wise_person_detection(
-        cap, out, class_name=class_name
+    detection_list = list(
+        frame_wise_person_detection(cap, out, model, class_index_det)
     )  # noqa: E501
     return detection_list
 
 
 def frame_wise_person_detection(
-    cap: cv2.VideoCapture, out: cv2.VideoWriter, class_name: str
-) -> list:
+    cap: cv2.VideoCapture,
+    out: cv2.VideoWriter,
+    model: torch.nn.Module,
+    class_index_det: int,  # noqa: E501
+) -> Generator[int, None, None]:  # noqa: E125
     """
     This function performs frame-wise person detection on a video.
     It creates a detection list to store the detection results
@@ -74,36 +85,17 @@ def frame_wise_person_detection(
         the video capture object
     out : cv2.VideoWriter
         the video writer object
-    class_name : str, optional
-        the class name to detect
+    model : torch.nn.Module
+        the YOLOv5 model
+    class_index_det : int
+        the class index of the class to detect
 
     Returns
     -------
-    list
-        the results for each frame (1 if a person is detected, 0 otherwise)
+    Generator[int, None, None]
+        the detection list (1 if a person is detected, 0 otherwise)
+
     """
-    # Initialize detection list to store detection results
-    # (1 if a person is detected, 0 otherwise)
-    detection_list = []
-
-    # Load the YOLOv5 small model
-    model = torch.hub.load("ultralytics/yolov5", "yolov5s", force_reload=True)
-    # Move the model to the desired location
-    shutil.move(
-        "yolov5s.pt",
-        "/Users/nelesuffo/projects/leuphana-IPE/pretrained_models/yolov5s.pt",
-    )  # noqa: E501
-
-    # Get the class labels
-    class_list = model.names
-
-    # Define the class name of interest and index
-    class_index_det = [
-        key for key, value in class_list.items() if value == class_name
-    ][  # noqa: E501
-        0
-    ]
-
     # Loop through frames
     while True:
         ret, frame = cap.read()
@@ -115,18 +107,19 @@ def frame_wise_person_detection(
 
         # Apply object detection
         results = model(img)
+        # Pass the frame directly to the model
+        # TODO: Check for feasibility
+        # results = model(frame)
 
         # Get the class index for every detected object per frame
         if len(results.pred[0]) > 0:
             detection_results_per_frame = [
                 result[0][-1].item() for result in results.pred
-            ]  # noqa: E501
+            ]
             # Check if the class index of interest is in the detection results
-            detection_list.append(
-                1 if class_index_det in detection_results_per_frame else 0
-            )  # noqa: E501
+            yield 1 if class_index_det in detection_results_per_frame else 0
         else:
-            detection_list.append(0)
+            yield 0
 
         # Draw bounding boxes
         for result in results.pred:
@@ -166,4 +159,3 @@ def frame_wise_person_detection(
     cap.release()
     out.release()
     cv2.destroyAllWindows()
-    return detection_list
