@@ -27,6 +27,8 @@ recommonmark = "^0.7.1"
 soundfile = "^0.12.1"
 pyarrow = "^16.0.0"
 fastparquet = "^2024.2.0"
+dynaconf = "^3.2.5"
+imutils = "^0.5.4"
 
 
 

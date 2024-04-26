@@ -3,7 +3,9 @@ from facenet_pytorch import MTCNN
 from faces import my_utils
 
 
-def face_detection(video_input_path: str, video_output_path: str) -> list:
+def run_face_detection(
+    video_input_path: str, video_output_path: str, model: MTCNN
+) -> list:
     """
     This function loads a video from a given path and creates
     a VideoWriter object to write the output video.
@@ -16,15 +18,14 @@ def face_detection(video_input_path: str, video_output_path: str) -> list:
         the path to the video file
     video_output_path : str
         the path to the output video file
+    model : MTCNN
+        the MTCNN face detector
 
     Returns
     -------
     list
         the results for each frame (1 if a face is detected, 0 otherwise)
     """
-    # Initialize MTCNN face detector
-    mtcnn = MTCNN()
-
     # Load video and get video properties
     cap = cv2.VideoCapture(video_input_path)
     try:
@@ -38,14 +39,12 @@ def face_detection(video_input_path: str, video_output_path: str) -> list:
         )
         try:
             # Perform frame-wise detection
-            detection_list = frame_wise_face_detection(mtcnn, cap, out)
+            detection_list = frame_wise_face_detection(model, cap, out)
             return detection_list
         finally:
             out.release()
     finally:
         cap.release()
-
-    return detection_list
 
 
 def frame_wise_face_detection(
@@ -85,20 +84,40 @@ def frame_wise_face_detection(
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
         # Detect faces in the frame
-        boxes, _ = mtcnn.detect(rgb_frame)
+        boxes, probs = mtcnn.detect(rgb_frame)
 
         # Draw bounding boxes around detected faces
         if boxes is not None:
-            # Append 1 to the detection list if a face is detected
+            # Append 1 to the detection list if at least one face is detected
             detection_list.append(1)
-            for box in boxes:
-                x, y, w, h = box.astype(int)
-                cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+            for i, box in enumerate(boxes):
+                box0, box1, box2, box3 = box
+                x_left = min(box0, box2)
+                x_right = max(box0, box2)
+                y_left = min(box1, box3)
+                y_right = max(box1, box3)
+                cv2.rectangle(
+                    frame,
+                    (int(x_left), int(y_left)),
+                    (int(x_right), int(y_right)),
+                    (105, 22, 51),
+                    2,
+                )
+                cv2.putText(
+                    frame,
+                    f"face {probs[i]:.2f}",  # noqa: E501, E231
+                    (int(x_left), (int(y_left) - 10)),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.5,
+                    (105, 22, 51),
+                    2,
+                )
         else:
             # Append 0 to the detection list if no face is detected
             detection_list.append(0)
 
         # Write frame to output video
+        # out.write(frame)
         out.write(frame)
 
         # Display the frame with detected faces
@@ -106,6 +125,6 @@ def frame_wise_face_detection(
         # cv2.imshow('Video', frame)
         # Press 'q' to exit
         # if cv2.waitKey(1) & 0xFF == ord('q'):
-        #   break
+        #    break
 
     return detection_list
