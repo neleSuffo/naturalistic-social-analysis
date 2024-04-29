@@ -5,9 +5,9 @@ import cv2
 import my_utils
 import torch
 from facenet_pytorch import MTCNN
-from faces import my_MTCNN
 from language import detect_voices
 from persons import det_persons
+from faces import my_fast_mtcnn
 import config
 
 # Start the timer
@@ -121,8 +121,11 @@ def run_detection_models(
         # Set the output path for the face detection results
         output_path = os.path.join(config.video_face_output_path, video_file_name)
         # Perform face detection on the video
-        results["face"] = my_MTCNN.run_face_detection(
-            video_input_path, output_path, face_detection_model
+        # results["face"] = my_mtcnn.run_face_detection(
+        #     video_input_path, output_path, face_detection_model
+        # )
+        results["face"] = my_fast_mtcnn.run_face_detection(
+            video_input_path, face_detection_model
         )
         detection_length = len(results["face"])
     if voice_detection:
@@ -153,9 +156,9 @@ def run_detection_models(
 
 if __name__ == "__main__":
     perform_social_interactions_detection(
-        person_detection=True,
+        person_detection=False,
         face_detection=True,
-        voice_detection=True,
+        voice_detection=False,
         proximity_detection=False,
     )
 

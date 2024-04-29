@@ -1,7 +1,7 @@
 import os
 import shutil
 import torch
-from facenet_pytorch import MTCNN
+from fast_mtcnn import FastMTCNN
 
 
 def load_detection_models(person_detection: bool, face_detection: bool) -> tuple:
@@ -22,6 +22,7 @@ def load_detection_models(person_detection: bool, face_detection: bool) -> tuple
     """
     person_detection_model = None
     face_detection_model = None
+    device = "cuda" if torch.cuda.is_available() else "cpu"
 
     if person_detection:
         # Load the YOLOv5 model for person detection
@@ -35,7 +36,10 @@ def load_detection_models(person_detection: bool, face_detection: bool) -> tuple
 
     if face_detection:
         # Load the MTCNN model for face detection
-        face_detection_model = MTCNN()
+        # face_detection_model = MTCNN()
+        face_detection_model = FastMTCNN(
+            stride=2, resize=1, margin=14, factor=0.6, keep_all=True, device=device
+        )
 
     return person_detection_model, face_detection_model
 
