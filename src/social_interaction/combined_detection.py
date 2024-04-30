@@ -1,168 +1,143 @@
-import json
-import os
-import time
 import cv2
 import my_utils
-import torch
-from facenet_pytorch import MTCNN
-from language import detect_voices
-from persons import det_persons
-from faces import my_fast_mtcnn
+from pathlib import Path
 import config
+import logging
+from timeit import default_timer as timer
 
-# Start the timer
-start_time = time.time()
+# Set up logging
+logging.basicConfig(level=logging.INFO)
 
 
-def perform_social_interactions_detection(
-    person_detection: bool = True,
-    face_detection: bool = True,
-    voice_detection: bool = True,
-    proximity_detection: bool = True,
-) -> None:
-    """
-    This function performs social interactions detection.
-    First, it loads the person detection and face detection models.
-    Then, it gets a list of all video files in the input folder.
-    Finally, it processes each video file by running the detection models
+DETECTION_FUNCTIONS = {
+    "person": my_utils.run_person_detection,
+    "face": my_utils.run_frame_face_detection,
+    "batch-wise face": my_utils.run_batch_face_detection,
+    "voice": my_utils.run_voice_detection,
+    "proximity": my_utils.run_proximity_detection,
+}
 
-    Parameters
-    ----------
-    person_detection : bool
-        whether to perform person detection (default is True)
-    face_detection : bool
-        whether to perform face detection (default is True)
-    voice_detection : bool
-        whether to perform voice detection (default is True)
-    proximity_detection : bool
-        whether to perform proximity detection (default is True)
-    """
-    # Load the person detection and face detection models
-    person_detection_model, face_detection_model = my_utils.load_detection_models(
-        person_detection, face_detection
-    )
 
-    # Get a list of all video files in the folder
-    video_files = [
-        f for f in os.listdir(config.videos_input_path) if f.lower().endswith(".mp4")
-    ]
+MODELS = {
+    "person": my_utils.load_person_detection_model,
+    "face": my_utils.load_frame_face_detection_model,
+    "batch-wise face": my_utils.load_batch_face_detection_model,
+}
 
-    # Process each video file
-    for video_file in video_files:
-        video_path = os.path.join(config.videos_input_path, video_file)  # noqa: E501
-        run_detection_models(
-            video_path,
-            video_file,
-            person_detection_model,
-            face_detection_model,
-            person_detection,
-            face_detection,
-            voice_detection,
-            proximity_detection,
+
+def run_detection(
+    detection_type, detection_function, video_file, file_name, models, results
+):
+    logging.info(f"Performing {detection_type} detection...")
+    if detection_type in ["person", "face", "batch-wise face"]:
+        results[detection_type] = detection_function(
+            video_file, file_name, models[detection_type]
         )
+    elif detection_type == "voice":
+        logging.info("Performing voice detection...")
+        if "person" in results:
+            nr_of_frames = len(results["person"])
+        elif "batch-wise face" in results:
+            nr_of_frames = len(results["batch-wise face"])
+        else:
+            # Get the number of frames in the video
+            cap = cv2.VideoCapture(video_file)
+            nr_of_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        total_video_duration, voice_duration_sum, results["voice"] = detection_function(
+            video_file, nr_of_frames
+        )
+    elif detection_type == "proximity":
+        logging.info("Performing proximity detection...")
+        detection_function()
 
 
 def run_detection_models(
-    video_input_path: str,
-    video_file_name: str,
-    person_detection_model: torch.nn.Module,
-    face_detection_model: MTCNN,
-    person_detection: bool,
-    face_detection: bool,
-    voice_detection: bool,
-    proximity_detection: bool,
-) -> None:  # noqa: E125
+    detections: dict,
+) -> dict:  # noqa: E125
     """
-    This function runs the social interactions detection pipeline.
-    It performs person, face, voice, and proximity detection on the video.
-    The output of each detection is a list of 1s and 0s, where 1 indicates
-    that the object is detected in the frame and 0 indicates that it is not.
-    The final output is the percentage of frames
-    where all objects are detected.
+    This function runs five different detection models:
+    - Person detection
+    - Face detection
+    - Batch-wise face detection
+    - Voice detection
+    - Proximity detection
+    For each detection model, the output is a list of 1s and 0s,
+    where 1 indicates the presence of the object or event in the frame.
 
     Parameters
     ----------
-    video_input_path : str
-        the path to the video file
-    video_file_name : str
-        the name of the video file
-    person_detection_model : torch.nn.Module
-        the person detection model
-    face_detection_model : MTCNN
-        the face detection model
-    person_detection : bool
-        whether to perform person detection
-    face_detection : bool
-        whether to perform face detection
-    voice_detection : bool
-        whether to perform voice detection
-    proximity_detection : bool
-        whether to perform proximity detection
+    detections : dict
+        a dictionary indicating which detection models to run
+        (person, face, voice, proximity)
+
+    Returns
+    -------
+    dict
+        the results of each detection model
     """
+    # Load the person detection and face detection models
+    models = {
+        key: MODELS[key]()
+        for key, value in detections.items()
+        if value and key in MODELS
+    }
 
-    # Get the number of frames in the video
-    cap = cv2.VideoCapture(video_input_path)
-    number_of_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    # Get a list of all video files in the folder
+    video_files = [
+        video_f
+        for video_f in Path(config.videos_input_path).iterdir()
+        if video_f.suffix.lower() == ".mp4"
+    ]
 
+    # Initialize the results dictionary
     results = {}
-    print("Starting social interactions detection pipeline...")
-    if person_detection:
-        print("Performing person detection...")
-        # Set the output path for the person detection results
-        output_path = os.path.join(config.video_person_output_path, video_file_name)
-        # Perform person detection on the video
-        results["person"] = det_persons.run_person_detection(
-            video_input_path, output_path, person_detection_model
-        )
-        # Get the length of the person detection results
-        detection_length = len(results["person"])
-    if face_detection:
-        print("Performing face detection...")
-        # Set the output path for the face detection results
-        output_path = os.path.join(config.video_face_output_path, video_file_name)
-        # Perform face detection on the video
-        # results["face"] = my_mtcnn.run_face_detection(
-        #     video_input_path, output_path, face_detection_model
-        # )
-        results["face"] = my_fast_mtcnn.run_face_detection(
-            video_input_path, face_detection_model
-        )
-        detection_length = len(results["face"])
-    if voice_detection:
-        print("Performing voice detection...")
-        # Helper variable: true if either person
-        # or face detection is enabled
-        # to ensure that the detection list has the same length
-        # as the person and face detection
-        if face_detection or person_detection:
-            number_of_frames = detection_length
-        # Perform voice detection on the video
-        (
-            total_video_duration,
-            voice_duration_sum,
-            results["voice"],
-        ) = detect_voices.extract_speech_duration(video_input_path, number_of_frames)  # noqa: E501
-    if proximity_detection:
-        print("Performing proximity detection...")
-        pass  # Perform proximity detection on the video
+
+    # Process each video file
+    for video_file in video_files:
+        file_name = video_file.name
+        video_file = str(video_file)
+        logging.info("Starting social interactions detection pipeline...")
+        for detection_type, detection_function in DETECTION_FUNCTIONS.items():
+            if detections[detection_type]:
+                run_detection(
+                    detection_type,
+                    detection_function,
+                    video_file,
+                    file_name,
+                    models,
+                    results,
+                )
+    return results
+
+
+def main():
+    """
+    The main function of the social interactions detection pipeline.
+    """
+    # Start the timer
+    start_time = timer()
+
+    results = run_detection_models(
+        detections={
+            "person": False,
+            "face": True,
+            "batch-wise face": False,  # "batch-wise face" detection is faster than "face" detection
+            "voice": False,
+            "proximity": False,
+        }
+    )
 
     # Save the results to a JSON file
-    with open("output/results.json", "w") as f:
-        json.dump(results, f)
+    my_utils.save_results_to_json(results, "output/results.json")
 
-    for detection_type, detection_list in results.items():
-        my_utils.calculate_percentage_and_print_results(detection_list, detection_type)  # noqa: E501
+    # Print the results
+    my_utils.display_results(results)
+
+    # Stop the timer and print the runtime
+    end_time = timer()
+    runtime = end_time - start_time
+    logging.info(f"Runtime: {runtime} seconds")
 
 
 if __name__ == "__main__":
-    perform_social_interactions_detection(
-        person_detection=False,
-        face_detection=True,
-        voice_detection=False,
-        proximity_detection=False,
-    )
-
-# Stop the timer and print the runtime
-end_time = time.time()
-runtime = end_time - start_time
-print(f"Runtime: {runtime} seconds")
+    main()

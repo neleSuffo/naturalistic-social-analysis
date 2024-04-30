@@ -96,9 +96,7 @@ def extract_resampled_audio(video: VideoFileClip, filename: str) -> None:
     # save it to the output file
     # The temporary file will be deleted when
     # the NamedTemporaryFile object is garbage collected
-    output_file = os.path.join(
-        config.vtc_audio_path, f"{filename[:-4]}_16kHz.wav"
-    )  # noqa: E501
+    output_file = os.path.join(config.vtc_audio_path, f"{filename[:-4]}_16kHz.wav")  # noqa: E501
     subprocess.run(
         ["sox", temp_file.name + ".wav", "-r", "16000", output_file],
         check=True,
@@ -135,6 +133,7 @@ def get_total_seconds_of_voice(df: pd.DataFrame) -> float:
             # Add the full duration of the utterance to the total
             total += row.Utterance_Duration
             df.at[row.Index, "Case"] = 1
+            df["Seconds_Added"] = df["Seconds_Added"].astype(float)
             df.at[row.Index, "Seconds_Added"] = row.Utterance_Duration
             prev_end = row.Utterance_End
 
@@ -185,9 +184,7 @@ def rttm_to_dataframe(rttm_file: str) -> pd.DataFrame:
     )
 
     # Drop unnecessary columns
-    df = df.drop(
-        columns=["Speaker", "audio_file_id", "NA_1", "NA_2", "NA_3", "NA_4"]
-    )  # noqa: E501
+    df = df.drop(columns=["Speaker", "audio_file_id", "NA_1", "NA_2", "NA_3", "NA_4"])  # noqa: E501
     df["Utterance_End"] = df["Utterance_Start"] + df["Utterance_Duration"]
     return df
 
