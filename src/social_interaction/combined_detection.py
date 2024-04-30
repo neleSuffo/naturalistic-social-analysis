@@ -119,10 +119,10 @@ def main():
 
     results = run_detection_models(
         detections={
-            "person": False,
-            "face": True,
-            "batch-wise face": False,  # "batch-wise face" detection is faster than "face" detection
-            "voice": False,
+            "person": True,
+            "face": False,
+            "batch-wise face": True,  # "batch-wise face" detection is faster than "face" detection
+            "voice": True,
             "proximity": False,
         }
     )
@@ -130,8 +130,23 @@ def main():
     # Save the results to a JSON file
     my_utils.save_results_to_json(results, "output/results.json")
 
+    # Create the final result list
+    final_result = []
+    # Sum the values for each frame
+    for values in zip(*results.values()):
+        final_result.append(sum(values))
+
+    # Save the summed results to a JSON file
+    my_utils.save_results_to_json(final_result, "output/summed_results.json")
+
+    # Count the sequences of 2 or 3 in final results
+    sequence_nr_of_frames = my_utils.count_sequences(final_result, 60)
+
     # Print the results
     my_utils.display_results(results)
+    print(
+        f"Number of consecutive frames with at least two detections in parallel: {sequence_nr_of_frames}"
+    )
 
     # Stop the timer and print the runtime
     end_time = timer()

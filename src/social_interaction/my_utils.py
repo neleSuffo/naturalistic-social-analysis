@@ -13,6 +13,37 @@ from faces import my_mtcnn
 from faces import my_fast_mtcnn
 
 
+def count_sequences(final_results, interaction_length):
+    """
+    This function counts the sequences of 2 or 3 in the final results.
+
+    Parameters
+    ----------
+    final_results : list
+        the final results list
+    interaction_length : int
+        the minimum length of the interaction sequence
+
+    Returns
+    -------
+    list
+        a list of sequence lengths of 2 or 3 in final_results
+        that are greater than or equal to interaction_length
+    """
+    sequence_lengths = []
+    sequence_length = 0
+
+    for value in final_results:
+        if value == 2 or value == 3:
+            sequence_length += 1
+        elif value == 0 or value == 1:
+            if sequence_length >= interaction_length:
+                sequence_lengths.append(sequence_length)
+            sequence_length = 0
+
+    return sequence_lengths
+
+
 def run_person_detection(
     video_input_path: str, video_file_name: str, person_detection_model: torch.nn.Module
 ) -> list:
@@ -190,9 +221,10 @@ def save_results_to_json(results: dict, output_path: str) -> None:
     output_path : str
         the path to the output file
     """
+    directory = os.path.dirname(output_path)
     # Check if the output directory exists, if not, create it
-    if not os.path.exists(output_path):
-        os.makedirs(output_path)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
     # Save the results to a JSON file
     with open(output_path, "w") as f:
         json.dump(results, f)
