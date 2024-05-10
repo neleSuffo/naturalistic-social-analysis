@@ -45,7 +45,10 @@ def count_sequences(final_results, interaction_length):
 
 
 def run_person_detection(
-    video_input_path: str, video_file_name: str, person_detection_model: torch.nn.Module
+    video_input_path: str,
+    video_file_name: str,
+    person_detection_model: torch.nn.Module,
+    frame_step: int,
 ) -> list:
     """
     This function loads a video and performs person detection on it.
@@ -57,7 +60,9 @@ def run_person_detection(
     video_file_name : str
         the name of the video file
     person_detection_model : torch.nn.Module
-        the person detection model
+        the person detection model#
+    frame_step : int
+        the number of frames to skip between detections
 
     Returns
     -------
@@ -68,7 +73,7 @@ def run_person_detection(
     # Set the output path for the person detection results
     output_path = os.path.join(config.video_person_output_path, video_file_name)
     return det_persons.run_person_detection(
-        video_input_path, output_path, person_detection_model
+        video_input_path, output_path, person_detection_model, frame_step
     )
 
 
@@ -76,6 +81,7 @@ def run_frame_face_detection(
     video_input_path: str,
     video_file_name: str,
     face_detection_model: MTCNN,
+    frame_step: int,
 ) -> list:
     """
     This function loads a video and performs face detection on it.
@@ -88,6 +94,8 @@ def run_frame_face_detection(
         the name of the video file
     face_detection_model : MTCNN
         the MTCNN face detector
+    frame_step : int
+        the number of frames to skip between detections
 
     Returns
     -------
@@ -98,7 +106,10 @@ def run_frame_face_detection(
     # Set the output path for the face detection results
     output_path = os.path.join(config.video_face_output_path, video_file_name)
     return my_mtcnn.run_face_detection(
-        video_input_path, output_path, face_detection_model
+        video_input_path,
+        output_path,
+        face_detection_model,
+        frame_step,
     )
 
 
@@ -243,8 +254,8 @@ def display_results(results: dict) -> None:
     for detection_type, detection_list in results.items():
         percentage = sum(detection_list) / len(detection_list) * 100
         logging.info(
-            f"Percentages of at least one {detection_type} detected relative to the total frames: {percentage:.2f}"
+            f"Percentages of at least one {detection_type} detected relative to the total number of frames: {percentage:.2f}"
         )
         logging.info(
-            f"Total number of frames ({detection_type}): {len(detection_list)}"
+            f"Total number of steps (every {config.frame_step}-th frame) ({detection_type}): {len(detection_list)}"
         )

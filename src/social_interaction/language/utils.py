@@ -7,6 +7,53 @@ from language import config
 from moviepy.editor import VideoFileClip
 
 
+def generate_second_wise_utterance_list(
+    total_video_duration: int,
+    frames_per_second: float,
+    df: pd.DataFrame,
+) -> list:
+    """
+    This function generates a list indicating the presence
+    of voice in each second of the video.
+    1 indicates that voice is present, 0 indicates that it is not.
+
+    Parameters
+    ----------
+    total_video_duration : int
+        the total duration of the video in seconds
+    frames_per_second : float
+        the frames per second of the video
+    df : pd.DataFrame
+        the DataFrame containing the voice-type-classifier output
+
+    Returns
+    -------
+    list
+        the voice detection list indicating the presence of voice in every second
+        (1 if voice is present, 0 otherwise)
+    """
+    # Convert total_video_duration and frames_per_second to integers
+    total_video_duration = int(total_video_duration)
+
+    # Get video properties of the video
+    frames_per_second = round(frames_per_second)
+
+    # Initialize the second wise list with zeros and the frame wise list
+    second_wise_utterance_list = [0] * total_video_duration
+
+    # Iterate over the utterances
+    for row in df.itertuples():
+        # Get the start and end times of the utterance in seconds
+        start_time = int(row.Utterance_Start)
+        end_time = int(row.Utterance_End)
+
+        # Set the corresponding indices in the list to 1
+        for i in range(start_time, end_time):
+            second_wise_utterance_list[i] = 1
+
+    return second_wise_utterance_list
+
+
 def generate_frame_wise_utterance_list(
     total_video_duration: int,
     frames_per_second: float,
@@ -15,7 +62,7 @@ def generate_frame_wise_utterance_list(
 ) -> list:
     """
     This function generates a list indicating the presence
-    of voice in each second of the video.
+    of voice in each frame of the video.
     1 indicates that voice is present, 0 indicates that it is not.
 
     Parameters

@@ -1,8 +1,6 @@
 from facenet_pytorch import MTCNN
 import cv2
 
-filenames = "/Users/nelesuffo/projects/leuphana-IPE/data/sample_2.MP4"
-
 
 def run_face_detection(video_input_path: str, model: MTCNN) -> list:
     """

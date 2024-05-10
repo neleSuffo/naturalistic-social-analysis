@@ -31,7 +31,10 @@ def run_detection(
     logging.info(f"Performing {detection_type} detection...")
     if detection_type in ["person", "face", "batch-wise face"]:
         results[detection_type] = detection_function(
-            video_file, file_name, models[detection_type]
+            video_file,
+            file_name,
+            models[detection_type],
+            config.frame_step,
         )
     elif detection_type == "voice":
         logging.info("Performing voice detection...")
@@ -120,8 +123,8 @@ def main():
     results = run_detection_models(
         detections={
             "person": True,
-            "face": False,
-            "batch-wise face": True,  # "batch-wise face" detection is faster than "face" detection
+            "face": True,
+            "batch-wise face": False,  # "batch-wise face" detection is faster than "face" detection
             "voice": True,
             "proximity": False,
         }
@@ -140,7 +143,9 @@ def main():
     my_utils.save_results_to_json(final_result, "output/summed_results.json")
 
     # Count the sequences of 2 or 3 in final results
-    sequence_nr_of_frames = my_utils.count_sequences(final_result, 60)
+    sequence_nr_of_frames = my_utils.count_sequences(
+        final_result, config.interaction_length
+    )
 
     # Print the results
     my_utils.display_results(results)

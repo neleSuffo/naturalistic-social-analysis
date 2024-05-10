@@ -44,9 +44,7 @@ def extract_speech_duration(
         frames_per_second = int(cap.get(cv2.CAP_PROP_FPS))
         total_video_duration = video.duration
         # Extract audio from the video and save it as a 16kHz WAV file
-        my_utils.extract_resampled_audio(
-            video, os.path.basename(video_input_path)
-        )  # noqa: E501
+        my_utils.extract_resampled_audio(video, os.path.basename(video_input_path))  # noqa: E501
     finally:
         cap.release()
 
@@ -62,15 +60,15 @@ def extract_speech_duration(
     # Get the total duration of the utterances
     utterance_duration_sum = my_utils.get_total_seconds_of_voice(vtc_output_df)
 
-    # Generate a frame-wise list of utterances
-    frame_wise_utterance_list = my_utils.generate_frame_wise_utterance_list(
+    # Generate a second-wise list of utterances
+    second_wise_utterance_list = my_utils.generate_second_wise_utterance_list(
         total_video_duration,
         frames_per_second,
-        number_of_frames,
         vtc_output_df,
     )
+
     return (
         total_video_duration,
         utterance_duration_sum,
-        frame_wise_utterance_list,
+        second_wise_utterance_list,
     )
