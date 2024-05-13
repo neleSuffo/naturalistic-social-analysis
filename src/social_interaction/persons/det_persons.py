@@ -1,7 +1,9 @@
 from typing import Generator
+from moviepy.editor import VideoFileClip
 import cv2
+import os
 import torch
-from src.social_interaction.persons import utils
+from persons import my_utils
 
 
 def run_person_detection(
@@ -42,7 +44,7 @@ def run_person_detection(
     frames_per_second = int(cap.get(cv2.CAP_PROP_FPS))
 
     # Create a VideoWriter object to write the output video
-    out = utils.create_video_writer(
+    out = my_utils.create_video_writer(
         video_output_path, frames_per_second, frame_width, frame_height
     )
 
@@ -54,7 +56,15 @@ def run_person_detection(
 
     # Perform frame-wise detection
     detection_list = list(
-        frame_wise_person_detection(cap, out, model, class_index_det, frame_step)
+        frame_wise_person_detection(
+            cap,
+            out,
+            video_input_path,
+            video_output_path,
+            model,
+            class_index_det,
+            frame_step,
+        )
     )
     return detection_list
 
@@ -62,6 +72,8 @@ def run_person_detection(
 def frame_wise_person_detection(
     cap: cv2.VideoCapture,
     out: cv2.VideoWriter,
+    video_input_path: str,
+    video_output_path: str,
     model: torch.nn.Module,
     class_index_det: int,
     frame_step: int,
@@ -77,6 +89,10 @@ def frame_wise_person_detection(
         the video capture object
     out : cv2.VideoWriter
         the video writer object
+    video_input_path: str
+        the path to the video file
+    video_output_path : str
+        the path to the output video file
     model : torch.nn.Module
         the YOLOv5 model
     class_index_det : int
@@ -155,3 +171,16 @@ def frame_wise_person_detection(
     cap.release()
     out.release()
     cv2.destroyAllWindows()
+
+    # Add audio to the output video
+    clip = VideoFileClip(video_output_path)
+
+    # Get the filename and extension
+    filename, file_extension = os.path.splitext(video_output_path)
+    processed_filename = f"{filename}_processed{file_extension}"
+
+    # Write the video file with audio
+    clip.write_videofile(processed_filename, codec="libx264", audio=video_input_path)
+
+    # Delete the video file without audio
+    os.remove(video_output_path)

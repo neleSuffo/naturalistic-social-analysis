@@ -1,6 +1,8 @@
 import cv2
 from facenet_pytorch import MTCNN
 from faces import my_utils
+import os
+from moviepy.editor import VideoFileClip
 
 
 def run_face_detection(
@@ -47,6 +49,19 @@ def run_face_detection(
             out.release()
     finally:
         cap.release()
+        # Add audio to the output video
+        clip = VideoFileClip(video_output_path)
+
+        # Get the filename and extension
+        filename, file_extension = os.path.splitext(video_output_path)
+        processed_filename = f"{filename}_processed{file_extension}"
+        # Write the processed video file with audio
+        clip.write_videofile(
+            processed_filename, codec="libx264", audio=video_input_path
+        )
+
+        # Delete the video file without audio
+        os.remove(video_output_path)
 
 
 def frame_wise_face_detection(

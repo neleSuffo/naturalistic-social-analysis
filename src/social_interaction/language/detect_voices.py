@@ -1,9 +1,10 @@
 import os
 from typing import Tuple
-
 import cv2
-from language import call_vtc, config, my_utils
+from language import call_vtc, config
 from moviepy.editor import VideoFileClip
+
+from language import my_utils
 
 
 def extract_speech_duration(
