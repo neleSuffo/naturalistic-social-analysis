@@ -4,6 +4,7 @@ from pathlib import Path
 import config
 import logging
 from timeit import default_timer as timer
+import os
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -44,15 +45,17 @@ def run_detection(
     elif detection_type == "voice":
         logging.info("Performing voice detection...")
         if "person" in results:
-            nr_of_frames = len(results["person"])
+            len_detection_list = len(results["person"])
+        elif "face" in results:
+            len_detection_list = len(results["face"])
         elif "batch-wise face" in results:
-            nr_of_frames = len(results["batch-wise face"])
+            len_detection_list = len(results["batch-wise face"])
         else:
             # Get the number of frames in the video
             cap = cv2.VideoCapture(video_file)
-            nr_of_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+            len_detection_list = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         total_video_duration, voice_duration_sum, results["voice"] = detection_function(
-            video_file, nr_of_frames
+            video_file, len_detection_list
         )
     elif detection_type == "proximity":
         logging.info("Performing proximity detection...")
@@ -61,7 +64,7 @@ def run_detection(
 
 def run_detection_models(
     detections: dict,
-) -> dict:  # noqa: E125
+) -> dict:
     """
     This function runs five different detection models:
     - Person detection
@@ -82,6 +85,8 @@ def run_detection_models(
     -------
     dict
         the results of each detection model
+    file_name_short
+        the name of the video file (without the extension)
     """
     # Load the person detection and face detection models
     models = {
@@ -103,8 +108,11 @@ def run_detection_models(
     # Process each video file
     for video_file in video_files:
         file_name = video_file.name
+        file_name_short = video_file.stem
         video_file = str(video_file)
-        logging.info("Starting social interactions detection pipeline...")
+        logging.info(
+            f"Starting social interactions detection pipeline for {file_name_short}..."
+        )
         for detection_type, detection_function in DETECTION_FUNCTIONS.items():
             if detections[detection_type]:
                 run_detection(
@@ -115,28 +123,31 @@ def run_detection_models(
                     models,
                     results,
                 )
-    return results
+    return results, file_name_short
 
 
-def main():
+def main(detections_dict: dict) -> None:
     """
     The main function of the social interactions detection pipeline.
+
+    Parameters
+    ----------
+    detections_dict : dict
+        a dictionary indicating which detection models to run
+        (person, face, voice, proximity)
+
     """
     # Start the timer
     start_time = timer()
 
-    results = run_detection_models(
-        detections={
-            "person": False,
-            "face": True,
-            "batch-wise face": False,  # "batch-wise face" detection is faster than "face" detection
-            "voice": False,
-            "proximity": False,
-        }
-    )
+    # Run the detection models
+    results, file_name_short = run_detection_models(detections_dict)
 
     # Save the results to a JSON file
-    my_utils.save_results_to_json(results, config.detection_results_path)
+    json_output_path = os.path.join(
+        config.detection_results_path, f"{file_name_short}.json"
+    )
+    my_utils.save_results_to_json(results, json_output_path)
 
     # Create the final result list
     final_result = []
@@ -145,7 +156,10 @@ def main():
         final_result.append(sum(values))
 
     # Save the summed results to a JSON file
-    my_utils.save_results_to_json(final_result, config.summed_detection_results_path)
+    json_output_path_summed = os.path.join(
+        config.detection_results_path, f"{file_name_short}_summed.json"
+    )
+    my_utils.save_results_to_json(final_result, json_output_path_summed)
 
     # Count the sequences of 2 or 3 in final results
     sequence_nr_of_frames = my_utils.count_sequences(
@@ -165,4 +179,11 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    detections_dict = {
+        "person": True,
+        "face": True,
+        "batch-wise face": False,  # "batch-wise face" detection is faster than "face" detection
+        "voice": True,
+        "proximity": False,
+    }
+    main(detections_dict)

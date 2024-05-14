@@ -60,10 +60,10 @@ def process_labels(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, list]:
 
     Returns
     -------
-    pd.DataFrame
+    df: pd.DataFrame
         the DataFrame containing the data from the XML file
         concatenated with the dummy variables for each label
-    pd.DataFrame
+    label_bool_df: pd.DataFrame
         the DataFrame containing the dummy variables for each label
         (True/False) for each frame
     list
@@ -78,17 +78,18 @@ def process_labels(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, list]:
     df.loc[~df["label"].isin([2, 3, 4, 5, 6]), "Interaction"] = np.nan
 
     # Create dummy variables for each label
-    dummies = pd.get_dummies(df["label"])
-    dummies_label_list = dummies.columns.tolist()
+    label_columns_df = pd.get_dummies(df[["frame", "label"]], columns=["label"])
+    # Combine rows with the same frame so that the labels are combined
+    label_bool_df = label_columns_df.groupby("frame").any().reset_index()
 
-    # Concatenate dummies with frame column
-    # This dataframe only contains the labels (True/False) for each frame
-    labels_per_frame_df = pd.concat([df[["frame"]], dummies], axis=1)
+    # Get list of existing labels in the DataFrame
+    label_list = sorted(df["label"].unique().tolist())
 
     # Concatenate dummies with the reduced annotation dataframe
+    dummies = pd.get_dummies(df["label"])
     df = pd.concat([df, dummies], axis=1)
 
-    return df, labels_per_frame_df, dummies_label_list
+    return df, label_bool_df, label_list
 
 
 def process_xml_file(file_path: str) -> pd.DataFrame:
@@ -131,6 +132,9 @@ def process_xml_file(file_path: str) -> pd.DataFrame:
     # Convert the columns to the appropriate data types
     df[config.int_columns] = df[config.int_columns].astype(int)
     df[config.float_columns] = df[config.float_columns].astype(float)
+
+    # Sort the DataFrame by frame
+    df.sort_values(by="frame", inplace=True)
 
     return df
 

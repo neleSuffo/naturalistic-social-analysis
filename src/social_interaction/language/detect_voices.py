@@ -1,15 +1,15 @@
 import os
 from typing import Tuple
 import cv2
-from language import call_vtc, config
+from language import call_vtc
+from language import config
 from moviepy.editor import VideoFileClip
-
 from language import my_utils
 
 
 def extract_speech_duration(
     video_input_path: str,
-    number_of_frames: int,
+    len_detection_list: int,
 ) -> Tuple[float, float, list]:
     """
     This function extracts the speech duration from a video file
@@ -24,8 +24,8 @@ def extract_speech_duration(
     ----------
     video_input_path : str
         the path to the video file
-    number_of_frames : int
-        the number of frames in the video
+    len_detection_list : int
+        the length of the detection list from previous detections
 
     Returns
     -------
@@ -42,10 +42,11 @@ def extract_speech_duration(
     cap = cv2.VideoCapture(video_input_path)
     try:
         # Get the video properties
-        frames_per_second = int(cap.get(cv2.CAP_PROP_FPS))
         total_video_duration = video.duration
         # Extract audio from the video and save it as a 16kHz WAV file
-        my_utils.extract_resampled_audio(video, os.path.basename(video_input_path))  # noqa: E501
+        file_name = os.path.basename(video_input_path)
+        file_name_short = os.path.splitext(file_name)[0]
+        my_utils.extract_resampled_audio(video, file_name)  # noqa: E501
     finally:
         cap.release()
 
@@ -59,12 +60,14 @@ def extract_speech_duration(
     vtc_output_df = my_utils.rttm_to_dataframe(config.vtc_output_file_path)
 
     # Get the total duration of the utterances
-    utterance_duration_sum = my_utils.get_total_seconds_of_voice(vtc_output_df)
+    utterance_duration_sum = my_utils.get_total_seconds_of_voice(
+        vtc_output_df, file_name_short
+    )
 
     # Generate a second-wise list of utterances
     second_wise_utterance_list = my_utils.generate_second_wise_utterance_list(
         total_video_duration,
-        frames_per_second,
+        len_detection_list,
         vtc_output_df,
     )
 

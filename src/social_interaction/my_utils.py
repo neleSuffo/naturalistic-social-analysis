@@ -138,7 +138,7 @@ def run_batch_face_detection(
 
 
 def run_voice_detection(
-    video_input_path: str, number_of_frames: int
+    video_input_path: str, len_detection_list: int
 ) -> Tuple[float, float, list]:
     """
     This function loads a video and performs voice detection on it.
@@ -147,8 +147,8 @@ def run_voice_detection(
     ----------
     video_input_path : str
         the path to the video file
-    number_of_frames : int
-        the number of frames in the video
+    len_detection_list : int
+        the length of the detection list from previous detections
 
     Returns
     -------
@@ -158,7 +158,7 @@ def run_voice_detection(
         the voice detection list indicating the presence of voice in each frame
         (1 if voice is present, 0 otherwise)
     """
-    return detect_voices.extract_speech_duration(video_input_path, number_of_frames)
+    return detect_voices.extract_speech_duration(video_input_path, len_detection_list)
 
 
 # TODO: Add proximity detection

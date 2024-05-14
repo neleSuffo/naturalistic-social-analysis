@@ -1,6 +1,5 @@
 import os
 import subprocess
-
 from language import config
 
 
@@ -24,7 +23,5 @@ def call_voice_type_classifier():
             env=env,  # noqa: E501
         )
     except Exception as e:
-        print(
-            f"An error occurred while running the voice-type-classifier: {e}"
-        )  # noqa: E501
+        print(f"An error occurred while running the voice-type-classifier: {e}")  # noqa: E501
         raise

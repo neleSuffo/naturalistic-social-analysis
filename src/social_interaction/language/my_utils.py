@@ -9,7 +9,7 @@ from moviepy.editor import VideoFileClip
 
 def generate_second_wise_utterance_list(
     total_video_duration: int,
-    frames_per_second: float,
+    len_detection_list: int,
     df: pd.DataFrame,
 ) -> list:
     """
@@ -21,8 +21,8 @@ def generate_second_wise_utterance_list(
     ----------
     total_video_duration : int
         the total duration of the video in seconds
-    frames_per_second : float
-        the frames per second of the video
+    len_detection_list : float
+        the length of the detection list from previous detections
     df : pd.DataFrame
         the DataFrame containing the voice-type-classifier output
 
@@ -32,11 +32,8 @@ def generate_second_wise_utterance_list(
         the voice detection list indicating the presence of voice in every second
         (1 if voice is present, 0 otherwise)
     """
-    # Convert total_video_duration and frames_per_second to integers
+    # Convert total_video_duration to integers
     total_video_duration = int(total_video_duration)
-
-    # Get video properties of the video
-    frames_per_second = round(frames_per_second)
 
     # Initialize the second wise list with zeros and the frame wise list
     second_wise_utterance_list = [0] * total_video_duration
@@ -50,6 +47,14 @@ def generate_second_wise_utterance_list(
         # Set the corresponding indices in the list to 1
         for i in range(start_time, end_time):
             second_wise_utterance_list[i] = 1
+
+    # Ensure the length of the list matches the detection list from previous detections
+    if len(second_wise_utterance_list) >= len_detection_list:
+        second_wise_utterance_list = second_wise_utterance_list[:len_detection_list]
+    else:
+        second_wise_utterance_list.extend(
+            [0] * (len_detection_list - len(second_wise_utterance_list))
+        )
 
     return second_wise_utterance_list
 
@@ -150,7 +155,7 @@ def extract_resampled_audio(video: VideoFileClip, filename: str) -> None:
     )
 
 
-def get_total_seconds_of_voice(df: pd.DataFrame) -> float:
+def get_total_seconds_of_voice(df: pd.DataFrame, file_name_short: str) -> float:
     """
     This function calculates the total number of seconds covered by the intervals in a DataFrame.  # noqa: E501
 
@@ -158,6 +163,8 @@ def get_total_seconds_of_voice(df: pd.DataFrame) -> float:
     ----------
     df : pd.DataFrame
         the DataFrame containing the voice-type-classifier output
+    file_name_short: str
+        the filename of the video
 
     Returns
     -------
@@ -194,8 +201,12 @@ def get_total_seconds_of_voice(df: pd.DataFrame) -> float:
             df.at[row.Index, "Seconds_Added"] = row.Utterance_End - prev_end
             prev_end = row.Utterance_End
         # Save the output as a parquet file
-        df.to_parquet(f"{config.vtc_df_output_path}vtc_output.parquet")
-    return total
+        parquet_output_path = os.path.join(
+            config.vtc_df_output_path, f"{file_name_short}_vtc_output.parquet"
+        )
+        df.to_parquet(parquet_output_path)
+
+        return total
 
 
 def rttm_to_dataframe(rttm_file: str) -> pd.DataFrame:
