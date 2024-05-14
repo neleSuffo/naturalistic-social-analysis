@@ -7,10 +7,6 @@ video_person_output_path = "output/output_person_detection/"
 # Path variables for the person detection
 video_face_output_path = "output/output_face_detection/"
 
-
-# Path variable to the annotation xml files
-annotations_path = "data/annotations/"
-
 # Path to detection output json
 detection_results_path = "output/results.json"
 
