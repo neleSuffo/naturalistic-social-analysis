@@ -43,7 +43,6 @@ def run_detection(
             models[detection_type],
         )
     elif detection_type == "voice":
-        logging.info("Performing voice detection...")
         if "person" in results:
             len_detection_list = len(results["person"])
         elif "face" in results:
@@ -123,7 +122,11 @@ def run_detection_models(
                     models,
                     results,
                 )
-    return results, file_name_short
+        # Save the result to a JSON file
+        json_output_path = os.path.join(
+            config.detection_results_path, f"{file_name_short}.json"
+        )
+        my_utils.save_results_to_json(results, json_output_path)
 
 
 def main(detections_dict: dict) -> None:
@@ -141,36 +144,7 @@ def main(detections_dict: dict) -> None:
     start_time = timer()
 
     # Run the detection models
-    results, file_name_short = run_detection_models(detections_dict)
-
-    # Save the results to a JSON file
-    json_output_path = os.path.join(
-        config.detection_results_path, f"{file_name_short}.json"
-    )
-    my_utils.save_results_to_json(results, json_output_path)
-
-    # Create the final result list
-    final_result = []
-    # Sum the values for each frame
-    for values in zip(*results.values()):
-        final_result.append(sum(values))
-
-    # Save the summed results to a JSON file
-    json_output_path_summed = os.path.join(
-        config.detection_results_path, f"{file_name_short}_summed.json"
-    )
-    my_utils.save_results_to_json(final_result, json_output_path_summed)
-
-    # Count the sequences of 2 or 3 in final results
-    sequence_nr_of_frames = my_utils.count_sequences(
-        final_result, config.interaction_length
-    )
-
-    # Print the results
-    my_utils.display_results(results)
-    print(
-        f"Number of consecutive frames with at least two detections in parallel: {sequence_nr_of_frames}"
-    )
+    run_detection_models(detections_dict)
 
     # Stop the timer and print the runtime
     end_time = timer()

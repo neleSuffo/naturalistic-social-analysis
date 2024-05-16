@@ -38,30 +38,35 @@ def run_face_detection(
         frames_per_second = int(cap.get(cv2.CAP_PROP_FPS))
 
         # Create a VideoWriter object to write the output video
-        out = my_utils.create_video_writer(
-            video_output_path, frames_per_second, frame_width, frame_height
-        )
+        out = None
+        # only save the output video if frame_step is 1
+        if frame_step == 1:
+            out = my_utils.create_video_writer(
+                video_output_path, frames_per_second, frame_width, frame_height
+            )
         try:
             # Perform frame-wise detection
             detection_list = frame_wise_face_detection(model, cap, out, frame_step)
             return detection_list
         finally:
-            out.release()
+            if out:
+                out.release()
     finally:
         cap.release()
         # Add audio to the output video
-        clip = VideoFileClip(video_output_path)
+        if frame_step == 1:
+            clip = VideoFileClip(video_output_path)
 
-        # Get the filename and extension
-        filename, file_extension = os.path.splitext(video_output_path)
-        processed_filename = f"{filename}_processed{file_extension}"
-        # Write the processed video file with audio
-        clip.write_videofile(
-            processed_filename, codec="libx264", audio=video_input_path
-        )
+            # Get the filename and extension
+            filename, file_extension = os.path.splitext(video_output_path)
+            processed_filename = f"{filename}_processed{file_extension}"
+            # Write the processed video file with audio
+            clip.write_videofile(
+                processed_filename, codec="libx264", audio=video_input_path
+            )
 
-        # Delete the video file without audio
-        os.remove(video_output_path)
+            # Delete the video file without audio
+            os.remove(video_output_path)
 
 
 def frame_wise_face_detection(
@@ -144,8 +149,9 @@ def frame_wise_face_detection(
                 detection_list.append(0)
 
         # Write frame to output video
-        # out.write(frame)
-        out.write(frame)
+        # only if frame_step is 1
+        if frame_step == 1:
+            out.write(frame)
 
         # Display the frame with detected faces
         # Only for visualization purposes

@@ -2,6 +2,56 @@ import pandas as pd
 import xml.etree.ElementTree as ET
 import config
 import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+
+
+def generate_confusion_matrix(df: pd.DataFrame) -> None:
+    """
+    Generate and plot the confusion matrix.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        the DataFrame containing the labels and annotations
+    """
+    # Convert the columns to the appropriate data types
+    df[["person", "label_0", "label_1"]] = df[["person", "label_0", "label_1"]].astype(
+        int
+    )
+
+    # Combine the labels
+    df["predicted"] = df["label_0"] | df["label_1"]
+
+    # Calculate confusion matrix
+    conf_matrix = confusion_matrix(df["predicted"], df["person"])
+    disp = ConfusionMatrixDisplay(confusion_matrix=conf_matrix)
+    disp.plot()
+    plt.show()
+
+
+def calculate_accuracy(df: pd.DataFrame) -> None:
+    """
+    This function calculates and prints the accuracy.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        the DataFrame containing the labels and annotations
+    """
+    # Calculate the number of rows
+    num_rows = df.shape[0]
+
+    # Calculate accuracy
+    accuracy = (
+        (
+            ((df["person"]) & (df["label_0"] | df["label_1"]))
+            | ((~df["person"]) & (~df["label_0"] & ~df["label_1"]))
+        ).sum()
+        / num_rows
+        * 100
+    )
+    print(f"Accuracy is: {accuracy:.2f}%")
 
 
 def pivot_df(df: pd.DataFrame, dummies_label_list: list) -> pd.DataFrame:
@@ -114,6 +164,13 @@ def process_xml_file(file_path: str) -> pd.DataFrame:
     # Drop unimportant columns
     df.drop(columns=config.drop_columns, inplace=True)
 
+    # Get the columns, create them if they don't exist
+    # (to catch errors because of non-existing columns)
+    df["Interaction"] = df.get("Interaction", pd.Series([""] * len(df)))
+    df["Age"] = df.get("Age", pd.Series([""] * len(df)))
+    df["Visibility"] = df.get("Visibility", pd.Series([""] * len(df)))
+    df["ID"] = df.get("ID", pd.Series([""] * len(df)))
+
     # Replace 'yes' and 'no' values with 1 and 0 for the 'Interaction' column
     df["Interaction"] = df["Interaction"].str.lower().map(config.interaction_map)
 
@@ -169,9 +226,9 @@ def xml_to_df(file_path):
 
             # Get the 'attribute' element
             attribute = box.find("attribute")
-
-            # Add the attribute name and value to box_data
-            box_data[attribute.attrib["name"]] = attribute.text
+            if attribute:
+                # Add the attribute name and value to box_data
+                box_data[attribute.attrib["name"]] = attribute.text
 
             # Combine track_data and box_data
             combined_data = {**track_data, **box_data}

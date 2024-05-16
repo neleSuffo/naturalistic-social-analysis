@@ -1,4 +1,3 @@
-import os
 import my_utils
 
 
@@ -42,10 +41,10 @@ def preprocess_annotations(directory: str, xml_file: str):
     label_bool_df.columns = label_bool_df.columns.astype(str)
 
     # Save df to Parquet file
-    base_name = os.path.splitext(os.path.basename(xml_file))[0]
-    output_path_full_label_df = os.path.join(directory, f"{base_name}.parquet")
-    output_path_bool_label_df = os.path.join(directory, f"{base_name}_bool.parquet")
-    annotation_df_rows.to_parquet(output_path_full_label_df)
-    label_bool_df.to_parquet(output_path_bool_label_df)
+    # base_name = os.path.splitext(os.path.basename(xml_file))[0]
+    # output_path_full_label_df = os.path.join(directory, f"{base_name}.parquet")
+    # output_path_bool_label_df = os.path.join(directory, f"{base_name}_bool.parquet")
+    # annotation_df_rows.to_parquet(output_path_full_label_df)
+    # label_bool_df.to_parquet(output_path_bool_label_df)
 
     return annotation_df_rows, label_bool_df

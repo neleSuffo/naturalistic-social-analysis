@@ -17,6 +17,8 @@ label_map = {
     "toy": 4,
     "kitchenware": 5,
     "screen": 6,
+    "object": 7,
+    "noise": -1,
 }
 
 # The columns that need to be converted to strings for mapping
@@ -41,3 +43,6 @@ float_columns = ["xtl", "ytl", "xbr", "ybr"]
 
 # Path variable to the annotation xml files
 annotations_path = "data/annotations/"
+
+# Path variable to the output json files
+model_output_path = "output/"

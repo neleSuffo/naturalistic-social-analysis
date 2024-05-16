@@ -159,7 +159,9 @@ def frame_wise_person_detection(
                         )
 
         # Write frame to output video
-        out.write(frame)
+        # (only for frame_step == 1)
+        if frame_step == 1:
+            out.write(frame)
 
         # Display modified frame
         # Only for testing purposes
@@ -169,18 +171,22 @@ def frame_wise_person_detection(
 
     # Release video capture and close windows
     cap.release()
-    out.release()
+    if frame_step == 1:
+        out.release()
     cv2.destroyAllWindows()
 
     # Add audio to the output video
-    clip = VideoFileClip(video_output_path)
+    if frame_step == 1:
+        clip = VideoFileClip(video_output_path)
 
-    # Get the filename and extension
-    filename, file_extension = os.path.splitext(video_output_path)
-    processed_filename = f"{filename}_processed{file_extension}"
+        # Get the filename and extension
+        filename, file_extension = os.path.splitext(video_output_path)
+        processed_filename = f"{filename}_processed{file_extension}"
 
-    # Write the video file with audio
-    clip.write_videofile(processed_filename, codec="libx264", audio=video_input_path)
+        # Write the video file with audio
+        clip.write_videofile(
+            processed_filename, codec="libx264", audio=video_input_path
+        )
 
-    # Delete the video file without audio
-    os.remove(video_output_path)
+        # Delete the video file without audio
+        os.remove(video_output_path)
