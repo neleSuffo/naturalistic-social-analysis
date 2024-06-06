@@ -834,3 +834,5 @@ $RECYCLE.BIN/
 *.lnk
 
 # End of https://www.toptal.com/developers/gitignore/api/r,vim,linux,macos,emacs,latex,vscode,python,windows,jetbrains,sublimetext,video,microsoftoffice,libreoffice,git
+# Ignore dynaconf secret files
+.secrets.*

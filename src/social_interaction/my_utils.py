@@ -1,164 +1,11 @@
+from constants import DetectionParameters
+from facenet_pytorch import MTCNN
+from fast_mtcnn import FastMTCNN
 import os
 import json
 import shutil
 import torch
 import logging
-import config
-from typing import Tuple
-from facenet_pytorch import MTCNN
-from fast_mtcnn import FastMTCNN
-from language import detect_voices
-from persons import det_persons
-from faces import my_mtcnn
-from faces import my_fast_mtcnn
-
-
-def count_sequences(final_results, interaction_length):
-    """
-    This function counts the sequences of 2 or 3 in the final results.
-
-    Parameters
-    ----------
-    final_results : list
-        the final results list
-    interaction_length : int
-        the minimum length of the interaction sequence
-
-    Returns
-    -------
-    list
-        a list of sequence lengths of 2 or 3 in final_results
-        that are greater than or equal to interaction_length
-    """
-    sequence_lengths = []
-    sequence_length = 0
-
-    for value in final_results:
-        if value == 2 or value == 3:
-            sequence_length += 1
-        elif value == 0 or value == 1:
-            if sequence_length >= interaction_length:
-                sequence_lengths.append(sequence_length)
-            sequence_length = 0
-
-    return sequence_lengths
-
-
-def run_person_detection(
-    video_input_path: str,
-    video_file_name: str,
-    person_detection_model: torch.nn.Module,
-    frame_step: int,
-) -> list:
-    """
-    This function loads a video and performs person detection on it.
-
-    Parameters
-    ----------
-    video_input_path : str
-        the path to the video file
-    video_file_name : str
-        the name of the video file
-    person_detection_model : torch.nn.Module
-        the person detection model#
-    frame_step : int
-        the number of frames to skip between detections
-
-    Returns
-    -------
-    list
-        the results for each frame
-        (1 if a person is detected, 0 otherwise)
-    """
-    # Set the output path for the person detection results
-    output_path = os.path.join(config.video_person_output_path, video_file_name)
-    return det_persons.run_person_detection(
-        video_input_path, output_path, person_detection_model, frame_step
-    )
-
-
-def run_frame_face_detection(
-    video_input_path: str,
-    video_file_name: str,
-    face_detection_model: MTCNN,
-    frame_step: int,
-) -> list:
-    """
-    This function loads a video and performs face detection on it.
-
-    Parameters
-    ----------
-    video_input_path : str
-        the path to the video file
-    video_file_name : str
-        the name of the video file
-    face_detection_model : MTCNN
-        the MTCNN face detector
-    frame_step : int
-        the number of frames to skip between detections
-
-    Returns
-    -------
-    list
-        the results for each frame
-        (1 if a face is detected, 0 otherwise)
-    """
-    # Set the output path for the face detection results
-    output_path = os.path.join(config.video_face_output_path, video_file_name)
-    return my_mtcnn.run_face_detection(
-        video_input_path,
-        output_path,
-        face_detection_model,
-        frame_step,
-    )
-
-
-def run_batch_face_detection(
-    video_input_path: str,
-    face_detection_model: MTCNN,
-) -> list:
-    """
-    This function loads a video and performs face detection on it.
-
-    Parameters
-    ----------
-    video_input_path : str
-        the path to the video file
-    face_detection_model : MTCNN
-        the MTCNN face detector
-
-    Returns
-    -------
-    list
-        the results for each frame
-        (1 if a face is detected, 0 otherwise)
-    """
-    # Set the output path for the face detection results
-    return my_fast_mtcnn.run_face_detection(video_input_path, face_detection_model)
-
-
-def run_voice_detection(
-    video_input_path: str, len_detection_list: int
-) -> Tuple[float, float, list]:
-    """
-    This function loads a video and performs voice detection on it.
-
-    Parameters
-    ----------
-    video_input_path : str
-        the path to the video file
-    len_detection_list : int
-        the length of the detection list from previous detections
-
-    Returns
-    -------
-    Tuple[float, float, list]
-        the total duration of the video file,
-        the total duration of the utterances in the video,
-        the voice detection list indicating the presence of voice in each frame
-        (1 if voice is present, 0 otherwise)
-    """
-    return detect_voices.extract_speech_duration(video_input_path, len_detection_list)
 
 
 # TODO: Add proximity detection
@@ -254,5 +101,5 @@ def display_results(results: dict) -> None:
             f"Percentages of at least one {detection_type} detected relative to the total number of frames: {percentage:.2f}"
         )
         logging.info(
-            f"Total number of steps (every {config.frame_step}-th frame) ({detection_type}): {len(detection_list)}"
+            f"Total number of steps (every {DetectionParameters.frame_step}-th frame) ({detection_type}): {len(detection_list)}"
         )

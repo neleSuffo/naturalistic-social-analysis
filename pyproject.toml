@@ -30,6 +30,7 @@ fastparquet = "^2024.2.0"
 dynaconf = "^3.2.5"
 imutils = "^0.5.4"
 lxml = "^5.2.2"
+fiftyone = "^0.24.0"
 
 
 

@@ -1,12 +1,13 @@
-import cv2
 from facenet_pytorch import MTCNN
 from faces import my_utils
-import os
+from src.social_interaction.constants import DetectionOutputPaths
 from moviepy.editor import VideoFileClip
+import cv2
+import os
 
 
 def run_face_detection(
-    video_input_path: str, video_output_path: str, model: MTCNN, frame_step: int
+    video_input_path: str, video_file_name: str, model: MTCNN, frame_step: int
 ) -> list:
     """
     This function loads a video from a given path and creates
@@ -18,8 +19,8 @@ def run_face_detection(
     ----------
     video_input_path : str
         the path to the video file
-    video_output_path : str
-        the path to the output video file
+    video_file_name : str
+        the name of the video file
     model : MTCNN
         the MTCNN face detector
     frame_step : int
@@ -41,6 +42,8 @@ def run_face_detection(
         out = None
         # only save the output video if frame_step is 1
         if frame_step == 1:
+            video_output_path = os.path.join(DetectionOutputPaths.face, video_file_name)
+
             out = my_utils.create_video_writer(
                 video_output_path, frames_per_second, frame_width, frame_height
             )

@@ -1,6 +1,7 @@
 import xml.etree.ElementTree as ET
 import config
 import json
+from collections import defaultdict
 
 # This script reads the XML file containing the annotations and saves the data for each task to Parquet files.
 
@@ -43,24 +44,18 @@ def get_highest_frame_per_task(root: ET.Element, correction_value: int = 30) -> 
         key: task id, value: highest frame
     """
     # Initialize an empty dictionary
-    highest_frames_dict = {}
+    highest_frames_dict = defaultdict(int)
 
     # Iterate over all 'track' elements
     for track in root.findall(".//track"):
         task_id = track.get("task_id")
 
-        # If the task id is not in the dictionary, add it with a value of 0
-        if task_id not in highest_frames_dict:
-            highest_frames_dict[task_id] = 0
-
         # Iterate over all 'box' elements within the track
         for box in track.iter("box"):
             # Get the frame
             frame = int(box.get("frame"))
-
-            # If this frame is higher than the current highest for this task, update it
-            if frame > highest_frames_dict[task_id]:
-                highest_frames_dict[task_id] = frame
+            # Update the highest frame for the task
+            highest_frames_dict[task_id] = max(highest_frames_dict[task_id], frame)
 
     # Correct the highest frames by adding a correction value
     highest_frames_dict_corr = {
@@ -127,41 +122,59 @@ def create_coco_annotation_format(root, task_details, highest_frames_dict) -> di
         key: task name, value: list of dictionaries
     """
     # Initialize an empty dictionary
-    # Initialize an empty dictionary
     data = {
         "info": {
             "description": "COCO Video Dataset",
             "version": "1.0",
             "date_created": "2024-06-03",
         },
-        "categories": [],
         "videos": [],
         "images": [],
         "annotations": [],
+        "categories": [],
     }
+
+    # Initialize an empty set for added categories and videos
+    added_categories = set()
+    added_videos = set()
+
     # Iterate over all 'track' elements
     for track in root.iter("track"):
-        # Get the task label and task id
-        track_label = track.get("label")
         task_id = track.get("task_id")
+        track_label = track.get("label")
+        # Map the label to its corresponding label id using the dictionary
+        # returns -1 if the label is not in the dictionary
+        track_label_id = config.label_dict.get(track_label, -1)
+        # Map the label to its corresponding supercategory using the dictionary
+        supercategory = config.supercategory_dict.get(
+            track_label_id, "unknown"
+        )  # returns "unknown" if the label is not in the dictionary
 
         # Get the frame correction value
         frame_correction = get_value_before_key(highest_frames_dict, task_id)
         # Get the task name from the task_details dictionary
-        task_name = (
-            task_details[task_id]
-            if task_id is not None
-            else next(iter(task_details.values()))
-        )
+        task_name = task_details.get(task_id, next(iter(task_details.values())))
 
-        # Add video details
-        data["videos"].append(
-            {
-                "id": task_id,
-                "file_name": f"{task_name}.mp4",
-                "fps": 30,
-            }
-        )
+        # Add video details if not already added
+        if task_id not in added_videos:
+            data["videos"].append(
+                {
+                    "id": task_id,
+                    "file_name": f"{task_name}.mp4",
+                }
+            )
+            added_videos.add(task_id)
+
+        # Add category details
+        if track_label_id not in added_categories:
+            data["categories"].append(
+                {
+                    "supercategory": supercategory,
+                    "id": track_label_id,
+                    "name": track_label,
+                }
+            )
+            added_categories.add(track_label_id)
 
         # Iterate over each 'box' element within the 'track'
         for box in track.iter("box"):
@@ -181,9 +194,11 @@ def create_coco_annotation_format(root, task_details, highest_frames_dict) -> di
             )
             data["annotations"].append(
                 {
-                    "id": len(data["annotations"]) + 1,
-                    "image_id": len(data["images"]),
-                    "video_id": task_id,
+                    "image_id": len(
+                        data["images"]
+                    ),  # the id of the image the annotation belongs to
+                    "video_id": task_id,  # the id of the video the annotation belongs to
+                    "category_id": track_label_id,  # the id of the category the annotation belongs to
                     "bbox": [
                         float(row["xtl"]),
                         float(row["ytl"]),
@@ -192,12 +207,7 @@ def create_coco_annotation_format(root, task_details, highest_frames_dict) -> di
                     ],
                 }
             )
-            data["categories"].append(
-                {
-                    "id": task_id,
-                    "name": track_label,
-                }
-            )
+
     return data
 
 
@@ -225,8 +235,6 @@ task_details = get_task_names_and_ids(root)
 
 # Extract highest frame per task
 highest_frame_dict = get_highest_frame_per_task(root)
-
-# Sort the highest frame dictionary by applying the same order as the task details dictionary
 highest_frame_dict_sorted = {
     key: highest_frame_dict.get(key, 0) for key in task_details.keys()
 }
