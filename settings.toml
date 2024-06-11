@@ -1,3 +1,0 @@
-[default]
-# no output video showing the detection results is generated
-generate_detection_output_video = false

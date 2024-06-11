@@ -1,11 +1,13 @@
-from constants import DetectionParameters
+from constants import DetectionParameters, LabelDictionaries
 from facenet_pytorch import MTCNN
-from fast_mtcnn import FastMTCNN
+from moviepy.editor import VideoFileClip
+from tqdm import tqdm
 import os
 import json
 import shutil
 import torch
 import logging
+import cv2
 
 
 # TODO: Add proximity detection
@@ -22,34 +24,20 @@ def load_person_detection_model():
     torch.nn.Module
         the person detection model
     """
-    # Load the YOLOv5 model for person detection
-    person_detection_model = torch.hub.load("ultralytics/yolov5", "yolov5s")
-    # Move the model to the desired location
-    if os.path.exists("yolov5s.pt"):
-        shutil.move(
-            "yolov5s.pt",
-            "/Users/nelesuffo/projects/leuphana-IPE/pretrained_models/yolov5s.pt",
-        )
-
-    return person_detection_model
-
-
-def load_batch_face_detection_model():
-    """
-    This function loads the face detection model.
-
-    Returns
-    -------
-    MTCNN
-        the face detection model
-    """
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-
-    # Load the batch MTCNN model
-    face_detection_model = FastMTCNN(
-        stride=2, resize=1, margin=14, factor=0.6, keep_all=True, device=device
-    )
-    return face_detection_model
+    try:
+        # Load the YOLOv5 model for person detection
+        person_detection_model = torch.hub.load("ultralytics/yolov5", "yolov5s")
+        # Move the model to the desired location
+        if os.path.exists("yolov5s.pt"):
+            shutil.move(
+                "yolov5s.pt",
+                "/Users/nelesuffo/projects/leuphana-IPE/pretrained_models/yolov5s.pt",
+            )
+        logging.info("Successfully downloaded and loaded the person detection model.")
+        return person_detection_model
+    except Exception as e:
+        logging.error(f"Error occurred while loading the person detection model: {e}")
+        raise
 
 
 def load_frame_face_detection_model():
@@ -62,7 +50,254 @@ def load_frame_face_detection_model():
         the face detection model
     """
     # Load the full MTCNN model
-    return MTCNN()
+    model = MTCNN()
+    logging.info("Successfully loaded the face detection model.")
+
+    return model
+
+
+def create_video_writer(
+    output_path: str,
+    frames_per_second: int,
+    frame_width: int,
+    frame_height: int,
+) -> cv2.VideoWriter:
+    """
+    This function creates a VideoWriter object to write the output video.
+
+    Parameters
+    ----------
+    output_path : str
+        the path to the output video file
+    frames_per_second : int
+        the frames per second of the video
+    frame_width : int
+        the width of the frame
+    frame_height : int
+        the height of the frame
+
+    Returns
+    -------
+    cv2.VideoWriter
+        the video writer object
+    """
+
+    # Create a VideoWriter object to write the output video
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+    out = cv2.VideoWriter(
+        output_path, fourcc, frames_per_second, (frame_width, frame_height)
+    )
+
+    return out
+
+
+def detection_video_output(
+    cap: cv2.VideoCapture,
+    out: cv2.VideoWriter,
+    video_input_path: str,
+    video_output_path: str,
+    model,
+    detection_fn,
+    draw_fn,
+    class_index_det: int = None,
+) -> None:
+    """
+    This function performs frame-wise detection on a video file (every frame_step-th frame)
+    It draws bounding boxes around detected objects and writes the output video.
+
+    Parameters
+    ----------
+    cap : cv2.VideoCapture
+        the video capture object
+    out : cv2.VideoWriter
+        the video writer object
+    video_input_path: str
+        the path to the video file
+    video_output_path : str
+        the path to the output video file
+    model
+        the detection model
+    detection_fn : function
+        the function to perform detection
+    draw_fn : function
+        the function to draw bounding boxes
+    """
+    # Get total number of frames
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+    # Create a progress bar
+    with tqdm(total=total_frames, desc="Processing frames", ncols=70) as pbar:
+        # Initialize frame count
+        frame_count = 0
+
+        # Initialize detection results
+        detections = []
+
+        # Loop through frames
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+
+            # Increment frame count
+            frame_count += 1
+
+            # Update progress bar
+            pbar.update()
+
+            # Perform detection every frame_step-th frame
+            if frame_count % DetectionParameters.frame_step == 0:
+                # Apply object detection
+                detections = detection_fn(model, frame, class_index_det)
+
+            # Draw bounding boxes from the last detection
+            for detection in detections:
+                draw_fn(frame, detection)
+
+            # Write frame to output video
+            out.write(frame)
+
+        # Release video capture and close windows
+        cap.release()
+        out.release()
+        cv2.destroyAllWindows()
+
+        # Add audio to the output video
+        clip = VideoFileClip(video_output_path)
+
+        # Get the filename and extension
+        filename, file_extension = os.path.splitext(video_output_path)
+        processed_filename = f"{filename}_processed{file_extension}"
+
+        # Write the video file with audio
+        clip.write_videofile(
+            processed_filename, codec="libx264", audio=video_input_path
+        )
+
+        # Delete the video file without audio
+        os.remove(video_output_path)
+
+
+def detection_coco_output(
+    cap: cv2.VideoCapture,
+    model,
+    detection_fn,
+    process_results_fn,
+    video_file_name: str,
+    file_id: str,
+    annotation_id: int,
+    class_index_det: int = None,
+) -> dict:
+    """
+    This function performs detection on a video file (every frame_step-th frame)
+    It returns the detection results in COCO format.
+
+    Parameters
+    ----------
+    cap : cv2.VideoCapture
+        the video capture object
+    model
+        the model used for detection
+    detection_fn : callable
+        the function used to perform detection
+    process_results_fn : callable
+        the function used to process the detection results
+    video_file_name: str
+        the name of the video file
+    file_id: str
+        the video file id
+    annotation_id: int
+        the annotation id
+    class_index_det : int
+        the class index of the class to detect (only for yolo detection), defaults to None
+
+    Returns
+    -------
+    dict
+        the detection results in COCO format
+    """
+    # Get total number of frames
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+    # Create a progress bar
+    with tqdm(total=total_frames, desc="Processing frames", ncols=70) as pbar:
+        # Initialize detection output
+        detection_output = {
+            "images": [],
+            "annotations": [],
+        }
+
+        if class_index_det is None:
+            # Get the category id for face detection
+            category_id = LabelDictionaries.label_dict[
+                DetectionParameters.mtcnn_detection_class
+            ]
+        else:
+            # Get the category ID for person detection
+            category_id = LabelDictionaries.label_dict[
+                DetectionParameters.yolo_detection_class
+            ]
+
+        # Initialize frame count, annotation id and image id
+        frame_count = 0
+        image_id = 0
+
+        # Loop through frames
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+
+            # Increment frame count
+            frame_count += 1
+
+            # Update progress bar
+            pbar.update()
+
+            # Perform detection every frame_step-th frame
+            if frame_count % DetectionParameters.frame_step == 0:
+                # Apply object detection
+                results = detection_fn(model, frame)
+
+                # Add image information to COCO output
+                detection_output["images"].append(
+                    {
+                        "id": image_id,
+                        "video_id": file_id,
+                        "frame_id": frame_count,
+                        "file_name": f"{video_file_name}_{frame_count}.jpg",
+                    }
+                )
+                image_id += 1
+                # Process detection results and add to COCO output
+                process_results_fn(
+                    results,
+                    detection_output,
+                    frame_count,
+                    category_id,
+                    annotation_id,
+                    class_index_det,
+                )
+
+        return detection_output
+
+
+def create_video_to_id_mapping(video_names: list) -> dict:
+    """
+    This function creates a dictionary with mappings from video names to ids.
+
+    Parameters
+    ----------
+    video_names : list
+        a list of video names
+
+    Returns
+    -------
+    dict
+        a dictionary with mappings from video names to ids
+    """
+    video_id_dict = {video_name: i for i, video_name in enumerate(video_names)}
+    return video_id_dict
 
 
 def save_results_to_json(results: dict, output_path: str) -> None:

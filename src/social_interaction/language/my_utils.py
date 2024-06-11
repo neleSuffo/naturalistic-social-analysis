@@ -1,42 +1,44 @@
+from src.social_interaction.constants import (
+    VTCParameters,
+    LabelDictionaries,
+    DetectionParameters,
+)
+from moviepy.editor import VideoFileClip
+import pandas as pd
 import os
 import subprocess
+import multiprocessing
 import tempfile
 
-import pandas as pd
-from language import config
-from moviepy.editor import VideoFileClip
 
-
-def generate_second_wise_utterance_list(
-    total_video_duration: int,
-    len_detection_list: int,
+def get_utterances_detection_output(
     df: pd.DataFrame,
-) -> list:
+    annotation_id: multiprocessing.Value,
+) -> dict:
     """
-    This function generates a list indicating the presence
-    of voice in each second of the video.
-    1 indicates that voice is present, 0 indicates that it is not.
+    This function generates a dictionary where each key is a second in the audio file
+    and the value is a list of utterances that occurred during that second.
 
     Parameters
     ----------
-    total_video_duration : int
-        the total duration of the video in seconds
-    len_detection_list : float
-        the length of the detection list from previous detections
     df : pd.DataFrame
         the DataFrame containing the voice-type-classifier output
+    annotation_id : multiprocessing.Value
+        the annotation ID to assign to the detections
 
     Returns
     -------
-    list
-        the voice detection list indicating the presence of voice in every second
-        (1 if voice is present, 0 otherwise)
+    dict
+        the detection output
     """
-    # Convert total_video_duration to integers
-    total_video_duration = int(total_video_duration)
+    # Initialize detection output
+    detection_output = {
+        "images": [],
+        "annotations": [],
+    }
 
-    # Initialize the second wise list with zeros and the frame wise list
-    second_wise_utterance_list = [0] * total_video_duration
+    # Get category ID from label dictionary
+    category_id = LabelDictionaries.label_dict[DetectionParameters.vtc_detection_class]
 
     # Iterate over the utterances
     for row in df.itertuples():
@@ -44,86 +46,24 @@ def generate_second_wise_utterance_list(
         start_time = int(row.Utterance_Start)
         end_time = int(row.Utterance_End)
 
-        # Set the corresponding indices in the list to 1
-        for i in range(start_time, end_time):
-            second_wise_utterance_list[i] = 1
+        # For each second from the start to the end of the utterance
+        for second in range(start_time, end_time):
+            frame_count = second * DetectionParameters.frame_step
+            # Add image information to COCO output
+            detection_output["annotations"].append(
+                {
+                    "id": annotation_id.value,
+                    "image_id": frame_count,
+                    "category_id": category_id,
+                    "voice_type": row.Voice_type,
+                    "start_time": row.Utterance_Start,
+                    "end_time": row.Utterance_End,
+                }
+            )
+            with annotation_id.get_lock():
+                annotation_id.value += 1
 
-    # Ensure the length of the list matches the detection list from previous detections
-    if len(second_wise_utterance_list) >= len_detection_list:
-        second_wise_utterance_list = second_wise_utterance_list[:len_detection_list]
-    else:
-        second_wise_utterance_list.extend(
-            [0] * (len_detection_list - len(second_wise_utterance_list))
-        )
-
-    return second_wise_utterance_list
-
-
-def generate_frame_wise_utterance_list(
-    total_video_duration: int,
-    frames_per_second: float,
-    total_nr_frames: int,
-    df: pd.DataFrame,
-) -> list:
-    """
-    This function generates a list indicating the presence
-    of voice in each frame of the video.
-    1 indicates that voice is present, 0 indicates that it is not.
-
-    Parameters
-    ----------
-    total_video_duration : int
-        the total duration of the video in seconds
-    frames_per_second : float
-        the frames per second of the video
-    total_nr_frames : int
-        the total number of frames in the video
-    df : pd.DataFrame
-        the DataFrame containing the voice-type-classifier output
-
-    Returns
-    -------
-    list
-        the voice detection list indicating the presence of voice in each frame
-        (1 if voice is present, 0 otherwise)
-    """
-    # Convert total_video_duration and frames_per_second to integers
-    total_video_duration = int(total_video_duration)
-
-    # Get video properties of the video
-    frames_per_second = round(frames_per_second)
-
-    # Initialize the second wise list with zeros and the frame wise list
-    second_wise_utterance_list = [0] * total_video_duration
-    frame_wise_utterance_list = []
-
-    # Iterate over the utterances
-    for row in df.itertuples():
-        # Get the start and end times of the utterance in seconds
-        start_time = int(row.Utterance_Start)
-        end_time = int(row.Utterance_End)
-
-        # Set the corresponding indices in the list to 1
-        for i in range(start_time, end_time):
-            second_wise_utterance_list[i] = 1
-
-    # Convert the second wise list to a frame wise list
-    for second in second_wise_utterance_list:
-        # Repeat the value frame rate times and append to the new list
-        frame_wise_utterance_list.extend([second] * frames_per_second)
-
-    # Adjust the length of the expanded list
-    # to match the exact number of frames
-    if len(frame_wise_utterance_list) < total_nr_frames:
-        # If the list is too short, append zeros
-        frame_wise_utterance_list.extend(
-            [0] * (total_nr_frames - len(frame_wise_utterance_list))
-        )
-    elif len(frame_wise_utterance_list) > total_nr_frames:
-        # If the list is too long, truncate it
-        frame_wise_utterance_list = frame_wise_utterance_list[:total_nr_frames]
-
-    return frame_wise_utterance_list
+    return detection_output
 
 
 def extract_resampled_audio(video: VideoFileClip, filename: str) -> None:
@@ -144,11 +84,14 @@ def extract_resampled_audio(video: VideoFileClip, filename: str) -> None:
     # Extract the audio and save it to the temporary file
     video.audio.write_audiofile(temp_file.name + ".wav", codec="pcm_s16le")
 
+    # Create the output directory if it doesn't exist
+    os.makedirs(VTCParameters.audio_path, exist_ok=True)
+
     # Convert the audio to 16kHz with sox and
     # save it to the output file
     # The temporary file will be deleted when
     # the NamedTemporaryFile object is garbage collected
-    output_file = os.path.join(config.vtc_audio_path, f"{filename[:-4]}_16kHz.wav")  # noqa: E501
+    output_file = os.path.join(VTCParameters.audio_path, f"{filename[:-4]}_16kHz.wav")  # noqa: E501
     subprocess.run(
         ["sox", temp_file.name + ".wav", "-r", "16000", output_file],
         check=True,
@@ -202,7 +145,7 @@ def get_total_seconds_of_voice(df: pd.DataFrame, file_name_short: str) -> float:
             prev_end = row.Utterance_End
         # Save the output as a parquet file
         parquet_output_path = os.path.join(
-            config.vtc_df_output_path, f"{file_name_short}_vtc_output.parquet"
+            VTCParameters.df_output_path, f"{file_name_short}_vtc_output.parquet"
         )
         df.to_parquet(parquet_output_path)
 

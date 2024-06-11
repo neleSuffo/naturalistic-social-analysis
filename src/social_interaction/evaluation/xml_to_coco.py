@@ -1,7 +1,8 @@
-import xml.etree.ElementTree as ET
-import config
-import json
 from collections import defaultdict
+from src.social_interaction.constants import LabelDictionaries
+import xml.etree.ElementTree as ET
+import src.social_interaction.config as config
+import json
 
 # This script reads the XML file containing the annotations and saves the data for each task to Parquet files.
 
@@ -144,9 +145,9 @@ def create_coco_annotation_format(root, task_details, highest_frames_dict) -> di
         track_label = track.get("label")
         # Map the label to its corresponding label id using the dictionary
         # returns -1 if the label is not in the dictionary
-        track_label_id = config.label_dict.get(track_label, -1)
+        track_label_id = LabelDictionaries.label_dict.get(track_label, -1)
         # Map the label to its corresponding supercategory using the dictionary
-        supercategory = config.supercategory_dict.get(
+        supercategory = LabelDictionaries.super_categories.get(
             track_label_id, "unknown"
         )  # returns "unknown" if the label is not in the dictionary
 

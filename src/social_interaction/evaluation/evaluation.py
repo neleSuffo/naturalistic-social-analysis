@@ -1,5 +1,5 @@
 import pandas as pd
-import config
+import src.social_interaction.config as config
 import json
 from pathlib import Path
 from preprocessing import preprocess_annotations

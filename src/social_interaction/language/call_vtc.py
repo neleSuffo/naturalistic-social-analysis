@@ -1,6 +1,6 @@
+from src.social_interaction.constants import VTCParameters
 import os
 import subprocess
-from language import config
 
 
 def call_voice_type_classifier():
@@ -12,14 +12,14 @@ def call_voice_type_classifier():
     # and the command to run the voice-type-classifier
     env = os.environ.copy()
     env["PATH"] = (
-        os.path.dirname(config.vtc_environment_path) + os.pathsep + env["PATH"]
+        os.path.dirname(VTCParameters.environment_path) + os.pathsep + env["PATH"]
     )
 
     # Run the voice-type-classifier
     # using the voice-type-classifier environment
     try:
         subprocess.run(
-            [config.vtc_environment_path, config.vtc_execution_file_path],
+            [VTCParameters.environment_path, VTCParameters.execution_file_path],
             env=env,  # noqa: E501
         )
     except Exception as e:

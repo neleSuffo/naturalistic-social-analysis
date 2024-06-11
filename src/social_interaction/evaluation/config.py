@@ -8,34 +8,6 @@ interaction_map = {"yes": 1, "no": 0}
 # Map age categories to integers
 age_map = {"inf": 0, "child": 1, "teen": 2, "adult": 3, "dk": -1}
 
-# Map labels to integers
-label_dict = {
-    "person": 1,
-    "reflection": 2,
-    "book": 3,
-    "animal": 4,
-    "toy": 5,
-    "kitchenware": 6,
-    "screen": 7,
-    "food": 8,
-    "object": 9,
-    "other_object": 9,
-    "noise": -1,
-}
-
-# Map label id to supercategory
-supercategory_dict = {
-    1: "person",
-    2: "reflection",
-    3: "object",
-    4: "object",
-    5: "object",
-    6: "object",
-    7: "object",
-    8: "object",
-    9: "object",
-    -1: "noise",
-}
 # The columns that need to be converted to strings for mapping
 str_columns = ["Age", "label"]
 

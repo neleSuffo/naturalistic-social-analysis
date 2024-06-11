@@ -1,6 +1,6 @@
 import pandas as pd
 import xml.etree.ElementTree as ET
-import config
+import src.social_interaction.config as config
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay

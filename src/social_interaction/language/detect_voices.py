@@ -1,78 +1,71 @@
-import os
-from typing import Tuple
-import cv2
-from language import call_vtc
-from language import config
+from src.social_interaction.constants import VTCParameters
 from moviepy.editor import VideoFileClip
+from language import call_vtc
 from language import my_utils
+import cv2
+import os
+import logging
 
 
-def extract_speech_duration(
+def run_voice_detection(
     video_input_path: str,
-    len_detection_list: int,
-) -> Tuple[float, float, list]:
+    annotation_id: int,
+) -> dict:
     """
     This function extracts the speech duration from a video file
     using the voice-type-classifier.
     First, it extracts the audio from the video and saves it as a WAV file.
     Then, it runs the voice-type-classifier on the audio file
-    and converts the output to a pandas DataFrame.
-    The dataframe is then saved as a parquet file.
-    Lastly, it calculates the total duration of the utterances in the video.
+    and outputs the detections in COCO format.
 
     Parameters
     ----------
     video_input_path : str
         the path to the video file
-    len_detection_list : int
-        the length of the detection list from previous detections
+    annotation_id : int
+        the annotation ID to assign to the detections
 
     Returns
     -------
-    float
-        the total duration of the video file
-    float
-        the total duration of the utterances in the video
-    list
-        the voice detection list indicating the presence of voice in each frame
-        (1 if voice is present, 0 otherwise)
+    dict
+        the detection results in COCO format
     """
     # Load the video file and get the filename
-    video = VideoFileClip(video_input_path)
-    cap = cv2.VideoCapture(video_input_path)
     try:
-        # Get the video properties
-        total_video_duration = video.duration
+        # Load the video file and get the filename
+        video = VideoFileClip(video_input_path)
+        cap = cv2.VideoCapture(video_input_path)
+
+    except Exception as e:
+        logging.error(f"Failed to load video file: {e}")
+        raise
+    try:
         # Extract audio from the video and save it as a 16kHz WAV file
         file_name = os.path.basename(video_input_path)
-        file_name_short = os.path.splitext(file_name)[0]
-        my_utils.extract_resampled_audio(video, file_name)  # noqa: E501
+        my_utils.extract_resampled_audio(video, file_name)
+    except Exception as e:
+        logging.error(f"Failed to extract audio from video: {e}")
+        raise
     finally:
         cap.release()
 
-    # Run the voice-type-classifier
-    call_vtc.call_voice_type_classifier()
+    try:
+        # Run the voice-type-classifier
+        call_vtc.call_voice_type_classifier()
+    except Exception as e:
+        logging.error(f"Failed to run voice-type-classifier: {e}")
+        raise
 
     # Delete the no longer needed audio file(s)
-    my_utils.delete_files_in_directory(config.vtc_audio_path)
+    my_utils.delete_files_in_directory(VTCParameters.audio_path)
 
     # Convert the output of the voice-type-classifier to a pandas DataFrame
-    vtc_output_df = my_utils.rttm_to_dataframe(config.vtc_output_file_path)
+    vtc_output_df = my_utils.rttm_to_dataframe(VTCParameters.output_file_path)
 
-    # Get the total duration of the utterances
-    utterance_duration_sum = my_utils.get_total_seconds_of_voice(
-        vtc_output_df, file_name_short
-    )
-
-    # Generate a second-wise list of utterances
-    second_wise_utterance_list = my_utils.generate_second_wise_utterance_list(
-        total_video_duration,
-        len_detection_list,
+    # Generate detection output in COCO format
+    detection_output = my_utils.get_utterances_detection_output(
         vtc_output_df,
+        annotation_id,
     )
 
-    return (
-        total_video_duration,
-        utterance_duration_sum,
-        second_wise_utterance_list,
-    )
+    return detection_output
