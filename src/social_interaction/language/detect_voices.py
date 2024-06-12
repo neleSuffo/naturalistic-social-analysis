@@ -1,7 +1,6 @@
 from src.social_interaction.constants import VTCParameters
 from moviepy.editor import VideoFileClip
-from language import call_vtc
-from language import my_utils
+from src.social_interaction.language import call_vtc, my_utils
 import cv2
 import os
 import logging
@@ -56,11 +55,12 @@ def run_voice_detection(
         logging.error(f"Failed to run voice-type-classifier: {e}")
         raise
 
-    # Delete the no longer needed audio file(s)
-    my_utils.delete_files_in_directory(VTCParameters.audio_path)
-
     # Convert the output of the voice-type-classifier to a pandas DataFrame
     vtc_output_df = my_utils.rttm_to_dataframe(VTCParameters.output_file_path)
+
+    # Delete the no longer needed audio file(s) and the rttm files
+    my_utils.delete_files_and_directory(VTCParameters.audio_path)
+    my_utils.delete_files_and_directory(VTCParameters.output_path)
 
     # Generate detection output in COCO format
     detection_output = my_utils.get_utterances_detection_output(

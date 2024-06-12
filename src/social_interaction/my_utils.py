@@ -1,4 +1,4 @@
-from constants import DetectionParameters, LabelDictionaries
+from src.social_interaction.constants import DetectionParameters, LabelDictionaries
 from facenet_pytorch import MTCNN
 from moviepy.editor import VideoFileClip
 from tqdm import tqdm

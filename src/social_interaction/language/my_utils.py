@@ -9,6 +9,7 @@ import os
 import subprocess
 import multiprocessing
 import tempfile
+import shutil
 
 
 def get_utterances_detection_output(
@@ -190,16 +191,15 @@ def rttm_to_dataframe(rttm_file: str) -> pd.DataFrame:
     return df
 
 
-def delete_files_in_directory(directory_path: str):
+def delete_files_and_directory(directory_path: str):
     """
-    This function deletes all files in a directory.
+    This function deletes all files and subdirectories
+    in a directory, and then the directory itself.
 
     Parameters
     ----------
     directory_path : str
         the path to the directory
     """
-    for filename in os.listdir(directory_path):
-        file_path = os.path.join(directory_path, filename)
-        if os.path.exists(file_path):
-            os.remove(file_path)
+    if os.path.exists(directory_path):
+        shutil.rmtree(directory_path)

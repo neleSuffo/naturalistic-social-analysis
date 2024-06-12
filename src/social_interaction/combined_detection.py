@@ -2,15 +2,19 @@ from multiprocessing.pool import ThreadPool
 from pathlib import Path
 from timeit import default_timer as timer
 from src.social_interaction.persons import detect_persons
-from faces import detect_faces
-from language import detect_voices
-from constants import DetectionPaths, LabelDictionaries
+from src.social_interaction.faces import detect_faces
+from src.social_interaction.language import detect_voices
+from src.social_interaction.constants import (
+    DetectionPaths,
+    LabelDictionaries,
+    DetectionParameters,
+)
 from multiprocessing import Value
-import my_utils
+from src.social_interaction import my_utils
 import logging
 import copy
 import os
-
+from typing import Dict, Callable
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -37,7 +41,7 @@ class Detector:
             [
                 video_file.name
                 for video_file in Path(DetectionPaths.videos_input).iterdir()
-                if video_file.suffix.lower() == ".mp4"
+                if video_file.suffix.lower() == DetectionParameters.file_extension
             ]
         )
         # Create a shared annotation_id variable
@@ -45,12 +49,11 @@ class Detector:
 
     def call_models(
         self,
-        detection_type,
-        detection_function,
-        video_file,
-        file_name,
-        models,
-        output,
+        detection_type: str,
+        video_file: str,
+        file_name: str,
+        models: Dict[str, Callable],
+        output: dict,
     ) -> dict:
         """
         This function performs a specific detection type on a video file.
@@ -59,8 +62,6 @@ class Detector:
         ----------
         detection_type : str
             the type of detection to perform
-        detection_function : function
-            the function to perform the detection
         video_file : str
             the video file to process
         file_name : str
@@ -94,22 +95,22 @@ class Detector:
             file_id = self.video_file_ids[file_name]
             # Define dictionary that maps detection types to their corresponding arguments
             args = {
-                "person": {
-                    "video_file_name": file_name,
-                    "file_id": file_id,
-                    "model": models.get(detection_type),
-                },
-                "face": {
-                    "video_file_name": file_name,
-                    "file_id": file_id,
-                    "model": models.get(detection_type),
-                },
-                "voice": {},
+                "video_input_path": video_file,
+                "annotation_id": self.annotation_id,
             }
+
+            # Conditionally add additional arguments for "face" and "person" detection types
+            if detection_type in ["person", "face"]:
+                args.update(
+                    {
+                        "video_file_name": file_name,
+                        "file_id": file_id,
+                        "model": models.get(detection_type),
+                    }
+                )
+
             # Call the function with the appropriate arguments
-            detections = detection_function(
-                video_file, self.annotation_id, **args.get(detection_type, {})
-            )
+            detections = detection_function(**args)
             # Add detection_output to "images" and "annotations"
             output["images"].extend(detections["images"])
             output["annotations"].extend(detections["annotations"])
@@ -120,13 +121,18 @@ class Detector:
 
         return output
 
-    def process_video_file(self, video_file, detections, models):
+    def process_video_file(
+        self,
+        video_file: Path,
+        detections: Dict[str, bool],
+        models: Dict[str, Callable],
+    ) -> None:
         """
         This function processes a video file by performing the specified detections.
 
         Parameters
         ----------
-        video_file : str
+        video_file : Path
             the video file to process
         detections : dict
             the detections to perform
@@ -155,15 +161,14 @@ class Detector:
         output["videos"].append(
             {
                 "id": self.video_file_ids[file_name],
-                "file_name": f"{file_name_short}.mp4",
+                "file_name": f"{file_name_short}{DetectionParameters.file_extension}",
             }
         )
         # Perform the desired detections
-        for detection_type, detection_function in self.detection_functions.items():
+        for detection_type in self.detection_functions.keys():
             if detections[detection_type]:
                 output = self.call_models(
                     detection_type,
-                    detection_function,
                     video_file,
                     file_name,
                     models,
@@ -175,7 +180,7 @@ class Detector:
         )
         my_utils.save_results_to_json(output, json_output_path)
 
-    def wrapper(self, args) -> None:
+    def wrapper(self, args: tuple) -> None:
         """
         This function is a wrapper for the process_video_file function.
 
@@ -224,15 +229,22 @@ class Detector:
         video_files = [
             video_f
             for video_f in Path(DetectionPaths.videos_input).iterdir()
-            if video_f.suffix.lower() == ".mp4"
+            if video_f.suffix.lower() == DetectionParameters.file_extension
         ]
 
-        # Process each video file (in parallel)
-        with ThreadPool() as pool:
-            pool.map(
-                self.wrapper,
-                [(video_file, detections, models_dict) for video_file in video_files],
-            )
+        try:
+            # Process each video file (in parallel)
+            with ThreadPool() as pool:
+                pool.map(
+                    self.wrapper,
+                    [
+                        (video_file, detections, models_dict)
+                        for video_file in video_files
+                    ],
+                )
+        except Exception as e:
+            logging.error(f"An error occurred during detection: {e}")
+            raise
 
 
 def main(detections_dict: dict) -> None:
@@ -246,15 +258,17 @@ def main(detections_dict: dict) -> None:
         (person, face, voice, proximity)
 
     """
+    logging.info("Starting detection process...")
     start_time = timer()
     detector = Detector()
     detector.run_detection(detections_dict)
     end_time = timer()
     runtime = end_time - start_time
-    logging.info(f"Runtime: {runtime} seconds")
+    logging.info(f"Detection process completed. Runtime: {runtime} seconds")
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     detections_dict = {
         "person": True,
         "face": True,

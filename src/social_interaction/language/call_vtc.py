@@ -14,6 +14,7 @@ def call_voice_type_classifier():
     env["PATH"] = (
         os.path.dirname(VTCParameters.environment_path) + os.pathsep + env["PATH"]
     )
+    env["PYTHONPATH"] = "/Users/nelesuffo/projects/leuphana-IPE"
 
     # Run the voice-type-classifier
     # using the voice-type-classifier environment

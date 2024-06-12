@@ -1,4 +1,5 @@
 from collections import defaultdict
+import os
 
 
 class DetectionPaths:
@@ -16,16 +17,21 @@ class VTCParameters:
     # path variables for the voice-type-classifier
     audio_path = "data/audio/"
     environment_path = "/Users/nelesuffo/Library/Caches/pypoetry/virtualenvs/pyannote-afeazePz-py3.8/bin/python"
-    execution_file_path = "src/social_interaction/language/run_vtc.py"
+    execution_file_path = os.path.abspath(
+        "/Users/nelesuffo/projects/leuphana-IPE/src/social_interaction/language/run_vtc.py"
+    )
     execution_command = "/Users/nelesuffo/projects/voice_type_classifier/apply.sh"
     output_file_path = "output/output_voice_type_classifier/audio/all.rttm"
-    df_output_path = "output/output_voice_type_classifier/"
+    output_path = "output/output_voice_type_classifier/"
 
 
 class DetectionParameters:
     """
     The parameters for the detection models.
     """
+
+    # the video file extension
+    file_extension = ".mp4"
 
     # Every frame_step-th frame is processed
     frame_step = 30

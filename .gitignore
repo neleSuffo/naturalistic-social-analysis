@@ -574,6 +574,7 @@ pretrained_models/
 data/
 output/
 saved_outputs/
+projects/voice_type_classifier
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
