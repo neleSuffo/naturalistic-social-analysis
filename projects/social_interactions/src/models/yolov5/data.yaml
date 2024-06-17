@@ -1,0 +1,6 @@
+
+train: data/videos/train
+val: data/videos/val
+
+nc: 1  # number of classes
+names: ['person']  # names of the classes
