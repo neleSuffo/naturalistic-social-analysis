@@ -17,6 +17,8 @@ class DetectionPaths:
     annotations_xml_path: str = "data/annotations/annotations.xml"
     annotations_json_path: str = "data/annotations/annotations.json"
     annotations_db_path: str = "databases/annotations.db"
+    # The file that is used to map the file names to the file ids
+    file_name_id_dict_path: str = "data/annotation_examples/file_name_to_id_dict/annotations.xml"
 
 
 class VTCParameters:
@@ -101,3 +103,4 @@ class YoloParameters:
     hyp_path = "projects/social_interactions/src/models/yolov5/hyp.yaml"
     pretrained_weights_path = "projects/social_interactions/src/models/yolov5/yolov5s.pt"
     data_config_path = "projects/social_interactions/src/models/yolov5/data.yaml"
+    batch_size = 16

@@ -1,9 +1,50 @@
-from projects.social_interactions.src.common.constants import LabelToCategoryMapping
-from collections import defaultdict
-from datetime import datetime
 import xml.etree.ElementTree as ET
 import json
 import logging
+import sqlite3
+from projects.social_interactions.src.common.constants import LabelToCategoryMapping, DetectionPaths
+from collections import defaultdict
+from datetime import datetime
+
+def get_video_id_from_name_db(
+    video_file_name: str
+    ) -> int:
+    """
+    This function retrieves the video_id from the database using the video_file_name.
+    If the video_file_name does not exist in the database, it is added.
+
+    Parameters
+    ----------
+    video_file_name : str
+        the name of the video file
+
+    Returns
+    -------
+    int
+        the video_id
+    """
+    # Create a connection to the SQLite database
+    conn = sqlite3.connect(DetectionPaths.annotations_db_path)
+
+    # Create a cursor from the database connection
+    cursor = conn.cursor()
+    # Retrieve the task_id from the database using the video_file_name
+    cursor.execute("SELECT video_file_id FROM video_name_id_mapping WHERE video_file_name = ?", (video_file_name,))
+    result = cursor.fetchone()
+
+    # If the video_file_name does not exist in the database, add it
+    if result is None:
+            # The video_file_name does not exist in the database, so add it
+            cursor.execute("INSERT INTO video_files (video_file_name) VALUES (?)", (video_file_name,))
+            # Commit the changes
+            conn.commit()
+            # Retrieve the newly assigned id
+            cursor.execute("SELECT video_file_id FROM video_files WHERE video_file_name = ?", (video_file_name,))
+            result = cursor.fetchone()
+    
+    task_id = result[0]
+
+    return task_id
 
 
 def create_coco_annotation_format(
@@ -33,6 +74,8 @@ def create_coco_annotation_format(
     """
     # Get today's date in the format 'YYYY-MM-DD'
     date_created = datetime.now().strftime('%Y-%m-%d')
+    # Initialize the frame correction value
+    frame_correction = 0
     
     # Initialize an empty dictionary
     data = {
@@ -63,9 +106,13 @@ def create_coco_annotation_format(
         )  # returns "unknown" if the label is not in the dictionary
 
         # Get the frame correction value
-        frame_correction = get_value_before_key(highest_frames_dict, task_id)
+        if task_id is not None:
+            frame_correction = get_value_before_key(highest_frames_dict, task_id)
         # Get the task name from the task_details dictionary
         task_name = task_details.get(task_id, next(iter(task_details.values())))
+        
+        # Get the video_id from the database using the task_name
+        task_id = get_video_id_from_name_db(task_name)
 
         # Add video details if not already added
         if task_id not in added_videos:
@@ -166,6 +213,8 @@ def get_highest_frame_per_task(root: ET.Element, correction_value: int = 30) -> 
     # Iterate over all 'track' elements
     for track in root.findall(".//track"):
         task_id = track.get("task_id")
+        if task_id is None:
+            task_id = 0
 
         # Iterate over all 'box' elements within the track
         for box in track.iter("box"):
@@ -182,7 +231,9 @@ def get_highest_frame_per_task(root: ET.Element, correction_value: int = 30) -> 
     return highest_frames_dict_corr
 
 
-def save_data_to_json(data: dict, base_path: str) -> None:
+def save_data_to_json(
+    data: dict, 
+    output_path: str) -> None:
     """
     This function saves the data to a JSON file.
 
@@ -193,11 +244,17 @@ def save_data_to_json(data: dict, base_path: str) -> None:
     base_path : str
         the base path where the JSON file will be saved
     """
-    with open(f"{base_path}/annotations.json", "w") as f:
-        json.dump(data, f, indent=4)
+    try:
+        with open(output_path, "w") as f:
+            json.dump(data, f, indent=4)
+    except Exception as e:
+        logging.error(f"Error occurred while saving data to JSON: {e}")
 
 
-def get_value_before_key(highest_frames_dict: dict, task_id: str) -> int:
+def get_value_before_key(
+    highest_frames_dict: dict, 
+    task_id: str
+    ) -> int:
     """
     This function gets the value before a specific key in the dictionary.
 

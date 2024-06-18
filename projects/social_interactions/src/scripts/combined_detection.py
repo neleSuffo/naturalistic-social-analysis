@@ -19,7 +19,6 @@ from typing import Dict, Callable
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 
-
 class Detector:
     def __init__(self):
         # Define the detection functions

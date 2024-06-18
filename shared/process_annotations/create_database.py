@@ -3,16 +3,21 @@ import json
 from projects.social_interactions.src.common.constants import DetectionPaths
 
 
-def create_database():
+def create_db_annotations() -> None:
     """
     This function creates a SQLite database from the annotations JSON file.
     """
     # Create a new SQLite database (or connect to an existing one)
     conn = sqlite3.connect(DetectionPaths.annotations_db_path)
     cursor = conn.cursor()
+    
+    # Drop tables if they exist
+    cursor.execute('DROP TABLE IF EXISTS annotations')
+    cursor.execute('DROP TABLE IF EXISTS images')
+    cursor.execute('DROP TABLE IF EXISTS videos')
 
 
-    # Create tables for annotations, images, and videos
+    # Create tables for annotations, images, videos and video file names and ids
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS annotations (
             id INTEGER PRIMARY KEY,
@@ -64,6 +69,44 @@ def create_database():
             INSERT INTO videos (id, file_name)
             VALUES (?, ?)
         ''', (video['id'], video['file_name']))
+
+    # Commit and close the database connection
+    conn.commit()
+    conn.close()
+
+
+def create_db_table_video_name_id_mapping(
+    task_file_id_dict: dict
+) -> None:
+    """
+    This function creates a SQLite database from the annotations xml file.
+    
+    Parameters
+    ----------
+    task_file_id_dict : dict
+        a dictionary with the task name as key and a dictionary as value
+        key: file name, value: file id
+    """
+    # Create a new SQLite database (or connect to an existing one)
+    conn = sqlite3.connect(DetectionPaths.annotations_db_path)
+    cursor = conn.cursor()
+    
+    # Drop tables if they exist
+    cursor.execute('DROP TABLE IF EXISTS video_name_id_mapping')
+    
+    cursor.execute('''
+            CREATE TABLE IF NOT EXISTS video_name_id_mapping (
+                video_file_name TEXT PRIMARY KEY,
+                video_file_id TEXT
+            )
+        ''')
+
+    # Insert video file name and id mapping
+    for file_name, file_id in task_file_id_dict.items():
+        cursor.execute('''
+            INSERT INTO video_name_id_mapping (video_file_name, video_file_id)
+            VALUES (?, ?)
+        ''', (file_name, file_id))
 
     # Commit and close the database connection
     conn.commit()

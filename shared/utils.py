@@ -47,10 +47,11 @@ def fetch_all_annotations(db_path: str) -> list:
     cursor = conn.cursor()
     
     cursor.execute('''
-        SELECT a.id, a.image_id, a.video_id, a.bbox, i.file_name as image_file_name, v.file_name as video_file_name 
-        FROM annotations a 
-        JOIN images i ON a.image_id = i.id 
-        JOIN videos v ON a.video_id = v.id
+    SELECT DISTINCT a.id, a.image_id, a.video_id, a.category_id, a.bbox, i.file_name as image_file_name, v.file_name as video_file_name
+    FROM annotations a 
+    JOIN images i ON a.image_id = i.frame_id AND a.video_id = i.video_id
+    JOIN videos v ON a.video_id = v.id
+    ORDER BY a.video_id, a.image_id
     ''')
     
     annotations = cursor.fetchall()

@@ -10,31 +10,62 @@ from shared import utils
 
 
 class VideoFrameDataset(Dataset):
+    """the VideoFrameDataset class is a custom 
+    dataset class that loads video frames and
+    their corresponding bounding boxes from a
+    given list of annotations.
+
+    Parameters
+    ----------
+    Dataset : 
+        the dataset class
+    """
     def __init__(self, annotations, transform=None):
         self.annotations = annotations
         self.transform = transform
         self.cap = None
-        self.current_video_file_path = None
+        self.current_video_id = None
+
 
     def __len__(self):
         return len(self.annotations)
 
+
     def __getitem__(self, idx: int) -> tuple:
+        """
+        This method returns the video frame and the bounding box
+
+        Parameters
+        ----------
+        idx : int
+            the index of the annotation
+
+        Returns
+        -------
+        tuple
+            the video frame, bounding box, and category id
+        Raises
+        ------
+        ValueError
+            the frame could not be read
+        """
         annotation = self.annotations[idx]
-        _, _, _, bbox, image_file_name, video_file_name = annotation
+        _, frame_id, video_id, category_id, bbox, _, video_file_name = annotation
         bbox = json.loads(bbox)  
         
-        video_file_path = os.path.join(DetectionPaths.videos_input, video_file_name)
-        if self.cap is None or self.current_video_file_path != video_file_path:
+        if self.cap is None or self.current_video_id != video_id:
             if self.cap is not None:
                 self.cap.release()
+            video_file_path = os.path.join(DetectionPaths.videos_input, video_file_name)
             self.cap = cv2.VideoCapture(video_file_path)
-            self.current_video_file_path = video_file_path
-        self.cap.set(cv2.CAP_PROP_POS_FRAMES, int(image_file_name.split('_')[-1].split('.')[0]))
+            self.current_video_id = video_id
+            
+            
+        self.cap.set(cv2.CAP_PROP_POS_FRAMES, frame_id)
         ret, frame = self.cap.read()
 
         if not ret:
-            raise ValueError(f"Could not read frame from {video_file_path}")
+            raise ValueError(f"Could not read frame {frame_id} from {video_file_path}")
 
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         
@@ -43,4 +74,4 @@ class VideoFrameDataset(Dataset):
 
         bbox = torch.tensor(bbox, dtype=torch.float32)
         
-        return frame, bbox
+        return frame, bbox, category_id
