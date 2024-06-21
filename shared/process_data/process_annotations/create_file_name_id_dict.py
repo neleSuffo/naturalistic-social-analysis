@@ -12,7 +12,7 @@ def create_file_name_id_dict(input_path: str) -> dict:
 
     Parameters
     ----------
-    xml_data : str
+    input_path : str
         the path to the XML file
 
     Returns
@@ -33,12 +33,12 @@ def create_file_name_id_dict(input_path: str) -> dict:
         for task in root.iter('task'):
             # Get the 'name' and 'id' sub-elements
             name = task.find('name').text
-            id = task.find('id').text
+            task_id = task.find('id').text
 
             # Add the 'name' and 'id' to the dictionary
-            result_dict[name] = id
+            result_dict[name] = task_id
 
     except Exception as e:
-        logging.error("Exception occurred", exc_info=True)
+        logging.error(f"Exception occurred: {str(e)}", exc_info=True)
         
     return result_dict

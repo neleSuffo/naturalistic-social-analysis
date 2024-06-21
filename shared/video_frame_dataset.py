@@ -2,18 +2,15 @@ import torch
 import cv2
 import json
 import os
-from torch.utils.data import Dataset, DataLoader
-from torchvision import transforms
+from torch.utils.data import Dataset
 from projects.social_interactions.src.common.constants import DetectionPaths
-from sklearn.model_selection import train_test_split
-from shared import utils
-
 
 class VideoFrameDataset(Dataset):
-    """the VideoFrameDataset class is a custom 
+    """
+    The VideoFrameDataset class is a custom 
     dataset class that loads video frames and
-    their corresponding bounding boxes from a
-    given list of annotations.
+    their corresponding bounding boxes and category
+    from a given list of annotations.
 
     Parameters
     ----------

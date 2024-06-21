@@ -575,6 +575,8 @@ data/
 output/
 saved_outputs/
 projects/voice_type_classifier
+notebooks/
+yolov5/
 
 # PyInstaller
 #  Usually these files are written by a python script from a template

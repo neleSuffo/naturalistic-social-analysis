@@ -1,6 +1,8 @@
 import sqlite3
 import json
-from projects.social_interactions.src.common.constants import DetectionPaths
+import cv2
+import os
+from projects.social_interactions.src.common.constants import DetectionPaths, DetectionParameters
 
 
 def create_db_annotations() -> None:
@@ -33,14 +35,17 @@ def create_db_annotations() -> None:
             id INTEGER PRIMARY KEY,
             video_id TEXT,
             frame_id INTEGER,
-            file_name TEXT
+            file_name TEXT,
+            file_name_seconds TEXT
         )
     ''')
 
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS videos (
             id TEXT PRIMARY KEY,
-            file_name TEXT
+            file_name TEXT,
+            frame_width INTEGER,
+            frame_height INTEGER
         )
     ''')
 
@@ -58,17 +63,49 @@ def create_db_annotations() -> None:
 
     # Insert images
     for image in data['images']:
+        # Get the frame number in seconds
+        seconds = int(image['frame_id']) / DetectionParameters.frame_step
+        file_name_base, _ = image['file_name'].rsplit('_', 1)  # Split on the last underscore
+        file_name_seconds = f"{file_name_base}_{int(seconds):06d}"
         cursor.execute('''
-            INSERT INTO images (id, video_id, frame_id, file_name)
-            VALUES (?, ?, ?, ?)
-        ''', (image['id'], image['video_id'], image['frame_id'], image['file_name']))
+            INSERT INTO images (id, video_id, frame_id, file_name, file_name_seconds)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (image['id'], image['video_id'], image['frame_id'], image['file_name'], file_name_seconds))
 
+
+    def get_frame_width_height(
+        video_file_name: str
+    ) -> tuple:
+        """
+        This function gets the frame width and height of a video file.
+
+        Parameters
+        ----------
+        video_file_name: str
+            the video file name
+
+        Returns
+        -------
+        tuple
+            the frame width and height
+        """
+        video_file_path = os.path.join(DetectionPaths.videos_input, video_file_name)
+        cap = cv2.VideoCapture(video_file_path)
+        # Get the frame width and height
+        frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        
+        return frame_width, frame_height
+    
     # Insert videos
     for video in data['videos']:
+        # Get the frame width and height of the video
+        frame_width, frame_height = get_frame_width_height(video['file_name'])
+        
         cursor.execute('''
-            INSERT INTO videos (id, file_name)
-            VALUES (?, ?)
-        ''', (video['id'], video['file_name']))
+            INSERT INTO videos (id, file_name, frame_width, frame_height)
+            VALUES (?, ?, ?, ?)
+        ''', (video['id'], video['file_name'], frame_width, frame_height))
 
     # Commit and close the database connection
     conn.commit()

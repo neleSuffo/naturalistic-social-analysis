@@ -10,6 +10,9 @@ class DetectionPaths:
     person: str = "output/output_person_detection/"
     face: str = "output/output_face_detection/"
     videos_input: str = "data/videos/"
+    images_input: str = "data/images/"
+    labels_input: str = "data/labels/"
+    yolo_input: str = "data/yolo/"
     results: str = "output/"
     frames_output: str = "output/frames/"
     # Path variable to the annotation xml files
@@ -18,7 +21,7 @@ class DetectionPaths:
     annotations_json_path: str = "data/annotations/annotations.json"
     annotations_db_path: str = "databases/annotations.db"
     # The file that is used to map the file names to the file ids
-    file_name_id_dict_path: str = "data/annotation_examples/file_name_to_id_dict/annotations.xml"
+    file_name_id_dict_path: str = "data/file_name_to_id_dict/annotations.xml"
 
 
 class VTCParameters:
@@ -99,8 +102,12 @@ class LabelToCategoryMapping:
     
     
 class YoloParameters:
+    fps = 1 # the frames per second to extract from the video
     model_path = "projects/social_interactions/src/models/yolov5/model.yaml"
     hyp_path = "projects/social_interactions/src/models/yolov5/hyp.yaml"
-    pretrained_weights_path = "projects/social_interactions/src/models/yolov5/yolov5s.pt"
+    pretrained_weights_path = "pretrained_models/yolov5s.pt"
     data_config_path = "projects/social_interactions/src/models/yolov5/data.yaml"
     batch_size = 16
+
+class TrainParameters:
+    train_test_split = 0.8
