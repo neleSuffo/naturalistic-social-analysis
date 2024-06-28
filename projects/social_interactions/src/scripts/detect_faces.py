@@ -78,16 +78,16 @@ def run_face_detection(
             video_input_path,
             video_output_path,
             model,
-            face_detection_fn_long,
-            face_draw_fn,
+            face_detection_with_bbox,
+            draw_faces,
         )
     else:
         # Perform detection and return results in COCO format
         detection_output = detection_coco_output(
             cap,
             model,
-            face_detection_fn_short,
-            face_process_results_fn,
+            face_detection_without_bbox,
+            face_process_results,
             video_file_name,
             file_id,
             annotation_id,
@@ -96,7 +96,7 @@ def run_face_detection(
         return detection_output
 
 
-def face_detection_fn_short(
+def face_detection_without_bbox(
     model: MTCNN,
     frame: np.ndarray,
 ) -> tuple:
@@ -118,7 +118,7 @@ def face_detection_fn_short(
     return model.detect(frame)
 
 
-def face_process_results_fn(
+def face_process_results(
     boxes_and_probs: tuple,
     detection_output: dict,
     frame_count: int,
@@ -162,7 +162,7 @@ def face_process_results_fn(
                 annotation_id.value += 1
 
 
-def face_detection_fn_long(
+def face_detection_with_bbox(
     model: MTCNN,
     frame: np.ndarray,
     class_index_det: int,
@@ -191,7 +191,7 @@ def face_detection_fn_long(
     return detections
 
 
-def face_draw_fn(
+def draw_faces(
     frame: np.ndarray,
     detection: tuple,
 ) -> None:

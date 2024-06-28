@@ -1,130 +1,236 @@
-import os
+from pathlib import Path
 import shutil
 import random
-from projects.social_interactions.src.common.constants import DetectionPaths, TrainParameters
+from projects.social_interactions.src.common.constants import DetectionPaths, TrainParameters, YoloParameters as Yolo, MtcnnParameters as Mtcnn
 
 
-def check_annotations_and_videos(
-    jpg_dir: str, 
-    txt_dir: str
+def check_annotations(
+    jpg_dir: Path, 
+    txt_dir: Path
 ) -> None:
-    """This
+    """
+    This function checks if for every .jpg file there is a .txt file with the same name. 
+    If not, it creates an empty .txt file.
 
     Parameters
     ----------
-    jpg_dir : str
+    jpg_dir : Path
         the directory with .jpg files
-    txt_dir : str
+    txt_dir : Path
         the directory with .txt files
     """
     # Get the list of all .jpg and .txt files
-    jpg_files = [f for f in os.listdir(jpg_dir) if f.endswith('.jpg')]
-    txt_files = [f for f in os.listdir(txt_dir) if f.endswith('.txt')]
-
-    # Remove the file extensions
-    jpg_files_no_ext = [os.path.splitext(f)[0] for f in jpg_files]
-    txt_files_no_ext = [os.path.splitext(f)[0] for f in txt_files]
+    jpg_files = {f.stem for f in jpg_dir.glob('*.jpg')}
+    txt_files = {f.stem for f in txt_dir.glob('*.txt')}
     
-    # List to store .jpg files that are missing a .txt file
-    missing_txt_files = []  
-
-    # Check if for every .jpg file there is a .txt file with the same name
-    for jpg_file in jpg_files_no_ext:
-        if jpg_file not in txt_files_no_ext:
-            missing_txt_files.append(jpg_file)
+    # Find the missing .txt files
+    missing_txt_files = jpg_files - txt_files
     
     # Create empty .txt files for the missing .jpg files
-    for jpg_file in missing_txt_files:
-        open(os.path.join(txt_dir, jpg_file + '.txt'), 'a').close()
+    for file in missing_txt_files:
+        (txt_dir / f"{file}.txt").touch()
 
 
 def split_dataset(
-    file_dir_jpg: str,
-    destination_dir: str,
+    file_dir_jpg: Path,
     split_ratio: float
-    ) -> None:
+    ) -> tuple:
     """
-    This function splits the dataset into training and testing sets.
+    This function splits the dataset into training and testing sets
+    and returns the list of training and testing files.
 
     Parameters
     ----------
     file_dir_jpg : str
-        the directory containing the image files
-    file_dir_txt : str
-        the directory containing the annotation files
-    destination_dir : str
-        the destination directory to store the training and testing sets
+        the directory with the .jpg files
     split_ratio : float
         the ratio to split the dataset
+    
+    Returns
+    -------
+    tuple
+        the list of training and testing files
     """
-    # Define source directory and new directories for training
-    train_dir = os.path.join(destination_dir, "train")
-    val_dir = os.path.join(destination_dir, "val")
-
-    # Create necessary directories if they don't exist
-    os.makedirs(train_dir, exist_ok=True)
-    os.makedirs(val_dir, exist_ok=True)
-
     # Get all image files and their corresponding annotation files
-    files = [f for f in os.listdir(file_dir_jpg) if f.endswith('.jpg')]
+    files = list(file_dir_jpg.glob('*.jpg'))
 
-    # Shuffle the files randomly
+    # Set a random seed for reproducibility
+    random.seed(TrainParameters.random_seed)
     random.shuffle(files)
 
     # Calculate the split index
     split_index = int(len(files) * split_ratio)
     
     # Split the files into training and testing sets
-    train_files_jpg = files[:split_index]
-    val_files_jpg = files[split_index:]
+    train_files = files[:split_index]
+    val_files = files[split_index:]
     
-    train_files_txt = [file_name.replace('.jpg', '.txt') for file_name in train_files_jpg]
-    val_files_txt = [file_name.replace('.jpg', '.txt') for file_name in val_files_jpg]
+    return train_files, val_files
 
 
-    def move_files(
-        src_dir: str,
-        files_to_move_lst: list, 
-        dest_dir: str
+def move_yolo_files(
+    files_to_move_lst: list, 
+    dest_dir_images: Path,
+    dest_dir_labels: Path,
     ) -> None:
-        """
-        This function moves files from the source directory to the destination directory and deletes the empty source directory.
+    """
+    This function moves files from the source directory to the destination directory
+    and deletes the empty source directory.
 
-        Parameters
-        ----------
-        src_dir : str
-            the source directory
-        files_to_move_lst : list
-            the list of files to move
-        dest_dir : str
-            the destination directory
-        """
-        # Create the new directory if it doesn't exist
-        os.makedirs(dest_dir, exist_ok=True)
-        
-        # Move the files to the new directory
-        for file_name in files_to_move_lst:
-            source_file = os.path.join(src_dir, file_name)
-            destination_file = os.path.join(dest_dir, file_name)
-            
-            # Move the file to the new directory
-            shutil.move(source_file, destination_file)
-        
-        # Remove the directory if it is empty
-        if not os.listdir(src_dir):
-            os.rmdir(src_dir)
+    Parameters
+    ----------
+    files_to_move_lst : list
+        the list of files to move
+    dest_dir_images : Path
+        the destination directory for the image files
+    dest_dir_labels : Path
+        the destination directory for the label files
+    """        
+    # Move the files to the new directory
+    for file_path in files_to_move_lst:
+        # Construct the full source paths for the image and label
+        src_label_path = Yolo.labels_input / file_path.with_suffix('.txt').name
 
+        # Construct the destination paths for the image and label
+        dest_image_path = dest_dir_images / file_path.name
+        dest_label_path = dest_dir_labels / file_path.with_suffix('.txt').name
+
+        # Copy the images and move the label to their new destinations
+        shutil.copy(file_path, dest_image_path)
+        src_label_path.rename(dest_label_path)
+
+
+def prepare_yolo_dataset(
+    destination_dir: Path,
+    train_files: list,
+    val_files: list,
+):
+    """
+    This function moves the training and testing files to the new yolo directories.
+
+    Parameters
+    ----------
+    destination_dir : Path
+        the destination directory to store the training and testing sets
+    train_files : list
+        the list of training files
+    val_files : list
+        the list of testing files
+    """
+    # Define source directory and new directories for training
+    train_dir_images = destination_dir / "images/train"
+    val_dir_images = destination_dir / "images/val"
+    train_dir_labels = destination_dir / "labels/train"
+    val_dir_labels = destination_dir / "labels/val"
+    
+    # Create necessary directories if they don't exist
+    for path in [train_dir_images, val_dir_images, train_dir_labels, val_dir_labels]:
+        path.mkdir(parents=True, exist_ok=True)
+    
     # Move the files to the new directories
-    move_files(DetectionPaths.images_input,train_files_jpg, train_dir)
-    move_files(DetectionPaths.images_input, val_files_jpg, val_dir)
-    move_files(DetectionPaths.labels_input, train_files_txt, train_dir)
-    move_files(DetectionPaths.labels_input, val_files_txt, val_dir)   
+    move_yolo_files(train_files, train_dir_images, train_dir_labels)
+    move_yolo_files(val_files, val_dir_images, val_dir_labels)  
 
+
+def move_mtcnn_files(
+    train_files: list,
+    val_files: list, 
+    train_dir_images: Path,
+    val_dir_images: Path,
+    train_labels_path: Path,
+    val_labels_path: Path,
+    )-> None:
+    """
+    This function moves the training and testing files to the new mtcnn directories.
+
+    Parameters
+    ----------
+    train_files : list
+        the list of training files
+    val_files : list
+        the list of testing files
+    train_dir_images: Path
+        the directory to store the training images
+    val_dir_images: Path
+        the directory to store the testing images
+    train_labels_path: Path
+        the path to store the training labels
+    val_labels_path: Path
+        the path to store the testing labels
+    """
+    # Move the images to the training and testing directories
+    for file_path in train_files:
+        src_image_path = DetectionPaths.images_input / file_path.name
+        dest_image_path = train_dir_images / file_path.name
+        src_image_path.rename(dest_image_path)
+    for file_path in val_files:
+        src_image_path = DetectionPaths.images_input / file_path.name
+        dest_image_path = val_dir_images / file_path.name
+        src_image_path.rename(dest_image_path)
+    
+    # Convert lists to sets and extract the file names
+    train_set = set(train_files)
+    val_set = set(val_files)
+    file_names_in_train_set = {path.name.rsplit('.', 1)[0] for path in train_set}
+    file_names_in_val_set = {path.name.rsplit('.', 1)[0] for path in val_set}
+
+    # Move the labels to the training and testing directories
+    with Mtcnn.labels_input.open('r') as original_file, train_labels_path.open('w') as train_file, val_labels_path.open('w') as validation_file:
+        for line in original_file:
+            image_file_name = line.split()[0]  # Assuming the file name is the first element
+            if image_file_name in file_names_in_train_set:
+                train_file.write(line)
+            elif image_file_name in file_names_in_val_set:
+                validation_file.write(line)
+
+
+def prepare_mtcnn_dataset(
+    destination_dir: Path,
+    train_files: list,
+    val_files: list,
+):
+    """
+    This function moves the training and testing files to the new yolo directories.
+
+    Parameters
+    ----------
+    destination_dir : Path
+        the destination directory to store the training and testing sets
+    train_files : list
+        the list of training files
+    val_files : list
+        the list of testing files
+    """
+    # Define source directory and new directories for training
+    train_dir_images = destination_dir / "train/images"
+    train_labels_path = destination_dir / "train/train.txt"
+    val_dir_images = destination_dir / "val/images"
+    val_labels_path = destination_dir / "val/val.txt"
+
+    # Create necessary directories if they don't exist
+    for path in [train_dir_images, val_dir_images, train_labels_path.parent, val_labels_path.parent]:
+        path.mkdir(parents=True, exist_ok=True)
+    
+    # Move the files to the new directories
+    move_mtcnn_files(train_files, 
+                    val_files, 
+                    train_dir_images, 
+                    val_dir_images,
+                    train_labels_path, 
+                    val_labels_path,
+    )
+    
+    # Remove the empty directories and the mtcnn labels file
+    shutil.rmtree(DetectionPaths.images_input)
+    shutil.rmtree(Yolo.labels_input)
+    Mtcnn.labels_input.unlink(missing_ok=True)
 
 def main():
-    check_annotations_and_videos(DetectionPaths.images_input, DetectionPaths.labels_input)
+    check_annotations(DetectionPaths.images_input, Yolo.labels_input)
     # Move label files and delete empty labels directory
-    split_dataset(DetectionPaths.images_input, DetectionPaths.yolo_input, TrainParameters.train_test_split)
+    train_files, val_files = split_dataset(DetectionPaths.images_input, TrainParameters.train_test_split)
+    prepare_yolo_dataset(Yolo.data_input, train_files, val_files)
+    prepare_mtcnn_dataset(Mtcnn.data_input, train_files, val_files)
 
 
 if __name__ == "__main__":

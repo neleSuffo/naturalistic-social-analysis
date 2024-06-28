@@ -60,7 +60,7 @@ def create_coco_annotation_format(
     root : xml.etree.ElementTree.Element
         the root element of the XML file
     task_details : dict
-        the name and id per task extracted from the XML root
+        the id, name and length per task extracted from the XML root
         key: task id, value: task name
     highest_frames_dict : dict
         the highest frame per task extracted from the XML root
@@ -109,8 +109,7 @@ def create_coco_annotation_format(
         if task_id is not None:
             frame_correction = get_value_before_key(highest_frames_dict, task_id)
         # Get the task name from the task_details dictionary
-        task_name = task_details.get(task_id, next(iter(task_details.values())))
-        
+        task_name = task_details.get(task_id, next(iter(task_details.values())))[0]
         # Get the video_id from the database using the task_name
         task_id = get_video_id_from_name_db(task_name)
 
@@ -170,7 +169,7 @@ def create_coco_annotation_format(
     return data
 
 
-def get_task_names_and_ids(root) -> dict:
+def get_task_ids_names_lengths(root) -> dict:
     """
     This function extracts the task id and task name from the XML root.
 
@@ -182,10 +181,11 @@ def get_task_names_and_ids(root) -> dict:
     Returns
     -------
     dict
-        a dictionary with task id as key and task name as value
+        a dictionary with task id as key and task name and the size as value
     """
     task_names_and_ids_dict = {
-        task.find("id").text: task.find("name").text for task in root.iter("task")
+        task.find("id").text: (task.find("name").text, task.find("size").text)
+        for task in root.iter("task")
     }
     return task_names_and_ids_dict
 
@@ -256,12 +256,13 @@ def get_value_before_key(
     task_id: str
     ) -> int:
     """
-    This function gets the value before a specific key in the dictionary.
+    This function gets the value before the key in the dictionary.
+    This way, we know what value to subtract from the frame to get the correct frame.
 
     Parameters
     ----------
     highest_frames_dict_corr : dict
-        the dictionary from which to get the value
+        the dictionary containing the highest frame per task
     task_id : str
         the key before which to get the value
 
@@ -308,8 +309,8 @@ def convert_xml_to_coco_format(
         tree = ET.parse(input_path)
         root = tree.getroot()
 
-        # Extract task names and ids
-        task_details = get_task_names_and_ids(root)
+        # Extract task ids, the name and length of the task
+        task_details = get_task_ids_names_lengths(root)
 
         # Extract highest frame per task
         highest_frame_dict = get_highest_frame_per_task(root)

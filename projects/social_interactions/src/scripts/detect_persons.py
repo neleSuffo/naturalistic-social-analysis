@@ -85,7 +85,7 @@ def run_person_detection(
             video_input_path,
             video_output_path,
             model,
-            person_detection_fn_long,
+            person_detection_with_bbox,
             person_draw_fn,
             class_index_det,
         )
@@ -94,8 +94,8 @@ def run_person_detection(
         detection_output = detection_coco_output(
             cap,
             model,
-            person_detection_fn_short,
-            person_process_results_fn,
+            person_detection_without_bbox,
+            person_process_results,
             video_file_name,
             file_id,
             annotation_id,
@@ -105,7 +105,7 @@ def run_person_detection(
         return detection_output
 
 
-def person_detection_fn_short(
+def person_detection_without_bbox(
     model: torch.nn.Module,
     frame: np.ndarray,
 ) -> tuple:
@@ -127,7 +127,7 @@ def person_detection_fn_short(
     return model(frame)
 
 
-def person_process_results_fn(
+def person_process_results(
     results: dict,
     detection_output: dict,
     frame_count: int,
@@ -179,7 +179,7 @@ def person_process_results_fn(
                     annotation_id.value += 1
 
 
-def person_detection_fn_long(
+def person_detection_with_bbox(
     model: torch.nn.Module,
     frame: torch.Tensor,
     class_index_det: int,

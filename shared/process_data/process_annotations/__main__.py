@@ -2,6 +2,7 @@ from shared.process_data.process_annotations.utils import convert_xml_to_coco_fo
 from shared.process_data.process_annotations.create_database import create_db_annotations, create_db_table_video_name_id_mapping
 from shared.process_data.process_annotations.create_file_name_id_dict import create_file_name_id_dict
 from shared.process_data.process_annotations.convert_to_yolo import main as convert_to_yolo
+from shared.process_data.process_annotations.convert_to_mtcnn import main as convert_to_mtcnn
 from projects.social_interactions.src.common.constants import DetectionPaths
 
 
@@ -13,7 +14,9 @@ def main():
     # Convert the XML annotations to COCO format and store the results in a database
     convert_xml_to_coco_format(DetectionPaths.annotations_xml_path, DetectionPaths.annotations_json_path)
     create_db_annotations()
+    # Convert the annotations to YOLO format and MTCNN format
     convert_to_yolo()
+    convert_to_mtcnn()
 
 
 if __name__ == "__main__":

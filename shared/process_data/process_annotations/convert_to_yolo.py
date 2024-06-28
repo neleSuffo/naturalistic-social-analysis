@@ -1,7 +1,10 @@
-import os
 import json
+import logging
 from shared.utils import fetch_all_annotations
-from projects.social_interactions.src.common.constants import DetectionPaths
+from projects.social_interactions.src.common.constants import YoloParameters as Yolo
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
 def convert_bbox(
@@ -45,8 +48,7 @@ def convert_bbox(
 
 
 def save_annotations(
-    annotations: list, 
-    output_dir: str
+    annotations: list
 ) -> None:
     """
     This function saves the annotations in YOLO format to text files.
@@ -55,28 +57,37 @@ def save_annotations(
     ----------
     annotations : list
         the list of annotations
-    output_dir : str
-        the output directory
     """
-    os.makedirs(output_dir, exist_ok=True)
+    output_dir = Yolo.labels_input
+    output_dir.mkdir(parents=True, exist_ok=True)
+    file_contents = {}
+
     for annotation in annotations:
         _, _, _, category_id, bbox, image_file_name, _, image_width, image_height = annotation
         bbox = json.loads(bbox)
         image_size = (image_width, image_height)
+        # YOLO format: category_id x_center y_center width height
         yolo_bbox = convert_bbox(image_size, bbox)
         
-        txt_file = os.path.join(output_dir, image_file_name + '.txt')
+        line = f"{category_id} " + " ".join(map(str, yolo_bbox)) + '\n'
+        # Append the line to the list of lines for the image file
+        if image_file_name not in file_contents:
+            file_contents[image_file_name] = []
+        file_contents[image_file_name].append(line)
+
+    # Write the lines to text files
+    for image_file_name, lines in file_contents.items():
+        txt_file = output_dir / (image_file_name + '.txt')
         try:
             with open(txt_file, 'a') as f:
-                f.write(f"{category_id} " + " ".join(map(str, yolo_bbox)) + '\n')
-        except Exception as e:
-            print(f"Failed to write to file {txt_file}: {e}")
-
+                f.writelines(lines)
+        except IOError as e:
+            logging.error(f"Failed to write to file {txt_file}: {e}")
 
 def main() -> None:
     try:
         annotations = fetch_all_annotations()
-        save_annotations(annotations, DetectionPaths.labels_input)
+        save_annotations(annotations)
     except Exception as e:
         print(f"Failed to fetch annotations or save them: {e}")
 

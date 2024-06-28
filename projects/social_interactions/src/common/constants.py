@@ -1,39 +1,32 @@
 from collections import defaultdict
+from pathlib import Path
 import os
 
-
 class DetectionPaths:
-    """
-    The paths to the input and output folders for the detection models.
-    """
-
-    person: str = "output/output_person_detection/"
-    face: str = "output/output_face_detection/"
-    videos_input: str = "data/videos/"
-    images_input: str = "data/images/"
-    labels_input: str = "data/labels/"
-    yolo_input: str = "data/yolo/"
-    results: str = "output/"
-    frames_output: str = "output/frames/"
+    person = Path("output/output_person_detection/")
+    face = Path("output/output_face_detection/")
+    videos_input = Path("data/videos/")
+    images_input = Path("data/images/")
+    results = Path("output/")
+    frames_output = Path("output/frames/")
     # Path variable to the annotation xml files
-    annotations_folder_path: str = "data/annotations/"
-    annotations_xml_path: str = "data/annotations/annotations.xml"
-    annotations_json_path: str = "data/annotations/annotations.json"
-    annotations_db_path: str = "databases/annotations.db"
+    annotations_folder_path = Path("data/annotations/")
+    annotations_xml_path = Path("data/annotations/annotations.xml")
+    annotations_json_path = Path("data/annotations/annotations.json")
+    annotations_db_path = Path("databases/annotations.db")
     # The file that is used to map the file names to the file ids
-    file_name_id_dict_path: str = "data/file_name_to_id_dict/annotations.xml"
+    file_name_id_dict_path = Path("data/file_name_to_id_dict/annotations.xml")
 
 
 class VTCParameters:
     # path variables for the voice-type-classifier
-    audio_path = "data/audio/"
-    environment_path = "/Users/nelesuffo/Library/Caches/pypoetry/virtualenvs/pyannote-afeazePz-py3.8/bin/python"
-    execution_file_path = os.path.abspath(
-        "/Users/nelesuffo/projects/leuphana-IPE/src/social_interaction/language/run_vtc.py"
-    )
-    execution_command = "/Users/nelesuffo/projects/voice_type_classifier/apply.sh"
-    output_file_path = "output/output_voice_type_classifier/audio/all.rttm"
-    output_path = "output/output_voice_type_classifier/"
+    audio_path = Path("data/audio/")
+    environment_path = Path("/Users/nelesuffo/Library/Caches/pypoetry/virtualenvs/pyannote-afeazePz-py3.8/bin/python")
+    execution_file_path = Path(os.path.abspath("/Users/nelesuffo/projects/leuphana-IPE/src/social_interaction/language/run_vtc.py"))
+    execution_command = Path("/Users/nelesuffo/projects/voice_type_classifier/apply.sh")
+    output_file_path = Path("output/output_voice_type_classifier/audio/all.rttm")
+    output_path = Path("output/output_voice_type_classifier/")
+
 
 
 class DetectionParameters:
@@ -99,15 +92,32 @@ class LabelToCategoryMapping:
     
     unknown_label_id = -1
     unknown_supercategory = "unknown"
-    
-    
+
+
 class YoloParameters:
     fps = 1 # the frames per second to extract from the video
-    model_path = "projects/social_interactions/src/models/yolov5/model.yaml"
-    hyp_path = "projects/social_interactions/src/models/yolov5/hyp.yaml"
-    pretrained_weights_path = "pretrained_models/yolov5s.pt"
-    data_config_path = "projects/social_interactions/src/models/yolov5/data.yaml"
+    model_path = Path("projects/social_interactions/src/models/yolov5/model.yaml")
+    hyp_path = Path("projects/social_interactions/src/models/yolov5/hyp.yaml")
+    pretrained_weights_path = Path("pretrained_models/yolov5s.pt")
+    data_config_path = Path("projects/social_interactions/src/models/yolov5/dataset.yaml")
+    yolov5_repo_path = Path("yolov5")
+    labels_input = Path("data/yolo_labels/")
+    # the path to the input folder for the yolo model
+    data_input = Path("data/yolo/")
     batch_size = 16
+    epochs = 100
+    img_size = 640
+    
+class MtcnnParameters:
+    labels_input = Path("data/mtcnn/labels.txt")
+    data_input = Path("data/mtcnn/")
+
 
 class TrainParameters:
     train_test_split = 0.8
+    random_seed = 42
+
+class VideoParameters:
+    # The standard frame width and height
+    frame_width = 2304
+    frame_height = 1296

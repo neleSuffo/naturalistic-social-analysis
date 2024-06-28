@@ -1,3 +1,6 @@
+import torch
+
+
 def train_mtcnn_model(model, dataloader, optimizer, loss_fn, device):
     model.train()
     running_loss = 0.0

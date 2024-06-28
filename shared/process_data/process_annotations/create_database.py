@@ -1,8 +1,7 @@
 import sqlite3
 import json
 import cv2
-import os
-from projects.social_interactions.src.common.constants import DetectionPaths, DetectionParameters
+from projects.social_interactions.src.common.constants import DetectionPaths, DetectionParameters, VideoParameters
 
 
 def create_db_annotations() -> None:
@@ -89,8 +88,13 @@ def create_db_annotations() -> None:
         tuple
             the frame width and height
         """
-        video_file_path = os.path.join(DetectionPaths.videos_input, video_file_name)
-        cap = cv2.VideoCapture(video_file_path)
+        video_file_path = DetectionPaths.videos_input / video_file_name
+        # Return default frame width and height if the video file does not exist
+        if not video_file_path.exists():
+            return (VideoParameters.frame_width, VideoParameters.frame_height)
+        cap = cv2.VideoCapture(str(video_file_path))
+        if not cap.isOpened():
+            return (VideoParameters.frame_width, VideoParameters.frame_height)
         # Get the frame width and height
         frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))

@@ -1,5 +1,4 @@
-import os
-import glob
+from pathlib import Path
 import concurrent.futures
 from shared.process_data.process_videos.utils import extract_frames_from_single_video
 from projects.social_interactions.src.common.constants import DetectionPaths, DetectionParameters, YoloParameters
@@ -23,11 +22,12 @@ def extract_frames_from_all_videos(
     fps : int
         the frames per second to extract
     """
-    os.makedirs(output_dir, exist_ok=True)
+    # Ensure output directory exists
+    output_dir.mkdir(parents=True, exist_ok=True)
     
     # Get a list of all video files in the directory
-    video_files = glob.glob(os.path.join(video_dir, '*' + DetectionParameters.file_extension.lower()))
-    video_files += glob.glob(os.path.join(video_dir, '*' + DetectionParameters.file_extension.upper()))    
+    video_files = list(Path(video_dir).glob('*' + DetectionParameters.file_extension.lower()))
+    video_files += list(Path(video_dir).glob('*' + DetectionParameters.file_extension.upper()))
 
     # Use a ProcessPoolExecutor to process videos in parallel
     with concurrent.futures.ProcessPoolExecutor() as executor:
@@ -39,7 +39,7 @@ def extract_frames_from_all_videos(
 def main() -> None:
     output_dir = DetectionPaths.images_input
     # Ensure output directory exists
-    os.makedirs(output_dir, exist_ok=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
     # Extract frames from video
     extract_frames_from_all_videos(DetectionPaths.videos_input, output_dir, YoloParameters.fps)
 
