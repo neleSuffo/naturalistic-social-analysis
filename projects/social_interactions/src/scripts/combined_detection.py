@@ -1,8 +1,8 @@
 from multiprocessing.pool import ThreadPool
 from pathlib import Path
 from timeit import default_timer as timer
-from projects.social_interactions.src.scripts import detect_faces
-from projects.social_interactions.src.scripts import detect_persons
+from projects.social_interactions.src.models.mtcnn import run_mtcnn
+from projects.social_interactions.src.models.yolov5 import run_yolov5
 from projects.social_interactions.src.scripts.language import detect_voices
 from projects.social_interactions.src.common.constants import (
     DetectionPaths,
@@ -11,10 +11,10 @@ from projects.social_interactions.src.common.constants import (
 )
 from multiprocessing import Value
 from projects.social_interactions.src.common import my_utils
+from shared import utils as shared_utils
+from typing import Dict, Callable
 import logging
 import copy
-import os
-from typing import Dict, Callable
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -23,16 +23,16 @@ class Detector:
     def __init__(self):
         # Define the detection functions
         self.detection_functions = {
-            "person": detect_persons.run_person_detection,
-            "face": detect_faces.run_face_detection,
+            "person": run_yolov5.run_person_detection,
+            "face": run_mtcnn.run_face_detection,
             "voice": detect_voices.run_voice_detection,
             "proximity": my_utils.run_proximity_detection,
         }
 
         # Define the load model functions
         self.models = {
-            "person": my_utils.load_person_detection_model,
-            "face": my_utils.load_frame_face_detection_model,
+            "person": shared_utils.load_yolov5_model,
+            "face": shared_utils.load_mtcnn_model,
         }
 
         # Create a dictionary mapping video file names to IDs
@@ -49,7 +49,7 @@ class Detector:
     def call_models(
         self,
         detection_type: str,
-        video_file: str,
+        video_file: Path,
         file_name: str,
         models: Dict[str, Callable],
         output: dict,
@@ -61,8 +61,8 @@ class Detector:
         ----------
         detection_type : str
             the type of detection to perform
-        video_file : str
-            the video file to process
+        video_file : path
+            the path to the video file to process
         file_name : str
             the name of the video file
         models : dict
@@ -132,7 +132,7 @@ class Detector:
         Parameters
         ----------
         video_file : Path
-            the video file to process
+            the path to the video file to process
         detections : dict
             the detections to perform
         models : dict
@@ -140,7 +140,6 @@ class Detector:
         """
         file_name = video_file.name
         file_name_short = video_file.stem
-        video_file = str(video_file)
         logging.info(
             f"Starting social interactions detection pipeline for {file_name_short}..."
         )
@@ -174,10 +173,9 @@ class Detector:
                     output,
                 )
         # Save the result to a JSON file
-        json_output_path = os.path.join(
-            DetectionPaths.results, f"{file_name_short}_detections.json"
-        )
+        json_output_path = DetectionPaths.results / f"{file_name_short}_detections.json"
         my_utils.save_results_to_json(output, json_output_path)
+
 
     def wrapper(self, args: tuple) -> None:
         """

@@ -78,7 +78,7 @@ def run_face_detection(
             video_input_path,
             video_output_path,
             model,
-            face_detection_fn_long,
+            face_detection_with_bbox,
             draw_faces,
         )
     else:

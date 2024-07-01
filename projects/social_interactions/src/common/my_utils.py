@@ -1,5 +1,4 @@
 from projects.social_interactions.src.common.constants import DetectionParameters, LabelToCategoryMapping
-from facenet_pytorch import MTCNN
 from moviepy.editor import VideoFileClip
 from tqdm import tqdm
 import os

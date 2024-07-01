@@ -1,13 +1,13 @@
 from projects.social_interactions.src.common.constants import VTCParameters
 from moviepy.editor import VideoFileClip
+from pathlib import Path
 from projects.social_interactions.src.scripts.language import call_vtc, my_utils
 import cv2
-import os
 import logging
 
 
 def run_voice_detection(
-    video_input_path: str,
+    video_input_path: Path,
     annotation_id: int,
 ) -> dict:
     """
@@ -19,8 +19,8 @@ def run_voice_detection(
 
     Parameters
     ----------
-    video_input_path : str
-        the path to the video file
+    video_input_path : Path
+        the path to the video file to process
     annotation_id : int
         the annotation ID to assign to the detections
 
@@ -32,16 +32,16 @@ def run_voice_detection(
     # Load the video file and get the filename
     try:
         # Load the video file and get the filename
-        video = VideoFileClip(video_input_path)
-        cap = cv2.VideoCapture(video_input_path)
+        video = VideoFileClip(str(video_input_path))
+        cap = cv2.VideoCapture(str(video_input_path))
 
     except Exception as e:
         logging.error(f"Failed to load video file: {e}")
         raise
+
     try:
         # Extract audio from the video and save it as a 16kHz WAV file
-        file_name = os.path.basename(video_input_path)
-        my_utils.extract_resampled_audio(video, file_name)
+        my_utils.extract_resampled_audio(video, video_input_path.name)
     except Exception as e:
         logging.error(f"Failed to extract audio from video: {e}")
         raise
@@ -58,9 +58,9 @@ def run_voice_detection(
     # Convert the output of the voice-type-classifier to a pandas DataFrame
     vtc_output_df = my_utils.rttm_to_dataframe(VTCParameters.output_file_path)
 
-    # Delete the no longer needed audio file(s) and the rttm files
-    my_utils.delete_files_and_directory(VTCParameters.audio_path)
-    my_utils.delete_files_and_directory(VTCParameters.output_path)
+    # Delete all files and the directories
+    my_utils.delete_directory_and_contents(VTCParameters.audio_path)
+    my_utils.delete_directory_and_contents(VTCParameters.output_path)
 
     # Generate detection output in COCO format
     detection_output = my_utils.get_utterances_detection_output(

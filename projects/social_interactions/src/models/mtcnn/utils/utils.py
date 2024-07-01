@@ -20,6 +20,7 @@ def train_mtcnn_model(model, dataloader, optimizer, loss_fn, device):
     
     return running_loss / len(dataloader)
 
+
 def evaluate_mtcnn_model(model, dataloader, loss_fn, device):
     model.eval()
     running_loss = 0.0

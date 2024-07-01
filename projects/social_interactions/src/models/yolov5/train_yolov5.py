@@ -13,7 +13,7 @@ train_cmd = [
     '--batch', str(YoloParameters.batch_size),
     '--epochs', str(YoloParameters.epochs),
     '--data', YoloParameters.data_config_path,
-    '--project', 'projects/social_interactions/models/yolov5/runs/train',
+    '--project', 'projects/social_interactions/src/outputs/yolov5/train',
     '--name', 'exp',
 ]
 

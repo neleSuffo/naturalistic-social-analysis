@@ -1,6 +1,6 @@
 from projects.social_interactions.src.common.constants import VTCParameters
-import os
 import subprocess
+import os
 
 
 def call_voice_type_classifier():
@@ -12,7 +12,7 @@ def call_voice_type_classifier():
     # and the command to run the voice-type-classifier
     env = os.environ.copy()
     env["PATH"] = (
-        os.path.dirname(VTCParameters.environment_path) + os.pathsep + env["PATH"]
+        str(VTCParameters.environment_path.parent) + os.pathsep + env["PATH"]
     )
     env["PYTHONPATH"] = "/Users/nelesuffo/projects/leuphana-IPE"
 

@@ -1,15 +1,14 @@
 from projects.social_interactions.src.common.constants import (
     VTCParameters,
-    LabelDictionaries,
+    LabelToCategoryMapping,
     DetectionParameters,
 )
 from moviepy.editor import VideoFileClip
+from pathlib import Path
 import pandas as pd
-import os
 import subprocess
 import multiprocessing
 import tempfile
-import shutil
 
 
 def get_utterances_detection_output(
@@ -39,7 +38,7 @@ def get_utterances_detection_output(
     }
 
     # Get category ID from label dictionary
-    category_id = LabelDictionaries.label_dict[DetectionParameters.vtc_detection_class]
+    category_id = LabelToCategoryMapping.label_dict[DetectionParameters.vtc_detection_class]
 
     # Iterate over the utterances
     for row in df.itertuples():
@@ -86,13 +85,13 @@ def extract_resampled_audio(video: VideoFileClip, filename: str) -> None:
     video.audio.write_audiofile(temp_file.name + ".wav", codec="pcm_s16le")
 
     # Create the output directory if it doesn't exist
-    os.makedirs(VTCParameters.audio_path, exist_ok=True)
+    VTCParameters.audio_path.mkdir(parents=True, exist_ok=True)
 
     # Convert the audio to 16kHz with sox and
     # save it to the output file
     # The temporary file will be deleted when
     # the NamedTemporaryFile object is garbage collected
-    output_file = os.path.join(VTCParameters.audio_path, f"{filename[:-4]}_16kHz.wav")  # noqa: E501
+    output_file = Path(VTCParameters.audio_path) / f"{filename[:-4]}_16kHz.wav"
     subprocess.run(
         ["sox", temp_file.name + ".wav", "-r", "16000", output_file],
         check=True,
@@ -145,22 +144,20 @@ def get_total_seconds_of_voice(df: pd.DataFrame, file_name_short: str) -> float:
             df.at[row.Index, "Seconds_Added"] = row.Utterance_End - prev_end
             prev_end = row.Utterance_End
         # Save the output as a parquet file
-        parquet_output_path = os.path.join(
-            VTCParameters.df_output_path, f"{file_name_short}_vtc_output.parquet"
-        )
+        parquet_output_path = VTCParameters.df_output_path / f"{file_name_short}_vtc_output.parquet"
         df.to_parquet(parquet_output_path)
 
         return total
 
 
-def rttm_to_dataframe(rttm_file: str) -> pd.DataFrame:
+def rttm_to_dataframe(rttm_file: Path) -> pd.DataFrame:
     """
     This function reads the voice_type_classifier
     output rttm file and returns its content as a pandas DataFrame.
 
     Parameters
     ----------
-    rttm_file : str
+    rttm_file : path
         the path to the RTTM file
 
     Returns
@@ -191,15 +188,23 @@ def rttm_to_dataframe(rttm_file: str) -> pd.DataFrame:
     return df
 
 
-def delete_files_and_directory(directory_path: str):
+def delete_directory_and_contents(
+    dir_path: Path
+) -> None:
     """
-    This function deletes all files and subdirectories
-    in a directory, and then the directory itself.
+    This function deletes a directory and all its contents.
 
     Parameters
     ----------
-    directory_path : str
-        the path to the directory
+    dir_path : Path
+        the path to the directory to delete
     """
-    if os.path.exists(directory_path):
-        shutil.rmtree(directory_path)
+    for item in dir_path.iterdir():
+        if item.is_dir():
+            # Recursively delete subdirectories
+            delete_directory_and_contents(item)  
+        else:
+            # Delete the files
+            item.unlink()  
+    # Delete the directory
+    dir_path.rmdir()  

@@ -3,12 +3,12 @@ from pathlib import Path
 import os
 
 class DetectionPaths:
-    person = Path("output/output_person_detection/")
-    face = Path("output/output_face_detection/")
+    person = Path("projects/social_interactions/src/outputs/yolov5/") 
+    face = Path("projects/social_interactions/src/outputs/mtcnn/")
     videos_input = Path("data/videos/")
     images_input = Path("data/images/")
-    results = Path("output/")
-    frames_output = Path("output/frames/")
+    results = Path("projects/social_interactions/src/outputs/")
+    frames_output = Path("projects/social_interactions/src/outputs/frames/")
     # Path variable to the annotation xml files
     annotations_folder_path = Path("data/annotations/")
     annotations_xml_path = Path("data/annotations/annotations.xml")
@@ -22,10 +22,10 @@ class VTCParameters:
     # path variables for the voice-type-classifier
     audio_path = Path("data/audio/")
     environment_path = Path("/Users/nelesuffo/Library/Caches/pypoetry/virtualenvs/pyannote-afeazePz-py3.8/bin/python")
-    execution_file_path = Path(os.path.abspath("/Users/nelesuffo/projects/leuphana-IPE/src/social_interaction/language/run_vtc.py"))
+    execution_file_path = Path(os.path.abspath("/Users/nelesuffo/projects/leuphana-IPE//projects/social_interactions/src/scripts/language/run_vtc.py"))
     execution_command = Path("/Users/nelesuffo/projects/voice_type_classifier/apply.sh")
-    output_file_path = Path("output/output_voice_type_classifier/audio/all.rttm")
-    output_path = Path("output/output_voice_type_classifier/")
+    output_file_path = Path("projects/social_interactions/src/outputs/vtc/audio/all.rttm")
+    output_path = Path("projects/social_interactions/src/outputs/vtc/")
 
 
 

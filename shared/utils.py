@@ -1,6 +1,7 @@
 import torch
 import cv2
 import sqlite3
+from facenet_pytorch import MTCNN
 from typing import List, Optional
 from projects.social_interactions.src.common.constants import YoloParameters, DetectionPaths
 
@@ -19,12 +20,33 @@ def load_yolov5_model(
         the name of the model, by default 'yolov5s'
     local_path : str, optional
         the local path to save the model, by default 'yolov5s.pt'
+    
+    Returns
+    -------
+    torch.nn.Module
+        the YOLOv5 model
 
     """
     print(f"Downloading model: {model_name}")
     model = torch.hub.load('ultralytics/yolov5', model_name, pretrained=True)
     # Save the model locally for future use
     torch.save(model.state_dict(), local_path)
+    return model
+
+
+def load_mtcnn_model() -> MTCNN:
+    """
+    This function loads the MTCNN model.
+    
+    Returns
+    -------
+    MTCNN
+        the MTCNN model
+
+    """
+    # Load the MTCNN model
+    mtcnn = MTCNN(keep_all=True)
+    return mtcnn
 
 
 def fetch_all_annotations(
