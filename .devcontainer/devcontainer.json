@@ -1,0 +1,21 @@
+{
+    "name": "Quantex Dev Container",
+    "build": {
+        "dockerfile": "Dockerfile",
+        "context": ".."
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-python.python",
+                "ms-python.vscode-pylance",
+                "ms-toolsai.jupyter",
+                "ms-azuretools.vscode-docker"
+            ],
+            "settings": {
+				"python.defaultInterpreterPath": "/usr/local/bin/python"
+            }
+        }
+    },
+    "postCreateCommand": "chmod +x ./.devcontainer/init_setup.sh && chmod +x ./.devcontainer/install_poetry.sh && sh ./.devcontainer/init_setup.sh && ./.devcontainer/install_poetry.sh && poetry install --with dev --sync && pre-commit install"
+}

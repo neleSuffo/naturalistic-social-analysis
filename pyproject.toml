@@ -4,45 +4,47 @@ version = "0.1.0"
 description = ""
 authors = ["neleSuffo <163427736+neleSuffo@users.noreply.github.com>"]
 readme = "README.md"
-package-mode = false 
+packages = [
+    { include = "projects", from = "src" },
+]
 
 [tool.poetry.dependencies]
-python = "^3.10"
-numpy = "^1.26.4"
-pandas = "^2.2.2"
-torch = "^2.2.2"
-torchvision = "^0.17.2"
-tqdm = "^4.66.2"
-tensorflow = "^2.16.1"
-matplotlib = "^3.8.4"
-opencv-python = "^4.9.0.80"
-librosa = "^0.10.1"
-pydub = "^0.25.1"
-moviepy = "^1.0.3"
-speechrecognition = "^3.10.3"
-dlib = "^19.24.4"
-facenet-pytorch = "^2.5.3"
-sphinx = "^7.3.7"
-recommonmark = "^0.7.1"
-soundfile = "^0.12.1"
-pyarrow = "^16.0.0"
-fastparquet = "^2024.2.0"
-imutils = "^0.5.4"
-lxml = "^5.2.2"
-fiftyone = "^0.24.0"
-dynaconf = "^3.2.5"
+python = "~3.8"
+opencv-python = "*"
+tqdm = "*"
+pandas = "*"
+torch = "*"
+facenet-pytorch = "*"
+dynaconf = "*"
+moviepy = "*"
+numpy = "*"
+torchvision = "*"
 
-# Add yolov5 as a dependency
-#yolov5 = { path = "yolov5/pyproject.toml" }
-dephell = "^0.8.3"
-toml = "^0.10.2"
+# The following dependencies are optional and can be uncommented if needed
+# toml = "^0.10.2"
+# wget = "^3.2"
+# tensorflow = "^2.16.1"
+# matplotlib = "^3.8.4"
+# librosa = "^0.10.1"
+# pydub = "^0.25.1"
+# dlib = "^19.24.4"
+# sphinx = "^7.3.7"
+# soundfile = "^0.12.1"
+# pyarrow = "^16.0.0"
+# fastparquet = "^2024.2.0"
+# imutils = "^0.5.4"
+# lxml = "^5.2.2"
+
+
 
 
 [tool.poetry.group.dev.dependencies]
-ipykernel = "^6.29.4"
+ipykernel = "*"
+pre-commit = "*"
+matplotlib = "*"
 
 [build-system]
-requires = ["poetry-core"]
+requires = ["poetry-core==1.8.2"]
 build-backend = "poetry.core.masonry.api"
 
 
