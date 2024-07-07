@@ -573,6 +573,7 @@ share/python-wheels/
 MANIFEST
 pretrained_models/
 data/
+databases/
 outputs/
 saved_outputs/
 projects/voice_type_classifier
