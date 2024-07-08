@@ -1,9 +1,9 @@
 from collections import defaultdict
 from pathlib import Path
-import os
+
 
 class DetectionPaths:
-    person = Path("src/projects/social_interactions/outputs/yolov5/") 
+    person = Path("src/projects/social_interactions/outputs/yolov5/")
     face = Path("src/projects/social_interactions/outputs/mtcnn/")
     videos_input = Path("data/videos/")
     images_input = Path("data/images/")
@@ -21,13 +21,19 @@ class DetectionPaths:
 class VTCParameters:
     # path variables for the voice-type-classifier
     audio_path = Path("data/audio/")
-    environment_path = Path("../../Library/Caches/pypoetry/virtualenvs/pyannote-afeazePz-py3.8/bin/python")
-    #environment_path = Path("/Users/nelesuffo/Library/Caches/pypoetry/virtualenvs/pyannote-afeazePz-py3.8/bin/python")
-    execution_file_path = Path("src/projects/social_interactions/scripts/language/run_vtc.py")
+    environment_path = Path(
+        "../../Library/Caches/pypoetry/virtualenvs/pyannote-afeazePz-py3.8/bin/python"
+    )
+    # environment_path = Path("/Users/nelesuffo/Library/Caches/pypoetry/virtualenvs/pyannote-afeazePz-py3.8/bin/python")
+    execution_file_path = Path(
+        "src/projects/social_interactions/scripts/language/run_vtc.py"
+    )
     execution_command = Path("../voice_type_classifier/apply.sh")
-    output_file_path = Path("src/projects/social_interactions/outputs/vtc/audio/all.rttm")
+    output_file_path = Path(
+        "src/projects/social_interactions/outputs/vtc/audio/all.rttm"
+    )
     output_path = Path("src/projects/social_interactions/outputs/vtc")
-    
+
 
 class DetectionParameters:
     """
@@ -89,25 +95,28 @@ class LabelToCategoryMapping:
             99: "unknown",
         },
     )
-    
+
     unknown_label_id = -1
     unknown_supercategory = "unknown"
 
 
 class YoloParameters:
-    fps = 1 # the frames per second to extract from the video
+    fps = 1  # the frames per second to extract from the video
     model_path = Path("src/projects/social_interactions/models/yolov5/model.yaml")
     hyp_path = Path("src/projects/social_interactions/models/yolov5/hyp.yaml")
     pretrained_weights_path = Path("pretrained_models/yolov5s.pt")
-    data_config_path = Path("src/projects/social_interactions/models/yolov5/dataset.yaml")
-    yolov5_repo_path = Path("yolov5")
+    data_config_path = Path(
+        "src/projects/social_interactions/models/yolov5_inference/dataset.yaml"
+    )
+    yolov5_repo_path = Path("../yolov5")
     labels_input = Path("data/yolo_labels/")
     # the path to the input folder for the yolo model
     data_input = Path("data/yolo/")
     batch_size = 16
     epochs = 100
     img_size = 640
-    
+
+
 class MtcnnParameters:
     labels_input = Path("data/mtcnn/labels.txt")
     data_input = Path("data/mtcnn/")
@@ -116,6 +125,7 @@ class MtcnnParameters:
 class TrainParameters:
     train_test_split = 0.8
     random_seed = 42
+
 
 class VideoParameters:
     # The standard frame width and height
