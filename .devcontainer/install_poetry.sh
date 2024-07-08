@@ -5,7 +5,3 @@ curl -SSL https://install.python-poetry.org | python3 - --version 1.8.2
 
 # Install Poetry dependencies
 poetry install --with dev --sync
-if [ $? -ne 0 ]; then
-    echo "Poetry install failed"
-    exit 1
-fi

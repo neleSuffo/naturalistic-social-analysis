@@ -12,17 +12,9 @@ fi
 
 # Install pre-commit hooks
 pre-commit install
-if [ $? -ne 0 ]; then
-    echo "Pre-commit install failed"
-    exit 1
-fi
 
-# Clone repository
+# Clone voice_type_classifier repository
 git clone --recurse-submodules https://github.com/MarvinLvn/voice_type_classifier.git /workspaces/voice_type_classifier
-if [ $? -ne 0 ]; then
-    echo "Git clone failed"
-    exit 1
-fi
 
 # Download the latest Miniforge installer for macOS ARM64
 wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-aarch64.sh -O miniforge.sh
@@ -52,6 +44,7 @@ source $HOME/.bashrc
 # Remove the installer
 rm miniforge.sh
 
+# Add Miniforge to PATH
 export PATH="$HOME/miniforge/bin:$PATH"
 
 # Create Conda environment
@@ -60,3 +53,10 @@ if [ $? -ne 0 ]; then
     echo "Conda env creation failed"
     exit 1
 fi
+
+# Clone yolov5 repository
+git clone https://github.com/ultralytics/yolov5.git /workspaces/yolov5
+
+# Install YOLOv5 dependencies
+pip install --upgrade pip \
+    && pip install -r requirements.txt
