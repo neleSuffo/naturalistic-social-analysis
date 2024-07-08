@@ -17,5 +17,5 @@
             }
         }
     },
-    "postCreateCommand": "chmod +x ./.devcontainer/init_setup.sh && chmod +x ./.devcontainer/install_poetry.sh && sh ./.devcontainer/init_setup.sh && ./.devcontainer/install_poetry.sh && poetry install --with dev --sync && pre-commit install"
+    "postCreateCommand": "sh ./.devcontainer/init_setup.sh && sh ./.devcontainer/install_poetry.sh && sh ./.devcontainer/setup_environment.sh"
 }

@@ -1,4 +1,4 @@
-!/usr/bin/bash
+#!/usr/bin/bash
 
 # Install Node.js
 wget https://nodejs.org/dist/v20.11.0/node-v20.11.0-linux-x64.tar.xz &&\
