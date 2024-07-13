@@ -1,48 +1,69 @@
 import logging
 import cv2
-import os
+from pathlib import Path
 
 
 def extract_frames_from_single_video(
-    video_file: str, 
-    output_dir: str, 
+    video_file: Path, 
+    output_dir: Path, 
     fps: int
-) -> None:
+) -> bool:
     """
     This function extracts frames from a single video file and saves them as images in the output directory.
 
     Parameters
     ----------
-    video_file : str
-        the path to the video file
-    output_dir : str
-        the directory to save the extracted frames
+    video_file : Path
+        The path to the video file.
+    output_dir : Path
+        The directory to save the extracted frames.
     fps : int
-        the frames per second to extract
+        The frames per second to extract.
+    
+    Returns
+    -------
+    bool
+        True if the frame extraction for all frames was successful, False otherwise.
     """
     logging.info(f"Starting frame extraction from video: {video_file} at {fps} FPS.")
+    all_frames_success = True  # Flag to track success
 
     # Open the video file
     cap = cv2.VideoCapture(video_file)
     if not cap.isOpened():
         logging.error(f"Failed to open video file: {video_file}")
-        return
+        return False
     
     # Get the frame rate and calculate the frame interval
-    frame_rate = round(cap.get(cv2.CAP_PROP_FPS))
-    frame_interval = int(frame_rate / fps)
+    frame_rate = cap.get(cv2.CAP_PROP_FPS)
+    if frame_rate == 0:
+        logging.error(f"Failed to get frame rate for video file: {video_file}")
+        return False
+        
+    frame_interval = int(round(frame_rate / fps))
     nr_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-    for frame in range(0, nr_frames, frame_interval):
-        frame_id = frame // frame_interval
+    for frame_id in range(0, nr_frames, frame_interval):
         cap.set(cv2.CAP_PROP_POS_FRAMES, frame_id)
         success, image = cap.read()
         if success:
-            # Save the frame as an image
-            video_file_name = os.path.splitext(os.path.basename(video_file))[0]
-            cv2.imwrite(os.path.join(output_dir, f"{video_file_name}_{frame_id:06d}.jpg"), image)
+            try:
+                # Save the frame as an image
+                video_file_name = video_file.stem
+                output_path = output_dir / f"{video_file_name}_{frame_id:06d}.jpg"
+                cv2.imwrite(str(output_path), image)
+            except Exception as e:
+                logging.warning(f"Failed to save frame {frame_id} from {video_file}: {e}")
+                all_frames_success = False
         else:
             logging.warning(f"Failed to read frame {frame_id} from {video_file}")
-
+            all_frames_success = False
+            
     cap.release()
-    logging.info(f"Completed frame extraction for video: {video_file}")
+    
+    if all_frames_success:
+        logging.info(f"Completed frame extraction for video: {video_file}")
+    else:
+        logging.warning(f"Frame extraction incomplete for video: {video_file}")
+
+    return all_frames_success
