@@ -5,8 +5,8 @@ from pathlib import Path
 class DetectionPaths:
     person = Path("src/projects/social_interactions/outputs/yolov5/")
     face = Path("src/projects/social_interactions/outputs/mtcnn/")
-    videos_input = Path("data/videos/")
-    images_input = Path("data/images/")
+    videos_input = Path("../../ProcessedData/videos/") 
+    images_input = Path("../../ProcessedData/images/")
     results = Path("src/projects/social_interactions/outputs/")
     frames_output = Path("src/projects/social_interactions/outputs/frames/")
     # Path variable to the annotation xml files
@@ -22,7 +22,7 @@ class VTCParameters:
     # path variables for the voice-type-classifier
     audio_path = Path("data/audio/")
     environment_path = Path(
-        "../../Library/Caches/pypoetry/virtualenvs/pyannote-afeazePz-py3.8/bin/python"
+        "/home/nele_pauline_suffo/.conda/envs/pyannote"
     )
     # environment_path = Path("/Users/nelesuffo/Library/Caches/pypoetry/virtualenvs/pyannote-afeazePz-py3.8/bin/python")
     execution_file_path = Path(
@@ -109,17 +109,17 @@ class YoloParameters:
         "src/projects/social_interactions/models/yolov5_inference/dataset.yaml"
     )
     yolov5_repo_path = Path("../yolov5")
-    labels_input = Path("data/yolo_labels/")
+    labels_input = Path("../../ProcessedData/yolo_labels/")
     # the path to the input folder for the yolo model
-    data_input = Path("data/yolo/")
+    data_input = Path("../../ProcessedData/yolo/")
     batch_size = 16
     epochs = 100
     img_size = 640
 
 
 class MtcnnParameters:
-    labels_input = Path("data/mtcnn/labels.txt")
-    data_input = Path("data/mtcnn/")
+    labels_input = Path("../../ProcessedData/mtcnn/labels.txt")
+    data_input = Path("../../ProcessedData/mtcnn/")
 
 
 class TrainParameters:
@@ -131,3 +131,8 @@ class VideoParameters:
     # The standard frame width and height
     frame_width = 2304
     frame_height = 1296
+    # The number of videos to process concurrently
+    batch_size = 16
+    # Define the path for the success log file 
+    # (contains the paths of the successfully processed videos)
+    success_log_path = Path("src/projects/shared/process_data/output/success.log")
