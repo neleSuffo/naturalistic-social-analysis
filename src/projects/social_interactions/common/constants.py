@@ -126,7 +126,6 @@ class TrainParameters:
     train_test_split = 0.8
     random_seed = 42
 
-
 class VideoParameters:
     # The standard frame width and height
     frame_width = 2304
