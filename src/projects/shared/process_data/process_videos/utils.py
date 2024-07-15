@@ -1,6 +1,8 @@
 import logging
 import cv2
+import re
 from pathlib import Path
+from src.projects.social_interactions.common.constants import VideoParameters
 
 
 def extract_frames_from_single_video(
@@ -63,6 +65,13 @@ def extract_frames_from_single_video(
     
     if all_frames_success:
         logging.info(f"Completed frame extraction for video: {video_file}")
+        # Log success
+        with open(VideoParameters.success_log_path, "a") as file:
+            match = re.search(r'(id\d+.*)', str(video_file))
+            if match:
+                file.write(f"{match.group()}\n")
+            else:
+                file.write("Pattern not found\n")
     else:
         logging.warning(f"Frame extraction incomplete for video: {video_file}")
 
