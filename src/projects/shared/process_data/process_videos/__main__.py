@@ -7,6 +7,8 @@ from src.projects.social_interactions.common.constants import DetectionParameter
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+batch_size = VideoParameters.batch_size
+
 
 def process_video(
     video_file: Path, 
@@ -54,19 +56,15 @@ def extract_frames_from_all_videos(
     """
     logging.info(f"Starting frame extraction from videos in {video_dir} to {output_dir} at {fps} FPS.")
 
-    # Ensure output directory exists
+    # Ensure output directory and success log path exist
     output_dir.mkdir(parents=True, exist_ok=True)
+    VideoParameters.success_log_path.parent.mkdir(parents=True, exist_ok=True)
     
     # Get a list of all video files in the directory
     video_files = list(Path(video_dir).glob('*' + DetectionParameters.file_extension.lower()))
     video_files += list(Path(video_dir).glob('*' + DetectionParameters.file_extension.upper()))
     logging.info(f"Found {len(video_files)} video files to process.")
     
-    # List to store successfully processed videos
-    successful_videos = []  
-
-    # Dictionary to keep track of retries
-    batch_size = VideoParameters.batch_size
     
     def process_batch(batch: list):
         """
@@ -78,13 +76,10 @@ def extract_frames_from_all_videos(
             the list of video files to process
         """         
         with concurrent.futures.ProcessPoolExecutor() as executor:
-            for video_file in batch:
-                future = executor.submit(process_video, video_file, output_dir, fps)
-            for completed_future in concurrent.futures.as_completed([future]):
-                success, video_file = completed_future.result()
-                if success:
-                    # Store the name of the successful video
-                    successful_videos.append(video_file.name)  
+            # Process each video in the batch concurrently
+            futures = [executor.submit(process_video, video_file, output_dir, fps) for video_file in batch]
+            for completed_future in concurrent.futures.as_completed(futures):
+                success, video_file = completed_future.result()  
     
     for i in range(0, len(video_files), batch_size):
         batch = video_files[i:i + batch_size]
@@ -94,16 +89,7 @@ def extract_frames_from_all_videos(
 
 
     logging.info("Completed frame extraction for all videos.")
-    if successful_videos:
-        # Write the list of successful videos to a log file
-        success_log_path = VideoParameters.success_log_path
-        # Create the directory if it does not exist
-        success_log_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        with success_log_path.open("w") as file:
-            for video_name in successful_videos:
-                file.write(f"{video_name}\n")
-        logging.info(f"Successfully processed videos are listed in {success_log_path}")
+    logging.info(f"Successfully processed videos are listed in {VideoParameters.success_log_path}")
 
 
 def main() -> None:
