@@ -17,6 +17,9 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 def get_utterances_detection_output(
     df: pd.DataFrame,
     annotation_id: multiprocessing.Value,
+    image_id: multiprocessing.Value,
+    video_file_name : str,
+    file_id: int,
 ) -> dict:
     """
     This function generates a dictionary where each key is a second in the audio file
@@ -27,7 +30,13 @@ def get_utterances_detection_output(
     df : pd.DataFrame
         the DataFrame containing the voice-type-classifier output
     annotation_id : multiprocessing.Value
-        the annotation ID to assign to the detections
+        the unique annotation ID to assign to the detections
+    image_id : multiprocessing.Value
+        the unique image ID
+    video_file_name : str
+        the name of the video file
+    file_id: int
+        the unique video file id
 
     Returns
     -------
@@ -44,7 +53,7 @@ def get_utterances_detection_output(
 
     # Get category ID from label dictionary
     category_id = LabelToCategoryMapping.label_dict[DetectionParameters.vtc_detection_class]
-
+    
     # Iterate over the utterances
     for row in df.itertuples():
         # Get the start and end times of the utterance in seconds
@@ -55,18 +64,30 @@ def get_utterances_detection_output(
         for second in range(start_time, end_time):
             frame_count = second * DetectionParameters.frame_step
             # Add image information to COCO output
-            detection_output["annotations"].append(
+            detection_output["images"].append(
                 {
-                    "id": annotation_id.value,
-                    "image_id": frame_count,
-                    "category_id": category_id,
-                    "voice_type": row.Voice_type,
-                    "start_time": row.Utterance_Start,
-                    "end_time": row.Utterance_End,
+                "id": image_id.value, # unique incrementing image_id
+                "video_id": file_id, # unique video_id
+                "frame_id": frame_count, # frame number
+                "file_name": f"{video_file_name}_{frame_count}.jpg",
                 }
             )
+            
+            detection_output["annotations"].append(
+                {
+                    "id": annotation_id.value, # unique incrementing annotation_id
+                    "image_id": image_id.value, # image id corresponds to the unique id in images
+                    "category_id": category_id, # face category_id
+                    "voice_type": row.Voice_type, # what type of voice is detected
+                    "start_time": row.Utterance_Start, # start time of the utterance
+                    "end_time": row.Utterance_End, # end time of the utterance
+                }
+            )
+            # Increment the annotation_id and image_id
             with annotation_id.get_lock():
                 annotation_id.value += 1
+            with image_id.get_lock():
+                image_id.value += 1
                 
     logging.info("Detection output generation completed")
     return detection_output
