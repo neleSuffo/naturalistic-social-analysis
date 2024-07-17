@@ -1,4 +1,4 @@
-from projects.social_interactions.common.constants import DetectionParameters, LabelToCategoryMapping
+from src.projects.social_interactions.common.constants import DetectionParameters, LabelToCategoryMapping
 from moviepy.editor import VideoFileClip
 from tqdm import tqdm
 import os
