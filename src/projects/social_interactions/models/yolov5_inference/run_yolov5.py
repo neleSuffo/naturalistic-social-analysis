@@ -16,8 +16,9 @@ import multiprocessing
 def run_person_detection(
     video_input_path: str,
     annotation_id: multiprocessing.Value,
+    image_id: multiprocessing.Value,
     video_file_name: str,
-    file_id: str,
+    file_id: int,
     model: torch.nn.Module,
 ) -> Optional[dict]:
     """
@@ -29,11 +30,13 @@ def run_person_detection(
     video_input_path : str
         the path to the video file
     annotation_id : multiprocessing.Value
-        the annotation ID
+        the unique annotation ID
+    image_id : multiprocessing.Value
+        the unique image ID
     video_file_name : str
         the name of the video file
-    file_id: dict
-        the video file id
+    file_id: int
+        the unique video file id
     model : torch.nn.Module
         the YOLOv5 model
 
@@ -99,6 +102,7 @@ def run_person_detection(
             video_file_name,
             file_id,
             annotation_id,
+            image_id,
             class_index_det,
         )
 
@@ -130,9 +134,9 @@ def person_detection_without_bbox(
 def person_process_results(
     results: dict,
     detection_output: dict,
-    frame_count: int,
     category_id: int,
     annotation_id: multiprocessing.Value,
+    image_id: multiprocessing.Value,
     class_index_det: int,
 ):
     """
@@ -144,12 +148,12 @@ def person_process_results(
         the detection results
     detection_output : dict
         the detection output in COCO format
-    frame_count : int
-        the frame count
     category_id : int
         the category ID for person detection
     annotation_id : multiprocessing.Value
-        the annotation ID
+        the unique annotation ID
+    image_id : multiprocessing.Value
+        the unique image ID
     class_index_det : int
         the class index of the class to detect in the yolo model
     """
@@ -162,7 +166,7 @@ def person_process_results(
                 detection_output["annotations"].append(
                     {
                         "id": annotation_id.value,
-                        "image_id": frame_count,
+                        "image_id": image_id.value,
                         "category_id": category_id,
                         # Convert bbox values to list
                         "bbox": [
