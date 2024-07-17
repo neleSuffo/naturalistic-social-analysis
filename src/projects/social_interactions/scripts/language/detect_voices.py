@@ -4,11 +4,15 @@ from moviepy.editor import VideoFileClip
 from pathlib import Path
 import cv2
 import logging
+import multiprocessing
 
 
 def run_voice_detection(
     video_input_path: Path,
-    annotation_id: int,
+    annotation_id: multiprocessing.Value,
+    image_id: multiprocessing.Value,
+    video_file_name: str,
+    file_id: str,
 ) -> dict:
     """
     This function extracts the speech duration from a video file
@@ -21,8 +25,14 @@ def run_voice_detection(
     ----------
     video_input_path : Path
         the path to the video file to process
-    annotation_id : int
-        the annotation ID to assign to the detections
+    annotation_id : multiprocessing.Value
+        the unique annotation ID to assign to the detections
+    image_id : multiprocessing.Value
+        the unique image ID
+    video_file_name : str
+        the name of the video file
+    file_id: dict
+        the unique video file id
 
     Returns
     -------
@@ -64,6 +74,9 @@ def run_voice_detection(
     detection_output = my_utils.get_utterances_detection_output(
         vtc_output_df,
         annotation_id,
+        image_id,
+        video_file_name,
+        file_id,
     )
 
     return detection_output
