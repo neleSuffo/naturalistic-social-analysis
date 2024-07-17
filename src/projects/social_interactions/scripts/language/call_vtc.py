@@ -1,6 +1,10 @@
-from projects.social_interactions.common.constants import VTCParameters
+from src.projects.social_interactions.common.constants import VTCParameters
 import subprocess
 import os
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
 def call_voice_type_classifier():
@@ -14,15 +18,18 @@ def call_voice_type_classifier():
     env["PATH"] = (
         str(VTCParameters.environment_path.parent) + os.pathsep + env["PATH"]
     )
-    env["PYTHONPATH"] = "/Users/nelesuffo/projects/leuphana-IPE"
-
+    env["PYTHONPATH"] = "/home/nele_pauline_suffo/projects/leuphana-IPE"
+    
     # Run the voice-type-classifier
     # using the voice-type-classifier environment
     try:
         subprocess.run(
             [VTCParameters.environment_path, VTCParameters.execution_file_path],
-            env=env,  # noqa: E501
+            env=env,
+            check=True  # This will raise an exception if the command fails
         )
     except Exception as e:
-        print(f"An error occurred while running the voice-type-classifier: {e}")  # noqa: E501
+        logging.exception("An unexpected error occurred while running the voice-type-classifier")
         raise
+    else:
+        logging.info("Voice-type-classifier ran successfully.")
