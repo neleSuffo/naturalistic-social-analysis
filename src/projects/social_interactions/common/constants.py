@@ -20,11 +20,10 @@ class DetectionPaths:
 
 class VTCParameters:
     # path variables for the voice-type-classifier
-    audio_path = Path("data/audio/")
+    audio_path = Path("../../ProcessedData/audio/")
     environment_path = Path(
-        "/home/nele_pauline_suffo/.conda/envs/pyannote"
+        "/home/nele_pauline_suffo/.conda/envs/pyannote/bin/python"
     )
-    # environment_path = Path("/Users/nelesuffo/Library/Caches/pypoetry/virtualenvs/pyannote-afeazePz-py3.8/bin/python")
     execution_file_path = Path(
         "src/projects/social_interactions/scripts/language/run_vtc.py"
     )
