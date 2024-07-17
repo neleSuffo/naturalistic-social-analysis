@@ -1,7 +1,7 @@
-from projects.social_interactions.common.constants import VTCParameters
+from src.projects.social_interactions.common.constants import VTCParameters
+from src.projects.social_interactions.scripts.language import call_vtc, my_utils
 from moviepy.editor import VideoFileClip
 from pathlib import Path
-from projects.social_interactions.scripts.language import call_vtc, my_utils
 import cv2
 import logging
 
@@ -29,12 +29,14 @@ def run_voice_detection(
     dict
         the detection results in COCO format
     """
+    # Create the output directory if it does not exist
+    VTCParameters.output_path.mkdir(parents=True, exist_ok=True)
+   
     # Load the video file and get the filename
     try:
         # Load the video file and get the filename
         video = VideoFileClip(str(video_input_path))
         cap = cv2.VideoCapture(str(video_input_path))
-
     except Exception as e:
         logging.error(f"Failed to load video file: {e}")
         raise
@@ -57,10 +59,6 @@ def run_voice_detection(
 
     # Convert the output of the voice-type-classifier to a pandas DataFrame
     vtc_output_df = my_utils.rttm_to_dataframe(VTCParameters.output_file_path)
-
-    # Delete all files and the directories
-    my_utils.delete_directory_and_contents(VTCParameters.audio_path)
-    my_utils.delete_directory_and_contents(VTCParameters.output_path)
 
     # Generate detection output in COCO format
     detection_output = my_utils.get_utterances_detection_output(
