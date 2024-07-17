@@ -14,6 +14,7 @@ from multiprocessing import Value
 from src.projects.social_interactions.common import my_utils
 from src.projects.shared import utils as shared_utils
 from typing import Dict, Callable
+from threading import Lock
 import logging
 import copy
 
@@ -22,6 +23,9 @@ logging.basicConfig(level=logging.INFO)
 
 class Detector:
     def __init__(self):
+        #  Initialize a lock for thread-safe operations
+        self.lock = Lock()
+
         # Define the detection functions
         self.detection_functions = {
             "person": run_yolov5.run_person_detection,
@@ -44,14 +48,17 @@ class Detector:
                 if video_file.suffix.lower() == DetectionParameters.file_extension
             ]
         )
-        # Create a shared annotation_id variable
+        # Create a shared annotation_id and image_id
+        # This variable is used to assign unique IDs to the annotations when running the detection models in parallel
         self.annotation_id = Value("i", 0)
+        self.image_id = Value("i", 0)
 
     def call_models(
         self,
         detection_type: str,
         video_file: Path,
         file_name: str,
+        file_name_short: str,
         models: Dict[str, Callable],
         output: dict,
     ) -> dict:
@@ -66,6 +73,8 @@ class Detector:
             the path to the video file to process
         file_name : str
             the name of the video file
+        file_name_short : str
+            the name of the video file without the extension
         models : dict
             the models to use for detection
         output : dict
@@ -92,26 +101,29 @@ class Detector:
             if category not in output["categories"]:
                 output["categories"].append(category)
 
+            # Get the unique video file ID from the video file name
             file_id = self.video_file_ids[file_name]
             # Define dictionary that maps detection types to their corresponding arguments
             args = {
-                "video_input_path": video_file,
+                "video_input_path": video_file,                        
                 "annotation_id": self.annotation_id,
+                "image_id": self.image_id,
+                "video_file_name": file_name_short,
+                "file_id": file_id,
             }
 
             # Conditionally add additional arguments for "face" and "person" detection types
             if detection_type in ["person", "face"]:
                 args.update(
                     {
-                        "video_file_name": file_name,
-                        "file_id": file_id,
                         "model": models.get(detection_type),
                     }
                 )
 
             # Call the function with the appropriate arguments
             detections = detection_function(**args)
-            # Add detection_output to "images" and "annotations"
+            
+           # Add detection_output to "images" and "annotations"
             output["images"].extend(detections["images"])
             output["annotations"].extend(detections["annotations"])
 
@@ -126,6 +138,7 @@ class Detector:
         video_file: Path,
         detections: Dict[str, bool],
         models: Dict[str, Callable],
+        combined_coco_output: dict,
     ) -> None:
         """
         This function processes a video file by performing the specified detections.
@@ -138,26 +151,18 @@ class Detector:
             the detections to perform
         models : dict
             the models to use for detection
+        combined_coco_output : dict
+            the combined output dictionary for all videos
         """
+        # Get the video file name
         file_name = video_file.name
         file_name_short = video_file.stem
         logging.info(
             f"Starting social interactions detection pipeline for {file_name_short}..."
-        )
-
-        # Initialize the COCO structure template
-        coco_template = {
-            "videos": [],
-            "images": [],
-            "annotations": [],
-            "categories": [],
-        }
-
-        # Use deepcopy to create a new instance of coco_template
-        output = copy.deepcopy(coco_template)
-
+        )    
+        
         # Add the video file to the output
-        output["videos"].append(
+        combined_coco_output["videos"].append(
             {
                 "id": self.video_file_ids[file_name],
                 "file_name": f"{file_name_short}{DetectionParameters.file_extension}",
@@ -170,13 +175,17 @@ class Detector:
                     detection_type,
                     video_file,
                     file_name,
+                    file_name_short,
                     models,
-                    output,
+                    combined_coco_output,
                 )
-        # Save the result to a JSON file
-        json_output_path = DetectionPaths.results / f"{file_name_short}_detections.json"
-        my_utils.save_results_to_json(output, json_output_path)
 
+        # Ensure thread-safe update
+        with self.lock:  
+            for category in output["categories"]:
+                if category not in combined_coco_output["categories"]:
+                    combined_coco_output["categories"].append(category)
+    
 
     def wrapper(self, args: tuple) -> None:
         """
@@ -187,9 +196,9 @@ class Detector:
         args : tuple
             the arguments for the process_video_file function
         """
-        video_file, detections, models_dict = args
+        video_file, detections, models_dict, combined_coco_output = args
         return self.process_video_file(
-            video_file, detections=detections, models=models_dict
+            video_file, detections=detections, models=models_dict, combined_coco_output=combined_coco_output
         )
 
     def run_detection(
@@ -197,7 +206,7 @@ class Detector:
         detections: dict,
     ) -> dict:
         """
-        This function runs five different detection models:
+        This function runs four different detection models:
         - Person detection
         - Face detection
         - Voice detection
@@ -230,19 +239,31 @@ class Detector:
             if video_f.suffix.lower() == DetectionParameters.file_extension
         ]
 
+        # Initialize the combined COCO output dictionary
+        combined_coco_output = {
+            "videos": [],
+            "images": [],
+            "annotations": [],
+            "categories": [],
+        }
+        
         try:
             # Process each video file (in parallel)
             with ThreadPool() as pool:
                 pool.map(
                     self.wrapper,
                     [
-                        (video_file, detections, models_dict)
+                        (video_file, detections, models_dict, combined_coco_output)
                         for video_file in video_files
                     ],
                 )
         except Exception as e:
             logging.error(f"An error occurred during detection: {e}")
             raise
+        
+        # Save the results to a JSON file
+        combined_json_output_path = DetectionPaths.results / "combined_detections.json"
+        my_utils.save_results_to_json(combined_coco_output, combined_json_output_path)
         
         if detections_dict["voice"]:
             # Delete the audio files and the output directory
