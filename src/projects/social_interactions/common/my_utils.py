@@ -5,6 +5,7 @@ import os
 import json
 import logging
 import cv2
+import multiprocessing
 
 # Function to extract frames from a video
 def extract_frames(
@@ -182,7 +183,8 @@ def detection_coco_output(
     process_results_fn,
     video_file_name: str,
     file_id: str,
-    annotation_id: int,
+    annotation_id: multiprocessing.Value,
+    image_id: multiprocessing.Value,
     class_index_det: int = None,
 ) -> dict:
     """
@@ -203,8 +205,10 @@ def detection_coco_output(
         the name of the video file
     file_id: str
         the video file id
-    annotation_id: int
-        the annotation id
+    annotation_id: multiprocessing.Value
+        the unique annotation id
+    image_id: multiprocessing.Value
+        the unique image id
     class_index_det : int
         the class index of the class to detect (only for yolo detection), defaults to None
 
@@ -235,9 +239,8 @@ def detection_coco_output(
                 DetectionParameters.yolo_detection_class
             ]
 
-        # Initialize frame count, annotation id and image id
+        # Initialize frame count and image id
         frame_count = 0
-        image_id = 0
 
         # Loop through frames
         while True:
@@ -259,22 +262,24 @@ def detection_coco_output(
                 # Add image information to COCO output
                 detection_output["images"].append(
                     {
-                        "id": image_id,
+                        "id": image_id.value,
                         "video_id": file_id,
                         "frame_id": frame_count,
                         "file_name": f"{video_file_name}_{frame_count}.jpg",
                     }
                 )
-                image_id += 1
                 # Process detection results and add to COCO output
                 process_results_fn(
                     results,
                     detection_output,
-                    frame_count,
                     category_id,
                     annotation_id,
+                    image_id,
                     class_index_det,
                 )
+                # Increment image id
+                with image_id.get_lock():
+                    image_id.value += 1
 
         return detection_output
 
@@ -293,6 +298,8 @@ def create_video_to_id_mapping(video_names: list) -> dict:
     dict
         a dictionary with mappings from video names to ids
     """
+    # Create a dictionary with mappings from video names to ids
+    # the first video has id 0, the second video has id 1, and so on
     video_id_dict = {video_name: i for i, video_name in enumerate(video_names)}
     return video_id_dict
 
