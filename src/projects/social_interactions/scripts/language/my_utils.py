@@ -1,4 +1,4 @@
-from projects.social_interactions.common.constants import (
+from src.projects.social_interactions.common.constants import (
     VTCParameters,
     LabelToCategoryMapping,
     DetectionParameters,
@@ -9,6 +9,9 @@ import pandas as pd
 import subprocess
 import multiprocessing
 import tempfile
+import logging
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
 def get_utterances_detection_output(
@@ -31,6 +34,8 @@ def get_utterances_detection_output(
     dict
         the detection output
     """
+    logging.info("Starting to generate detection output")
+    
     # Initialize detection output
     detection_output = {
         "images": [],
@@ -62,7 +67,8 @@ def get_utterances_detection_output(
             )
             with annotation_id.get_lock():
                 annotation_id.value += 1
-
+                
+    logging.info("Detection output generation completed")
     return detection_output
 
 
@@ -89,14 +95,13 @@ def extract_resampled_audio(video: VideoFileClip, filename: str) -> None:
 
     # Convert the audio to 16kHz with sox and
     # save it to the output file
-    # The temporary file will be deleted when
-    # the NamedTemporaryFile object is garbage collected
     output_file = Path(VTCParameters.audio_path) / f"{filename[:-4]}_16kHz.wav"
     subprocess.run(
         ["sox", temp_file.name + ".wav", "-r", "16000", output_file],
         check=True,
     )
-
+    
+    logging.info(f"Successfully stored the file at {output_file}")
 
 def get_total_seconds_of_voice(df: pd.DataFrame, file_name_short: str) -> float:
     """
@@ -165,26 +170,37 @@ def rttm_to_dataframe(rttm_file: Path) -> pd.DataFrame:
     pd.DataFrame
         the content of the RTTM file as a pandas DataFrame
     """
-    df = pd.read_csv(
-        rttm_file,
-        sep=" ",
-        names=[
-            "Speaker",
-            "audio_file_name",
-            "audio_file_id",
-            "Utterance_Start",
-            "Utterance_Duration",
-            "NA_1",
-            "NA_2",
-            "Voice_type",
-            "NA_3",
-            "NA_4",
-        ],
-    )
+    logging.info(f"Reading RTTM file from: {rttm_file}")
+    
+    try:
+        df = pd.read_csv(
+            rttm_file,
+            sep=" ",
+            names=[
+                "Speaker",
+                "audio_file_name",
+                "audio_file_id",
+                "Utterance_Start",
+                "Utterance_Duration",
+                "NA_1",
+                "NA_2",
+                "Voice_type",
+                "NA_3",
+                "NA_4",
+            ],
+        )
+    except Exception as e:
+        logging.error(f"Failed to read RTTM file: {e}")
+        raise
+    
+    logging.info("Successfully read RTTM file. Processing data...")
 
     # Drop unnecessary columns
     df = df.drop(columns=["Speaker", "audio_file_id", "NA_1", "NA_2", "NA_3", "NA_4"])  # noqa: E501
     df["Utterance_End"] = df["Utterance_Start"] + df["Utterance_Duration"]
+    
+    logging.info("Data processing complete. Returning DataFrame.")
+
     return df
 
 
