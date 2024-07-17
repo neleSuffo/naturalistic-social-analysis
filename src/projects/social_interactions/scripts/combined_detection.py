@@ -1,17 +1,18 @@
 from multiprocessing.pool import ThreadPool
 from pathlib import Path
 from timeit import default_timer as timer
-from projects.social_interactions.models.mtcnn import run_mtcnn
-from projects.social_interactions.models.yolov5_inference import run_yolov5
-from projects.social_interactions.scripts.language import detect_voices
-from projects.social_interactions.common.constants import (
+from src.projects.social_interactions.models.mtcnn import run_mtcnn
+from src.projects.social_interactions.models.yolov5_inference import run_yolov5
+from src.projects.social_interactions.scripts.language import detect_voices, my_utils as language_utils
+from src.projects.social_interactions.common.constants import (
     DetectionPaths,
     LabelToCategoryMapping,
     DetectionParameters,
+    VTCParameters,
 )
 from multiprocessing import Value
-from projects.social_interactions.common import my_utils
-from projects.shared import utils as shared_utils
+from src.projects.social_interactions.common import my_utils
+from src.projects.shared import utils as shared_utils
 from typing import Dict, Callable
 import logging
 import copy
@@ -242,6 +243,10 @@ class Detector:
         except Exception as e:
             logging.error(f"An error occurred during detection: {e}")
             raise
+        
+        if detections_dict["voice"]:
+            # Delete the audio files and the output directory
+            language_utils.delete_directory_and_contents(VTCParameters.audio_path)
 
 
 def main(detections_dict: dict) -> None:
@@ -267,9 +272,9 @@ def main(detections_dict: dict) -> None:
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     detections_dict = {
-        "person": True,
-        "face": True,
-        "voice": False,
+        "person": False,
+        "face": False,
+        "voice": True,
         "proximity": False,
     }
     main(detections_dict)
