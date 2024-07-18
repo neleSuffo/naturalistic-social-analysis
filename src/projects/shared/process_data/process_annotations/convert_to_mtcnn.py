@@ -37,7 +37,7 @@ def main() -> None:
     logging.info("Starting the conversion process for MTCNN.")
     try:
         # Fetch all annotations for category 10 (face)
-        annotations = fetch_all_annotations(category_ids=[1,2])
+        annotations = fetch_all_annotations(Mtcnn.class_id)
         logging.info(f"Fetched {len(annotations)} annotations.")
         save_annotations(annotations)
         logging.info("Successfully saved all annotations.")
