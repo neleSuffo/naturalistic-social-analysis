@@ -1,6 +1,7 @@
 import shutil
 import random
 import logging
+import shutil
 from pathlib import Path
 from src.projects.social_interactions.common.constants import DetectionPaths, TrainParameters, YoloParameters as Yolo, MtcnnParameters as Mtcnn
 
@@ -74,7 +75,7 @@ def split_dataset(
     return train_files, val_files
 
 
-def move_yolo_files(
+def copy_yolo_files(
     files_to_move_lst: list, 
     dest_dir_images: Path,
     dest_dir_labels: Path,
@@ -105,7 +106,7 @@ def move_yolo_files(
         # Copy the images and move the label to their new destinations
         shutil.copy(file_path, dest_image_path)
         src_label_path.rename(dest_label_path)
-    logging.info("YOLO files moved successfully")
+    logging.info("YOLO files copied successfully")
 
 
 def prepare_yolo_dataset(
@@ -136,11 +137,14 @@ def prepare_yolo_dataset(
         path.mkdir(parents=True, exist_ok=True)
     
     # Move the files to the new directories
-    move_yolo_files(train_files, train_dir_images, train_dir_labels)
-    move_yolo_files(val_files, val_dir_images, val_dir_labels)  
+    copy_yolo_files(train_files, train_dir_images, train_dir_labels)
+    copy_yolo_files(val_files, val_dir_images, val_dir_labels)  
+    
+    # Delete the empty labels directory
+    shutil.rmtree(Yolo.labels_input)
 
 
-def move_mtcnn_files(
+def copy_mtcnn_files(
     train_files: list,
     val_files: list, 
     train_dir_images: Path,
@@ -171,11 +175,11 @@ def move_mtcnn_files(
     for file_path in train_files:
         src_image_path = DetectionPaths.images_input / file_path.name
         dest_image_path = train_dir_images / file_path.name
-        src_image_path.rename(dest_image_path)
+        shutil.copy(src_image_path, dest_image_path)
     for file_path in val_files:
         src_image_path = DetectionPaths.images_input / file_path.name
         dest_image_path = val_dir_images / file_path.name
-        src_image_path.rename(dest_image_path)
+        shutil.copy(src_image_path, dest_image_path)
     
     # Convert lists to sets and extract the file names
     train_set = set(train_files)
@@ -191,7 +195,7 @@ def move_mtcnn_files(
                 train_file.write(line)
             elif image_file_name in file_names_in_val_set:
                 validation_file.write(line)
-    logging.info("MTCNN files moved successfully")
+    logging.info("MTCNN files copied successfully")
 
 
 def prepare_mtcnn_dataset(
@@ -222,7 +226,7 @@ def prepare_mtcnn_dataset(
         path.mkdir(parents=True, exist_ok=True)
     
     # Move the files to the new directories
-    move_mtcnn_files(train_files, 
+    copy_mtcnn_files(train_files, 
                     val_files, 
                     train_dir_images, 
                     val_dir_images,
@@ -230,9 +234,7 @@ def prepare_mtcnn_dataset(
                     val_labels_path,
     )
     
-    # Remove the empty directories and the mtcnn labels file
-    shutil.rmtree(DetectionPaths.images_input)
-    shutil.rmtree(Yolo.labels_input)
+    # Delete the empty labels directory
     Mtcnn.labels_input.unlink(missing_ok=True)
 
 def main():
