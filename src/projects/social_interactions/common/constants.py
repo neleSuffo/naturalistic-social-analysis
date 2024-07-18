@@ -10,12 +10,12 @@ class DetectionPaths:
     results = Path("src/projects/social_interactions/outputs/")
     frames_output = Path("src/projects/social_interactions/outputs/frames/")
     # Path variable to the annotation xml files
-    annotations_folder_path = Path("data/annotations/")
-    annotations_xml_path = Path("data/annotations/annotations.xml")
-    annotations_json_path = Path("data/annotations/annotations.json")
-    annotations_db_path = Path("databases/annotations.db")
+    annotations_folder_path = Path("../../ProcessedData/annotations/")
+    annotations_xml_path = Path("../../ProcessedData/annotations/annotations.xml")
+    annotations_json_path = Path("../../ProcessedData/annotations/annotations.json")
+    annotations_db_path = Path("../../ProcessedData/databases/annotations.db")
     # The file that is used to map the file names to the file ids
-    file_name_id_dict_path = Path("data/file_name_to_id_dict/annotations.xml")
+    file_name_id_dict_path = Path("../../ProcessedData/file_name_to_id_dict/annotations.xml")
 
 
 class VTCParameters:
@@ -114,11 +114,14 @@ class YoloParameters:
     batch_size = 16
     epochs = 100
     img_size = 640
+    class_id = [1,2]
 
 
 class MtcnnParameters:
     labels_input = Path("../../ProcessedData/mtcnn/labels.txt")
     data_input = Path("../../ProcessedData/mtcnn/")
+    class_id = [1,2]
+
 
 
 class TrainParameters:
