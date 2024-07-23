@@ -116,7 +116,7 @@ def extract_resampled_audio(video: VideoFileClip, filename: str) -> None:
 
     # Convert the audio to 16kHz with sox and
     # save it to the output file
-    output_file = Path(VTCParameters.audio_path) / f"{filename[:-4]}_16kHz.wav"
+    output_file = Path(VTCParameters.audio_path) / f"{filename}{VTCParameters.audio_name_ending}"
     subprocess.run(
         ["sox", temp_file.name + ".wav", "-r", "16000", output_file],
         check=True,
