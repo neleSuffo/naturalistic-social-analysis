@@ -7,7 +7,7 @@ import logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
-def call_voice_type_classifier():
+def run_voice_type_classifier_in_env():
     """
     This function calls the voice-type-classifier
     using the voice-type-classifier environment.
