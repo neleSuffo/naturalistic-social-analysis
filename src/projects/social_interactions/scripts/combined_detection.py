@@ -3,7 +3,7 @@ from pathlib import Path
 from timeit import default_timer as timer
 from src.projects.social_interactions.models.mtcnn import run_mtcnn
 from src.projects.social_interactions.models.yolov5_inference import run_yolov5
-from src.projects.social_interactions.scripts.language import detect_voices, my_utils as language_utils
+from src.projects.social_interactions.scripts.language import detect_voices
 from src.projects.social_interactions.common.constants import (
     DetectionPaths,
     LabelToCategoryMapping,
@@ -247,6 +247,10 @@ class Detector:
             "categories": [],
         }
         
+        
+        if detections_dict["voice"]:
+            # Extract audio from all video files in the input folder
+            my_utils.extract_audio_from_videos_in_folder(DetectionPaths.videos_input)
         try:
             # Process each video file (in parallel)
             with ThreadPool() as pool:
@@ -265,9 +269,9 @@ class Detector:
         combined_json_output_path = DetectionPaths.results / "combined_detections.json"
         my_utils.save_results_to_json(combined_coco_output, combined_json_output_path)
         
-        if detections_dict["voice"]:
+        #xif detections_dict["voice"]:
             # Delete the audio files and the output directory
-            language_utils.delete_directory_and_contents(VTCParameters.audio_path)
+            #language_utils.delete_directory_and_contents(VTCParameters.audio_path)
 
 
 def main(detections_dict: dict) -> None:
