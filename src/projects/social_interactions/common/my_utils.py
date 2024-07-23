@@ -1,10 +1,12 @@
-from src.projects.social_interactions.common.constants import DetectionParameters, LabelToCategoryMapping
+from src.projects.social_interactions.common.constants import DetectionParameters, LabelToCategoryMapping, VTCParameters
 from moviepy.editor import VideoFileClip
+from pathlib import Path
+import tempfile
 from tqdm import tqdm
-import os
 import json
 import logging
 import cv2
+import subprocess
 import multiprocessing
 
 # Function to extract frames from a video
@@ -38,9 +40,8 @@ def extract_frames(
         ret, frame = cap.read()
         if not ret:
             break
-        frame_name = f'{os.path.basename(video_path).split(".")[0]}_frame_{i:06d}.jpg'
-        frame_path = os.path.join(output_dir, frame_name)
-        # Save frame
+        frame_name = f'{video_path.stem}_frame_{i:06d}.jpg'
+        frame_path = Path(output_dir) / frame_name        # Save frame
         cv2.imwrite(frame_path, frame)
         # Append frame path to list
         frames.append(frame_path)
@@ -164,16 +165,14 @@ def detection_video_output(
         clip = VideoFileClip(video_output_path)
 
         # Get the filename and extension
-        filename, file_extension = os.path.splitext(video_output_path)
-        processed_filename = f"{filename}_processed{file_extension}"
-
+        processed_filename = f"{video_output_path.stem}_processed{video_output_path.suffix}"
         # Write the video file with audio
         clip.write_videofile(
             processed_filename, codec="libx264", audio=video_input_path
         )
 
         # Delete the video file without audio
-        os.remove(video_output_path)
+        video_output_path.unlink()
 
 
 def detection_coco_output(
@@ -304,7 +303,7 @@ def create_video_to_id_mapping(video_names: list) -> dict:
     return video_id_dict
 
 
-def save_results_to_json(results: dict, output_path: str) -> None:
+def save_results_to_json(results: dict, output_path: Path) -> None:
     """
     This function saves the results to a JSON file.
 
@@ -315,10 +314,9 @@ def save_results_to_json(results: dict, output_path: str) -> None:
     output_path : str
         the path to the output file
     """
-    directory = os.path.dirname(output_path)
+    directory = output_path.parent
     # Check if the output directory exists, if not, create it
-    if not os.path.exists(directory):
-        os.makedirs(directory)
+    directory.mkdir(parents=True, exist_ok=True)        
     # Save the results to a JSON file
     with open(output_path, "w") as f:
         json.dump(results, f)
@@ -342,3 +340,57 @@ def display_results(results: dict) -> None:
         logging.info(
             f"Total number of steps (every {DetectionParameters.frame_step}-th frame) ({detection_type}): {len(detection_list)}"
         )
+
+
+def extract_audio_from_video(video: VideoFileClip, filename: str) -> None:
+    """
+    This function extracts the audio from a video file
+    and saves it as a 16kHz WAV file.
+
+    Parameters
+    ----------
+    video : VideoFileClip
+        the video file
+    filename : str
+        the filename of the video
+    """
+    # Create a temporary file
+    temp_file = tempfile.NamedTemporaryFile(delete=True)
+
+    # Extract the audio and save it to the temporary file
+    video.audio.write_audiofile(temp_file.name + ".wav", codec="pcm_s16le")
+
+    # Create the output directory if it doesn't exist
+    VTCParameters.audio_path.mkdir(parents=True, exist_ok=True)
+
+    # Convert the audio to 16kHz with sox and
+    # save it to the output file
+    output_file = VTCParameters.audio_path / f"{filename}{VTCParameters.audio_name_ending}"
+
+    subprocess.run(
+        ["sox", temp_file.name + ".wav", "-r", "16000", output_file],
+        check=True,
+    )
+    
+    logging.info(f"Successfully stored the file at {output_file}")
+
+
+def extract_audio_from_videos_in_folder(folder_path: Path) -> None:
+    """
+    Extracts audio from all video files in the specified folder, if not already done.
+    """
+    for video_file in folder_path.iterdir():
+        if video_file.suffix.lower() not in ['.mp4']:
+            continue  # Skip non-video files
+        
+        audio_path = VTCParameters.audio_path / f"{video_file.stem}{VTCParameters.audio_name_ending}"
+        
+        # Check if the audio file already exists
+        if not audio_path.exists():
+            # Create a VideoFileClip object
+            video_clip = VideoFileClip(str(video_file))  
+            # Extract audio from the video
+            extract_audio_from_video(video_clip, video_file.stem)  
+            print(f"Extracted audio from {video_file.name}")
+        else:
+            print(f"Audio already exists for {video_file.name}")
