@@ -3,12 +3,12 @@ from pathlib import Path
 
 
 class DetectionPaths:
-    person = Path("src/projects/social_interactions/outputs/yolov5/")
-    face = Path("src/projects/social_interactions/outputs/mtcnn/")
+    person = Path("outputs/yolov5/")
+    face = Path("outputs/mtcnn/")
     videos_input = Path("../../ProcessedData/videos/") 
     images_input = Path("../../ProcessedData/images/")
-    results = Path("src/projects/social_interactions/outputs/")
-    frames_output = Path("src/projects/social_interactions/outputs/frames/")
+    results = Path("outputs/")
+    frames_output = Path("outputs/frames/")
     # Path variable to the annotation xml files
     annotations_folder_path = Path("../../ProcessedData/annotations/")
     annotations_xml_path = Path("../../ProcessedData/annotations/annotations.xml")
@@ -21,17 +21,21 @@ class DetectionPaths:
 class VTCParameters:
     # path variables for the voice-type-classifier
     audio_path = Path("../../ProcessedData/audio/")
+    audio_name_ending = Path("_16kHz.wav")
     environment_path = Path(
         "/home/nele_pauline_suffo/.conda/envs/pyannote/bin/python"
     )
     execution_file_path = Path(
-        "src/projects/social_interactions/scripts/language/run_vtc.py"
+       "src/projects/social_interactions/scripts/language/run_vtc.py"
     )
     execution_command = Path("../voice_type_classifier/apply.sh")
     output_file_path = Path(
-        "src/projects/social_interactions/outputs/vtc/audio/all.rttm"
+        "outputs/vtc/audio/all.rttm"
     )
-    output_path = Path("src/projects/social_interactions/outputs/vtc")
+    output_path = Path("outputs/vtc")
+    repo_path = Path("../voice_type_classifier")
+    vtc_input_path = Path("../leuphana-IPE/ProcessedData/audio/")
+
 
 
 class DetectionParameters:
@@ -104,7 +108,7 @@ class YoloParameters:
     model_path = Path("src/projects/social_interactions/models/yolov5/model.yaml")
     hyp_path = Path("src/projects/social_interactions/models/yolov5/hyp.yaml")
     pretrained_weights_path = Path("pretrained_models/yolov5s.pt")
-    data_config_path = Path(
+    data_config = Path(
         "src/projects/social_interactions/models/yolov5_inference/dataset.yaml"
     )
     yolov5_repo_path = Path("../yolov5")
@@ -112,7 +116,8 @@ class YoloParameters:
     # the path to the input folder for the yolo model
     data_input = Path("../../ProcessedData/yolo/")
     batch_size = 16
-    epochs = 100
+    # epochs = 100
+    epochs = 2
     img_size = 640
     class_id = [1,2]
 
