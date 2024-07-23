@@ -15,9 +15,9 @@ def run_voice_detection(
     file_id: str,
 ) -> dict:
     """
-    This function extracts the speech duration from a video file
+    This function extracts the speech information from a video
     using the voice-type-classifier.
-    First, it extracts the audio from the video and saves it as a WAV file.
+    First, it extracts the audio from the video and saves it as a WAV file, if it does not exist.
     Then, it runs the voice-type-classifier on the audio file
     and outputs the detections in COCO format.
 
@@ -42,31 +42,17 @@ def run_voice_detection(
     # Create the output directory if it does not exist
     VTCParameters.output_path.mkdir(parents=True, exist_ok=True)
    
-    # Load the video file and get the filename
-    try:
-        # Load the video file and get the filename
-        video = VideoFileClip(str(video_input_path))
-        cap = cv2.VideoCapture(str(video_input_path))
-    except Exception as e:
-        logging.error(f"Failed to load video file: {e}")
-        raise
-
-    try:
-        # Extract audio from the video and save it as a 16kHz WAV file
-        my_utils.extract_resampled_audio(video, video_input_path.name)
-    except Exception as e:
-        logging.error(f"Failed to extract audio from video: {e}")
-        raise
-    finally:
-        cap.release()
-
     try:
         # Run the voice-type-classifier
-        call_vtc.call_voice_type_classifier()
+        call_vtc.run_voice_type_classifier_in_env()
     except Exception as e:
         logging.error(f"Failed to run voice-type-classifier: {e}")
-        raise
-
+        
+    detection_output = {
+    "images": [],
+    "annotations": [],
+    }
+    
     # Convert the output of the voice-type-classifier to a pandas DataFrame
     vtc_output_df = my_utils.rttm_to_dataframe(VTCParameters.output_file_path)
 
