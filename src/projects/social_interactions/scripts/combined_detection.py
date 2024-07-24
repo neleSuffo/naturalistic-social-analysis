@@ -8,7 +8,6 @@ from src.projects.social_interactions.common.constants import (
     DetectionPaths,
     LabelToCategoryMapping,
     DetectionParameters,
-    VTCParameters,
 )
 from multiprocessing import Value
 from src.projects.social_interactions.common import my_utils
@@ -31,7 +30,6 @@ class Detector:
             "person": run_yolov5.run_person_detection,
             "face": run_mtcnn.run_face_detection,
             "voice": detect_voices.run_voice_detection,
-            "proximity": my_utils.run_proximity_detection,
         }
 
         # Define the load model functions
@@ -41,7 +39,7 @@ class Detector:
         }
 
         # Create a dictionary mapping video file names to IDs
-        self.video_file_ids = my_utils.create_video_to_id_mapping(
+        self.video_file_ids_dict = my_utils.create_video_to_id_mapping(
             [
                 video_file.name
                 for video_file in Path(DetectionPaths.videos_input).iterdir()
@@ -102,7 +100,7 @@ class Detector:
                 output["categories"].append(category)
 
             # Get the unique video file ID from the video file name
-            file_id = self.video_file_ids[file_name]
+            file_id = self.video_file_ids_dict[file_name]
             # Define dictionary that maps detection types to their corresponding arguments
             args = {
                 "video_input_path": video_file,                        
@@ -127,10 +125,6 @@ class Detector:
             output["images"].extend(detections["images"])
             output["annotations"].extend(detections["annotations"])
 
-        elif detection_type == "proximity":
-            logging.info("Performing proximity detection...")
-            detection_function()
-
         return output
 
     def process_video_file(
@@ -154,6 +148,12 @@ class Detector:
         combined_coco_output : dict
             the combined output dictionary for all videos
         """
+        # Initialize output dictionary for the current video file
+        output = {
+            "images": [],
+            "annotations": [],
+            "categories": [],
+        }
         # Get the video file name
         file_name = video_file.name
         file_name_short = video_file.stem
@@ -164,13 +164,13 @@ class Detector:
         # Add the video file to the output
         combined_coco_output["videos"].append(
             {
-                "id": self.video_file_ids[file_name],
-                "file_name": f"{file_name_short}{DetectionParameters.file_extension}",
+                "id": self.video_file_ids_dict[file_name],
+                "file_name": file_name,
             }
         )
         # Perform the desired detections
         for detection_type in self.detection_functions.keys():
-            if detections[detection_type]:
+            if detections[detection_type] and detection_type != "voice":
                 output = self.call_models(
                     detection_type,
                     video_file,
@@ -247,9 +247,9 @@ class Detector:
             "categories": [],
         }
         
-        
-        if detections_dict["voice"]:
-            # Extract audio from all video files in the input folder
+        if detections.get("voice", False):
+            # Extract audio from videos
+            logging.info("Extracting audio for voice detection...")
             my_utils.extract_audio_from_videos_in_folder(DetectionPaths.videos_input)
         try:
             # Process each video file (in parallel)
@@ -265,13 +265,27 @@ class Detector:
             logging.error(f"An error occurred during detection: {e}")
             raise
         
+        # Run voice detection if enabled, only once
+        if detections.get("voice", False):
+            logging.info("Running voice detection once across all videos...")
+            detection_output = detect_voices.run_voice_detection(
+                self.video_file_ids_dict, # the dictionary mapping video file names to IDs
+                self.annotation_id,
+                self.image_id
+            )
+            
+            # Merge voice detection results into the combined COCO output
+            existing_video_ids = {video["id"] for video in combined_coco_output["videos"]}
+            # Add new videos to the combined COCO output
+            for video in detection_output["videos"]:
+                if video["id"] not in existing_video_ids:
+                    combined_coco_output["videos"].append(video)
+            combined_coco_output["annotations"].extend(detection_output["annotations"])
+            combined_coco_output["images"].extend(detection_output["images"])
+            
         # Save the results to a JSON file
         combined_json_output_path = DetectionPaths.results / "combined_detections.json"
         my_utils.save_results_to_json(combined_coco_output, combined_json_output_path)
-        
-        #xif detections_dict["voice"]:
-            # Delete the audio files and the output directory
-            #language_utils.delete_directory_and_contents(VTCParameters.audio_path)
 
 
 def main(detections_dict: dict) -> None:
@@ -300,6 +314,5 @@ if __name__ == "__main__":
         "person": False,
         "face": False,
         "voice": True,
-        "proximity": False,
     }
     main(detections_dict)
