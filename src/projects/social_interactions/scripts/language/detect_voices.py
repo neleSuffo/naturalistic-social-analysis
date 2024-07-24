@@ -1,44 +1,37 @@
 from src.projects.social_interactions.common.constants import VTCParameters
 from src.projects.social_interactions.scripts.language import call_vtc, my_utils
-from moviepy.editor import VideoFileClip
-from pathlib import Path
-import cv2
 import logging
 import multiprocessing
 
 
 def run_voice_detection(
-    video_input_path: Path,
+    video_file_ids_dict: dict,
     annotation_id: multiprocessing.Value,
     image_id: multiprocessing.Value,
-    video_file_name: str,
-    file_id: str,
 ) -> dict:
     """
-    This function extracts the speech information from a video
-    using the voice-type-classifier.
-    First, it extracts the audio from the video and saves it as a WAV file, if it does not exist.
-    Then, it runs the voice-type-classifier on the audio file
-    and outputs the detections in COCO format.
+    This function runs the voice-type-classifier and generates the detection results in COCO format.
 
     Parameters
     ----------
-    video_input_path : Path
-        the path to the video file to process
+    video_file_ids_dict : dict
+        the dictionary containing the video file IDs
     annotation_id : multiprocessing.Value
         the unique annotation ID to assign to the detections
     image_id : multiprocessing.Value
         the unique image ID
-    video_file_name : str
-        the name of the video file
-    file_id: dict
-        the unique video file id
 
     Returns
     -------
     dict
         the detection results in COCO format
     """
+    # Initialize detection output
+    detection_output = {
+        "videos": [], 
+        "annotations": [], 
+        "images": []}
+
     # Create the output directory if it does not exist
     VTCParameters.output_path.mkdir(parents=True, exist_ok=True)
    
@@ -47,22 +40,35 @@ def run_voice_detection(
         call_vtc.run_voice_type_classifier_in_env()
     except Exception as e:
         logging.error(f"Failed to run voice-type-classifier: {e}")
-        
-    detection_output = {
-    "images": [],
-    "annotations": [],
-    }
     
     # Convert the output of the voice-type-classifier to a pandas DataFrame
     vtc_output_df = my_utils.rttm_to_dataframe(VTCParameters.output_file_path)
 
-    # Generate detection output in COCO format
-    detection_output = my_utils.get_utterances_detection_output(
-        vtc_output_df,
-        annotation_id,
-        image_id,
-        video_file_name,
-        file_id,
-    )
+    # Get the unique audio file names
+    unique_files = vtc_output_df['audio_file_name'].unique()
 
+    for file_name in unique_files:
+        # Get the video file name and file ID
+        file_id = video_file_ids_dict[file_name]
+        
+        # Filter DataFrame for current file
+        file_df = vtc_output_df[vtc_output_df['audio_file_name'] == file_name]
+
+        # Generate and append video entry
+        detection_output["videos"].append({
+            "id": file_id,
+            "file_name": file_name,
+        })
+        # Generate detection output in COCO format
+        file_detection_output = my_utils.get_utterances_detection_output(
+            file_df,
+            annotation_id,
+            image_id,
+            file_name,
+            file_id,
+        )
+        # Accumulate annotations and images
+        detection_output["annotations"].extend(file_detection_output["annotations"])
+        detection_output["images"].extend(file_detection_output["images"])
+    
     return detection_output
