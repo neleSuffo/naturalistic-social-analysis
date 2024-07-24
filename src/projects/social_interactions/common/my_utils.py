@@ -372,6 +372,9 @@ def extract_audio_from_video(video: VideoFileClip, filename: str) -> None:
         check=True,
     )
     
+    # Delete the temporary file
+    temp_file.close()
+    
     logging.info(f"Successfully stored the file at {output_file}")
 
 
