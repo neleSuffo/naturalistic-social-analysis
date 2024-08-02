@@ -15,7 +15,7 @@ from src.projects.shared import utils as shared_utils
 from typing import Dict, Callable
 from threading import Lock
 import logging
-import copy
+import json
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -41,7 +41,7 @@ class Detector:
         # Create a dictionary mapping video file names to IDs
         self.video_file_ids_dict = my_utils.create_video_to_id_mapping(
             [
-                video_file.name
+                video_file.stem
                 for video_file in Path(DetectionPaths.videos_input).iterdir()
                 if video_file.suffix.lower() == DetectionParameters.file_extension
             ]
@@ -164,7 +164,7 @@ class Detector:
         # Add the video file to the output
         combined_coco_output["videos"].append(
             {
-                "id": self.video_file_ids_dict[file_name],
+                "id": self.video_file_ids_dict[file_name_short],
                 "file_name": file_name,
             }
         )
@@ -284,8 +284,9 @@ class Detector:
             combined_coco_output["images"].extend(detection_output["images"])
             
         # Save the results to a JSON file
+        # Check if a results file already exists
         combined_json_output_path = DetectionPaths.results / "combined_detections.json"
-        my_utils.save_results_to_json(combined_coco_output, combined_json_output_path)
+        my_utils.update_or_create_output_json_file(combined_json_output_path, combined_coco_output)
 
 
 def main(detections_dict: dict) -> None:
@@ -312,7 +313,7 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     detections_dict = {
         "person": False,
-        "face": False,
-        "voice": True,
+        "face": True,
+        "voice": False,
     }
     main(detections_dict)
