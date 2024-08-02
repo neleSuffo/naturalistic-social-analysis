@@ -290,7 +290,7 @@ def create_video_to_id_mapping(video_names: list) -> dict:
     Parameters
     ----------
     video_names : list
-        a list of video names
+        a list of video names without the file extension
 
     Returns
     -------
@@ -303,23 +303,40 @@ def create_video_to_id_mapping(video_names: list) -> dict:
     return video_id_dict
 
 
-def save_results_to_json(results: dict, output_path: Path) -> None:
+def update_or_create_json_file(
+    path: Path,
+    new_data: dict,
+    existing_data: dict = None,
+) -> None:
     """
-    This function saves the results to a JSON file.
+    Updates an existing JSON file with new data or creates a new file if it doesn't exist.
 
     Parameters
     ----------
-    results : dict
-        the results for each detection type
-    output_path : str
-        the path to the output file
+    path : Path
+        the path to the JSON file
+    new_data : dict
+        the new data to add or create the file with
+    existing_data : dict
+        the existing data to update, if any. If None, the function will load existing data from the file if it exists
     """
-    directory = output_path.parent
-    # Check if the output directory exists, if not, create it
-    directory.mkdir(parents=True, exist_ok=True)        
-    # Save the results to a JSON file
-    with open(output_path, "w") as f:
-        json.dump(results, f)
+    # Check if the file exists
+    if path.exists() and existing_data is None:
+        # File exists and no existing data provided, load the existing data
+        with path.open('r') as file:
+            existing_data = json.load(file)
+
+    # If existing data was provided or loaded, update it with the new data
+    if existing_data is not None:
+        existing_data.update(new_data)
+        data_to_write = existing_data
+    else:
+        # No existing data, use new data as is
+        data_to_write = new_data
+
+    # Write the data back to the file
+    with path.open('w') as file:
+        json.dump(data_to_write, file, indent=4)
 
 
 def display_results(results: dict) -> None:
