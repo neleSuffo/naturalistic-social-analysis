@@ -18,7 +18,7 @@ train_cmd = [
     "--data",
     str(Yolo.data_config),
     "--project",
-    "src/projects/social_interactions/outputs/yolov5/train",
+    "outputs/yolov5/train",
     "--name",
     "exp",
 ]
