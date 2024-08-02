@@ -9,7 +9,6 @@ from src.projects.social_interactions.config.config import generate_detection_ou
 from typing import Optional
 import numpy as np
 import cv2
-import os
 import multiprocessing
 
 
@@ -65,8 +64,7 @@ def run_face_detection(
         frames_per_second = int(cap.get(cv2.CAP_PROP_FPS))
 
         # Create video output directory if it does not exist
-        video_output_path = os.path.join(DetectionPaths.face, video_file_name)
-
+        video_output_path = DetectionPaths.face / video_file_name
         # Create a VideoWriter object to write the output video
         out = create_video_writer(
             video_output_path, frames_per_second, frame_width, frame_height
