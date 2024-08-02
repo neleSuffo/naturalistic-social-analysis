@@ -46,10 +46,12 @@ def run_voice_detection(
 
     # Get the unique audio file names
     unique_files = vtc_output_df['audio_file_name'].unique()
+    VTCParameters.audio_name_ending
 
     for file_name in unique_files:
         # Get the video file name and file ID
-        file_id = video_file_ids_dict[file_name]
+        cleaned_audio_file_name = file_name.replace(VTCParameters.audio_name_ending.stem, '')
+        file_id = video_file_ids_dict[cleaned_audio_file_name]
         
         # Filter DataFrame for current file
         file_df = vtc_output_df[vtc_output_df['audio_file_name'] == file_name]
