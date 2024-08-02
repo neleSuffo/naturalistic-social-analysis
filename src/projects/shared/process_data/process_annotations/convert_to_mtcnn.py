@@ -22,7 +22,7 @@ def save_annotations(annotations: list) -> None:
     
     with open(output_file_path, 'a') as f:
         for annotation in annotations:
-            _, _, _, _, bbox, image_file_name, _, _, _ = annotation
+            _, _, _, bbox, image_file_name, _, _, _ = annotation
             bbox = json.loads(bbox)
             xtl, ytl, xbr, ybr = bbox
             width = xbr - xtl
