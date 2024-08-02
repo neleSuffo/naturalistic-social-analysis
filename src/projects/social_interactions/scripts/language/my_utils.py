@@ -222,6 +222,13 @@ def rttm_to_dataframe(rttm_file: Path) -> pd.DataFrame:
     
     logging.info("Data processing complete. Returning DataFrame.")
 
+    try:
+        df.to_pickle(VTCParameters.df_output_file_path)
+        logging.info(f"DataFrame successfully saved to: {VTCParameters.df_output_file_path}")
+    except Exception as e:
+        logging.error(f"Failed to save DataFrame to file: {e}")
+        raise
+    
     return df
 
 
