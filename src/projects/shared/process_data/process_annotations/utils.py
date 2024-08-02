@@ -2,7 +2,7 @@ import xml.etree.ElementTree as ET
 import json
 import logging
 import sqlite3
-from src.projects.social_interactions.common.constants import LabelToCategoryMapping, DetectionPaths
+from src.projects.social_interactions.common.constants import LabelToCategoryMapping, DetectionPaths, DetectionParameters
 from collections import defaultdict
 from datetime import datetime
 
@@ -54,7 +54,6 @@ def get_video_id_from_name_db(
 def create_coco_annotation_format(
     root: ET.Element,
     task_details: dict,
-    highest_frames_dict: dict,
     ) -> dict:
     """
     This function extracts data from the XML root and formats it in COCO format.
@@ -66,9 +65,6 @@ def create_coco_annotation_format(
     task_details : dict
         the id, name and length per task extracted from the XML root
         key: task id, value: task name
-    highest_frames_dict : dict
-        the highest frame per task extracted from the XML root
-        key: task id, value: highest frame
 
     Returns
     -------
@@ -78,6 +74,10 @@ def create_coco_annotation_format(
     """
     # Get today's date in the format 'YYYY-MM-DD'
     date_created = datetime.now().strftime('%Y-%m-%d')
+    
+    # Generate the frame correction dictionary 
+    # (key: task id, value: (task name, task length, frame correction))
+    frame_correction_dict = generate_cum_sum_frame_count(task_details)
     # Initialize the frame correction value
     frame_correction = 0
     
@@ -111,7 +111,7 @@ def create_coco_annotation_format(
 
         # Get the frame correction value
         if task_id is not None:
-            frame_correction = get_value_before_key(highest_frames_dict, task_id)
+            frame_correction = frame_correction_dict[task_id][2]
         # Get the task name from the task_details dictionary
         task_name = task_details.get(task_id, next(iter(task_details.values())))[0]
         # Get the video_id from the database using the task_name
@@ -143,14 +143,14 @@ def create_coco_annotation_format(
             row = box.attrib
             row["track_label"] = track_label
             # Correct the frame value
-            row["frame"] = int(row["frame"]) - frame_correction
+            #row["frame"] = int(row["frame"]) - frame_correction
 
             # Add to COCO format data
             data["images"].append(
                 {
                     "id": len(data["images"]) + 1,
                     "video_id": task_id,
-                    "frame_id": row["frame"],
+                    "frame_id": int(row["frame"]) - frame_correction,
                     "file_name": f"{task_name}_{row['frame']}.jpg",
                 }
             )
@@ -235,6 +235,47 @@ def get_highest_frame_per_task(root: ET.Element, correction_value: int = 30) -> 
     return highest_frames_dict_corr
 
 
+def generate_cum_sum_frame_count(
+    task_details: dict
+) -> dict:
+    """
+    This function updates the task details dictionary by adding a new value to each entry.
+    The new value is the frame_correction_value: 
+    the sum of the second values of all previous entries multiplied by the number of frames per second.
+
+    """
+    # Initialize cumulative sum
+    cumulative_sum = 0
+    keys = list(task_details.keys())
+    
+    # Add third value to each entry
+    for key in task_details.keys():
+        name, value = task_details[key]
+        # Initialize the new value to 0
+        task_details[key] = (name, value, 0)
+
+    # Iterate through the dictionary and update each entry
+    for i in range(len(keys)):
+        key = keys[i]
+        name, value, _ = task_details[key]
+        # Convert the second value to an integer
+        value_int = int(value)
+        
+        # Update the cumulative sum
+        cumulative_sum += value_int
+        
+        # Calculate the new value
+        new_value = cumulative_sum * 30
+        
+        # Update the next key with the new value
+        if i + 1 < len(keys):
+            next_key = keys[i + 1]
+            next_name, next_value, _ = task_details[next_key]
+            task_details[next_key] = (next_name, next_value, new_value)
+            
+    return task_details
+
+
 def save_data_to_json(
     data: dict, 
     output_path: str) -> None:
@@ -316,15 +357,15 @@ def convert_xml_to_coco_format(
 
         # Extract task ids, the name and length of the task
         task_details = get_task_ids_names_lengths(root)
+        
+        # Get the task ids from the XML file (the ones that have tracks)
+        task_ids_in_tracks = {track.get("task_id") for track in root.iter("track")}
 
-        # Extract highest frame per task
-        highest_frame_dict = get_highest_frame_per_task(root)
-        highest_frame_dict_sorted = {
-            key: highest_frame_dict.get(key, 0) for key in task_details.keys()
-        }
+        # Remove keys from task_details that are not present in task_ids_in_tracks
+        task_details_reduced = {task_id: details for task_id, details in task_details.items() if task_id in task_ids_in_tracks}
 
-        # Convert to COCO format and save as JSON
-        data = create_coco_annotation_format(root, task_details, highest_frame_dict_sorted)
+        # Convert to COCO format and save as JSON   
+        data = create_coco_annotation_format(root, task_details_reduced)
         save_data_to_json(data, output_path)
 
         logging.info(f"Successfully converted XML to COCO format and saved to {output_path}")
