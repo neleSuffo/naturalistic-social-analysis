@@ -5,13 +5,14 @@ from pathlib import Path
 class DetectionPaths:
     person = Path("outputs/yolov5/")
     face = Path("outputs/mtcnn/")
-    videos_input = Path("../../ProcessedData/videos/") 
+    videos_input = Path("../../ProcessedData/videos_train/") 
     images_input = Path("../../ProcessedData/images/")
     results = Path("outputs/")
     frames_output = Path("outputs/frames/")
     # Path variable to the annotation xml files
     annotations_folder_path = Path("../../ProcessedData/annotations/")
     annotations_xml_path = Path("../../ProcessedData/annotations/annotations.xml")
+    annotations_individual_folder_path = Path("../../ProcessedData/annotations_individual/")
     annotations_json_path = Path("../../ProcessedData/annotations/annotations.json")
     annotations_db_path = Path("../../ProcessedData/databases/annotations.db")
     # The file that is used to map the file names to the file ids
@@ -35,6 +36,7 @@ class VTCParameters:
     output_path = Path("outputs/vtc")
     repo_path = Path("../voice_type_classifier")
     vtc_input_path = Path("../leuphana-IPE/ProcessedData/audio/")
+    df_output_file_path = Path("outputs/vtc/audio_data.pkl")
 
 
 
@@ -115,9 +117,9 @@ class YoloParameters:
     labels_input = Path("../../ProcessedData/yolo_labels/")
     # the path to the input folder for the yolo model
     data_input = Path("../../ProcessedData/yolo/")
-    batch_size = 16
+    batch_size = 32
     # epochs = 100
-    epochs = 2
+    epochs = 1
     img_size = 640
     class_id = [1,2]
 
