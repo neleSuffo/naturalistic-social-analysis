@@ -2,6 +2,7 @@ import shutil
 import random
 import logging
 import shutil
+import os
 from pathlib import Path
 from src.projects.social_interactions.common.constants import DetectionPaths, TrainParameters, YoloParameters as Yolo, MtcnnParameters as Mtcnn
 
@@ -9,7 +10,7 @@ from src.projects.social_interactions.common.constants import DetectionPaths, Tr
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
-def check_annotations(
+def create_missing_annotation_files(
     jpg_dir: Path, 
     txt_dir: Path
 ) -> None:
@@ -57,7 +58,7 @@ def split_dataset(
         the list of training and testing files
     """
     logging.info(f"Splitting dataset with ratio {split_ratio}")
-    # Get all image files and their corresponding annotation files
+    # Get all image files
     files = list(file_dir_jpg.glob('*.jpg'))
 
     # Set a random seed for reproducibility
@@ -238,7 +239,8 @@ def prepare_mtcnn_dataset(
     Mtcnn.labels_input.unlink(missing_ok=True)
 
 def main():
-    check_annotations(DetectionPaths.images_input, Yolo.labels_input)
+    os.environ['OMP_NUM_THREADS'] = '1'
+    create_missing_annotation_files(DetectionPaths.images_input, Yolo.labels_input)
     # Move label files and delete empty labels directory
     train_files, val_files = split_dataset(DetectionPaths.images_input, TrainParameters.train_test_split)
     prepare_yolo_dataset(Yolo.data_input, train_files, val_files)
