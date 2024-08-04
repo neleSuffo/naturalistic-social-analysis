@@ -1,52 +1,45 @@
 import json
 import logging
+import cv2
 from src.projects.shared.utils import fetch_all_annotations
-from src.projects.social_interactions.common.constants import YoloParameters as Yolo
+from src.projects.social_interactions.common.constants import YoloParameters as Yolo, DetectionPaths
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
-def convert_bbox(
-    size: tuple, 
-    bbox: list
-) -> tuple:
+def convert_to_yolo_format(
+    image_path, bbox
+) -> list:
     """
-    This function converts the bounding box coordinates to YOLO format.
+    This function converts the given annotations to YOLO format.
 
     Parameters
     ----------
-    size : tuple
-        the image size
+    image_path : str
+        the path to the image file
     bbox : list
         the bounding box coordinates
 
     Returns
     -------
-    tuple
-        the bounding box coordinates in YOLO format
-    
-    Example
-    -------
-    Input: size=(1280, 720), bbox=[xmin, ymin, xmax, ymax]
-    Output: (x_center, y_center, width, height) normalized to [0, 1]
+    annotations : list
+        the annotations in YOLO format
     """
-    # Calculate the width and height of the image
-    dw = 1. / size[0]
-    dh = 1. / size[1]
-    # Calculate the center of the bounding box
-    x = (bbox[0] + bbox[2]) / 2.0
-    y = (bbox[1] + bbox[3]) / 2.0
-    w = bbox[2] - bbox[0]
-    h = bbox[3] - bbox[1]
-    # Normalize the coordinates
-    x = x * dw
-    w = w * dw
-    y = y * dh
-    h = h * dh
-    return (x, y, w, h)
-    
-    
+    # Load the image to get its dimensions
+    img = cv2.imread(image_path)
+    img_height, img_width = img.shape[:2]
+
+    xtl, ytl, xbr, ybr = bbox
+    # Calculate YOLO format coordinates
+    x_center = (xtl + xbr) / 2.0 / img_width
+    y_center = (ytl + ybr) / 2.0 / img_height
+    width = (xbr - xtl) / img_width
+    height = (ybr - ytl) / img_height
+
+    return (x_center, y_center, width, height)
+
+
 def save_annotations(
     annotations: list
 ) -> None:
@@ -69,10 +62,22 @@ def save_annotations(
     for annotation in annotations:
         _, _, category_id, bbox, image_file_name, _, image_width, image_height = annotation
         bbox = json.loads(bbox)
-        image_size = (image_width, image_height)
-        # YOLO format: category_id x_center y_center width height
-        yolo_bbox = convert_bbox(image_size, bbox)
         
+        # Consrtuct the path to the image file
+        image_file_path = DetectionPaths.images_input / (image_file_name + '.jpg')
+        
+        # Check if the image file exists
+        if not image_file_path.is_file():
+            logging.warning(f"Image file {image_file_path} does not exist. Skipping annotation.")
+            continue
+    
+        # YOLO format: category_id x_center y_center width height
+        try:
+            yolo_bbox = convert_to_yolo_format(image_file_path, bbox)
+        except Exception as e:
+            logging.error(f"Error converting bbox to YOLO format for {image_file_path}: {e}")
+            continue
+                
         # Create a line for the text file
         line = f"{category_id} " + " ".join(map(str, yolo_bbox)) + '\n'
         # Append the line to the list of lines for the image file
