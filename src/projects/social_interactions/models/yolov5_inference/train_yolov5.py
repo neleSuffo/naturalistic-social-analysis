@@ -1,5 +1,7 @@
 import os
 import subprocess
+import os
+import torch
 from src.projects.social_interactions.common.constants import YoloParameters as Yolo
 
 # Construct the full path to the train.py script in the YOLOv5 repository
@@ -21,8 +23,12 @@ train_cmd = [
     "outputs/yolov5/train",
     "--name",
     "exp",
+    "--device",
+    "0,1"  # Specify both GPUs (GPU 0 and GPU 1)
 ]
-
 if __name__ == "__main__":
+    os.environ['OMP_NUM_THREADS'] = '10'
+    print("CUDA available:", torch.cuda.is_available())
+    print("Number of GPUs:", torch.cuda.device_count())
     # Run the training command
     subprocess.run(train_cmd)
