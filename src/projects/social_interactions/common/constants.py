@@ -15,6 +15,8 @@ class DetectionPaths:
     annotations_individual_folder_path = Path("../../ProcessedData/annotations_individual/")
     annotations_json_path = Path("../../ProcessedData/annotations/annotations.json")
     annotations_db_path = Path("../../ProcessedData/databases/annotations.db")
+    combined_json_output_path = Path(f"{results}/combined_detections.json")
+
     # The file that is used to map the file names to the file ids
     file_name_id_dict_path = Path("../../ProcessedData/file_name_to_id_dict/annotations.xml")
 
@@ -118,8 +120,7 @@ class YoloParameters:
     # the path to the input folder for the yolo model
     data_input = Path("../../ProcessedData/yolo/")
     batch_size = 32
-    # epochs = 100
-    epochs = 1
+    epochs = 50
     img_size = 640
     class_id = [1,2]
 
