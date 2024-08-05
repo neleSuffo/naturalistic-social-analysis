@@ -4,6 +4,7 @@ from pathlib import Path
 import tempfile
 from tqdm import tqdm
 import json
+import torch
 import logging
 import cv2
 import subprocess
@@ -95,9 +96,9 @@ def detection_video_output(
     out: cv2.VideoWriter,
     video_input_path: str,
     video_output_path: str,
-    model,
-    detection_fn,
-    draw_fn,
+    model: torch.nn.Module,
+    detection_fn: callable,
+    draw_fn: callable,
     class_index_det: int = None,
 ) -> None:
     """
@@ -114,12 +115,14 @@ def detection_video_output(
         the path to the video file
     video_output_path : str
         the path to the output video file
-    model
+    model: torch.nn.Module
         the detection model
     detection_fn : function
         the function to perform detection
     draw_fn : function
         the function to draw bounding boxes
+    class_index_det : int
+        the class index of the class to detect (only for yolo detection), defaults to None
     """
     # Get total number of frames
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -177,13 +180,14 @@ def detection_video_output(
 
 def detection_coco_output(
     cap: cv2.VideoCapture,
-    model,
-    detection_fn,
-    process_results_fn,
+    model: torch.nn.Module,
+    detection_fn: callable,
+    process_results_fn: callable,
     video_file_name: str,
     file_id: str,
     annotation_id: multiprocessing.Value,
     image_id: multiprocessing.Value,
+    existing_image_file_names: list,
     class_index_det: int = None,
 ) -> dict:
     """
@@ -208,6 +212,8 @@ def detection_coco_output(
         the unique annotation id
     image_id: multiprocessing.Value
         the unique image id
+    existing_image_file_names : list
+        the list of image file names already in the detection output.json
     class_index_det : int
         the class index of the class to detect (only for yolo detection), defaults to None
 
@@ -259,15 +265,18 @@ def detection_coco_output(
                 results = detection_fn(model, frame)
 
                 # Add image information to COCO output
-                detection_output["images"].append(
-                    {
+                # Only add image if it does not exist in the combined json output file
+                file_name = f"{video_file_name}_{frame_count}.jpg"
+                if file_name not in existing_image_file_names:
+                    detection_output["images"].append({
                         "id": image_id.value,
                         "video_id": file_id,
                         "frame_id": frame_count,
-                        "file_name": f"{video_file_name}_{frame_count}.jpg",
-                    }
-                )
-                # Process detection results and add to COCO output
+                        "file_name": file_name,
+                    })
+                    existing_image_file_names.append(file_name) 
+
+                # Process detection results and add new annotations to detection output
                 process_results_fn(
                     results,
                     detection_output,
