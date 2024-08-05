@@ -1,3 +1,7 @@
+import os
+import json
+import psutil
+import logging
 from multiprocessing.pool import ThreadPool
 from pathlib import Path
 from timeit import default_timer as timer
@@ -14,8 +18,6 @@ from src.projects.social_interactions.common import my_utils
 from src.projects.shared import utils as shared_utils
 from typing import Dict, Callable
 from threading import Lock
-import logging
-import json
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -46,16 +48,31 @@ class Detector:
                 if video_file.suffix.lower() == DetectionParameters.file_extension
             ]
         )
-        # Create a shared annotation_id and image_id
+
+        # Load existing annotation data to find the highest annotation ID
+        if DetectionPaths.combined_json_output_path.exists():
+            with DetectionPaths.combined_json_output_path.open('r') as file:
+                existing_data = json.load(file)
+                # Check for existing images and annotations
+                existing_image_ids = [image['id'] for image in existing_data.get('images', [])]
+                self.existing_image_file_names = [image['file_name'] for image in existing_data.get('images', [])]
+                existing_annotation_ids = [annotation['id'] for annotation in existing_data.get('annotations', [])]
+                max_existing_annotation_id = max(existing_annotation_ids, default=0)
+                max_existing_image_id = max(existing_image_ids, default=0)
+        else:
+            max_existing_annotation_id, max_existing_image_id = 0
+            self.existing_image_file_names = []
+
+        # Initialize shared annotation_id and image_id
         # This variable is used to assign unique IDs to the annotations when running the detection models in parallel
-        self.annotation_id = Value("i", 0)
-        self.image_id = Value("i", 0)
+        self.annotation_id = Value("i", max_existing_annotation_id + 1)
+        self.image_id = Value("i", max_existing_image_id + 1)
+
 
     def call_models(
         self,
         detection_type: str,
         video_file: Path,
-        file_name: str,
         file_name_short: str,
         models: Dict[str, Callable],
         output: dict,
@@ -69,8 +86,6 @@ class Detector:
             the type of detection to perform
         video_file : path
             the path to the video file to process
-        file_name : str
-            the name of the video file
         file_name_short : str
             the name of the video file without the extension
         models : dict
@@ -86,44 +101,37 @@ class Detector:
         logging.info(f"Performing {detection_type} detection...")
         detection_function = self.detection_functions[detection_type]
         # Perform the detection
-        if detection_type in ["person", "face", "voice"]:
-            # Get the category ID and supercategory from the dictionaries
-            category_id = LabelToCategoryMapping.label_dict[detection_type]
-            supercategory = LabelToCategoryMapping.supercategory_dict[category_id]
-            # Create category dictionary and append it to output["categories"]
-            category = {
-                "id": category_id,
-                "name": detection_type,
-                "supercategory": supercategory,
-            }
-            if category not in output["categories"]:
-                output["categories"].append(category)
+        # Get the category ID and supercategory from the dictionaries
+        category_id = LabelToCategoryMapping.label_dict[detection_type]
+        supercategory = LabelToCategoryMapping.supercategory_dict[category_id]
+        # Create category dictionary and append it to output["categories"]
+        category = {
+            "id": category_id,
+            "name": detection_type,
+            "supercategory": supercategory,
+        }
+        if category not in output["categories"]:
+            output["categories"].append(category)
 
-            # Get the unique video file ID from the video file name
-            file_id = self.video_file_ids_dict[file_name]
-            # Define dictionary that maps detection types to their corresponding arguments
-            args = {
-                "video_input_path": video_file,                        
-                "annotation_id": self.annotation_id,
-                "image_id": self.image_id,
-                "video_file_name": file_name_short,
-                "file_id": file_id,
-            }
+        # Get the unique video file ID from the video file name
+        file_id = self.video_file_ids_dict[file_name_short]
+        # Define dictionary that maps detection types to their corresponding arguments
+        args = {
+            "video_input_path": video_file,                        
+            "annotation_id": self.annotation_id,
+            "image_id": self.image_id,
+            "video_file_name": file_name_short,
+            "file_id": file_id,
+            "model": models.get(detection_type),
+            "existing_image_file_names": self.existing_image_file_names,
+        }
 
-            # Conditionally add additional arguments for "face" and "person" detection types
-            if detection_type in ["person", "face"]:
-                args.update(
-                    {
-                        "model": models.get(detection_type),
-                    }
-                )
-
-            # Call the function with the appropriate arguments
-            detections = detection_function(**args)
-            
-           # Add detection_output to "images" and "annotations"
-            output["images"].extend(detections["images"])
-            output["annotations"].extend(detections["annotations"])
+        # Call the function with the appropriate arguments
+        detections = detection_function(**args)
+        
+        # Add detection_output to "images" and "annotations"
+        output["images"].extend(detections["images"])
+        output["annotations"].extend(detections["annotations"])
 
         return output
 
@@ -174,7 +182,6 @@ class Detector:
                 output = self.call_models(
                     detection_type,
                     video_file,
-                    file_name,
                     file_name_short,
                     models,
                     combined_coco_output,
@@ -204,19 +211,21 @@ class Detector:
     def run_detection(
         self,
         detections: dict,
+        batch_size: int = 10,
     ) -> dict:
         """
         This function runs four different detection models:
         - Person detection
         - Face detection
         - Voice detection
-        - Proximity detection
 
         Parameters
         ----------
         detections : dict
             a dictionary indicating which detection models to run
-            (person, face, voice, proximity)
+            (person, face, voice)
+        batch_size : int
+            the batch size for processing video files in parallel
 
         Returns
         -------
@@ -252,15 +261,20 @@ class Detector:
             logging.info("Extracting audio for voice detection...")
             my_utils.extract_audio_from_videos_in_folder(DetectionPaths.videos_input)
         try:
-            # Process each video file (in parallel)
-            with ThreadPool() as pool:
-                pool.map(
-                    self.wrapper,
-                    [
-                        (video_file, detections, models_dict, combined_coco_output)
-                        for video_file in video_files
-                    ],
-                )
+            total_batches = (len(video_files) + batch_size - 1) // batch_size
+            for i in range(0, len(video_files), batch_size):
+                batch = video_files[i:i + batch_size]
+                batch_number = (i // batch_size) + 1
+                logging.info(f"Processing batch {batch_number}/{total_batches} with {len(batch)} videos...")
+                with ThreadPool() as pool:
+                    pool.map(
+                        self.wrapper,
+                        [
+                            (video_file, detections, models_dict, combined_coco_output) 
+                            for video_file in batch
+                        ],
+                    )
+                self.monitor_resources()  # Monitor resources after each batch
         except Exception as e:
             logging.error(f"An error occurred during detection: {e}")
             raise
@@ -285,8 +299,26 @@ class Detector:
             
         # Save the results to a JSON file
         # Check if a results file already exists
-        combined_json_output_path = DetectionPaths.results / "combined_detections.json"
-        my_utils.update_or_create_output_json_file(combined_json_output_path, combined_coco_output)
+        my_utils.update_or_create_output_json_file(DetectionPaths.combined_json_output_path, combined_coco_output)
+
+    def monitor_resources(self, batch_number: int, total_batches: int):
+        """
+        This function monitors the system resources during the detection process.
+
+        Parameters
+        ----------
+        batch_number : int
+            the current batch number
+        total_batches : int
+            the total number of batches
+        """
+        cpu_usage = psutil.cpu_percent(interval=1)
+        memory_usage = psutil.virtual_memory().percent
+        logging.info(f"Batch {batch_number}/{total_batches} completed. CPU Usage: {cpu_usage}%, Memory Usage: {memory_usage}%")
+
+        # Example of dynamic adjustment logic:
+        if cpu_usage > 80 or memory_usage > 80:
+            logging.warning("High resource usage detected. Consider reducing batch size or increasing system resources.")
 
 
 def main(detections_dict: dict) -> None:
@@ -310,6 +342,7 @@ def main(detections_dict: dict) -> None:
 
 
 if __name__ == "__main__":
+    os.environ['OMP_NUM_THREADS'] = '1'
     logging.basicConfig(level=logging.INFO)
     detections_dict = {
         "person": False,
