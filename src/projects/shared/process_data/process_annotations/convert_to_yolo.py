@@ -98,7 +98,7 @@ def save_annotations(
 def main() -> None:
     logging.info("Starting the conversion process for Yolo.")
     try:
-        annotations = fetch_all_annotations(category_ids=Yolo.class_id)
+        annotations = fetch_all_annotations()
         logging.info(f"Fetched {len(annotations)} annotations.")
         save_annotations(annotations)
         logging.info("Successfully saved all annotations.")
