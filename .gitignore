@@ -578,6 +578,7 @@ outputs/
 saved_outputs/
 projects/voice_type_classifier
 yolov5/
+.cometml-runs
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
