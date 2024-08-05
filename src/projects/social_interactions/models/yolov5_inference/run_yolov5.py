@@ -10,6 +10,7 @@ import numpy as np
 import cv2
 import os
 import torch
+import json
 import multiprocessing
 
 
@@ -20,6 +21,7 @@ def run_person_detection(
     video_file_name: str,
     file_id: int,
     model: torch.nn.Module,
+    existing_image_file_names: list,
 ) -> Optional[dict]:
     """
     This function performs person detection on a video file (every frame_step-th frame)
@@ -39,6 +41,8 @@ def run_person_detection(
         the unique video file id
     model : torch.nn.Module
         the YOLOv5 model
+    existing_image_file_names : list
+        the image file names that already exist in the combined json output file
 
 
     Returns
@@ -47,7 +51,7 @@ def run_person_detection(
         the detection results in COCO format
     """
     # Check if the video file exists and is accessible
-    if not os.path.isfile(video_input_path):
+    if not video_input_path.exists():
         raise FileNotFoundError(
             f"The video file {video_input_path} does not exist or is not accessible."
         )
@@ -75,7 +79,7 @@ def run_person_detection(
         frames_per_second = int(cap.get(cv2.CAP_PROP_FPS))
 
         # Create video output directory if it does not exist
-        video_output_path = os.path.join(DetectionPaths.person, video_file_name)
+        video_output_path = DetectionPaths.person / video_file_name
 
         # Create a VideoWriter object to write the output video
         out = create_video_writer(
@@ -103,6 +107,7 @@ def run_person_detection(
             file_id,
             annotation_id,
             image_id,
+            existing_image_file_names,
             class_index_det,
         )
 
