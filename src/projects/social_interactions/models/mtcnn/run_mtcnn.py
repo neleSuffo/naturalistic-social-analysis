@@ -15,9 +15,11 @@ import multiprocessing
 def run_face_detection(
     video_input_path: str,
     annotation_id: multiprocessing.Value,
+    image_id: multiprocessing.Value,
     video_file_name: str,
     file_id: str,
     model: MTCNN,
+    existing_image_file_names: list,
 ) -> Optional[dict]:
     """
     This function performs frame-wise face detection on a video file (every frame_step-th frame)
@@ -30,12 +32,16 @@ def run_face_detection(
         the path to the video file
     annotation_id : multiprocessing.Value
         the annotation ID
+    image_id : multiprocessing.Value
+        the image ID
     video_file_name : str
         the name of the video file
     file_id: str,
         the video file id
     model : MTCNN
         the MTCNN face detector
+    existing_image_file_names : list
+        the image file names that already exist in the combined json output file
 
 
     Returns
@@ -44,7 +50,7 @@ def run_face_detection(
         the detection results in COCO format
     """
     # Check if the video file exists and is accessible
-    if not os.path.isfile(video_input_path):
+    if not video_input_path.exists():
         raise FileNotFoundError(
             f"The video file {video_input_path} does not exist or is not accessible."
         )
@@ -89,6 +95,8 @@ def run_face_detection(
             video_file_name,
             file_id,
             annotation_id,
+            image_id,
+            existing_image_file_names,
         )
 
         return detection_output
