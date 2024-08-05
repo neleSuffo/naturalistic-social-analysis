@@ -20,8 +20,8 @@ def run_process_videos():
         print(f"Error while running process_videos: {e}")
 
 if __name__ == "__main__":
-    run_process_annotations()
     run_process_videos()
+    run_process_annotations()
     # Split the dataset into training and validation sets
     prepare_training()
     logging.info("Data preparation complete.")
