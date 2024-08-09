@@ -11,7 +11,8 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 
 def get_video_id_from_name_db(
-    video_file_name: str
+    video_file_name: str,
+    cursor: sqlite3.Cursor
     ) -> int:
     """
     This function retrieves the video_id from the database using the video_file_name.
@@ -21,30 +22,24 @@ def get_video_id_from_name_db(
     ----------
     video_file_name : str
         the name of the video file
-
+    cursor : sqlite3.Cursor
+        the cursor from the database connection
     Returns
     -------
     int
         the video_id
     """
-    # Create a connection to the SQLite database
-    conn = sqlite3.connect(DetectionPaths.annotations_db_path)
-
-    # Create a cursor from the database connection
-    cursor = conn.cursor()
     # Retrieve the task_id from the database using the video_file_name
     cursor.execute("SELECT video_file_id FROM video_name_id_mapping WHERE video_file_name = ?", (video_file_name,))
     result = cursor.fetchone()
 
     # If the video_file_name does not exist in the database, add it
     if result is None:
-            # The video_file_name does not exist in the database, so add it
-            cursor.execute("INSERT INTO video_files (video_file_name) VALUES (?)", (video_file_name,))
-            # Commit the changes
-            conn.commit()
-            # Retrieve the newly assigned id
-            cursor.execute("SELECT video_file_id FROM video_files WHERE video_file_name = ?", (video_file_name,))
-            result = cursor.fetchone()
+        # The video_file_name does not exist in the database, so add it
+        cursor.execute("INSERT INTO video_files (video_file_name) VALUES (?)", (video_file_name,))
+        # Retrieve the newly assigned id
+        cursor.execute("SELECT video_file_id FROM video_files WHERE video_file_name = ?", (video_file_name,))
+        result = cursor.fetchone()
     
     task_id = result[0]
 
@@ -157,8 +152,7 @@ def create_coco_annotation_format(
             data["annotations"].append(
                 {
                     "id": len(data["annotations"]) + 1,
-                    "image_id": 
-                    row["frame"],  # the id of the image the annotation belongs to
+                    "image_id": row["frame"],  # the id of the image the annotation belongs to
                     "video_id": task_id,  # the id of the video the annotation belongs to
                     "category_id": track_label_id,  # the id of the category the annotation belongs to
                     "bbox": [

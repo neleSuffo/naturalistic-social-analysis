@@ -109,18 +109,16 @@ class LabelToCategoryMapping:
 
 class YoloParameters:
     fps = 1  # the frames per second to extract from the video
-    model_path = Path("src/projects/social_interactions/models/yolov5/model.yaml")
-    hyp_path = Path("src/projects/social_interactions/models/yolov5/hyp.yaml")
     pretrained_weights_path = Path("pretrained_models/yolov5s.pt")
     data_config = Path(
-        "src/projects/social_interactions/models/yolov5_inference/dataset.yaml"
+        "src/projects/social_interactions/models/yolo_inference/dataset.yaml"
     )
     yolov5_repo_path = Path("../yolov5")
     labels_input = Path("../../ProcessedData/yolo_labels/")
     # the path to the input folder for the yolo model
     data_input = Path("../../ProcessedData/yolo/")
     batch_size = 32
-    epochs = 50
+    epochs = 100
     img_size = 640
     class_id = [1,2]
 

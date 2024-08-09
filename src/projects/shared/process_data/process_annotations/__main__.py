@@ -1,6 +1,5 @@
 import os
-from src.projects.shared.process_data.process_annotations.utils import convert_xml_to_coco_format
-from src.projects.shared.process_data.process_annotations.create_database import create_db_annotations, create_db_table_video_name_id_mapping, correct_erronous_videos_in_db, add_annotations_to_db
+from src.projects.shared.process_data.process_annotations.create_database import write_xml_to_database, create_db_table_video_name_id_mapping, correct_erronous_videos_in_db, add_annotations_to_db
 from src.projects.shared.process_data.process_annotations.create_file_name_id_dict import create_file_name_id_dict
 from src.projects.shared.process_data.process_annotations.convert_to_yolo import main as convert_to_yolo
 from src.projects.shared.process_data.process_annotations.convert_to_mtcnn import main as convert_to_mtcnn
@@ -14,8 +13,7 @@ def main():
     # Create a database table for the video file names and ids
     create_db_table_video_name_id_mapping(task_file_id_dict)
     # Convert the XML annotations to COCO format and store the results in a database
-    convert_xml_to_coco_format(DetectionPaths.annotations_xml_path, DetectionPaths.annotations_json_path)
-    create_db_annotations()
+    write_xml_to_database()
     # Delete the erroneous videos in the database and add the new data form the indivual xml files
     correct_erronous_videos_in_db()
     
@@ -24,8 +22,8 @@ def main():
         add_annotations_to_db(file_name)
     
     # Convert the annotations to YOLO format and MTCNN format
-    convert_to_yolo()
-    convert_to_mtcnn()
+    #convert_to_yolo()
+    #convert_to_mtcnn()
 
 
 if __name__ == "__main__":
