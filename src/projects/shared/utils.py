@@ -74,7 +74,7 @@ def fetch_all_annotations(
     -------
     list of tuple
         the list of annotations
-        (id, image_id, video_id, category_id, bbox, image_file_name, video_file_name, frame_width, frame_height)
+        (id, image_id, video_id, category_id, bbox, image_file_name, video_file_name)
     """
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
@@ -87,7 +87,7 @@ def fetch_all_annotations(
         # Generate a string of ? placeholders that matches the length of category_ids
         placeholders = ", ".join("?" for _ in category_ids)
         query = f"""
-        SELECT DISTINCT a.image_id, a.video_id, a.category_id, a.bbox, i.file_name_storage as image_file_name, v.file_name as video_file_name, v.frame_width, v.frame_height
+        SELECT DISTINCT a.image_id, a.video_id, a.category_id, a.bbox, i.file_name, v.file_name as video_file_name
         FROM annotations a
         JOIN images i ON a.image_id = i.frame_id AND a.video_id = i.video_id
         JOIN videos v ON a.video_id = v.id
@@ -97,7 +97,7 @@ def fetch_all_annotations(
         cursor.execute(query, category_ids)
     else:
         query = """
-        SELECT DISTINCT a.image_id, a.video_id, a.category_id, a.bbox, i.file_name_storage as image_file_name, v.file_name as video_file_name, v.frame_width, v.frame_height
+        SELECT DISTINCT a.image_id, a.video_id, a.category_id, a.bbox, i.file_name, v.file_name as video_file_name
         FROM annotations a
         JOIN images i ON a.image_id = i.frame_id AND a.video_id = i.video_id
         JOIN videos v ON a.video_id = v.id

@@ -39,7 +39,7 @@ def create_missing_annotation_files(
         (txt_dir / f"{file}.txt").touch()
 
 
-def split_dataset(
+def images_train_val_split(
     images_dir: Path,
     train_videos: list,
     val_videos: list,
@@ -246,6 +246,7 @@ def prepare_mtcnn_dataset(
     # Delete the empty labels directory
     Mtcnn.labels_input.unlink(missing_ok=True)
 
+
 def get_video_length(
     file_path: Path
 ) -> float:
@@ -371,7 +372,7 @@ def main():
     # Split video files into training and validation sets
     train_videos, val_videos  = balanced_random_train_val_split(TrainParameters.train_test_split) 
     # Split corresponding image files into training and validation sets
-    train_files, val_files = split_dataset(DetectionPaths.images_input, train_videos, val_videos)
+    train_files, val_files = images_train_val_split(DetectionPaths.images_input, train_videos, val_videos)
     # Move label files and delete empty labels directory
     prepare_yolo_dataset(Yolo.data_input, train_files, val_files)
     prepare_mtcnn_dataset(Mtcnn.data_input, train_files, val_files)

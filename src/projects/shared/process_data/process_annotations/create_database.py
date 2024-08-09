@@ -142,6 +142,7 @@ def write_xml_to_database() -> None:
     # Initialize an empty set for added categories and videos
     added_categories = set()
     added_videos = set()
+    added_images = set()
     
     # Extract and insert annotations
     for track in root.iter("track"):
@@ -234,18 +235,20 @@ def write_xml_to_database() -> None:
                 object_interaction_value,
                 ),
             )
-
-            cursor.execute(
-            """
-                INSERT INTO images (video_id, frame_id, file_name)
-                VALUES (?, ?, ?)
-            """,
-                (
-                task_id,
-                frame_id,
-                f"{task_name}_{frame_id_padded}.jpg",
-                ),
-            )  
+            # Add image details if not already added
+            image_name = f"{task_name}_{frame_id_padded}.jpg"
+            if image_name not in added_images:
+                cursor.execute(
+                """
+                    INSERT INTO images (video_id, frame_id, file_name)
+                    VALUES (?, ?, ?)
+                """,
+                    (
+                    task_id,
+                    frame_id,
+                    image_name,
+                    ),
+                )  
 
 
     # Commit and close the database connection

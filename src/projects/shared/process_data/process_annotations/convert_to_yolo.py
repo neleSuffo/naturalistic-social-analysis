@@ -1,6 +1,7 @@
 import json
 import logging
 import cv2
+from pathlib import Path
 from src.projects.shared.utils import fetch_all_annotations
 from src.projects.social_interactions.common.constants import YoloParameters as Yolo, DetectionPaths
 
@@ -31,12 +32,22 @@ def convert_to_yolo_format(
     img_height, img_width = img.shape[:2]
 
     xtl, ytl, xbr, ybr = bbox
-    # Calculate YOLO format coordinates
-    x_center = (xtl + xbr) / 2.0 / img_width
-    y_center = (ytl + ybr) / 2.0 / img_height
-    width = (xbr - xtl) / img_width
-    height = (ybr - ytl) / img_height
 
+    # Calculate center coordinates
+    x_center = (xtl + xbr) / 2.0
+    y_center = (ytl + ybr) / 2.0
+    
+    # Calculate width and height
+    width = xbr - xtl
+    height = ybr - ytl
+    
+    # Normalize by image dimensions
+    x_center /= img_width
+    y_center /= img_height
+    width /= img_width
+    height /= img_height
+    
+    # Return in YOLO format
     return (x_center, y_center, width, height)
 
 
@@ -56,15 +67,14 @@ def save_annotations(
     output_dir.mkdir(parents=True, exist_ok=True)
     file_contents = {}
 
-    #(image_id, video_id, category_id, bbox, image_file_name, video_file_name, frame_width, frame_height)
-
+    #(image_id, video_id, category_id, bbox, image_file_name, video_file_name)
 
     for annotation in annotations:
-        _, _, category_id, bbox, image_file_name, _, image_width, image_height = annotation
+        _, _, category_id, bbox, image_file_name, _ = annotation
         bbox = json.loads(bbox)
         
-        # Consrtuct the path to the image file
-        image_file_path = DetectionPaths.images_input / (image_file_name + '.jpg')
+        # Construct the path to the image file
+        image_file_path = DetectionPaths.images_input / image_file_name
         
         # Check if the image file exists
         if not image_file_path.is_file():
@@ -87,7 +97,8 @@ def save_annotations(
 
     # Write the lines to text files
     for image_file_name, lines in file_contents.items():
-        txt_file = output_dir / (image_file_name + '.txt')
+        file_name_without_extension = Path(image_file_name).stem
+        txt_file = output_dir / (file_name_without_extension + '.txt')
         try:
             with open(txt_file, 'w') as f:
                 f.writelines(lines)

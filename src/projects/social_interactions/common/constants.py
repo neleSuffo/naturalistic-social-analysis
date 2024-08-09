@@ -114,9 +114,9 @@ class YoloParameters:
         "src/projects/social_interactions/models/yolo_inference/dataset.yaml"
     )
     yolov5_repo_path = Path("../yolov5")
-    labels_input = Path("../../ProcessedData/yolo_labels/")
+    labels_input = Path("../../ProcessedData/yolo_labels")
     # the path to the input folder for the yolo model
-    data_input = Path("../../ProcessedData/yolo/")
+    data_input = Path("../../ProcessedData/yolo")
     batch_size = 32
     epochs = 100
     img_size = 640
