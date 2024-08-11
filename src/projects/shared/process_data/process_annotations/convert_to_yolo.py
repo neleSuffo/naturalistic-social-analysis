@@ -51,6 +51,35 @@ def convert_to_yolo_format(
     return (x_center, y_center, width, height)
 
 
+def find_alternative_image(
+    image_file_name: str
+) -> Path:
+    """ 
+    This function searches for an alternative image file with the same quantex_at_home_id.
+    
+    Parameters
+    ----------
+    image_file_name : str
+        The original image file name.
+
+    Returns
+    -------
+    Path
+        The path to the alternative image file, or None if not found.
+    """
+    # Split the string by underscores
+    parts = image_file_name.split('_')
+    # Join the relevant parts (up to the 5th underscore)
+    quantex_id = "_".join(parts[:8])
+    
+    # Search for alternative images in the directory with the same quantex_at_home_id
+    for image_path in DetectionPaths.images_input.glob(f"{quantex_id}*"):
+        if image_path.name != image_file_name:
+            return image_path
+    
+    return None
+
+
 def save_annotations(
     annotations: list
 ) -> None:
@@ -78,8 +107,14 @@ def save_annotations(
         
         # Check if the image file exists
         if not image_file_path.is_file():
-            logging.warning(f"Image file {image_file_path} does not exist. Skipping annotation.")
-            continue
+            logging.warning(f"Image file {image_file_path} does not exist. Trying to find an alternative.")
+            image_file_path = find_alternative_image(image_file_name)
+            
+            if image_file_path:
+                logging.info(f"Using alternative image file {image_file_path}.")
+            else:
+                logging.error(f"No alternative image found for {image_file_name}. Skipping annotation.")
+                continue
     
         # YOLO format: category_id x_center y_center width height
         try:
@@ -102,6 +137,7 @@ def save_annotations(
         try:
             with open(txt_file, 'w') as f:
                 f.writelines(lines)
+            logging.info(f"Saved annotations for {image_file_name} to {txt_file}.")
         except IOError as e:
             logging.error(f"Failed to write to file {txt_file}: {e}")
 
@@ -109,7 +145,7 @@ def save_annotations(
 def main() -> None:
     logging.info("Starting the conversion process for Yolo.")
     try:
-        annotations = fetch_all_annotations()
+        annotations = fetch_all_annotations(category_ids = Yolo.class_id)
         logging.info(f"Fetched {len(annotations)} annotations.")
         save_annotations(annotations)
         logging.info("Successfully saved all annotations.")
