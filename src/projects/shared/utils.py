@@ -74,7 +74,7 @@ def fetch_all_annotations(
     -------
     list of tuple
         the list of annotations
-        (id, image_id, video_id, category_id, bbox, image_file_name, video_file_name)
+        (image_id, video_id, category_id, bbox, image_file_name, video_file_name)
     """
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()

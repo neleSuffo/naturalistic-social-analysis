@@ -14,6 +14,7 @@ def save_annotations(annotations: list) -> None:
     ----------
     annotations : list
         the list of annotations
+        (image_id, video_id, category_id, bbox, image_file_name, video_file_name)
     """
     logging.info("Saving annotations in MTCNN format.")
     output_file_path = Mtcnn.labels_input
@@ -22,7 +23,7 @@ def save_annotations(annotations: list) -> None:
     
     with open(output_file_path, 'a') as f:
         for annotation in annotations:
-            _, _, _, bbox, image_file_name, _, _, _ = annotation
+            _, _, _, bbox, image_file_name, _ = annotation
             bbox = json.loads(bbox)
             xtl, ytl, xbr, ybr = bbox
             width = xbr - xtl
