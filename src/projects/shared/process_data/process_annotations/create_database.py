@@ -248,7 +248,8 @@ def write_xml_to_database() -> None:
                     frame_id,
                     image_name,
                     ),
-                )  
+                ) 
+                added_images.add(image_name)
 
 
     # Commit and close the database connection
