@@ -413,3 +413,30 @@ def add_annotations_to_db(
     logging.info(f'Database commit for file {xml_path} successful')
     conn.close()
 
+
+def create_child_class_in_db():
+    """
+    This function creates a new class "child_body
+    """
+    conn = sqlite3.connect(DetectionPaths.annotations_db_path)
+    cursor = conn.cursor()
+    # Update the category_id for child body parts
+    query_1 = """
+    UPDATE annotations
+    SET category_id = 11
+    WHERE category_id = 1 AND person_ID = 1;
+    """
+    # Add new category to the categories table
+    query_2 = """
+    INSERT INTO categories (id, category, supercategory)
+    VALUES (11, 'child_body_part', 'person');
+    """
+    # Execute the query
+    cursor.execute(query_1)
+    logging.info("Successfully updated category_id for child body parts.")
+    cursor.execute(query_2)
+    logging.info("Successfully added new category 'child_body_part' to the categories table.")
+
+    # Commit the changes and close the connection
+    conn.commit()
+    conn.close()
