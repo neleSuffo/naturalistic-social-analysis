@@ -78,6 +78,7 @@ class LabelToCategoryMapping:
             "object": 9,
             "other_object": 9,
             "face": 10,
+            'child_body_parts': 11,
             "voice": 20,
             "noise": -1,
         },
@@ -120,7 +121,7 @@ class YoloParameters:
     batch_size = 32
     epochs = 100
     img_size = 640
-    class_id = [1,2]
+    class_id = [1,2,11]
 
 
 class MtcnnParameters:
