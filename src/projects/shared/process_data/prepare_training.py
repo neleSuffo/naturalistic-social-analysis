@@ -179,6 +179,10 @@ def copy_mtcnn_files(
     """
     logging.info(f"Moving MTCNN files to {train_dir_images}, {val_dir_images}, {train_labels_path} and {val_labels_path}")
     # Move the images to the training and validation directories
+    # Convert all elements in train_files and val_files to Path objects
+    train_files = [Path(file_path) for file_path in train_files]
+    val_files = [Path(file_path) for file_path in val_files]
+    
     for file_path in train_files:
         src_image_path = DetectionPaths.images_input / file_path.name
         dest_image_path = train_dir_images / file_path.name
@@ -372,7 +376,7 @@ def main():
     # Split corresponding image files into training and validation sets
     train_files, val_files = images_train_val_split(DetectionPaths.images_input, train_videos, val_videos)
     # Move label files and delete empty labels directory
-    prepare_yolo_dataset(Yolo.data_input, train_files, val_files)
+    #prepare_yolo_dataset(Yolo.data_input, train_files, val_files)
     prepare_mtcnn_dataset(Mtcnn.data_input, train_files, val_files)
 
 
