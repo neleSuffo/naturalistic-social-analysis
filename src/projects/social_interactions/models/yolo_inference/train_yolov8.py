@@ -13,7 +13,8 @@ def main():
         imgsz=Yolo.img_size, 
         device=[0, 1], # Train on GPU 0 and 1
         project="outputs/yolov8/train",         
-        name="exp"
+        name="exp",
+        classes=[1,2]  # Focus on training the 'person' and 'reflection' class
     )
 
     print("Training results:", results)
