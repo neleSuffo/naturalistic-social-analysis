@@ -102,6 +102,14 @@ def save_annotations(
         _, _, category_id, bbox, image_file_name, _ = annotation
         bbox = json.loads(bbox)
         
+        # Remap the category_id
+        if category_id == 1:
+            category_id = 0  # "person"
+        elif category_id == 2:
+            category_id = 1  # "reflection"
+        elif category_id == 11:
+            category_id = 2  # "child_body_parts"
+        
         # Construct the path to the image file
         image_file_path = DetectionPaths.images_input / image_file_name
         
@@ -137,7 +145,6 @@ def save_annotations(
         try:
             with open(txt_file, 'w') as f:
                 f.writelines(lines)
-            logging.info(f"Saved annotations for {image_file_name} to {txt_file}.")
         except IOError as e:
             logging.error(f"Failed to write to file {txt_file}: {e}")
 
