@@ -96,25 +96,23 @@ def copy_yolo_files(
     Parameters
     ----------
     files_to_move_lst : list
-        the list of files to move
+        the list of image files to move
     dest_dir_images : Path
         the destination directory for the image files
     dest_dir_labels : Path
         the destination directory for the label files
     """        
-    logging.info(f"Moving YOLO files to {dest_dir_images} and {dest_dir_labels}")
+    logging.info(f"Copying YOLO files to {dest_dir_images} and {dest_dir_labels}")
     # Move the files to the new directory
     for file_path in files_to_move_lst:
+        file_path = Path(file_path)
         # Construct the full source paths for the image and label
-        src_label_path = Yolo.labels_input / file_path.with_suffix('.txt').name
-
-        # Construct the destination paths for the image and label
-        dest_image_path = dest_dir_images / file_path.name
-        dest_label_path = dest_dir_labels / file_path.with_suffix('.txt').name
+        src_image_path = DetectionPaths.images_input / file_path
+        src_label_path = Yolo.labels_input / file_path.with_suffix('.txt')
 
         # Copy the images and move the label to their new destinations
-        shutil.copy(file_path, dest_image_path)
-        src_label_path.rename(dest_label_path)
+        shutil.copy(src_image_path, dest_dir_images)
+        shutil.copy(src_label_path, dest_dir_labels)
     logging.info("YOLO files copied successfully")
 
 
@@ -131,9 +129,9 @@ def prepare_yolo_dataset(
     destination_dir : Path
         the destination directory to store the training and validation sets
     train_files : list
-        the list of training files
+        the list of image training files
     val_files : list
-        the list of validation files
+        the list of image validation files
     """
     # Define source directory and new directories for training
     train_dir_images = destination_dir / "images/train"
@@ -150,7 +148,7 @@ def prepare_yolo_dataset(
     copy_yolo_files(val_files, val_dir_images, val_dir_labels)  
     
     # Delete the empty labels directory
-    shutil.rmtree(Yolo.labels_input)
+    #shutil.rmtree(Yolo.labels_input)
 
 
 def copy_mtcnn_files(
