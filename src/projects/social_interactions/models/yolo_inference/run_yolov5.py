@@ -56,9 +56,9 @@ def run_person_detection(
             f"The video file {video_input_path} does not exist or is not accessible."
         )
 
-    # Check if the model is a valid YOLOv5 model
+    # Check if the model is a valid YOLO model
     if not isinstance(model, torch.nn.Module):
-        raise ValueError("The model is not a valid YOLOv5 model.")
+        raise ValueError("The model is not a valid YOLO model.")
 
     # Get the class labels and class index
     class_list = model.names

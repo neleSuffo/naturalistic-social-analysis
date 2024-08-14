@@ -6,7 +6,7 @@ from multiprocessing.pool import ThreadPool
 from pathlib import Path
 from timeit import default_timer as timer
 from src.projects.social_interactions.models.mtcnn import run_mtcnn
-from src.projects.social_interactions.models.yolov5_inference import run_yolov5
+from src.projects.social_interactions.models.yolo_inference import run_yolov5
 from src.projects.social_interactions.scripts.language import detect_voices
 from src.projects.social_interactions.common.constants import (
     DetectionPaths,
@@ -60,7 +60,8 @@ class Detector:
                 max_existing_annotation_id = max(existing_annotation_ids, default=0)
                 max_existing_image_id = max(existing_image_ids, default=0)
         else:
-            max_existing_annotation_id, max_existing_image_id = 0
+            max_existing_annotation_id = 0
+            max_existing_image_id = 0
             self.existing_image_file_names = []
 
         # Initialize shared annotation_id and image_id
@@ -274,7 +275,6 @@ class Detector:
                             for video_file in batch
                         ],
                     )
-                self.monitor_resources()  # Monitor resources after each batch
         except Exception as e:
             logging.error(f"An error occurred during detection: {e}")
             raise
@@ -299,26 +299,11 @@ class Detector:
             
         # Save the results to a JSON file
         # Check if a results file already exists
-        my_utils.update_or_create_output_json_file(DetectionPaths.combined_json_output_path, combined_coco_output)
-
-    def monitor_resources(self, batch_number: int, total_batches: int):
-        """
-        This function monitors the system resources during the detection process.
-
-        Parameters
-        ----------
-        batch_number : int
-            the current batch number
-        total_batches : int
-            the total number of batches
-        """
-        cpu_usage = psutil.cpu_percent(interval=1)
-        memory_usage = psutil.virtual_memory().percent
-        logging.info(f"Batch {batch_number}/{total_batches} completed. CPU Usage: {cpu_usage}%, Memory Usage: {memory_usage}%")
-
-        # Example of dynamic adjustment logic:
-        if cpu_usage > 80 or memory_usage > 80:
-            logging.warning("High resource usage detected. Consider reducing batch size or increasing system resources.")
+        #my_utils.update_or_create_json_file(DetectionPaths.combined_json_output_path, combined_coco_output)
+        #for now:
+            # Write the COCO output directly to the file
+        with DetectionPaths.combined_json_output_path.open('w') as file:
+            json.dump(combined_coco_output, file, indent=4)
 
 
 def main(detections_dict: dict) -> None:
@@ -342,7 +327,7 @@ def main(detections_dict: dict) -> None:
 
 
 if __name__ == "__main__":
-    os.environ['OMP_NUM_THREADS'] = '1'
+    os.environ['OMP_NUM_THREADS'] = '2'
     logging.basicConfig(level=logging.INFO)
     detections_dict = {
         "person": False,
