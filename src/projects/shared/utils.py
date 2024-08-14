@@ -2,11 +2,35 @@ import torch
 import cv2
 import sqlite3
 from facenet_pytorch import MTCNN
+from ultralytics import YOLO
 from typing import List, Optional
 from src.projects.social_interactions.common.constants import (
     YoloParameters,
     DetectionPaths,
 )
+
+
+def load_trained_yolov8_model(
+    model_path: str = YoloParameters.trained_weights_path
+) -> YOLO:
+    """
+    This function loads the YOLOv8 model from the local path.
+
+   Parameters
+    ----------
+    model_path : str
+        The path to the saved YOLOv8 model weights file (e.g., 'best.pt').
+
+    Returns
+    -------
+    YOLO
+        The YOLOv8 model loaded with the specified weights.
+
+    """
+    print(f"Loading YOLOv8 model from: {model_path}")
+    # Load the YOLOv8 model from the provided path
+    model = YOLO(model_path)  
+    return model
 
 
 def load_yolov5_model(
