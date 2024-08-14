@@ -1,5 +1,5 @@
 import os
-from src.projects.shared.process_data.process_annotations.create_database import write_xml_to_database, create_db_table_video_name_id_mapping, correct_erronous_videos_in_db, add_annotations_to_db
+from src.projects.shared.process_data.process_annotations.create_database import write_xml_to_database, create_db_table_video_name_id_mapping, correct_erronous_videos_in_db, add_annotations_to_db, create_child_class_in_db
 from src.projects.shared.process_data.process_annotations.create_file_name_id_dict import create_file_name_id_dict
 from src.projects.shared.process_data.process_annotations.convert_to_yolo import main as convert_to_yolo
 from src.projects.shared.process_data.process_annotations.convert_to_mtcnn import main as convert_to_mtcnn
@@ -7,7 +7,7 @@ from src.projects.social_interactions.common.constants import DetectionPaths
 from pathlib import Path
 
 def main():
-    os.environ['OMP_NUM_THREADS'] = '1'
+    os.environ['OMP_NUM_THREADS'] = '10'
     # Create a dictionary with the task name as key and a file id as valuey
     task_file_id_dict = create_file_name_id_dict(DetectionPaths.file_name_id_dict_path)
     # Create a database table for the video file names and ids
@@ -21,9 +21,13 @@ def main():
     for file_name in DetectionPaths.annotations_individual_folder_path.iterdir():
         add_annotations_to_db(file_name)
     
+    # Exclude child body parts from the class "person" in the YOLO labels
+    # Create new class "child_body_parts" and update database
+    create_child_class_in_db()
+    
     # Convert the annotations to YOLO format and MTCNN format
     convert_to_yolo()
-    convert_to_mtcnn()
+    #convert_to_mtcnn()
 
 
 if __name__ == "__main__":
