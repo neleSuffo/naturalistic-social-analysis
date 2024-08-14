@@ -1,12 +1,12 @@
 
-train: /home/nele_pauline_suffo/ProcessedData/yolo/images/train
-val: /home/nele_pauline_suffo/ProcessedData/yolo/images/val
+train: /home/nele_pauline_suffo/ProcessedData/yolo_small/images/train
+val: /home/nele_pauline_suffo/ProcessedData/yolo_small/images/val
 
 # Number of classes
 nc: 3 
 
 # Class names
 names:
-  1: "person"
-  2: "reflection"
-  11: "reflection"
+  0: "person"
+  1: "reflection"
+  2: "child_body_parts"
