@@ -310,7 +310,7 @@ def get_video_lengths() -> list:
     return video_lengths
 
 
-def balanced_random_train_val_split(
+def balanced_train_val_video_split(
     train_ratio: float
 ) -> tuple:
     
@@ -368,16 +368,18 @@ def balanced_random_train_val_split(
 
     return train_videos, val_videos
 
+
 def main():
-    os.environ['OMP_NUM_THREADS'] = '1'
+    os.environ['OMP_NUM_THREADS'] = '10'
     create_missing_annotation_files(DetectionPaths.images_input, Yolo.labels_input)
     # Split video files into training and validation sets
-    train_videos, val_videos  = balanced_random_train_val_split(TrainParameters.train_test_split) 
+    train_videos, val_videos  = balanced_train_val_video_split(TrainParameters.train_test_split) 
     # Split corresponding image files into training and validation sets
     train_files, val_files = images_train_val_split(DetectionPaths.images_input, train_videos, val_videos)
-    # Move label files and delete empty labels directory
-    #prepare_yolo_dataset(Yolo.data_input, train_files, val_files)
-    prepare_mtcnn_dataset(Mtcnn.data_input, train_files, val_files)
+    
+    # Copy label files
+    prepare_yolo_dataset(Yolo.data_input, train_files, val_files)
+    #prepare_mtcnn_dataset(Mtcnn.data_input, train_files, val_files)
 
 
 if __name__ == "__main__":

@@ -1,5 +1,5 @@
 import os
-from src.projects.shared.process_data.process_annotations.create_database import write_xml_to_database, create_db_table_video_name_id_mapping, correct_erronous_videos_in_db, add_annotations_to_db, create_child_class_in_db
+from src.projects.shared.process_data.process_annotations.create_database import write_xml_to_database, create_db_table_video_name_id_mapping, correct_erronous_videos_in_db, create_child_class_in_db
 from src.projects.shared.process_data.process_annotations.create_file_name_id_dict import create_file_name_id_dict
 from src.projects.shared.process_data.process_annotations.convert_to_yolo import main as convert_to_yolo
 from src.projects.shared.process_data.process_annotations.convert_to_mtcnn import main as convert_to_mtcnn
@@ -16,10 +16,6 @@ def main():
     write_xml_to_database()
     # Delete the erroneous videos in the database and add the new data form the indivual xml files
     correct_erronous_videos_in_db()
-    
-    # Add the correct annotations to the database
-    for file_name in DetectionPaths.annotations_individual_folder_path.iterdir():
-        add_annotations_to_db(file_name)
     
     # Exclude child body parts from the class "person" in the YOLO labels
     # Create new class "child_body_parts" and update database
