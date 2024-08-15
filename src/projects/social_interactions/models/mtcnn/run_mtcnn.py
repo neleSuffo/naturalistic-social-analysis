@@ -173,6 +173,8 @@ def detection_coco_output(
     detection_output = {
         DP.output_key_images: [], 
         DP.output_key_annotations: [],
+        DP.output_key_categories: [],
+
     }
 
     # Determine the category ID for face detection
@@ -197,8 +199,7 @@ def detection_coco_output(
                 
                 # Continue if faces are detected
                 if boxes is not None:
-                    file_name = f"{video_file_name}_{frame_count}.jpg"
-
+                    file_name = f"{video_file_name}_{frame_count:06}.jpg"
                     # Only add image if it does not exist in the combined JSON output file
                     if file_name not in existing_image_file_names:
                         detection_output[DP.output_key_images].append({
@@ -220,7 +221,14 @@ def detection_coco_output(
                                 "score": prob,
                             })
                             with annotation_id.get_lock():
-                                annotation_id.value += 1
+                                annotation_id.value += 1                          
+                                                        
+                        # Ensure category information is added only once
+                        if category_id not in [category['id'] for category in detection_output[DP.output_key_categories]]:
+                            detection_output[DP.output_key_categories].append({
+                                "id": category_id,
+                                "name": DP.mtcnn_detection_class
+                            })
 
                         with image_id.get_lock():
                             image_id.value += 1

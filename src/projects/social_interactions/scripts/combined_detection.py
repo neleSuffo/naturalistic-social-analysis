@@ -59,7 +59,8 @@ class OutputMerger:
         # Add annotations and images
         self.combined_output[DetectionParameters.output_key_annotations].extend(detection_output.get(DetectionParameters.output_key_annotations, []))
         self.combined_output[DetectionParameters.output_key_images].extend(detection_output.get(DetectionParameters.output_key_images, []))
-
+        self.combined_output[DetectionParameters.output_key_categories].extend(detection_output.get(DetectionParameters.output_key_categories, []))
+    
     def get_combined_output(self):
         return self.combined_output
     
@@ -273,7 +274,7 @@ def main(detections: dict) -> None:
 
 
 if __name__ == "__main__":
-    os.environ['OMP_NUM_THREADS'] = '2'
+    os.environ['OMP_NUM_THREADS'] = '5'
     # Define which detections to perform
     detections = {"person": False, "face": True, "voice": False}
     main(detections)
