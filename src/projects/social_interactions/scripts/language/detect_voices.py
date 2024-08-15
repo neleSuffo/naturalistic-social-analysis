@@ -1,4 +1,4 @@
-from src.projects.social_interactions.common.constants import VTCParameters
+from src.projects.social_interactions.common.constants import VTCParameters, DetectionParameters as DP
 from src.projects.social_interactions.scripts.language import call_vtc, my_utils
 import logging
 import multiprocessing
@@ -28,9 +28,9 @@ def run_voice_detection(
     """
     # Initialize detection output
     detection_output = {
-        "videos": [], 
-        "annotations": [], 
-        "images": []}
+        DP.output_key_videos: [], 
+        DP.output_key_annotations: [], 
+        DP.output_key_images: []}
 
     # Create the output directory if it does not exist
     VTCParameters.output_path.mkdir(parents=True, exist_ok=True)
@@ -42,11 +42,10 @@ def run_voice_detection(
         logging.error(f"Failed to run voice-type-classifier: {e}")
     
     # Convert the output of the voice-type-classifier to a pandas DataFrame
-    vtc_output_df = my_utils.rttm_to_dataframe(VTCParameters.output_file_path)
+    voice_detection_df = my_utils.rttm_to_dataframe(VTCParameters.output_file_path)
 
     # Get the unique audio file names
-    unique_files = vtc_output_df['audio_file_name'].unique()
-    VTCParameters.audio_name_ending
+    unique_files = voice_detection_df['audio_file_name'].unique()
 
     for file_name in unique_files:
         # Get the video file name and file ID
@@ -54,7 +53,7 @@ def run_voice_detection(
         file_id = video_file_ids_dict[cleaned_audio_file_name]
         
         # Filter DataFrame for current file
-        file_df = vtc_output_df[vtc_output_df['audio_file_name'] == file_name]
+        file_df = voice_detection_df[voice_detection_df['audio_file_name'] == file_name]
 
         # Generate and append video entry
         detection_output["videos"].append({
@@ -62,7 +61,7 @@ def run_voice_detection(
             "file_name": file_name,
         })
         # Generate detection output in COCO format
-        file_detection_output = my_utils.get_utterances_detection_output(
+        file_detection_output = my_utils.convert_utterances_to_coco(
             file_df,
             annotation_id,
             image_id,
@@ -70,7 +69,7 @@ def run_voice_detection(
             file_id,
         )
         # Accumulate annotations and images
-        detection_output["annotations"].extend(file_detection_output["annotations"])
-        detection_output["images"].extend(file_detection_output["images"])
+        detection_output[DP.output_key_annotations].extend(file_detection_output[DP.output_key_annotations])
+        detection_output[DP.output_key_images].extend(file_detection_output[DP.output_key_images])
     
     return detection_output

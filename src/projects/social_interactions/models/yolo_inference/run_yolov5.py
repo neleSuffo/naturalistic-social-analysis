@@ -1,9 +1,5 @@
 from src.projects.social_interactions.common.constants import DetectionPaths, DetectionParameters
-from src.projects.social_interactions.common.my_utils import (
-    create_video_writer,
-    detection_coco_output,
-    detection_video_output,
-)
+from src.projects.social_interactions.common.my_utils import create_video_writer
 from src.projects.social_interactions.config.config import generate_detection_output_video
 from typing import Optional
 import numpy as np
@@ -14,7 +10,7 @@ import json
 import multiprocessing
 
 
-def run_person_detection(
+def run_yolo(
     video_input_path: str,
     annotation_id: multiprocessing.Value,
     image_id: multiprocessing.Value,

@@ -14,7 +14,7 @@ import logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
-def get_utterances_detection_output(
+def convert_utterances_to_coco(
     df: pd.DataFrame,
     annotation_id: multiprocessing.Value,
     image_id: multiprocessing.Value,

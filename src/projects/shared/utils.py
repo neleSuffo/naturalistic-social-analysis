@@ -1,7 +1,6 @@
 import torch
 import cv2
 import sqlite3
-from facenet_pytorch import MTCNN
 from ultralytics import YOLO
 from typing import List, Optional
 from src.projects.social_interactions.common.constants import (
@@ -59,21 +58,6 @@ def load_yolov5_model(
     # Save the model locally for future use
     torch.save(model.state_dict(), local_path)
     return model
-
-
-def load_mtcnn_model() -> MTCNN:
-    """
-    This function loads the MTCNN model.
-
-    Returns
-    -------
-    MTCNN
-        the MTCNN model
-
-    """
-    # Load the MTCNN model
-    mtcnn = MTCNN(keep_all=True)
-    return mtcnn
 
 
 def fetch_all_annotations(
