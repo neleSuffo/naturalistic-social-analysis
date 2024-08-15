@@ -257,6 +257,7 @@ def write_xml_to_database() -> None:
     logging.info("Database setup complete. Closing connection.")
     conn.close()
 
+
 def get_frame_width_height(video_file_name: str) -> tuple:
     """
     This function gets the frame width and height of a video file.
@@ -326,9 +327,11 @@ def create_db_table_video_name_id_mapping(task_file_id_dict: dict) -> None:
     conn.commit()
     conn.close()
 
+
 def correct_erronous_videos_in_db() -> None:
     """
     This function deletes erroneous videos in the database.
+    It also adds the correct annotations to the database.
     """    
     # Delete annotations and images for videos with video_id > 100 
     # Connect to the SQLite database
@@ -340,10 +343,16 @@ def correct_erronous_videos_in_db() -> None:
     cursor.execute("DELETE FROM images WHERE video_id > ?", (video_id_threshold,))
     conn.commit()
     logging.info("Finished deleting erroneous videos in the database.")
+    
+    # Add the correct annotations to the database
+    for file_name in DetectionPaths.annotations_individual_folder_path.iterdir():
+        add_annotations_to_db(cursor, conn, file_name)
     conn.close()
 
 
 def add_annotations_to_db(
+    cursor: sqlite3.Cursor,
+    conn: sqlite3.Connection,
     xml_path: Path
 ) -> None:
     """ 
@@ -351,12 +360,16 @@ def add_annotations_to_db(
     
     Parameters
     ----------
+    cursor : sqlite3.Cursor
+        the cursor object
+    conn : sqlite3.Connection
+        the connection object
     xml_path : Path
         the path to the XML file
     """
     # Connect to the SQLite database
-    conn = sqlite3.connect(DetectionPaths.annotations_db_path)
-    cursor = conn.cursor()
+    #conn = sqlite3.connect(DetectionPaths.annotations_db_path)
+    #cursor = conn.cursor()
 
     # Load the XML file
     tree = ET.parse(xml_path)
@@ -382,18 +395,39 @@ def add_annotations_to_db(
             row = box.attrib
             frame_id_padded = f'{int(row["frame"]):06}'
             bbox_json = json.dumps([float(row["xtl"]), float(row["ytl"]), float(row["xbr"]), float(row["ybr"])])
+            
+            # Extract other attributes
+            person_visibility = box.find(".//attribute[@name='Visibility']")
+            person_visibility_value = int(person_visibility.text) if person_visibility is not None else None
+
+            person_id = box.find(".//attribute[@name='ID']")
+            person_id_value = int(person_id.text) if person_id is not None else None
+
+            person_age = box.find(".//attribute[@name='Age']")
+            person_age_value = person_age.text if person_age is not None else None
+
+            person_gender = box.find(".//attribute[@name='Gender']")
+            person_gender_value = person_gender.text if person_gender is not None else None
+
+            object_interaction = box.find(".//attribute[@name='Interaction']")
+            object_interaction_value = object_interaction.text if object_interaction is not None else "No"
 
             # Insert the annotation into the database
             cursor.execute(
                 """
-                INSERT INTO annotations (image_id, video_id, category_id, bbox)
-                VALUES (?, ?, ?, ?)
+                INSERT INTO annotations (image_id, video_id, category_id, bbox, person_visibility, person_ID, person_age, person_gender, object_interaction)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
                 (
                     row["frame"], # image_id
                     task_id, # video_id
                     track_label_id, # category_id
                     bbox_json, # bbox coordinates
+                    person_visibility_value,
+                    person_id_value,
+                    person_age_value,
+                    person_gender_value,
+                    object_interaction_value,
                 ),
             )
 
@@ -409,9 +443,9 @@ def add_annotations_to_db(
                     f'{task_name}_{frame_id_padded}', # file_name
                 ),
             )
+            #TODO: also add id, gender, age, visibility to the database
     conn.commit()
     logging.info(f'Database commit for file {xml_path} successful')
-    conn.close()
 
 
 def create_child_class_in_db():

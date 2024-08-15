@@ -244,7 +244,7 @@ def detection_coco_output(
                 DetectionParameters.yolo_detection_class
             ]
 
-        # Initialize frame count and image id
+        # Initialize frame count
         frame_count = 0
 
         # Loop through frames
