@@ -88,6 +88,7 @@ def write_xml_to_database() -> None:
             video_id INTEGER,
             category_id INTEGER,
             bbox TEXT,
+            outside INTEGER,
             person_visibility INTEGER,
             person_ID INTEGER,
             person_age TEXT,
@@ -198,6 +199,7 @@ def write_xml_to_database() -> None:
         for box in track.iter("box"):
             row = box.attrib
             frame_id = int(row["frame"]) - frame_correction
+            outside = int(row["outside"]) # 0 if the object is inside the frame, 1 if it is outside
             frame_id_padded = f'{frame_id:06}'
             bbox_json = json.dumps([float(row["xtl"]), float(row["ytl"]), float(row["xbr"]), float(row["ybr"])])
 
@@ -220,14 +222,15 @@ def write_xml_to_database() -> None:
             # Insert the annotation into the database
             cursor.execute(
             """
-                INSERT INTO annotations (image_id, video_id, category_id, bbox, person_visibility, person_ID, person_age, person_gender, object_interaction)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO annotations (image_id, video_id, category_id, bbox, outside, person_visibility, person_ID, person_age, person_gender, object_interaction)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
                 (
                 frame_id,
                 task_id,
                 track_label_id,
                 bbox_json,
+                outside,
                 person_visibility_value,
                 person_id_value,
                 person_age_value,
@@ -367,9 +370,8 @@ def add_annotations_to_db(
     xml_path : Path
         the path to the XML file
     """
-    # Connect to the SQLite database
-    #conn = sqlite3.connect(DetectionPaths.annotations_db_path)
-    #cursor = conn.cursor()
+    # Initialize an empty set for added categories and videos
+    added_images = set()
 
     # Load the XML file
     tree = ET.parse(xml_path)
@@ -389,10 +391,15 @@ def add_annotations_to_db(
         # Map the label to its corresponding label id using the dictionary
         # returns -1 if the label is not in the dictionary
         track_label_id = LabelToCategoryMapping.label_dict.get(track_label, -1)
+        # Map the label to its corresponding supercategory using the dictionary
+        supercategory = LabelToCategoryMapping.supercategory_dict.get(
+            track_label_id, LabelToCategoryMapping.unknown_supercategory
+        )  # returns "unknown" if the label is not in the dictionary
 
         # Iterate over each 'box' element within the 'track'
         for box in track.iter("box"):
             row = box.attrib
+            outside = int(row["outside"]) # 0 if the object is inside the frame, 1 if it is outside
             frame_id_padded = f'{int(row["frame"]):06}'
             bbox_json = json.dumps([float(row["xtl"]), float(row["ytl"]), float(row["xbr"]), float(row["ybr"])])
             
@@ -415,14 +422,15 @@ def add_annotations_to_db(
             # Insert the annotation into the database
             cursor.execute(
                 """
-                INSERT INTO annotations (image_id, video_id, category_id, bbox, person_visibility, person_ID, person_age, person_gender, object_interaction)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO annotations (image_id, video_id, category_id, bbox, outside, person_visibility, person_ID, person_age, person_gender, object_interaction)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
                 (
                     row["frame"], # image_id
                     task_id, # video_id
                     track_label_id, # category_id
                     bbox_json, # bbox coordinates
+                    outside,
                     person_visibility_value,
                     person_id_value,
                     person_age_value,
@@ -430,20 +438,21 @@ def add_annotations_to_db(
                     object_interaction_value,
                 ),
             )
-
-            cursor.execute(
+            # Add image details if not already added
+            image_name = f"{task_name}_{frame_id_padded}.jpg"
+            if image_name not in added_images:
+                cursor.execute(
                 """
-                INSERT INTO images (video_id, frame_id, file_name)
-
-                VALUES (?, ?, ?)
-            """,
-                (
+                    INSERT INTO images (video_id, frame_id, file_name)
+                    VALUES (?, ?, ?)
+                """,
+                    (
                     task_id, # video_id
                     row["frame"], # frame_id
-                    f'{task_name}_{frame_id_padded}', # file_name
-                ),
-            )
-            #TODO: also add id, gender, age, visibility to the database
+                    image_name,
+                    ),
+                ) 
+                added_images.add(image_name)
     conn.commit()
     logging.info(f'Database commit for file {xml_path} successful')
 
