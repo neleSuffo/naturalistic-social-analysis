@@ -6,6 +6,7 @@ from src.projects.social_interactions.common.my_utils import create_video_writer
 from src.projects.social_interactions.config.config import generate_detection_output_video
 from typing import Optional
 import cv2
+import logging
 import multiprocessing
 from tqdm import tqdm
 
@@ -55,13 +56,16 @@ def run_mtcnn(
     # If a detection output video should be generated
     if generate_detection_output_video:
         video_output_path = DetectionPaths.face / f"{video_file_name}.mp4"
+        print(video_output_path)
         process_and_save_video(
             cap, 
+            video_file,
             video_output_path, 
             model)
+        logging.info(f"Detection output video generated at {video_output_path}.")
         return None
     else:
-        return detection_coco_output(
+        detection_results = detection_coco_output(
             cap, 
             model, 
             video_file_name, 
@@ -70,6 +74,8 @@ def run_mtcnn(
             image_id, 
             existing_image_file_names
         )
+        logging.info("Detection results generated in COCO format.")
+        return detection_results
 
 
 def validate_inputs(video_input_path: Path, model: MTCNN):
@@ -99,7 +105,11 @@ def validate_inputs(video_input_path: Path, model: MTCNN):
         raise ValueError("The model is not a valid MTCNN model.")
 
 
-def process_and_save_video(cap: cv2.VideoCapture, video_output_path: Path, model: MTCNN):
+def process_and_save_video(
+    cap: cv2.VideoCapture, 
+    video_file: Path,
+    video_output_path: Path, 
+    model: MTCNN):
     """
     Processes the video frame-by-frame, applies face detection, and saves the output video.
 
@@ -107,6 +117,8 @@ def process_and_save_video(cap: cv2.VideoCapture, video_output_path: Path, model
     ----------
     cap : cv2.VideoCapture
         The video capture object.
+    video_file : Path
+        The path to the input video file.
     video_output_path : Path
         The path where the output video should be saved.
     model : MTCNN
@@ -126,7 +138,7 @@ def process_and_save_video(cap: cv2.VideoCapture, video_output_path: Path, model
     detection_video_output(
         cap,
         out,
-        str(video_output_path),
+        str(video_file),
         str(video_output_path),
         model,
     )
@@ -169,6 +181,7 @@ def detection_coco_output(
     """
     # Get total number of frames
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    batch_size = 16
     # Initialize detection output
     detection_output = {
         DP.output_key_images: [], 
@@ -202,6 +215,8 @@ def detection_coco_output(
                     file_name = f"{video_file_name}_{frame_count:06}.jpg"
                     # Only add image if it does not exist in the combined JSON output file
                     if file_name not in existing_image_file_names:
+                        with image_id.get_lock():
+                            image_id.value += 1
                         detection_output[DP.output_key_images].append({
                             "id": image_id.value,
                             "video_id": file_id,
@@ -217,7 +232,7 @@ def detection_coco_output(
                                 "id": annotation_id.value,
                                 "image_id": image_id.value,
                                 "category_id": category_id,
-                                "bbox": [x1, y1, x2 - x1, y2 - y1],
+                                "bbox": [x1, y1, x2, y2],
                                 "score": prob,
                             })
                             with annotation_id.get_lock():
@@ -230,8 +245,6 @@ def detection_coco_output(
                                 "name": DP.mtcnn_detection_class
                             })
 
-                        with image_id.get_lock():
-                            image_id.value += 1
 
     return detection_output
 
