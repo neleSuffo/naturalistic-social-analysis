@@ -93,13 +93,14 @@ def fetch_all_annotations(
 
     if category_ids:
         # Generate a string of ? placeholders that matches the length of category_ids
+        # Only fetch annotations that are not labeled noise (-1) and are not outside the frame (outside = 0)
         placeholders = ", ".join("?" for _ in category_ids)
         query = f"""
         SELECT DISTINCT a.image_id, a.video_id, a.category_id, a.bbox, i.file_name, v.file_name as video_file_name
         FROM annotations a
         JOIN images i ON a.image_id = i.frame_id AND a.video_id = i.video_id
         JOIN videos v ON a.video_id = v.id
-        WHERE a.category_id IN ({placeholders}) AND a.category_id != -1
+        WHERE a.category_id IN ({placeholders}) AND a.category_id != -1 AND a.outside = 0
         ORDER BY a.video_id, a.image_id
         """
         cursor.execute(query, category_ids)
@@ -109,7 +110,7 @@ def fetch_all_annotations(
         FROM annotations a
         JOIN images i ON a.image_id = i.frame_id AND a.video_id = i.video_id
         JOIN videos v ON a.video_id = v.id
-        WHERE a.category_id != -1
+        WHERE a.category_id != -1 AND a.outside = 0
         ORDER BY a.video_id, a.image_id
         """
         cursor.execute(query)
