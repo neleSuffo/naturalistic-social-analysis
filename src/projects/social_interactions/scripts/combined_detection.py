@@ -6,7 +6,7 @@ from facenet_pytorch import MTCNN
 from pathlib import Path
 from timeit import default_timer as timer
 from src.projects.social_interactions.models.mtcnn.run_mtcnn import run_mtcnn
-from src.projects.social_interactions.models.yolo_inference.run_yolov5 import run_yolo
+from src.projects.social_interactions.models.yolo_inference.run_yolo import run_yolo
 from src.projects.social_interactions.scripts.language import detect_voices
 from src.projects.social_interactions.common.constants import (
     DetectionPaths,
@@ -119,7 +119,7 @@ class Detector:
         video_file, detections = args
         return self.process_video_file(video_file, detections)
 
-    def run_detection(self, detections: dict, batch_size: int = 10) -> dict:
+    def run_detection(self, detections: dict, batch_size) -> dict:
         """
         This function runs the detection models in batches.
         
@@ -128,7 +128,7 @@ class Detector:
         detections : dict
             the detections to perform
         batch_size : int
-            the batch size for processing videos, defaults to 10
+            the batch size for processing videos
         """
         # Get a list of all video files in the folder
         video_files = [
@@ -136,14 +136,14 @@ class Detector:
             for video_f in DetectionPaths.videos_input.iterdir() 
             if video_f.suffix.lower() == DetectionParameters.file_extension
         ]
-
+        # Process the videos in batches
         try:
             total_batches = (len(video_files) + batch_size - 1) // batch_size
             for i in range(0, len(video_files), batch_size):
                 batch = video_files[i:i + batch_size]
                 batch_number = (i // batch_size) + 1
                 logging.info(f"Processing batch {batch_number}/{total_batches} with {len(batch)} videos...")
-
+                # Process the videos in parallel
                 with ThreadPool() as pool:
                     pool.map(
                         self.wrapper,
@@ -162,13 +162,14 @@ class Detector:
 class MTCNNProcessor:
     def __init__(self, output_merger: OutputMerger, shared_resources):
         self.output_merger = output_merger
-        # Use the video_file_ids_dict from the Detector class
+        # Use the shared resources
         self.video_file_ids_dict = shared_resources.video_file_ids_dict
-        # Use the shared annotation_id and image_id
         self.annotation_id = shared_resources.annotation_id
         self.image_id = shared_resources.image_id
         # Pass the MTCNN model instance
-        self.model = MTCNN()
+        # keep_all=True to get all faces in the image
+        self.model = MTCNN(keep_all=True, device='cuda:0')
+
         # Initialize the list of existing image file names
         self.existing_image_file_names = []
 
@@ -199,7 +200,14 @@ class YOLOProcessor:
 
     def run_person_detection(self, video_file):
         logging.info("Running person detection...")
-        detection_output = run_yolo(self.video_file_ids_dict, self.annotation_id, self.image_id)
+        detection_output = run_yolo(
+            video_file, 
+            self.video_file_ids_dict, 
+            self.annotation_id, 
+            self.image_id, 
+            self.model,
+            self.existing_image_file_names,
+        )
         
         if detection_output:
             # Merge the results into the combined output
@@ -240,7 +248,7 @@ class VoiceTypeProcessor:
         return detection_output 
 
 
-def main(detections: dict) -> None:
+def main(detections: dict, batch_size: int) -> None:
     """
     This function runs the social interactions detection pipeline.
 
@@ -248,6 +256,8 @@ def main(detections: dict) -> None:
     ----------
     detections : dict
         the detections to perform
+    batch_size : int
+        the batch size for processing videos
     """
     logging.info("Starting detection process...")
     start_time = timer()
@@ -257,12 +267,12 @@ def main(detections: dict) -> None:
     # Create video file IDs if they don't already exist
     if not shared_resources.video_file_ids_dict:
         video_file_mapping = shared_resources.create_video_id_mapping()
-        logging.info(f"Video file IDs mapping created: {video_file_mapping}")
+        logging.info(f"Video file IDs mapping created")
         shared_resources.video_file_ids_dict = video_file_mapping
 
     # Instantiate the detector and run the detection process
     detector = Detector(shared_resources, output_merger)
-    combined_output = detector.run_detection(detections, batch_size=10)
+    combined_output = detector.run_detection(detections, batch_size)
     
     # Write the combined output to a JSON file
     with DetectionPaths.combined_json_output_path.open('w') as file:
@@ -274,8 +284,9 @@ def main(detections: dict) -> None:
 
 
 if __name__ == "__main__":
-    os.environ['OMP_NUM_THREADS'] = '5'
+    os.environ['OMP_NUM_THREADS'] = '1'
     # Define which detections to perform
     detections = {"person": False, "face": True, "voice": False}
-    main(detections)
+    batch_size = 2
+    main(detections, batch_size)
 
