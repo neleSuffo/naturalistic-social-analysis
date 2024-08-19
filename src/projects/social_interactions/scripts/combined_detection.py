@@ -171,7 +171,7 @@ class MTCNNProcessor:
         self.model = MTCNN(keep_all=True, device='cuda:0')
 
         # Initialize the list of existing image file names
-        self.existing_image_file_names = []
+        self.existing_image_file_names_with_ids = {}
 
     def run_face_detection(self, video_file):
         logging.info("Running face detection...")
@@ -181,7 +181,7 @@ class MTCNNProcessor:
             self.annotation_id, 
             self.image_id, 
             self.model,
-            self.existing_image_file_names,
+            self.existing_image_file_names_with_ids,
         )
         
         if detection_output:
@@ -206,7 +206,7 @@ class YOLOProcessor:
             self.annotation_id, 
             self.image_id, 
             self.model,
-            self.existing_image_file_names,
+            self.existing_image_file_names_with_ids,
         )
         
         if detection_output:
