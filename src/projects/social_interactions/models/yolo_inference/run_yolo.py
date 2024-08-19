@@ -18,7 +18,7 @@ def run_yolo(
     annotation_id: multiprocessing.Value,
     image_id: multiprocessing.Value,
     model: torch.nn.Module,
-    existing_image_file_names: list,
+    existing_image_file_names_with_ids: dict,
 ) -> Optional[dict]:
     """
     This function performs frame-wise person detection on a video file using a YOLO model.
@@ -37,8 +37,8 @@ def run_yolo(
         The shared image ID for COCO format.
     model : torch.nn.Module
         The YOLOv5 model.
-    existing_image_file_names : list
-        List of image file names already existing in the combined JSON output.
+    existing_image_file_names_with_ids : dict
+        List of image file names already existing in the combined JSON output with their corresponding IDs.
 
     Returns
     -------
@@ -71,7 +71,7 @@ def run_yolo(
             file_id, 
             annotation_id, 
             image_id, 
-            existing_image_file_names
+            existing_image_file_names_with_ids
         )
 
 def validate_inputs(video_file: Path, model: torch.nn.Module):
@@ -139,7 +139,7 @@ def detection_coco_output(
     file_id: int,
     annotation_id: multiprocessing.Value,
     image_id: multiprocessing.Value,
-    existing_image_file_names: list,
+    existing_image_file_names_with_ids: dict,
 ) -> dict:
     """
     This function performs detection on a video file and returns the detection results in COCO format.
@@ -158,8 +158,8 @@ def detection_coco_output(
         The unique annotation ID.
     image_id : multiprocessing.Value
         The unique image ID.
-    existing_image_file_names : list
-        The list of image file names already in the detection output JSON.
+    existing_image_file_names_with_ids : dict
+        The list of image file names already in the detection output JSON with their corresponding IDs.
 
     Returns
     -------
@@ -201,38 +201,40 @@ def detection_coco_output(
                 if results.pred[0] is not None:
                     file_name = f"{video_file_name}_{frame_count:06}.jpg"
                     # Only add the image file name if it does not already exist
-                    if file_name not in existing_image_file_names:
+                    if file_name not in existing_image_file_names_with_ids:
+                        with image_id.get_lock():
+                            image_id.value += 1
                         detection_output[DP.output_key_images].append({
                             "id": image_id.value,
                             "video_id": file_id,
                             "frame_id": frame_count,
                             "file_name": file_name,
                         })
-                        existing_image_file_names.append(file_name)
-                        
-                        # Add the annotations for the detected persons
-                        for det in results.pred[0]:
-                            x1, y1, x2, y2, conf, cls = det
-                            if int(cls) == class_index_det:
-                                detection_output[DP.output_key_annotations].append({
-                                    "id": annotation_id.value,
-                                    "image_id": image_id.value,
-                                    "category_id": category_id,
-                                    "bbox": [x1.item(), y1.item(), (x2 - x1).item(), (y2 - y1).item()],
-                                    "score": conf.item(),
-                                })
-                                with annotation_id.get_lock():
-                                    annotation_id.value += 1
-                                    
-                        # Add the person category if it does not exist
-                        if category_id not in [category['id'] for category in detection_output[DP.output_key_categories]]:
-                            detection_output[DP.output_key_categories].append({
-                                "id": category_id,
-                                "name": DP.yolo_detection_class
+                        # Add the file_name and image_id to the dictionary
+                        existing_image_file_names_with_ids[file_name] = image_id.value
+                    else:
+                        # If the file_name is already in the dictionary, retrieve the image_id
+                        image_id = existing_image_file_names_with_ids[file_name]   
+                    # Add the annotations for the detected persons
+                    for det in results.pred[0]:
+                        x1, y1, x2, y2, conf, cls = det
+                        if int(cls) == class_index_det:
+                            detection_output[DP.output_key_annotations].append({
+                                "id": annotation_id.value,
+                                "image_id": image_id.value,
+                                "category_id": category_id,
+                                "bbox": [x1.item(), y1.item(), (x2 - x1).item(), (y2 - y1).item()],
+                                "score": conf.item(),
                             })
-
-                        with image_id.get_lock():
-                            image_id.value += 1
+                            with annotation_id.get_lock():
+                                annotation_id.value += 1
+                                    
+                            # Add the person category if it does not exist
+                            if category_id not in [category['id'] for category in detection_output[DP.output_key_categories]]:
+                                detection_output[DP.output_key_categories].append({
+                                    "id": category_id,
+                                    "name": DP.yolo_detection_class
+                                })
 
     return detection_output
 

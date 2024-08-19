@@ -5,11 +5,12 @@ from src.projects.social_interactions.common.constants import DetectionPaths, De
 from src.projects.social_interactions.common.my_utils import create_video_writer
 from src.projects.social_interactions.config.config import generate_detection_output_video
 from typing import Optional
+from tqdm import tqdm
+from PIL import Image
 import cv2
 import logging
 import multiprocessing
-from tqdm import tqdm
-
+import numpy as np
 
 def run_mtcnn(
     video_file: Path,
@@ -17,7 +18,7 @@ def run_mtcnn(
     annotation_id: multiprocessing.Value,
     image_id: multiprocessing.Value,
     model: MTCNN,
-    existing_image_file_names: list,
+    existing_image_file_names_with_ids: dict,
 ) -> Optional[dict]:
     """
     This function performs frame-wise face detection on a video file (every frame_step-th frame)
@@ -36,8 +37,8 @@ def run_mtcnn(
         the shared image ID for COCO format.
     model : MTCNN
         the MTCNN face detector.
-    existing_image_file_names : list
-        list of image file names already existing in the combined JSON output.
+    existing_image_file_names_with_ids : dict
+        list of image file names already in the detection output JSON with their corresponding IDs.
     
     Returns
     -------
@@ -72,7 +73,7 @@ def run_mtcnn(
             file_id, 
             annotation_id, 
             image_id, 
-            existing_image_file_names
+            existing_image_file_names_with_ids
         )
         logging.info("Detection results generated in COCO format.")
         return detection_results
@@ -151,7 +152,7 @@ def detection_coco_output(
     file_id: str,
     annotation_id: multiprocessing.Value,
     image_id: multiprocessing.Value,
-    existing_image_file_names: list,
+    existing_image_file_names_with_ids: dict,
 ) -> dict:
     """
     This function performs detection on a video file (every frame_step-th frame)
@@ -171,8 +172,8 @@ def detection_coco_output(
         The unique annotation ID.
     image_id : multiprocessing.Value
         The unique image ID.
-    existing_image_file_names : list
-        The list of image file names already in the detection output JSON.
+    existing_image_file_names_with_ids : dict
+        The list of image file names already in the detection output JSON with their corresponding IDs.
 
     Returns
     -------
@@ -181,7 +182,6 @@ def detection_coco_output(
     """
     # Get total number of frames
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    batch_size = 16
     # Initialize detection output
     detection_output = {
         DP.output_key_images: [], 
@@ -194,49 +194,62 @@ def detection_coco_output(
     category_id = LabelToCategoryMapping.label_dict[
         DP.mtcnn_detection_class
         ]
-    
     # Create a progress bar
     with tqdm(total=total_frames, desc="Processing frames", ncols=70) as pbar:
         for frame_count in range(total_frames):
             ret, frame = cap.read()
             if not ret:
+                logging.warning(f"Frame {frame_count} could not be read. Skipping.")
                 break
-            
+
             # Update progress bar
             pbar.update()
             
             # Perform detection every frame_step-th frame
             if frame_count % DP.frame_step == 0:
+                # Convert the image from BGR (OpenCV default) to RGB
+                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                # Convert the NumPy array to a PIL Image
+                frame = Image.fromarray(frame)
+                # Resizing 
+                #TODO: Check if resizing is necessary
+                frame = frame.resize([int(f * 0.25) for f in frame.size])
+                
                 # Perform face detection using MTCNN
                 boxes, probs = model.detect(frame)
                 
-                # Continue if faces are detected
-                if boxes is not None:
-                    file_name = f"{video_file_name}_{frame_count:06}.jpg"
-                    # Only add image if it does not exist in the combined JSON output file
-                    if file_name not in existing_image_file_names:
-                        with image_id.get_lock():
-                            image_id.value += 1
-                        detection_output[DP.output_key_images].append({
-                            "id": image_id.value,
-                            "video_id": file_id,
-                            "frame_id": frame_count,
-                            "file_name": file_name,
-                        })
-                        existing_image_file_names.append(file_name)
+                # Create a unique file name for the image
+                file_name = f"{video_file_name}_{frame_count:06}.jpg"
+                # If the file_name is not in the dictionary, increment the image_id and add it to the detection output
+                if file_name not in existing_image_file_names_with_ids:
+                    with image_id.get_lock():
+                        image_id.value += 1
+                    detection_output[DP.output_key_images].append({
+                        "id": image_id.value,
+                        "video_id": file_id,
+                        "frame_id": frame_count,
+                        "file_name": file_name,
+                    })
+                    # Add the file_name and image_id to the dictionary
+                    existing_image_file_names_with_ids[file_name] = image_id.value
+                    current_image_id = image_id.value  # Store the current image ID
+                else:
+                    # If the file_name is already in the dictionary, retrieve the image_id
+                    current_image_id = existing_image_file_names_with_ids[file_name]  # Retrieve the image ID
 
-                        # Process detection results and add annotations to detection output
-                        for box, prob in zip(boxes, probs):
-                            x1, y1, x2, y2 = box
-                            detection_output[DP.output_key_annotations].append({
-                                "id": annotation_id.value,
-                                "image_id": image_id.value,
-                                "category_id": category_id,
-                                "bbox": [x1, y1, x2, y2],
-                                "score": prob,
-                            })
-                            with annotation_id.get_lock():
-                                annotation_id.value += 1                          
+                if boxes is not None:
+                    # Process detection results and add annotations to detection output
+                    for box, prob in zip(boxes, probs):
+                        x1, y1, x2, y2 = box
+                        detection_output[DP.output_key_annotations].append({
+                            "id": annotation_id.value,
+                            "image_id": current_image_id,
+                            "category_id": category_id,
+                            "bbox": [x1, y1, x2, y2],
+                            "score": prob,
+                        })
+                        with annotation_id.get_lock():
+                            annotation_id.value += 1                          
                                                         
                         # Ensure category information is added only once
                         if category_id not in [category['id'] for category in detection_output[DP.output_key_categories]]:
