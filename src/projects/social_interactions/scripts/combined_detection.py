@@ -1,22 +1,30 @@
 import os
 import json
 import logging
+import torch
+from ultralytics import YOLO
+import torch.nn as nn
 from multiprocessing.pool import ThreadPool
+from torchvision import datasets, transforms, models
+from PIL import Image
 from facenet_pytorch import MTCNN
 from pathlib import Path
 from timeit import default_timer as timer
 from src.projects.social_interactions.models.mtcnn.run_mtcnn import run_mtcnn
 from src.projects.social_interactions.models.yolo_inference.run_yolo import run_yolo
+from src. projects.social_interactions.models.resnet.train_gaze_model import GazeEstimationModel
 from src.projects.social_interactions.scripts.language import detect_voices
 from src.projects.social_interactions.common.constants import (
     DetectionPaths,
     DetectionParameters,
+    ResNetParameters,
+    YoloParameters,
+
 )
 from multiprocessing import Value
 from src.projects.social_interactions.common import my_utils
 from typing import Dict
 from threading import Lock
-
  
  # Set up logging
 logging.basicConfig(level=logging.INFO)   
@@ -157,8 +165,7 @@ class Detector:
             raise
         
         return self.output_merger.get_combined_output()           
-            
-            
+           
 class MTCNNProcessor:
     def __init__(self, output_merger: OutputMerger, shared_resources):
         self.output_merger = output_merger
@@ -169,7 +176,21 @@ class MTCNNProcessor:
         # Pass the MTCNN model instance
         # keep_all=True to get all faces in the image
         self.model = MTCNN(keep_all=True, device='cuda:0')
-
+        
+        # Load the gaze estimation model
+        self.gaze_model = GazeEstimationModel(pretrained=False)
+        if ResNetParameters.trained_model_path.exists():
+            self.gaze_model.load_state_dict(torch.load(ResNetParameters.trained_model_path))
+        # Set the model to evaluation mode
+        self.gaze_model.eval()
+        # Move the model to the GPU
+        self.gaze_model = self.gaze_model.to('cuda:0')
+        # Define the image transformation
+        self.transform = transforms.Compose([
+            transforms.Resize((224, 224)),
+            transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        ])
         # Initialize the list of existing image file names
         self.existing_image_file_names_with_ids = {}
 
@@ -185,6 +206,35 @@ class MTCNNProcessor:
         )
         
         if detection_output:
+            # For each detected face, estimate gaze
+            for annotation in detection_output[DetectionParameters.output_key_annotations]:
+                # Get the bounding box and frame ID
+                bbox = annotation["bbox"]
+                frame_id = annotation["frame_id"]
+                
+                # Find the corresponding image file
+                image_entry = next((image for image in detection_output[DetectionParameters.output_key_images] if image["id"] == frame_id), None)
+                if image_entry is not None:
+                    image_file_name = image_entry["file_name"]
+                    image_file_path = DetectionPaths.images_input / image_file_name
+                    try:
+                        # Load the image and crop the face
+                        frame = Image.open(image_file_path)
+                        face = frame.crop((bbox[0], bbox[1], bbox[0] + bbox[2], bbox[1] + bbox[3]))
+                        face = self.transform(face).unsqueeze(0).to('cuda:0')
+
+                        # Predict gaze direction
+                        with torch.no_grad():
+                            gaze_prob = self.gaze_model(face).item()
+                            annotation['gaze'] = 'looking' if gaze_prob > 0.5 else 'not looking'
+                        
+                    except FileNotFoundError:
+                        logging.error(f"Image file not found: {image_file_name}")
+                    except Exception as e:
+                        logging.error(f"Error processing image {image_file_name}: {e}")
+                else:
+                    print(f"Image entry not found for frame ID {frame_id}")
+            
             # Merge the results into the combined output
             self.output_merger.merge(detection_output)
 
@@ -197,7 +247,12 @@ class YOLOProcessor:
         # Use the shared annotation_id and image_id
         self.annotation_id = shared_resources.annotation_id
         self.image_id = shared_resources.image_id
-
+        self.model = YOLO(YoloParameters.trained_weights_path)
+        # Logging to confirm model loading
+        logging.info("YOLO model loaded successfully from %s", YoloParameters.trained_weights_path)
+        # Initialize the list of existing image file names
+        self.existing_image_file_names_with_ids = {}
+        
     def run_person_detection(self, video_file):
         logging.info("Running person detection...")
         detection_output = run_yolo(
@@ -286,7 +341,7 @@ def main(detections: dict, batch_size: int) -> None:
 if __name__ == "__main__":
     os.environ['OMP_NUM_THREADS'] = '1'
     # Define which detections to perform
-    detections = {"person": False, "face": True, "voice": False}
+    detections = {"person": True, "face": False, "voice": False}
     batch_size = 2
     main(detections, batch_size)
 
