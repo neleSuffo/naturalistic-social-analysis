@@ -3,11 +3,13 @@ from pathlib import Path
 
 
 class DetectionPaths:
-    person = Path("outputs/yolov5/")
-    face = Path("outputs/mtcnn/")
-    videos_input = Path("../../ProcessedData/videos_train/") 
+    person = Path("../../../outputs/yolo/")
+    face = Path("../../../outputs/mtcnn/")
+    #videos_input = Path("../../ProcessedData/videos_train/") 
+    #videos_input = Path("../../ProcessedData/videos/") 
+    videos_input = Path("../../ProcessedData/videos_example/") 
     images_input = Path("../../ProcessedData/images/")
-    results = Path("outputs/")
+    results = Path("/home/nele_pauline_suffo/projects/leuphana-IPE/outputs")
     frames_output = Path("outputs/frames/")
     # Path variable to the annotation xml files
     annotations_folder_path = Path("../../ProcessedData/annotations/")
@@ -15,7 +17,7 @@ class DetectionPaths:
     annotations_individual_folder_path = Path("../../ProcessedData/annotations_individual/")
     annotations_json_path = Path("../../ProcessedData/annotations/annotations.json")
     annotations_db_path = Path("../../ProcessedData/databases/annotations.db")
-    combined_json_output_path = Path(f"{results}/combined_detections.json")
+    combined_json_output_path = results/"combined_detections.json"
 
     # The file that is used to map the file names to the file ids
     file_name_id_dict_path = Path("../../ProcessedData/file_name_to_id_dict/annotations.xml")
@@ -60,6 +62,10 @@ class DetectionParameters:
     yolo_detection_class = "person"
     mtcnn_detection_class = "face"
     vtc_detection_class = "voice"
+    output_key_videos = "videos"
+    output_key_annotations = "annotations"
+    output_key_images = "images"
+    output_key_categories = "categories"
 
 
 class LabelToCategoryMapping:
@@ -111,6 +117,7 @@ class LabelToCategoryMapping:
 class YoloParameters:
     fps = 1  # the frames per second to extract from the video
     pretrained_weights_path = Path("pretrained_models/yolov5s.pt")
+    trained_weights_path = Path('../../models/yolov8_trained.pt')
     data_config = Path(
         "src/projects/social_interactions/models/yolo_inference/dataset.yaml"
     )
@@ -118,12 +125,18 @@ class YoloParameters:
     labels_input = Path("../../ProcessedData/yolo_labels")
     # the path to the input folder for the yolo model
     data_input = Path("../../ProcessedData/yolo")
-    batch_size = 32
+    batch_size = 64
     epochs = 100
-    img_size = 640
+    img_size = (320, 640) # multi scale training
     class_id = [1,2,11]
 
-
+class ResNetParameters:
+    epochs = 10
+    trained_model_path = Path('gaze_estimation_model.pth')
+    gaze_label_csv = Path('../../ProcessedData/gaze_labels.csv')
+    batch_size = 32
+    
+    
 class MtcnnParameters:
     labels_input = Path("../../ProcessedData/mtcnn/labels.txt")
     data_input = Path("../../ProcessedData/mtcnn/")
