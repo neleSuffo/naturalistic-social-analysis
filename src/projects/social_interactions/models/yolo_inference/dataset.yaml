@@ -1,6 +1,6 @@
 
-train: /home/nele_pauline_suffo/ProcessedData/yolo_small/images/train
-val: /home/nele_pauline_suffo/ProcessedData/yolo_small/images/val
+train: /home/nele_pauline_suffo/ProcessedData/yolo/images/train
+val: /home/nele_pauline_suffo/ProcessedData/yolo/images/val
 
 # Number of classes
 nc: 3 
