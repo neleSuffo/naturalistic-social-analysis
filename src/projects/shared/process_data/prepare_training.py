@@ -146,9 +146,6 @@ def prepare_yolo_dataset(
     # Move the files to the new directories
     copy_yolo_files(train_files, train_dir_images, train_dir_labels)
     copy_yolo_files(val_files, val_dir_images, val_dir_labels)  
-    
-    # Delete the empty labels directory
-    #shutil.rmtree(Yolo.labels_input)
 
 
 def copy_mtcnn_files(
