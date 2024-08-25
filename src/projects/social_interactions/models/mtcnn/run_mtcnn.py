@@ -12,13 +12,9 @@ import logging
 import multiprocessing
 import numpy as np
 
-def run_mtcnn(
+def rurun_mtcnn(
     video_file: Path,
-    video_file_ids_dict: dict,
-    annotation_id: multiprocessing.Value,
-    image_id: multiprocessing.Value,
     model: MTCNN,
-    existing_image_file_names_with_ids: dict,
 ) -> Optional[dict]:
     """
     This function performs frame-wise face detection on a video file (every frame_step-th frame)
@@ -29,16 +25,8 @@ def run_mtcnn(
     ----------
     video_file : Path
         the path to the video file.
-    video_file_ids_dict : dict
-        dictionary mapping video filenames to their corresponding IDs.
-    annotation_id : multiprocessing.Value
-        the shared annotation ID for COCO format.
-    image_id : multiprocessing.Value
-        the shared image ID for COCO format.
     model : MTCNN
         the MTCNN face detector.
-    existing_image_file_names_with_ids : dict
-        list of image file names already in the detection output JSON with their corresponding IDs.
     
     Returns
     -------
@@ -49,7 +37,6 @@ def run_mtcnn(
     validate_inputs(video_file, model)
     
     video_file_name = video_file.stem
-    file_id = video_file_ids_dict.get(video_file_name)
 
     # Load video file
     cap = cv2.VideoCapture(str(video_file))
@@ -57,7 +44,6 @@ def run_mtcnn(
     # If a detection output video should be generated
     if generate_detection_output_video:
         video_output_path = DetectionPaths.face / f"{video_file_name}.mp4"
-        print(video_output_path)
         process_and_save_video(
             cap, 
             video_file,
@@ -66,16 +52,12 @@ def run_mtcnn(
         logging.info(f"Detection output video generated at {video_output_path}.")
         return None
     else:
-        detection_results = detection_coco_output(
+        detection_results = detection_json_output(
             cap, 
             model, 
             video_file_name, 
-            file_id, 
-            annotation_id, 
-            image_id, 
-            existing_image_file_names_with_ids
         )
-        logging.info("Detection results generated in COCO format.")
+        logging.info("Detection results generated.")
         return detection_results
 
 
@@ -145,18 +127,14 @@ def process_and_save_video(
     )
 
 
-def detection_coco_output(
+def detection_json_output(
     cap: cv2.VideoCapture,
     model: MTCNN,
     video_file_name: str,
-    file_id: str,
-    annotation_id: multiprocessing.Value,
-    image_id: multiprocessing.Value,
-    existing_image_file_names_with_ids: dict,
 ) -> dict:
     """
-    This function performs detection on a video file (every frame_step-th frame)
-    It returns the detection results in COCO format.
+    This function performs detection on a video file 
+    It returns the detection results in JSON format.
     
     Parameters
     ----------
@@ -166,35 +144,21 @@ def detection_coco_output(
         The MTCNN model used for face detection.
     video_file_name : str
         The name of the video file.
-    file_id : str
-        The video file ID.
-    annotation_id : multiprocessing.Value
-        The unique annotation ID.
-    image_id : multiprocessing.Value
-        The unique image ID.
-    existing_image_file_names_with_ids : dict
-        The list of image file names already in the detection output JSON with their corresponding IDs.
 
     Returns
     -------
     dict
-        The detection results in COCO format.
+        The detection results in JSON format.
     """
     # Get total number of frames
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     # Initialize detection output
     detection_output = {
         DP.output_key_images: [], 
-        DP.output_key_annotations: [],
         DP.output_key_categories: [],
-
     }
 
-    # Determine the category ID for face detection
-    category_id = LabelToCategoryMapping.label_dict[
-        DP.mtcnn_detection_class
-        ]
-    # Create a progress bar
+    # Process each frame
     with tqdm(total=total_frames, desc="Processing frames", ncols=70) as pbar:
         for frame_count in range(total_frames):
             ret, frame = cap.read()
@@ -218,46 +182,27 @@ def detection_coco_output(
                 # Perform face detection using MTCNN
                 boxes, probs = model.detect(frame)
                 
-                # Create a unique file name for the image
+                # Create the file name for the current image
                 file_name = f"{video_file_name}_{frame_count:06}.jpg"
-                # If the file_name is not in the dictionary, increment the image_id and add it to the detection output
-                if file_name not in existing_image_file_names_with_ids:
-                    with image_id.get_lock():
-                        image_id.value += 1
-                    detection_output[DP.output_key_images].append({
-                        "id": image_id.value,
-                        "video_id": file_id,
-                        "frame_id": frame_count,
-                        "file_name": file_name,
-                    })
-                    # Add the file_name and image_id to the dictionary
-                    existing_image_file_names_with_ids[file_name] = image_id.value
-                    current_image_id = image_id.value  # Store the current image ID
-                else:
-                    # If the file_name is already in the dictionary, retrieve the image_id
-                    current_image_id = existing_image_file_names_with_ids[file_name]  # Retrieve the image ID
-
+                
+                # Initialize the dictionary for the current image
+                image_detections = {
+                    "image_id": file_name,
+                    DP.output_key_annotations: []
+                }
+                
+                # Process detection results and add annotations to detection output
                 if boxes is not None:
                     # Process detection results and add annotations to detection output
                     for box, prob in zip(boxes, probs):
                         x1, y1, x2, y2 = box
-                        detection_output[DP.output_key_annotations].append({
-                            "id": annotation_id.value,
-                            "image_id": current_image_id,
-                            "category_id": category_id,
+                        image_detections[DP.output_key_annotations].append({
+                            "class": DP.face_class,
                             "bbox": [x1, y1, x2, y2],
-                            "score": prob,
+                            "confidence": prob,
                         })
-                        with annotation_id.get_lock():
-                            annotation_id.value += 1                          
-                                                        
-                        # Ensure category information is added only once
-                        if category_id not in [category['id'] for category in detection_output[DP.output_key_categories]]:
-                            detection_output[DP.output_key_categories].append({
-                                "id": category_id,
-                                "name": DP.mtcnn_detection_class
-                            })
-
+                # Add the image's detection data to the video-level output
+                detection_output[DP.output_key_images].append(image_detections)      
 
     return detection_output
 
