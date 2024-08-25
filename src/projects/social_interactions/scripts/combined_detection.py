@@ -50,7 +50,6 @@ class OutputMerger:
     def __init__(self):
         self.combined_output = {
             DetectionParameters.output_key_videos: [],
-            DetectionParameters.output_key_annotations: [],
             DetectionParameters.output_key_images: [],
             DetectionParameters.output_key_categories: [],
         }
@@ -65,7 +64,6 @@ class OutputMerger:
                 self.combined_output[DetectionParameters.output_key_videos].append(video)
         
         # Add annotations and images
-        self.combined_output[DetectionParameters.output_key_annotations].extend(detection_output.get(DetectionParameters.output_key_annotations, []))
         self.combined_output[DetectionParameters.output_key_images].extend(detection_output.get(DetectionParameters.output_key_images, []))
         self.combined_output[DetectionParameters.output_key_categories].extend(detection_output.get(DetectionParameters.output_key_categories, []))
     
@@ -170,7 +168,6 @@ class MTCNNProcessor:
     def __init__(self, output_merger: OutputMerger, shared_resources):
         self.output_merger = output_merger
         # Use the shared resources
-        self.video_file_ids_dict = shared_resources.video_file_ids_dict
         self.annotation_id = shared_resources.annotation_id
         self.image_id = shared_resources.image_id
         # Pass the MTCNN model instance
@@ -191,18 +188,14 @@ class MTCNNProcessor:
             transforms.ToTensor(),
             transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
         ])
-        # Initialize the list of existing image file names
-        self.existing_image_file_names_with_ids = {}
 
     def run_face_detection(self, video_file):
         logging.info("Running face detection...")
         detection_output = run_mtcnn(
             video_file, 
-            self.video_file_ids_dict, 
             self.annotation_id, 
             self.image_id, 
             self.model,
-            self.existing_image_file_names_with_ids,
         )
         
         if detection_output:
@@ -242,28 +235,27 @@ class MTCNNProcessor:
 class YOLOProcessor:
     def __init__(self, output_merger: OutputMerger, shared_resources):
         self.output_merger = output_merger
-        # Use the video_file_ids_dict from the Detector class
-        self.video_file_ids_dict = shared_resources.video_file_ids_dict
         # Use the shared annotation_id and image_id
         self.annotation_id = shared_resources.annotation_id
         self.image_id = shared_resources.image_id
         self.model = YOLO(YoloParameters.trained_weights_path)
+        # Retrieve the YOLO model class names and their IDs
+        self.class_dict = self.model.names  # dictionary {id: name}    
         # Logging to confirm model loading
         logging.info("YOLO model loaded successfully from %s", YoloParameters.trained_weights_path)
-        # Initialize the list of existing image file names
-        self.existing_image_file_names_with_ids = {}
         
     def run_person_detection(self, video_file):
         logging.info("Running person detection...")
         detection_output = run_yolo(
             video_file, 
-            self.video_file_ids_dict, 
-            self.annotation_id, 
-            self.image_id, 
             self.model,
-            self.existing_image_file_names_with_ids,
         )
-        
+        # Add each class to the combined output categories
+        for class_id, class_name in self.class_dict.items():
+            detection_output[DetectionParameters.output_key_categories].append({
+                "id": class_id,
+                "name": class_name
+            })
         if detection_output:
             # Merge the results into the combined output
             self.output_merger.merge(detection_output)
@@ -271,8 +263,6 @@ class YOLOProcessor:
 class VoiceTypeProcessor:
     def __init__(self, output_merger: OutputMerger, shared_resources):
         self.output_merger = output_merger
-        # Use the video_file_ids_dict from the Detector class
-        self.video_file_ids_dict = shared_resources.video_file_ids_dict
         # Use the shared annotation_id and image_id
         self.annotation_id = shared_resources.annotation_id
         self.image_id = shared_resources.image_id

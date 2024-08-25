@@ -1,9 +1,6 @@
 import cv2
-import os
 import torch
-import json
-import multiprocessing
-import numpy as np
+from ultralytics import YOLO
 from pathlib import Path
 from tqdm import tqdm
 from typing import Optional
@@ -14,11 +11,7 @@ from src.projects.social_interactions.config.config import generate_detection_ou
 
 def run_yolo(
     video_file: Path,
-    video_file_ids_dict: dict,
-    annotation_id: multiprocessing.Value,
-    image_id: multiprocessing.Value,
     model: torch.nn.Module,
-    existing_image_file_names_with_ids: dict,
 ) -> Optional[dict]:
     """
     This function performs frame-wise person detection on a video file using a YOLO model.
@@ -29,16 +22,8 @@ def run_yolo(
     ----------
     video_file : Path
         The path to the video file.
-    video_file_ids_dict : dict
-        Dictionary mapping video filenames to their corresponding IDs.
-    annotation_id : multiprocessing.Value
-        The shared annotation ID for COCO format.
-    image_id : multiprocessing.Value
-        The shared image ID for COCO format.
     model : torch.nn.Module
         The YOLOv5 model.
-    existing_image_file_names_with_ids : dict
-        List of image file names already existing in the combined JSON output with their corresponding IDs.
 
     Returns
     -------
@@ -49,7 +34,6 @@ def run_yolo(
     validate_inputs(video_file, model)
     
     video_file_name = video_file.stem
-    file_id = video_file_ids_dict.get(video_file_name)
 
     # Load video file
     cap = cv2.VideoCapture(str(video_file))
@@ -64,14 +48,10 @@ def run_yolo(
             model)
         return None
     else:
-        return detection_coco_output(
+        return detection_json_output(
             cap, 
             model, 
             video_file_name, 
-            file_id, 
-            annotation_id, 
-            image_id, 
-            existing_image_file_names_with_ids
         )
 
 def validate_inputs(video_file: Path, model: torch.nn.Module):
@@ -132,59 +112,42 @@ def process_and_save_video(
         model,
     )
 
-def detection_coco_output(
+def detection_json_output(
     cap: cv2.VideoCapture,
-    model: torch.nn.Module,
+    model: YOLO,
     video_file_name: str,
-    file_id: int,
-    annotation_id: multiprocessing.Value,
-    image_id: multiprocessing.Value,
-    existing_image_file_names_with_ids: dict,
 ) -> dict:
     """
-    This function performs detection on a video file and returns the detection results in COCO format.
+    This function performs detection on a video file and returns the detection results in JSON format.
 
     Parameters
     ----------
     cap : cv2.VideoCapture
         The video capture object.
-    model : torch.nn.Module
+    model : YOLO
         The YOLO model used for person detection.
     video_file_name : str
         The name of the video file.
     file_id : int
-        The video file ID.
+        The unique video file ID.
     annotation_id : multiprocessing.Value
         The unique annotation ID.
     image_id : multiprocessing.Value
         The unique image ID.
-    existing_image_file_names_with_ids : dict
-        The list of image file names already in the detection output JSON with their corresponding IDs.
 
     Returns
     -------
-    dict
-        The detection results in COCO format.
+    list
+        The detection results in the new JSON format.
     """
     # Get the total number of frames in the video
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    # Initialize the detection output
+    
+    # Initialize the detection output for the video
     detection_output = {
         DP.output_key_images: [],
-        DP.output_key_annotations: [],
-        DP.output_key_categories: [],
-    }
-    
-    # Determine the category ID for person detection
-    category_id = LabelToCategoryMapping.label_dict[
-        DP.yolo_detection_class
-    ]
-    
-    # Get the class index for person detection for the YOLO model
-    class_index_det = next(
-        key for key, value in model.names.items()
-        if value == DP.yolo_detection_class
-    )
+        DP.output_key_categories: []
+    }    
     
     # Process each frame
     with tqdm(total=total_frames, desc="Processing frames", ncols=70) as pbar:
@@ -196,47 +159,39 @@ def detection_coco_output(
             pbar.update()
             
             if frame_count % DP.frame_step == 0:
+                # Perform detection on the current frame
                 results = model(frame)
-
-                if results.pred[0] is not None:
-                    file_name = f"{video_file_name}_{frame_count:06}.jpg"
-                    # Only add the image file name if it does not already exist
-                    if file_name not in existing_image_file_names_with_ids:
-                        with image_id.get_lock():
-                            image_id.value += 1
-                        detection_output[DP.output_key_images].append({
-                            "id": image_id.value,
-                            "video_id": file_id,
-                            "frame_id": frame_count,
-                            "file_name": file_name,
-                        })
-                        # Add the file_name and image_id to the dictionary
-                        existing_image_file_names_with_ids[file_name] = image_id.value
-                    else:
-                        # If the file_name is already in the dictionary, retrieve the image_id
-                        image_id = existing_image_file_names_with_ids[file_name]   
-                    # Add the annotations for the detected persons
-                    for det in results.pred[0]:
-                        x1, y1, x2, y2, conf, cls = det
-                        if int(cls) == class_index_det:
-                            detection_output[DP.output_key_annotations].append({
-                                "id": annotation_id.value,
-                                "image_id": image_id.value,
-                                "category_id": category_id,
-                                "bbox": [x1.item(), y1.item(), (x2 - x1).item(), (y2 - y1).item()],
-                                "score": conf.item(),
-                            })
-                            with annotation_id.get_lock():
-                                annotation_id.value += 1
-                                    
-                            # Add the person category if it does not exist
-                            if category_id not in [category['id'] for category in detection_output[DP.output_key_categories]]:
-                                detection_output[DP.output_key_categories].append({
-                                    "id": category_id,
-                                    "name": DP.yolo_detection_class
-                                })
+                
+                # Create the file name for the current image
+                file_name = f"{video_file_name}_{frame_count:06}.jpg"
+                
+                # Initialize the dictionary for the current image
+                image_detections = {
+                    "image_id": file_name,
+                    DP.output_key_annotations: []
+                }
+                
+                # Add the annotations for the detected objects
+                for boxes in results[0].boxes:
+                    # Get the bounding box coordinates (x center, y center, width, height) normalized to the image size
+                    x_center, y_center, width, height = boxes.xywhn[0]
+                    conf = boxes.conf[0]
+                    cls = boxes.cls[0]
+                    # Get the category ID and name
+                    category_id = int(cls.item())
+                    category_name = model.names[category_id]
+                    
+                    # Append the detection data to the list for this image
+                    image_detections[DP.output_key_annotations].append({
+                        "class": category_name,
+                        "bbox": [x_center.item(), y_center.item(), width.item(), height.item()],
+                        "confidence": conf.item()
+                    })
+                # Add the image's detection data to the video-level output
+                detection_output[DP.output_key_images].append(image_detections)      
 
     return detection_output
+
 
 def detection_video_output(
     cap: cv2.VideoCapture,
