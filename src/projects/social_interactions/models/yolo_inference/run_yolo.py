@@ -1,5 +1,6 @@
 import cv2
 import torch
+import logging
 from ultralytics import YOLO
 from pathlib import Path
 from tqdm import tqdm
@@ -46,13 +47,17 @@ def run_yolo(
             video_file,
             video_output_path, 
             model)
+        logging.info(f"Detection output video generated at {video_output_path}.")
         return None
     else:
-        return detection_json_output(
+        detection_results = detection_json_output(
             cap, 
             model, 
             video_file_name, 
         )
+        logging.info("Detection results generated.")
+        return detection_results
+
 
 def validate_inputs(video_file: Path, model: torch.nn.Module):
     """
@@ -118,7 +123,8 @@ def detection_json_output(
     video_file_name: str,
 ) -> dict:
     """
-    This function performs detection on a video file and returns the detection results in JSON format.
+    This function performs detection on a video file 
+    It returns the detection results in JSON format.
 
     Parameters
     ----------
@@ -128,17 +134,11 @@ def detection_json_output(
         The YOLO model used for person detection.
     video_file_name : str
         The name of the video file.
-    file_id : int
-        The unique video file ID.
-    annotation_id : multiprocessing.Value
-        The unique annotation ID.
-    image_id : multiprocessing.Value
-        The unique image ID.
 
     Returns
     -------
     list
-        The detection results in the new JSON format.
+        The detection results in JSON format.
     """
     # Get the total number of frames in the video
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -154,8 +154,10 @@ def detection_json_output(
         for frame_count in range(total_frames):
             ret, frame = cap.read()
             if not ret:
+                logging.warning(f"Frame {frame_count} could not be read. Skipping.")
                 break
             
+            # Update progress bar
             pbar.update()
             
             if frame_count % DP.frame_step == 0:
