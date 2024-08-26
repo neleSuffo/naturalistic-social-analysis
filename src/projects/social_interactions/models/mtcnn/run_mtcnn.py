@@ -1,7 +1,7 @@
 from facenet_pytorch import MTCNN
 from pathlib import Path
 from moviepy.editor import VideoFileClip
-from src.projects.social_interactions.common.constants import DetectionPaths, DetectionParameters as DP, LabelToCategoryMapping
+from src.projects.social_interactions.common.constants import DetectionPaths, DetectionParameters as DP
 from src.projects.social_interactions.common.my_utils import create_video_writer
 from src.projects.social_interactions.config.config import generate_detection_output_video
 from typing import Optional
@@ -9,10 +9,9 @@ from tqdm import tqdm
 from PIL import Image
 import cv2
 import logging
-import multiprocessing
 import numpy as np
 
-def rurun_mtcnn(
+def run_mtcnn(
     video_file: Path,
     model: MTCNN,
 ) -> Optional[dict]:
