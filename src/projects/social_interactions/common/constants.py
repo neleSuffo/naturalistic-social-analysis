@@ -5,9 +5,9 @@ from pathlib import Path
 class DetectionPaths:
     person = Path("../../../outputs/yolo/")
     face = Path("../../../outputs/mtcnn/")
-    #videos_input = Path("../../ProcessedData/videos_train/") 
+    videos_input = Path("../../ProcessedData/videos_train/") 
     #videos_input = Path("../../ProcessedData/videos/") 
-    videos_input = Path("../../ProcessedData/videos_example/") 
+    #videos_input = Path("../../ProcessedData/videos_example/") 
     images_input = Path("../../ProcessedData/images/")
     results = Path("/home/nele_pauline_suffo/projects/leuphana-IPE/outputs")
     frames_output = Path("outputs/frames/")
@@ -127,6 +127,7 @@ class YoloParameters:
     data_input = Path("../../ProcessedData/yolo")
     batch_size = 64
     epochs = 100
+    iou_threshold = 0.35 # the intersection over union threshold
     img_size = (320, 640) # multi scale training
     class_id = [1,2,11]
 

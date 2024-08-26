@@ -5,7 +5,7 @@ from ultralytics import YOLO
 from pathlib import Path
 from tqdm import tqdm
 from typing import Optional
-from src.projects.social_interactions.common.constants import DetectionPaths, DetectionParameters as DP, LabelToCategoryMapping
+from src.projects.social_interactions.common.constants import DetectionPaths, DetectionParameters as DP, YoloParameters as YP
 from src.projects.social_interactions.common.my_utils import create_video_writer
 from src.projects.social_interactions.config.config import generate_detection_output_video
 
@@ -162,7 +162,8 @@ def detection_json_output(
             
             if frame_count % DP.frame_step == 0:
                 # Perform detection on the current frame
-                results = model(frame)
+                #TODO: Find best iou value
+                results = model(frame, iou=YP.iou_threshold)
                 
                 # Create the file name for the current image
                 file_name = f"{video_file_name}_{frame_count:06}.jpg"
