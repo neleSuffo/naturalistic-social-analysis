@@ -1,8 +1,8 @@
 import os
-from src.projects.shared.process_data.process_annotations.create_database import write_xml_to_database, create_db_table_video_name_id_mapping, correct_erronous_videos_in_db, create_child_class_in_db
-from src.projects.shared.process_data.process_annotations.create_file_name_id_dict import create_file_name_id_dict
-from src.projects.shared.process_data.process_annotations.convert_to_yolo import main as convert_to_yolo
-from src.projects.shared.process_data.process_annotations.convert_to_mtcnn import main as convert_to_mtcnn
+from src.projects.shared.prepare_data.process_annotations.create_database import write_xml_to_database, create_db_table_video_name_id_mapping, correct_erronous_videos_in_db, create_child_class_in_db
+from src.projects.shared.prepare_data.process_annotations.create_file_name_id_dict import create_file_name_id_dict
+from src.projects.shared.prepare_data.process_annotations.convert_to_yolo import main as convert_to_yolo
+from src.projects.shared.prepare_data.process_annotations.convert_to_mtcnn import main as convert_to_mtcnn
 from src.projects.social_interactions.common.constants import DetectionPaths
 from pathlib import Path
 

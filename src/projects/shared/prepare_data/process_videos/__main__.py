@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 import concurrent.futures
-from src.projects.shared.process_data.process_videos.utils import extract_frames_from_single_video
+from src.projects.shared.prepare_data.process_videos.utils import extract_frames_from_single_video
 from src.projects.social_interactions.common.constants import DetectionParameters, VideoParameters, DetectionPaths, YoloParameters
 
 # Configure logging
