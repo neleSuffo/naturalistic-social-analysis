@@ -22,6 +22,7 @@ torchvision = "*"
 comet-ml = "^3.44.3"
 pandera = "^0.20.3"
 
+
 # The following dependencies are optional and can be uncommented if needed
 # toml = "^0.10.2"
 # wget = "^3.2"
@@ -36,9 +37,7 @@ pandera = "^0.20.3"
 # fastparquet = "^2024.2.0"
 # imutils = "^0.5.4"
 # lxml = "^5.2.2"
-
-
-
+tensorflow-io-gcs-filesystem = "0.29.0"
 
 
 [tool.poetry.group.dev.dependencies]
