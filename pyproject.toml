@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "leuphana-IPE"
+name = "leuphana_ipe"
 version = "0.1.0"
 description = ""
 authors = ["neleSuffo <163427736+neleSuffo@users.noreply.github.com>"]

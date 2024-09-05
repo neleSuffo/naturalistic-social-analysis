@@ -553,7 +553,6 @@ __pycache__/
 
 # Distribution / packaging
 .Python
-notebooks
 build/
 develop-eggs/
 downloads/
