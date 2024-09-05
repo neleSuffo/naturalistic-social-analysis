@@ -20,7 +20,7 @@ def save_cropped_images(
     detection_file = video_file_name / SSP.detection_file
     
     # Directory where cropped images will be saved
-    output_dir = FRP.base_folder / video_file_name
+    output_dir = FRP.base_folder / video_file_name.name
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Read the detection file
@@ -76,24 +76,19 @@ def process_all_videos_in_folder(
             # Iterate over each video folder inside train/ and val/ directories
             for video_folder in split_folder.iterdir():
                 if video_folder.is_dir():  # Check if it's a directory
-                    print(f"Processing {video_folder}...")
+                    print(f"Processing {video_folder.name}...")
                     save_cropped_images(video_folder)
     
-def main():
     # Configure logging
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.FileHandler("prepare_fast_re_id_data.log"),
-            logging.StreamHandler()
-        ]
-    )
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+)
+def main():
     logging.info("Starting the prepare_fast_re_id_data script.")
 
     # Process all videos in the given folder
     process_all_videos_in_folder(SSP.video_input)
-
 
     logging.info("Finished the prepare_fast_re_id_data script.")
 
