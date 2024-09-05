@@ -81,14 +81,12 @@ class StrongSortParameters:
     videos_train = Path(f"{video_input}/train/")
     videos_val = Path(f"{video_input}/val/")
     image_subfolder = "img1"
+    feature_subfolder = "features"
     detection_file = "det/det.txt"
     ecc_output = Path(f"{base_folder}/ECC_train.json")
     
 class FastReIDParameters:
     base_folder = Path("/home/nele_pauline_suffo/ProcessedData/fast_re_id/")
-    video_input = Path(f"{base_folder}/quantex/")
-    videos_train = Path(f"{video_input}/bounding_box_train/")
-    videos_val = Path(f"{video_input}/bounding_box_test/")
     
 class ResNetParameters:
     epochs = 10
