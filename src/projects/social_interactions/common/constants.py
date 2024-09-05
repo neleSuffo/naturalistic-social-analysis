@@ -76,10 +76,12 @@ class VTCParameters:
     df_output_file_path = Path("outputs/vtc/audio_data.pkl")
 
 class StrongSortParameters:
-    base_folder = Path("/home/nele_pauline_suffo/ProcessedData/deep_sort/")
+    base_folder = Path("/home/nele_pauline_suffo/ProcessedData/strong_sort/")
     video_input = Path(f"{base_folder}/quantex/")
     videos_train = Path(f"{video_input}/train/")
     videos_val = Path(f"{video_input}/val/")
+    image_subfolder = "img1"
+    detection_file = "det/det.txt"
     ecc_output = Path(f"{base_folder}/ECC_train.json")
     
 class FastReIDParameters:
@@ -157,3 +159,13 @@ class LabelToCategoryMapping:
 
     unknown_label_id = -1
     unknown_supercategory = "unknown"
+    
+    
+class ModelsPreprocessing:
+    yolo = "yolo"
+    mtcnn = "mtcnn"
+    fast_re_id = "fast_re_id"
+    strong_sort = "strong_sort"
+    gaze_estimation = "gaze_estimation"
+    vtc = "vtc"
+    openpose = "openpose"
