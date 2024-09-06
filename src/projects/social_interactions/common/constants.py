@@ -2,15 +2,20 @@ from collections import defaultdict
 from pathlib import Path
 
 
+
 class DetectionPaths:
-    person = Path("../../../outputs/yolo/")
-    face = Path("../../../outputs/mtcnn/")
-    #videos_input = Path("../../ProcessedData/videos_train/") 
-    #videos_input = Path("../../ProcessedData/videos/") 
-    videos_input = Path("../../ProcessedData/videos_example/") 
-    images_input = Path("../../ProcessedData/images/")
-    results = Path("/home/nele_pauline_suffo/projects/leuphana_ipe/outputs")
-    frames_output = Path("outputs/frames/")
+    home_dir = Path("/home/nele_pauline_suffo")
+    leuphana_ipe_dir = Path(home_dir/"projects/leuphana_ipe")
+    models_dir = Path(home_dir/"models")
+    data_dir = Path(home_dir/"ProcessedData")
+    
+    person = Path(leuphana_ipe_dir/"outputs/yolo/")
+    face = Path(leuphana_ipe_dir/"outputs/mtcnn/")
+    #videos_input = Path(data_dir/"videos_train/") 
+    #videos_input = Path(data_dir/"videos/") 
+    videos_input = Path(data_dir/"videos_example/") 
+    images_input = Path(data_dir/"images/")
+    results = Path(leuphana_ipe_dir/"outputs")
     # Path variable to the annotation xml files
     annotations_folder_path = Path("../../ProcessedData/annotations/")
     annotations_xml_path = Path("../../ProcessedData/annotations/annotations.xml")
@@ -32,10 +37,6 @@ class DetectionParameters:
 
     # Every frame_step-th frame is processed
     frame_step = 30
-    # The minimum length of a social interaction
-    # Based on the frame step of 30 frames
-    # Adjust accordingly so that the minimum length is at least 3 second
-    interaction_length = 3
     # The class of the object to detect
     yolo_detection_class = "person"
     mtcnn_detection_class = "face"
@@ -47,15 +48,11 @@ class DetectionParameters:
 
 class YoloParameters:
     fps = 1  # the frames per second to extract from the video
-    pretrained_weights_path = Path("pretrained_models/yolov5s.pt")
-    trained_weights_path = Path('models/yolov8_trained.pt')
-    data_config = Path(
-        "src/projects/social_interactions/models/yolo_inference/dataset.yaml"
-    )
-    yolov5_repo_path = Path("../yolov5")
-    labels_input = Path("../../ProcessedData/yolo_labels")
+    trained_weights_path = Path(DetectionPaths.models_dir/'yolov8_trained.pt')
+    data_config = Path(DetectionPaths.leuphana_ipe_dir/"src/projects/social_interactions/models/yolo_inference/dataset.yaml")
+    labels_input = Path(DetectionPaths.data_dir/"yolo_labels")
     # the path to the input folder for the yolo model
-    data_input = Path("../../ProcessedData/yolo")
+    data_input = Path(DetectionPaths.data_dir/"yolo")
     batch_size = 64
     epochs = 100
     iou_threshold = 0.35 # the intersection over union threshold
@@ -83,10 +80,12 @@ class StrongSortParameters:
     image_subfolder = "img1"
     feature_subfolder = "features"
     detection_file = "det/det.txt"
-    ecc_output = Path(f"{base_folder}/ECC_train.json")
+    ecc_output = Path({base_folder}/"ECC_train.json")
     
 class FastReIDParameters:
     base_folder = Path("/home/nele_pauline_suffo/ProcessedData/fast_re_id/")
+    pretrained_model = Path(DetectionPaths.models_dir/"duke_agw_R101-ibn.pth")
+    config_file = Path(DetectionPaths.leuphana_ipe_dir/"src/projects/social_interactions/models/fast_re_id/dukemtmc_agw_resnet101_ibn.yaml")
     
 class ResNetParameters:
     epochs = 10
