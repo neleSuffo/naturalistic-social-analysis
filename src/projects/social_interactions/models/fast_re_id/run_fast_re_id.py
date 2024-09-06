@@ -206,8 +206,8 @@ def process_video_frames_and_save_features(
                 
 def main():
     # Set the configuration and model weights paths
-    config_file = 'path_to_config.yaml'  # E.g., "../configs/Market1501/bagtricks_R50.yml"
-    model_weights = 'path_to_pretrained_weights.pth'  # E.g., "model_final.pth"
+    config_file = FRP.config_file
+    model_weights = FRP.pretrained_model
 
     # Load the pretrained model
     model = setup_model(config_file, model_weights)
