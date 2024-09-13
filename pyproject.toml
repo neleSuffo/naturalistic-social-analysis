@@ -38,6 +38,10 @@ pandera = "^0.20.3"
 # imutils = "^0.5.4"
 # lxml = "^5.2.2"
 tensorflow-io-gcs-filesystem = "0.29.0"
+yacs = "^0.1.8"
+onnx = "^1.16.2"
+onnxoptimizer = "^0.3.13"
+onnxsim = "^0.4.36"
 
 
 [tool.poetry.group.dev.dependencies]
