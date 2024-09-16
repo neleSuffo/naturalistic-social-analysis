@@ -8,12 +8,13 @@ import concurrent.futures
 from pathlib import Path
 from typing import List, Optional, Union, Tuple
 from src.projects.social_interactions.common.constants import (
-    VideoParameters as VP,
     DetectionPaths as DP,
-    DetectionParameters as DetParams,
-    StrongSortParameters as SSP,
-    TrainParameters as TP,
-    ModelsPreprocessing as MP,
+    ModelNames as MN,
+)
+from src.projects.social_interactions.config.config import (
+    VideoConfig as VC,
+    StrongSortConfig as SSC,
+    TrainingConfig as TC,
 )
 
 # Configure logging
@@ -107,8 +108,8 @@ def split_videos_into_train_val(
     It returns the list of video names in the train and validation sets.
     """
     # Get all video files in the input folder
-    input_folder = DP.videos_input
-    train_ratio = TP.train_test_split
+    input_folder = DP.videos_input_dir
+    train_ratio = TC.train_test_split_ratio
     video_files = [f for f in input_folder.iterdir() if f.is_file() and f.suffix.lower() in ['.mp4', '.avi', '.mov', '.mkv']]
 
     # Calculate total duration of all videos
@@ -266,7 +267,7 @@ def extract_frames_from_videos(
     output_dir: Path,
     model: str,
     fps: int = None,
-    batch_size: int = VP.batch_size,
+    batch_size: int = VC.video_batch_size,
 ) -> None:
     """
     Extracts frames from all videos in the given directory, splits them into training and validation sets,
@@ -287,8 +288,8 @@ def extract_frames_from_videos(
     """
     logging.info(f"Starting frame extraction from videos in {video_dir} to {output_dir} at {fps} FPS with split ratio {split_ratio}.")
 
-    video_dir = DP.videos_input
-    split_ratio = TP.train_test_split
+    video_dir = DP.videos_input_dir
+    split_ratio = TC.train_test_split
     
     # Ensure output directories exist
     train_output_dir = output_dir / 'train'
@@ -309,18 +310,18 @@ def extract_frames_from_videos(
         batch = train_videos[i:i + batch_size]
         logging.info(f"Processing training batch {i // batch_size + 1}")
         with concurrent.futures.ProcessPoolExecutor() as executor:
-            if model == MP.yolo:
+            if model == MN.yolo_model:
                 executor.map(lambda video: process_video_yolo(video, train_output_dir), batch)
-            if model == MP.strong_sort:
+            if model == MN.strong_sort_model:
                 executor.map(lambda video: process_video_strong_sort(video, train_output_dir), batch)
                 
     for i in range(0, len(val_videos), batch_size):
         batch = val_videos[i:i + batch_size]
         logging.info(f"Processing validation batch {i // batch_size + 1}")
         with concurrent.futures.ProcessPoolExecutor() as executor:
-            if model == MP.yolo:
+            if model == MN.yolo_model:
                 executor.map(lambda video: process_video_yolo(video, train_output_dir), batch)
-            if model == MP.strong_sort:
+            if model == MN.strong_sort_model:
                 executor.map(lambda video: process_video_strong_sort(video, train_output_dir), batch)
     logging.info("Completed frame extraction for all videos.")
 
@@ -344,7 +345,7 @@ def process_video_strong_sort(video_file: Path, output_subdir: Path) -> None:
             return
 
         # Create the output directory
-        output_video_folder = output_subdir / video_file.stem / SSP.image_subfolder
+        output_video_folder = output_subdir / video_file.stem / SSC.image_subdir
         output_video_folder.mkdir(parents=True, exist_ok=True)
 
         frame_count = 0
@@ -406,13 +407,3 @@ def process_video_yolo(
 
         cap.release()
         logging.info(f"Completed frame extraction for {video_file.name}.")
-
-
-# Example usage
-if __name__ == "__main__":
-    video_dir = Path("/path/to/videos")
-    output_dir = Path("/path/to/output")
-    split_ratio = 0.8
-    fps = 5
-
-    extract_frames_from_videos(video_dir, output_dir, split_ratio, fps)
