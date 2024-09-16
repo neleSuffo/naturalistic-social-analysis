@@ -1,7 +1,8 @@
 from pathlib import Path
 from ultralytics import YOLO
 from src.projects.shared.utils import extract_frames_from_videos
-from src.projects.social_interactions.common.constants import StrongSortParameters as SSP, YoloParameters as YP, ModelsPreprocessing as MP    
+from src.projects.social_interactions.common.constants import StrongSortPaths as SSP, YoloPaths as YP, ModelNames as MN  
+from src.projects.social_interactions.config.config import StrongSortConfig as SSC, YoloConfig as YC
 import logging
 
 
@@ -24,8 +25,8 @@ def run_detection_on_frames(
 
     for video_folder in video_folders:
         # Create the det folder if it doesn't exist
-        img1_folder = video_folder / SSP.image_subfolder
-        det_file_path = video_folder / SSP.detection_file
+        img1_folder = video_folder / SSC.image_subdir
+        det_file_path = video_folder / SSC.detection_file_path
         det_file_path.mkdir(parents=True, exist_ok=True)
 
         with det_file_path.open('w') as det_file:
@@ -35,7 +36,7 @@ def run_detection_on_frames(
             for image_file in image_files:
                 frame_id = int(image_file.stem)
                 # Run detection
-                results = model(str(image_file), iou=YP.iou_threshold)
+                results = model(str(image_file), iou=YC.iou_threshold)
 
                 for boxes in results[0].boxes:
                     # Extract the bounding box coordinates and confidence
@@ -52,11 +53,11 @@ def main():
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
     # Step 1: Split the videos in the train and val and extract frames from them
-    extract_frames_from_videos(SSP.video_input, MP.strong_sort)
+    extract_frames_from_videos(SSP.video_input_dir, MN.strong_sort)
 
     # Step 3: Run YOLOv8 detection on the frames in the train and val folders
-    run_detection_on_frames(SSP.videos_train)
-    run_detection_on_frames(SSP.videos_val)
+    run_detection_on_frames(SSP.train_videos_dir)
+    run_detection_on_frames(SSP.val_videos_dir)
 
 if __name__ == "__main__":
     main()

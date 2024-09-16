@@ -5,21 +5,22 @@ import torch
 from ultralytics import YOLO
 import torch.nn as nn
 from multiprocessing.pool import ThreadPool
-from torchvision import datasets, transforms, models
+from torchvision import transforms
 from PIL import Image
 from facenet_pytorch import MTCNN
 from pathlib import Path
 from timeit import default_timer as timer
 from src.projects.social_interactions.models.mtcnn.run_mtcnn import run_mtcnn
 from src.projects.social_interactions.models.yolo_inference.run_yolo import run_yolo
-from src. projects.social_interactions.models.resnet.train_gaze_model import GazeEstimationModel
+#from src. projects.social_interactions.models.resnet.train_gaze_model import GazeEstimationModel
 from src.projects.social_interactions.scripts.language import detect_voices
 from src.projects.social_interactions.common.constants import (
     DetectionPaths,
+    ResNetPaths,
+    YoloPaths,
+)
+from src.projects.social_interactions.config.config import (
     DetectionParameters,
-    ResNetParameters,
-    YoloParameters,
-
 )
 from multiprocessing import Value
 from src.projects.social_interactions.common import my_utils
@@ -41,8 +42,8 @@ class SharedResources:
         
     def create_video_id_mapping(self):
         return my_utils.create_video_to_id_mapping(
-            [video_file.stem for video_file in DetectionPaths.videos_input.iterdir()
-             if video_file.suffix.lower() == DetectionParameters.file_extension]
+            [video_file.stem for video_file in DetectionPaths.videos_input_dir.iterdir()
+             if video_file.suffix.lower() == DetectionParameters.video_file_extension]
         )
 
 
@@ -139,8 +140,8 @@ class Detector:
         # Get a list of all video files in the folder
         video_files = [
             video_f 
-            for video_f in DetectionPaths.videos_input.iterdir() 
-            if video_f.suffix.lower() == DetectionParameters.file_extension
+            for video_f in DetectionPaths.videos_input_dir.iterdir() 
+            if video_f.suffix.lower() == DetectionParameters.video_file_extension
         ]
         # Process the videos in batches
         try:
@@ -175,19 +176,19 @@ class MTCNNProcessor:
         self.model = MTCNN(keep_all=True, device='cuda:0')
         
         # Load the gaze estimation model
-        self.gaze_model = GazeEstimationModel(pretrained=False)
-        if ResNetParameters.trained_model_path.exists():
-            self.gaze_model.load_state_dict(torch.load(ResNetParameters.trained_model_path))
-        # Set the model to evaluation mode
-        self.gaze_model.eval()
-        # Move the model to the GPU
-        self.gaze_model = self.gaze_model.to('cuda:0')
-        # Define the image transformation
-        self.transform = transforms.Compose([
-            transforms.Resize((224, 224)),
-            transforms.ToTensor(),
-            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-        ])
+        # self.gaze_model = GazeEstimationModel(pretrained=False)
+        # if ResNetParameters.trained_model_path.exists():
+        #     self.gaze_model.load_state_dict(torch.load(ResNetParameters.trained_model_path))
+        # # Set the model to evaluation mode
+        # self.gaze_model.eval()
+        # # Move the model to the GPU
+        # self.gaze_model = self.gaze_model.to('cuda:0')
+        # # Define the image transformation
+        # self.transform = transforms.Compose([
+        #     transforms.Resize((224, 224)),
+        #     transforms.ToTensor(),
+        #     transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        # ])
 
     def run_face_detection(self, video_file):
         logging.info("Running face detection...")
@@ -209,7 +210,7 @@ class MTCNNProcessor:
                 image_entry = next((image for image in detection_output[DetectionParameters.output_key_images] if image["id"] == frame_id), None)
                 if image_entry is not None:
                     image_file_name = image_entry["file_name"]
-                    image_file_path = DetectionPaths.images_input / image_file_name
+                    image_file_path = DetectionPaths.images_input_dir / image_file_name
                     try:
                         # Load the image and crop the face
                         frame = Image.open(image_file_path)
@@ -238,11 +239,11 @@ class YOLOProcessor:
         # Use the shared annotation_id and image_id
         self.annotation_id = shared_resources.annotation_id
         self.image_id = shared_resources.image_id
-        self.model = YOLO(YoloParameters.trained_weights_path)
+        self.model = YOLO(YoloPaths.trained_weights_path)
         # Retrieve the YOLO model class names and their IDs
         self.class_dict = self.model.names  # dictionary {id: name}    
         # Logging to confirm model loading
-        logging.info("YOLO model loaded successfully from %s", YoloParameters.trained_weights_path)
+        logging.info("YOLO model loaded successfully from %s", YoloPaths.trained_weights_path)
         
     def run_person_detection(self, video_file):
         logging.info("Running person detection...")

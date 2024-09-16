@@ -5,9 +5,9 @@ from ultralytics import YOLO
 from pathlib import Path
 from tqdm import tqdm
 from typing import Optional
-from src.projects.social_interactions.common.constants import DetectionPaths, DetectionParameters as DP, YoloParameters as YP
+from src.projects.social_interactions.common.constants import DetectionPaths
 from src.projects.social_interactions.common.my_utils import create_video_writer
-from src.projects.social_interactions.config.config import generate_detection_output_video
+from src.projects.social_interactions.config.config import generate_detection_output_video, DetectionParameters as DP, YoloConfig as YC
 
 
 def run_yolo(
@@ -41,7 +41,7 @@ def run_yolo(
     
     # If a detection output video should be generated
     if generate_detection_output_video:
-        video_output_path = DetectionPaths.person / f"{video_file_name}.mp4"
+        video_output_path = DetectionPaths.person_detections_dir / f"{video_file_name}.mp4"
         process_and_save_video(
             cap, 
             video_file,
@@ -160,10 +160,9 @@ def detection_json_output(
             # Update progress bar
             pbar.update()
             
-            if frame_count % DP.frame_step == 0:
+            if frame_count % DP.frame_step_interval == 0:
                 # Perform detection on the current frame
-                #TODO: Find best iou value
-                results = model(frame, iou=YP.iou_threshold)
+                results = model(frame, iou=YC.iou_threshold)
                 
                 # Create the file name for the current image
                 file_name = f"{video_file_name}_{frame_count:06}.jpg"
@@ -217,7 +216,7 @@ def detection_video_output(
 
     class_index_det = next(
         key for key, value in model.names.items()
-        if value == DP.yolo_detection_class
+        if value == DP.yolo_detection_target
     )
     
     # Process each frame
@@ -229,7 +228,7 @@ def detection_video_output(
 
             pbar.update()
 
-            if frame_count % DP.frame_step == 0:
+            if frame_count % DP.frame_step_interval == 0:
                 results = model(frame)
 
                 if results.pred[0] is not None:

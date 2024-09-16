@@ -1,7 +1,8 @@
 import cv2
 import logging
 from pathlib import Path
-from src.projects.social_interactions.common.constants import FastReIDParameters as FRP, StrongSortParameters as SSP   
+from src.projects.social_interactions.common.constants import FastReIDPaths as FRP, StrongSortPaths as SSP  
+from src.projects.social_interactions.config.config import StrongSortConfig as SSC
 
 
 def save_cropped_images(
@@ -16,11 +17,11 @@ def save_cropped_images(
         the path to the video file folder containing the images and detection file
     """
     # Paths to your data
-    images_dir = video_file_name / SSP.image_subfolder
-    detection_file = video_file_name / SSP.detection_file
+    images_dir = video_file_name / SSC.image_subdir
+    detection_file = video_file_name / SSC.detection_file_path
     
     # Directory where cropped images will be saved
-    output_dir = FRP.base_folder / video_file_name.name
+    output_dir = FRP.base_dir / video_file_name.name
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Read the detection file
@@ -88,7 +89,7 @@ def main():
     logging.info("Starting the prepare_fast_re_id_data script.")
 
     # Process all videos in the given folder
-    process_all_videos_in_folder(SSP.video_input)
+    process_all_videos_in_folder(SSP.video_input_dir)
 
     logging.info("Finished the prepare_fast_re_id_data script.")
 

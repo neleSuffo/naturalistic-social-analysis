@@ -1,9 +1,9 @@
 from facenet_pytorch import MTCNN
 from pathlib import Path
 from moviepy.editor import VideoFileClip
-from src.projects.social_interactions.common.constants import DetectionPaths, DetectionParameters as DP
+from src.projects.social_interactions.common.constants import DetectionPaths
 from src.projects.social_interactions.common.my_utils import create_video_writer
-from src.projects.social_interactions.config.config import generate_detection_output_video
+from src.projects.social_interactions.config.config import generate_detection_output_video, DetectionParameters as DP
 from typing import Optional
 from tqdm import tqdm
 from PIL import Image
@@ -42,7 +42,7 @@ def run_mtcnn(
     
     # If a detection output video should be generated
     if generate_detection_output_video:
-        video_output_path = DetectionPaths.face / f"{video_file_name}.mp4"
+        video_output_path = DetectionPaths.face_detections_dir / f"{video_file_name}.mp4"
         process_and_save_video(
             cap, 
             video_file,
@@ -169,7 +169,7 @@ def detection_json_output(
             pbar.update()
             
             # Perform detection every frame_step-th frame
-            if frame_count % DP.frame_step == 0:
+            if frame_count % DP.frame_step_interval == 0:
                 # Convert the image from BGR (OpenCV default) to RGB
                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 # Convert the NumPy array to a PIL Image
@@ -196,7 +196,7 @@ def detection_json_output(
                     for box, prob in zip(boxes, probs):
                         x1, y1, x2, y2 = box
                         image_detections[DP.output_key_annotations].append({
-                            "class": DP.face_class,
+                            "class": DP.mtcnn_detection_target,
                             "bbox": [x1, y1, x2, y2],
                             "confidence": prob,
                         })

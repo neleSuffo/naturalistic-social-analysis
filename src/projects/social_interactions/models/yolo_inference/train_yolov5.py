@@ -1,6 +1,7 @@
 import os
 import subprocess
-from src.projects.social_interactions.common.constants import YoloParameters as Yolo
+from src.projects.social_interactions.config import YoloConfig as YC
+from src.projects.social_interactions.common.constants import YoloPaths as YP
 
 # Construct the full path to the train.py script in the YOLOv5 repository
 train_script_path = os.path.join(Yolo.yolov5_repo_path, "train.py")
@@ -10,13 +11,13 @@ train_cmd = [
     "python",
     train_script_path,
     "--img",
-    str(Yolo.img_size),
+    str(YC.img_size),
     "--batch",
-    str(Yolo.batch_size),
+    str(YC.batch_size),
     "--epochs",
-    str(Yolo.epochs),
+    str(YC.num_epochs),
     "--data",
-    str(Yolo.data_config),
+    str(YP.data_config_path),
     "--project",
     "outputs/yolov5/train",
     "--name",

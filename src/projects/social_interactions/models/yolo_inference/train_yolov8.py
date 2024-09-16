@@ -1,5 +1,6 @@
 import os
-from src.projects.social_interactions.common.constants import YoloParameters as Yolo
+from src.projects.social_interactions.common.constants import YoloPaths as YP
+from src.projects.social_interactions.config import YoloConfig as YC
 from ultralytics import YOLO
 
 def main():
@@ -7,10 +8,10 @@ def main():
     model = YOLO('yolov8x.pt') 
 
     results = model.train(
-        data=str(Yolo.data_config), 
-        epochs=Yolo.epochs, 
-        batch=Yolo.batch_size, 
-        imgsz=Yolo.img_size, 
+        data=str(YP.data_config_path), 
+        epochs=YC.num_epochs, 
+        batch=YC.batch_size, 
+        imgsz=YC.img_size, 
         device=(0, 1), # Train on GPU 0 and 1
         project="outputs/yolov8/train",         
         name="exp",

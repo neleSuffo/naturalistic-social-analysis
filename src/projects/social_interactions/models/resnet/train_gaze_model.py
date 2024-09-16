@@ -2,12 +2,13 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import pandas as pd
-from pathlib import Path
+import random
 from PIL import Image
-from torchvision import transforms, models
+from torchvision import transforms
 from torch.utils.data import Dataset, DataLoader, random_split
-from src.projects.social_interactions.common.constants import ResNetParameters as params, DetectionPaths, TrainParameters
-from torchvision.models import ResNet18_Weights
+from src.projects.social_interactions.common.constants import ResNetParameters as RNP, DetectionPaths
+from src.projects.social_interactions.config.config import ResNetConfig as RNC, TrainingConfig
+#from torchvision.models import ResNet18_Weights
 
 class GazeDataset(Dataset):
     def __init__(self, csv_file, root_dir, transform=None):
@@ -39,22 +40,22 @@ class GazeDataset(Dataset):
 
         return image, label
 
-class GazeEstimationModel(nn.Module):
-    def __init__(self, pretrained=True):
-        super(GazeEstimationModel, self).__init__()
-        # Determine the weights based on the pretrained argument
-        weights = ResNet18_Weights.DEFAULT if pretrained else None
-        # Load a pretrained ResNet-18 model with the new weights format
-        self.backbone = models.resnet18(weights=weights)
-        # Change the last layer to output a single value
-        self.backbone.fc = nn.Linear(self.backbone.fc.in_features, 1)
-        # Sigmoid activation function to output a value between 0 and 1
-        self.sigmoid = nn.Sigmoid()
+# class GazeEstimationModel(nn.Module):
+#     def __init__(self, pretrained=True):
+#         super(GazeEstimationModel, self).__init__()
+#         # Determine the weights based on the pretrained argument
+#         weights = ResNet18_Weights.DEFAULT if pretrained else None
+#         # Load a pretrained ResNet-18 model with the new weights format
+#         self.backbone = models.resnet18(weights=weights)
+#         # Change the last layer to output a single value
+#         self.backbone.fc = nn.Linear(self.backbone.fc.in_features, 1)
+#         # Sigmoid activation function to output a value between 0 and 1
+#         self.sigmoid = nn.Sigmoid()
 
-    def forward(self, x):
-        # Forward pass through the model
-        x = self.backbone(x)
-        return self.sigmoid(x)
+#     def forward(self, x):
+#         # Forward pass through the model
+#         x = self.backbone(x)
+#         return self.sigmoid(x)
 
 def train_model():
     # Define the transformations for the images
@@ -65,16 +66,26 @@ def train_model():
     ])
 
     # Load the dataset
-    dataset = GazeDataset(csv_file=params.gaze_label_csv, root_dir=DetectionPaths.images_input, transform=transform)
+    dataset = GazeDataset(csv_file=RNP.gaze_labels_csv_path, root_dir=DetectionPaths.images_input_dir, transform=transform)
     
+     # Set random seed for reproducibility
+    random_seed = TrainingConfig.random_seed
+    torch.manual_seed(random_seed)
+    random.seed(random_seed)
+
      # Split the dataset into training and validation sets
-    train_size = int(TrainParameters.train_test_split * len(dataset))
+    train_size = int(TrainingConfig.train_test_split_ratio * len(dataset))
     val_size = len(dataset) - train_size
-    train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
+
+    # Create a generator and set the seed for reproducibility
+    generator = torch.Generator().manual_seed(random_seed)
+
+    # Perform the split with the generator
+    train_dataset, val_dataset = torch.utils.data.random_split(dataset, [train_size, val_size], generator=generator)
     
     # Create DataLoaders for each subset
-    train_loader = DataLoader(train_dataset, batch_size=params.batch_size, shuffle=True, num_workers=4)
-    val_loader = DataLoader(val_dataset, batch_size=params.batch_size, shuffle=False, num_workers=4)
+    train_loader = DataLoader(train_dataset, batch_size=RNC.batch_size, shuffle=True, num_workers=4)
+    val_loader = DataLoader(val_dataset, batch_size=RNC.batch_size, shuffle=False, num_workers=4)
     
     # Load the pretrained model
     model = GazeEstimationModel(pretrained=True).to('cuda:0')
@@ -83,7 +94,7 @@ def train_model():
     optimizer = optim.Adam(model.parameters(), lr=1e-4)
 
     # Train the model
-    num_epochs = params.epochs
+    num_epochs = RNC.num_epochs
 
     for epoch in range(num_epochs):
         model.train()
@@ -113,7 +124,7 @@ def train_model():
                 total += labels.size(0)
             print(f'Validation Loss: {val_loss/len(val_loader)}, Accuracy: {100 * correct / total}%')
 
-    torch.save(model.state_dict(), params.trained_model_path)
+    torch.save(model.state_dict(), RNP.trained_model_path)
 
 if __name__ == "__main__":
     train_model()

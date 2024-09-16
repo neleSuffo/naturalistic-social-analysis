@@ -5,16 +5,14 @@ import logging
 import re
 from pathlib import Path
 import xml.etree.ElementTree as ET
-from src.projects.social_interactions.common.constants import (
-    DetectionPaths,
-    VideoParameters,
-    LabelToCategoryMapping,
-)
+from src.projects.social_interactions.common.constants import DetectionPaths
 from src.projects.shared.prepare_data.process_annotations.utils import (
     get_task_ids_names_lengths,
     generate_cum_sum_frame_count,
     get_video_id_from_name_db,
 )
+from src.projects.social_interactions.config.config import VideoConfig, LabelToCategoryMapping
+
 
 # Configure logging
 logging.basicConfig(
@@ -275,13 +273,13 @@ def get_frame_width_height(video_file_name: str) -> tuple:
     tuple
         the frame width and height
     """
-    video_file_path = DetectionPaths.videos_input / video_file_name
+    video_file_path = DetectionPaths.videos_input_dir / video_file_name
     # Return default frame width and height if the video file does not exist
     if not video_file_path.exists():
-        return (VideoParameters.frame_width, VideoParameters.frame_height)
+        return (VideoConfig.frame_width, VideoConfig.frame_height)
     cap = cv2.VideoCapture(str(video_file_path))
     if not cap.isOpened():
-        return (VideoParameters.frame_width, VideoParameters.frame_height)
+        return (VideoConfig.frame_width, VideoConfig.frame_height)
     # Get the frame width and height
     frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -348,7 +346,7 @@ def correct_erronous_videos_in_db() -> None:
     logging.info("Finished deleting erroneous videos in the database.")
     
     # Add the correct annotations to the database
-    for file_name in DetectionPaths.annotations_individual_folder_path.iterdir():
+    for file_name in DetectionPaths.annotations_individual_dir.iterdir():
         add_annotations_to_db(cursor, conn, file_name)
     conn.close()
 
