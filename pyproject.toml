@@ -23,11 +23,18 @@ comet-ml = "^3.44.3"
 pandera = "^0.20.3"
 strongsort = "*"
 scikit-learn = "*"
-loguru = "*"
 ftfy = "*"
 regex = "*"
 lapx = "^0.5.5"
 filterpy = "^1.4.5"
+tensorflow-io-gcs-filesystem = "0.29.0"
+yacs = "^0.1.8"
+onnx = "^1.16.2"
+onnxoptimizer = "^0.3.13"
+onnxsim = "^0.4.36"
+loguru = "^0.7.2"
+
+
 
 # The following dependencies are optional and can be uncommented if needed
 # toml = "^0.10.2"
@@ -43,11 +50,7 @@ filterpy = "^1.4.5"
 # fastparquet = "^2024.2.0"
 # imutils = "^0.5.4"
 # lxml = "^5.2.2"
-tensorflow-io-gcs-filesystem = "0.29.0"
-yacs = "^0.1.8"
-onnx = "^1.16.2"
-onnxoptimizer = "^0.3.13"
-onnxsim = "^0.4.36"
+opencv-python-headless = "^4.10.0.84"
 
 
 [tool.poetry.group.dev.dependencies]
