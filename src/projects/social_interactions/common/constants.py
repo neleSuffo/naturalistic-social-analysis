@@ -46,11 +46,12 @@ class VTCPaths:
 class StrongSortPaths:
     base_dir = Path(BasePaths.data_dir/"strong_sort/")
     python_env_path = Path(BasePaths.home_dir/".conda/envs/strongsort/bin/python")
+    dataset_name = "quantex"
     video_input_dir = Path(base_dir/"quantex/")
     train_videos_dir = Path(video_input_dir/"train/")
     val_videos_dir = Path(video_input_dir/"val")
-    ecc_train_output_path = Path(train_videos_dir/"ECC_train.json")
-    ecc_val_output_path = Path(val_videos_dir/"ECC_val.json")
+    ecc_train_output_path = Path(f"{base_dir}/{dataset_name}_ECC_train.json")
+    ecc_val_output_path = Path(f"{base_dir}/{dataset_name}_ECC_val.json")
     ecc_script = Path(BasePaths.strong_sort_dir/"others/ecc.py")
 
 class FastReIDPaths:
@@ -61,8 +62,9 @@ class FastReIDPaths:
     pretrained_model_path = Path(BasePaths.models_dir/"duke_agw_R101-ibn.pth")
     config_file_path = Path(BasePaths.leuphana_ipe_dir/"src/projects/social_interactions/models/fast_re_id/dukemtmc_agw_resnet101_ibn.yaml")
     trt_engine_path = Path(BasePaths.models_dir/"duke_R101.engine")
-    output_dir = Path(BasePaths.output_dir/"fast_reid/")
-    
+    output_dir_train = Path(StrongSortPaths.base_dir/"quantex_test_YOLO+BoT/")
+    output_dir_val = Path(StrongSortPaths.base_dir/"quantex_val_YOLO+BoT/")
+
 class ResNetPaths:
     trained_model_path = Path('gaze_estimation_model.pth')
     gaze_labels_csv_path = Path(BasePaths.data_dir/'gaze_labels.csv')
