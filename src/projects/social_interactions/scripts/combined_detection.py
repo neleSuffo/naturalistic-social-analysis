@@ -335,4 +335,3 @@ if __name__ == "__main__":
     detections = {"person": True, "face": False, "voice": False}
     batch_size = 2
     main(detections, batch_size)
-
