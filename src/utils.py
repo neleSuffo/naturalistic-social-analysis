@@ -7,14 +7,18 @@ import shutil
 import concurrent.futures
 from pathlib import Path
 from typing import List, Optional, Union, Tuple
-from src.projects.social_interactions.common.constants import (
-    DetectionPaths as DP,
-    ModelNames as MN,
+import tempfile
+from moviepy.editor import VideoFileClip
+from src.constants import (
+    DetectionPaths,
+    ModelNames,
+    VTCPaths
 )
-from src.projects.social_interactions.config.config import (
-    VideoConfig as VC,
-    StrongSortConfig as SSC,
-    TrainingConfig as TC,
+from src.config import (
+    VideoConfig,
+    StrongSortConfig,
+    TrainingConfig,
+    VTCConfig,
 )
 
 # Configure logging
@@ -47,7 +51,7 @@ def fetch_all_annotations(
         the list of annotations
         (image_id, video_id, category_id, bbox, image_file_name, video_file_name)
     """
-    conn = sqlite3.connect(DP.annotations_db_path)
+    conn = sqlite3.connect(DetectionPaths.annotations_db_path)
     cursor = conn.cursor()
 
     if category_ids:
@@ -108,8 +112,8 @@ def split_videos_into_train_val(
     It returns the list of video names in the train and validation sets.
     """
     # Get all video files in the input folder
-    input_folder = DP.videos_input_dir
-    train_ratio = TC.train_test_split_ratio
+    input_folder = DetectionPaths.videos_input_dir
+    train_ratio = TrainingConfig.train_test_split_ratio
     video_files = [f for f in input_folder.iterdir() if f.is_file() and f.suffix.lower() in ['.mp4', '.avi', '.mov', '.mkv']]
 
     # Calculate total duration of all videos
@@ -263,11 +267,11 @@ def split_videos(
     return train_videos, val_videos
 
 
-def extract_frames_from_videos(
+def prepare_video_dataset(
     output_dir: Path,
     model: str,
     fps: int = None,
-    batch_size: int = VC.video_batch_size,
+    batch_size: int = VideoConfig.video_batch_size,
 ) -> None:
     """
     Extracts frames from all videos in the given directory, splits them into training and validation sets,
@@ -288,8 +292,8 @@ def extract_frames_from_videos(
     """
     logging.info(f"Starting frame extraction from videos in {video_dir} to {output_dir} at {fps} FPS with split ratio {split_ratio}.")
 
-    video_dir = DP.videos_input_dir
-    split_ratio = TC.train_test_split
+    video_dir = DetectionPaths.videos_input_dir
+    split_ratio = TrainingConfig.train_test_split
     
     # Ensure output directories exist
     train_output_dir = output_dir / 'train'
@@ -310,20 +314,61 @@ def extract_frames_from_videos(
         batch = train_videos[i:i + batch_size]
         logging.info(f"Processing training batch {i // batch_size + 1}")
         with concurrent.futures.ProcessPoolExecutor() as executor:
-            if model == MN.yolo_model:
+            if model == ModelNames.yolo_model:
                 executor.map(lambda video: process_video_yolo(video, train_output_dir), batch)
-            if model == MN.strong_sort_model:
+            if model == ModelNames.strong_sort_model:
                 executor.map(lambda video: process_video_strong_sort(video, train_output_dir), batch)
                 
     for i in range(0, len(val_videos), batch_size):
         batch = val_videos[i:i + batch_size]
         logging.info(f"Processing validation batch {i // batch_size + 1}")
         with concurrent.futures.ProcessPoolExecutor() as executor:
-            if model == MN.yolo_model:
+            if model == ModelNames.yolo_model:
                 executor.map(lambda video: process_video_yolo(video, train_output_dir), batch)
-            if model == MN.strong_sort_model:
+            if model == ModelNames.strong_sort_model:
                 executor.map(lambda video: process_video_strong_sort(video, train_output_dir), batch)
     logging.info("Completed frame extraction for all videos.")
+
+
+# Function to extract frames from a video
+def extract_frames_from_video(
+    video_path: str, 
+    output_dir: str
+) -> list:
+    """
+    This function extracts frames from a video file and saves them to a directory.
+    It then returns the list of extracted frames.
+
+    Parameters
+    ----------
+    video_path : str
+        the path to the video file
+    output_dir : str
+        the directory to save the extracted frames
+
+    Returns
+    -------
+    list
+        the list of extracted frame paths
+    """
+    
+    cap = cv2.VideoCapture(video_path)
+    frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+    frames = []
+    # Loop through frames
+    for i in range(frame_count):
+        ret, frame = cap.read()
+        if not ret:
+            break
+        frame_name = f'{video_path.stem}_frame_{i:06d}.jpg'
+        frame_path = Path(output_dir) / frame_name        # Save frame
+        cv2.imwrite(frame_path, frame)
+        # Append frame path to list
+        frames.append(frame_path)
+
+    cap.release()
+    return frames
 
 
 def process_video_strong_sort(video_file: Path, output_subdir: Path) -> None:
@@ -345,7 +390,7 @@ def process_video_strong_sort(video_file: Path, output_subdir: Path) -> None:
             return
 
         # Create the output directory
-        output_video_folder = output_subdir / video_file.stem / SSC.image_subdir
+        output_video_folder = output_subdir / video_file.stem / StrongSortConfig.image_subdir
         output_video_folder.mkdir(parents=True, exist_ok=True)
 
         frame_count = 0
@@ -407,3 +452,115 @@ def process_video_yolo(
 
         cap.release()
         logging.info(f"Completed frame extraction for {video_file.name}.")
+        
+        
+def create_video_writer(
+    output_path: str,
+    frames_per_second: int,
+    frame_width: int,
+    frame_height: int,
+) -> cv2.VideoWriter:
+    """
+    This function creates a VideoWriter object to write the output video.
+
+    Parameters
+    ----------
+    output_path : str
+        the path to the output video file
+    frames_per_second : int
+        the frames per second of the video
+    frame_width : int
+        the width of the frame
+    frame_height : int
+        the height of the frame
+
+    Returns
+    -------
+    cv2.VideoWriter
+        the video writer object
+    """
+
+    # Create a VideoWriter object to write the output video
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+    out = cv2.VideoWriter(
+        output_path, fourcc, frames_per_second, (frame_width, frame_height)
+    )
+
+    return out
+
+
+def create_video_to_id_mapping(video_names: list) -> dict:
+    """
+    This function creates a dictionary with mappings from video names to ids.
+
+    Parameters
+    ----------
+    video_names : list
+        a list of video names without the file extension
+
+    Returns
+    -------
+    dict
+        a dictionary with mappings from video names to ids
+    """
+    # Create a dictionary with mappings from video names to ids
+    # the first video has id 0, the second video has id 1, and so on
+    video_id_dict = {video_name: i for i, video_name in enumerate(video_names)}
+    return video_id_dict
+
+
+def extract_audio_from_video(video: VideoFileClip, filename: str) -> None:
+    """
+    This function extracts the audio from a video file
+    and saves it as a 16kHz WAV file.
+
+    Parameters
+    ----------
+    video : VideoFileClip
+        the video file
+    filename : str
+        the filename of the video
+    """
+    # Create a temporary file
+    temp_file = tempfile.NamedTemporaryFile(delete=True)
+
+    # Extract the audio and save it to the temporary file
+    video.audio.write_audiofile(temp_file.name + ".wav", codec="pcm_s16le")
+
+    # Create the output directory if it doesn't exist
+    VTCPaths.output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Convert the audio to 16kHz with sox and
+    # save it to the output file
+    output_file = VTCPaths.output_dir / f"{filename}{VTCConfig.audio_file_suffix}"
+
+    subprocess.run(
+        ["sox", temp_file.name + ".wav", "-r", "16000", output_file],
+        check=True,
+    )
+    
+    # Delete the temporary file
+    temp_file.close()
+    
+    logging.info(f"Successfully stored the file at {output_file}")
+
+
+def extract_audio_from_videos_in_folder(folder_path: Path) -> None:
+    """
+    Extracts audio from all video files in the specified folder, if not already done.
+    """
+    for video_file in folder_path.iterdir():
+        if video_file.suffix.lower() not in ['.mp4']:
+            continue  # Skip non-video files
+        
+        audio_path = VTCPaths.output_dir / f"{video_file.stem}{VTCConfig.audio_file_suffix}"
+        
+        # Check if the audio file already exists
+        if not audio_path.exists():
+            # Create a VideoFileClip object
+            video_clip = VideoFileClip(str(video_file))  
+            # Extract audio from the video
+            extract_audio_from_video(video_clip, video_file.stem)  
+            print(f"Extracted audio from {video_file.name}")
+        else:
+            print(f"Audio already exists for {video_file.name}")
