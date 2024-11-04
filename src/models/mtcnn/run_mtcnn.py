@@ -1,9 +1,9 @@
 from facenet_pytorch import MTCNN
 from pathlib import Path
 from moviepy.editor import VideoFileClip
-from src.projects.social_interactions.common.constants import DetectionPaths
-from src.projects.social_interactions.common.my_utils import create_video_writer
-from src.projects.social_interactions.config.config import generate_detection_output_video, DetectionParameters as DP
+from constants import DetectionPaths
+from utils import create_video_writer
+from config import generate_detection_output_video, DetectionParameters as DP
 from typing import Optional
 from tqdm import tqdm
 from PIL import Image

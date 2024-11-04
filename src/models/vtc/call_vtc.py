@@ -1,4 +1,4 @@
-from src.projects.social_interactions.common.constants import VTCPaths
+from constants import VTCPaths
 import subprocess
 import os
 import logging

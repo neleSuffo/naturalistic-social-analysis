@@ -1,6 +1,6 @@
-from src.projects.social_interactions.common.constants import VTCPaths
-from src.projects.social_interactions.config.config import VTCConfig, DetectionParameters
-from src.projects.social_interactions.scripts.language import call_vtc, my_utils
+from constants import VTCPaths
+from config import VTCConfig, DetectionParameters
+from models.vtc import call_vtc, my_utils
 import logging
 import multiprocessing
 

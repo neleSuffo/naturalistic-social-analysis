@@ -1,5 +1,5 @@
-from src.projects.social_interactions.common.constants import VTCPaths
-from src.projects.social_interactions.config.config import VTCConfig, LabelToCategoryMapping, DetectionParameters
+from constants import VTCPaths
+from config import VTCConfig, LabelToCategoryMapping, DetectionParameters
 from moviepy.editor import VideoFileClip
 from pathlib import Path
 import pandas as pd

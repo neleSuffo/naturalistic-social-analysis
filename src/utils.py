@@ -9,12 +9,12 @@ from pathlib import Path
 from typing import List, Optional, Union, Tuple
 import tempfile
 from moviepy.editor import VideoFileClip
-from src.constants import (
+from constants import (
     DetectionPaths,
     ModelNames,
     VTCPaths
 )
-from src.config import (
+from config import (
     VideoConfig,
     StrongSortConfig,
     TrainingConfig,

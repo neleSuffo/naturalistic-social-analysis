@@ -5,9 +5,9 @@ from ultralytics import YOLO
 from pathlib import Path
 from tqdm import tqdm
 from typing import Optional
-from src.projects.social_interactions.common.constants import DetectionPaths
-from src.projects.social_interactions.common.my_utils import create_video_writer
-from src.projects.social_interactions.config.config import generate_detection_output_video, DetectionParameters, YoloConfig as YC
+from constants import DetectionPaths
+from utils import create_video_writer
+from config import generate_detection_output_video, DetectionParameters, YoloConfig
 
 
 def run_yolo(
@@ -161,7 +161,7 @@ def detection_json_output(
             
             if frame_count % DetectionParameters.frame_step_interval == 0:
                 # Perform detection on the current frame
-                results = model(frame, iou=YC.iou_threshold)
+                results = model(frame, iou=YoloConfig.iou_threshold)
                 
                 # Create the file name for the current image
                 file_name = f"{video_file_name}_{frame_count:06}.jpg"

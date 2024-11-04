@@ -2,28 +2,28 @@ import os
 import json
 import logging
 import torch
-from ultralytics import YOLO
 import torch.nn as nn
+import utils
+from ultralytics import YOLO
 from multiprocessing.pool import ThreadPool
 from torchvision import transforms
 from PIL import Image
 from facenet_pytorch import MTCNN
 from pathlib import Path
 from timeit import default_timer as timer
-from src.projects.social_interactions.models.mtcnn.run_mtcnn import run_mtcnn
-from src.projects.social_interactions.models.yolo_inference.run_yolo import run_yolo
-#from src. projects.social_interactions.models.resnet.train_gaze_model import GazeEstimationModel
-from src.projects.social_interactions.scripts.language import detect_voices
-from src.projects.social_interactions.common.constants import (
+from models.mtcnn.run_mtcnn import run_mtcnn
+from models.yolo_inference.run_yolo import run_yolo
+#fromvmodels.resnet.train_gaze_model import GazeEstimationModel
+from models.vtc import detect_voices
+from constants import (
     DetectionPaths,
     ResNetPaths,
     YoloPaths,
 )
-from src.projects.social_interactions.config.config import (
+from config import (
     DetectionParameters,
 )
 from multiprocessing import Value
-from src.projects.social_interactions.common import my_utils
 from typing import Dict
 from threading import Lock
  
@@ -41,7 +41,7 @@ class SharedResources:
         self.video_file_ids_dict = {}  
         
     def create_video_id_mapping(self):
-        return my_utils.create_video_to_id_mapping(
+        return utils.create_video_to_id_mapping(
             [video_file.stem for video_file in DetectionPaths.videos_input_dir.iterdir()
              if video_file.suffix.lower() == DetectionParameters.video_file_extension]
         )
@@ -251,15 +251,16 @@ class YOLOProcessor:
             video_file, 
             self.model,
         )
-        # Add each class to the combined output categories
-        for class_id, class_name in self.class_dict.items():
-            detection_output[DetectionParameters.output_key_categories].append({
-                "id": class_id,
-                "name": class_name
-            })
+        #Is None when generate_output_video =True
         if detection_output:
-            # Merge the results into the combined output
-            self.output_merger.merge(detection_output)
+            # Add each class to the combined output categories
+            for class_id, class_name in self.class_dict.items():
+                detection_output[DetectionParameters.output_key_categories].append({
+                    "id": class_id,
+                    "name": class_name
+                })
+                # Merge the results into the combined output
+                self.output_merger.merge(detection_output)
     
 class VoiceTypeProcessor:
     def __init__(self, output_merger: OutputMerger, shared_resources):
@@ -271,7 +272,7 @@ class VoiceTypeProcessor:
     def extract_audio_from_videos(self):
         """This function extracts audio from videos for voice detection."""
         logging.info("Extracting audio for voice detection...")
-        my_utils.extract_audio_from_videos_in_folder(DetectionPaths.videos_input)
+        utils.extract_audio_from_videos_in_folder(DetectionPaths.videos_input)
         
     def run_voice_detection(self):
         """This function runs voice detection on the extracted audio files.
