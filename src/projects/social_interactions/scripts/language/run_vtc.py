@@ -1,4 +1,4 @@
-from src.projects.social_interactions.common.constants import VTCParameters
+from src.projects.social_interactions.common.constants import VTCPaths
 import subprocess
 
 
@@ -13,11 +13,11 @@ def run_voice_type_classifier(input_dir: str) -> None:
     """
     # Run the voice-type-classifier on the input files and store the output
     subprocess.run(
-        [VTCParameters.execution_command, input_dir, "--device=gpu"],
+        [VTCPaths.command_script_path, input_dir, "--device=gpu"],
         check=True,
         stdout=subprocess.PIPE,
     )
 
 
 if __name__ == "__main__":
-    run_voice_type_classifier(VTCParameters.audio_path)
+    run_voice_type_classifier(VTCPaths.audio_dir)
