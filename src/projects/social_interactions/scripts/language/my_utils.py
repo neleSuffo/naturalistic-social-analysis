@@ -1,8 +1,5 @@
-from src.projects.social_interactions.common.constants import (
-    VTCParameters,
-    LabelToCategoryMapping,
-    DetectionParameters,
-)
+from src.projects.social_interactions.common.constants import VTCPaths
+from src.projects.social_interactions.config.config import VTCConfig, LabelToCategoryMapping, DetectionParameters
 from moviepy.editor import VideoFileClip
 from pathlib import Path
 import pandas as pd
@@ -52,7 +49,7 @@ def convert_utterances_to_coco(
     }
 
     # Get category ID from label dictionary
-    category_id = LabelToCategoryMapping.label_dict[DetectionParameters.vtc_detection_class]
+    category_id = LabelToCategoryMapping.label_dict[DetectionParameters.vtc_detection_target]
     
     # Iterate over the utterances
     for row in df.itertuples():
@@ -62,7 +59,7 @@ def convert_utterances_to_coco(
 
         # For each second from the start to the end of the utterance
         for second in range(start_time, end_time):
-            frame_count = second * DetectionParameters.frame_step
+            frame_count = second * DetectionParameters.frame_step_interval
             # Add image information to COCO output
             detection_output["images"].append(
                 {
@@ -112,11 +109,11 @@ def extract_resampled_audio(video: VideoFileClip, filename: str) -> None:
     video.audio.write_audiofile(temp_file.name + ".wav", codec="pcm_s16le")
 
     # Create the output directory if it doesn't exist
-    VTCParameters.audio_path.mkdir(parents=True, exist_ok=True)
+    VTCPaths.audio_dir.mkdir(parents=True, exist_ok=True)
 
     # Convert the audio to 16kHz with sox and
     # save it to the output file
-    output_file = Path(VTCParameters.audio_path) / f"{filename}{VTCParameters.audio_name_ending}"
+    output_file = Path(VTCPaths.audio_dir) / f"{filename}{VTCConfig.audio_file_suffix}"
     subprocess.run(
         ["sox", temp_file.name + ".wav", "-r", "16000", output_file],
         check=True,
@@ -170,7 +167,7 @@ def get_total_seconds_of_voice(df: pd.DataFrame, file_name_short: str) -> float:
             df.at[row.Index, "Seconds_Added"] = row.Utterance_End - prev_end
             prev_end = row.Utterance_End
         # Save the output as a parquet file
-        parquet_output_path = VTCParameters.df_output_path / f"{file_name_short}_vtc_output.parquet"
+        parquet_output_path = VTCPaths.df_output_pickle / f"{file_name_short}_vtc_output.parquet"
         df.to_parquet(parquet_output_path)
 
         return total
@@ -223,8 +220,8 @@ def rttm_to_dataframe(rttm_file: Path) -> pd.DataFrame:
     logging.info("Data processing complete. Returning DataFrame.")
 
     try:
-        df.to_pickle(VTCParameters.df_output_file_path)
-        logging.info(f"DataFrame successfully saved to: {VTCParameters.df_output_file_path}")
+        df.to_pickle(VTCPaths.df_output_pickle)
+        logging.info(f"DataFrame successfully saved to: {VTCPaths.df_output_pickle}")
     except Exception as e:
         logging.error(f"Failed to save DataFrame to file: {e}")
         raise
