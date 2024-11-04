@@ -1,4 +1,5 @@
-from src.projects.social_interactions.common.constants import VTCParameters, DetectionParameters as DP
+from src.projects.social_interactions.common.constants import VTCPaths
+from src.projects.social_interactions.config.config import VTCConfig, DetectionParameters
 from src.projects.social_interactions.scripts.language import call_vtc, my_utils
 import logging
 import multiprocessing
@@ -28,12 +29,12 @@ def run_voice_detection(
     """
     # Initialize detection output
     detection_output = {
-        DP.output_key_videos: [], 
-        DP.output_key_annotations: [], 
-        DP.output_key_images: []}
+        DetectionParameters.output_key_videos: [], 
+        DetectionParameters.output_key_annotations: [], 
+        DetectionParameters.output_key_images: []}
 
     # Create the output directory if it does not exist
-    VTCParameters.output_path.mkdir(parents=True, exist_ok=True)
+    VTCPaths.output_dir.mkdir(parents=True, exist_ok=True)
    
     try:
         # Run the voice-type-classifier
@@ -42,14 +43,14 @@ def run_voice_detection(
         logging.error(f"Failed to run voice-type-classifier: {e}")
     
     # Convert the output of the voice-type-classifier to a pandas DataFrame
-    voice_detection_df = my_utils.rttm_to_dataframe(VTCParameters.output_file_path)
+    voice_detection_df = my_utils.rttm_to_dataframe(VTCPaths.output_rttm_path)
 
     # Get the unique audio file names
     unique_files = voice_detection_df['audio_file_name'].unique()
 
     for file_name in unique_files:
         # Get the video file name and file ID
-        cleaned_audio_file_name = file_name.replace(VTCParameters.audio_name_ending.stem, '')
+        cleaned_audio_file_name = file_name.replace(VTCConfig.audio_file_suffix.stem, '')
         file_id = video_file_ids_dict[cleaned_audio_file_name]
         
         # Filter DataFrame for current file
@@ -69,7 +70,7 @@ def run_voice_detection(
             file_id,
         )
         # Accumulate annotations and images
-        detection_output[DP.output_key_annotations].extend(file_detection_output[DP.output_key_annotations])
-        detection_output[DP.output_key_images].extend(file_detection_output[DP.output_key_images])
+        detection_output[DetectionParameters.output_key_annotations].extend(file_detection_output[DetectionParameters.output_key_annotations])
+        detection_output[DetectionParameters.output_key_images].extend(file_detection_output[DetectionParameters.output_key_images])
     
     return detection_output
