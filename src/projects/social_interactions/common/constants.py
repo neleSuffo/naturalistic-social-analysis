@@ -11,8 +11,8 @@ class BasePaths:
     fast_re_id_dir = Path(home_dir/"projects/fast-reid")
 
 class DetectionPaths:    
-    person_detections_dir = Path(BasePaths.leuphana_ipe_dir/"outputs/yolo/")
-    face_detections_dir = Path(BasePaths.leuphana_ipe_dir/"outputs/mtcnn/")
+    person_detections_dir = Path(BasePaths.home_dir/"outputs/yolov8/")
+    face_detections_dir = Path(BasePaths.home_dir/"outputs/mtcnn/")
     #videos_input_dir = Path(BasePaths.data_dir//"videos_train/") 
     #videos_input_dir = Path(BasePaths.data_dir//"videos/") 
     videos_input_dir = Path(BasePaths.data_dir/"videos_example/") 
@@ -33,6 +33,7 @@ class YoloPaths:
     labels_input_dir = Path(BasePaths.data_dir/"yolo_labels")
     # the path to the input folder for the yolo model
     data_input_dir = Path(BasePaths.data_dir/"yolo")
+    yolo_output_dir = Path(BasePaths.output_dir/"yolo_detections/")
 
 class VTCPaths:
     audio_dir = Path(BasePaths.data_dir/"audio")
@@ -53,6 +54,8 @@ class StrongSortPaths:
     ecc_train_output_path = Path(f"{base_dir}/{dataset_name}_ECC_train.json")
     ecc_val_output_path = Path(f"{base_dir}/{dataset_name}_ECC_val.json")
     ecc_script = Path(BasePaths.strong_sort_dir/"others/ecc.py")
+    deep_sort_output_dir = Path(BasePaths.output_dir/"deep_sort/")
+    strong_sort_output_dir = Path(BasePaths.output_dir/"strong_sort/")
 
 class FastReIDPaths:
     base_dir = Path(BasePaths.data_dir/"fast_re_id/")
