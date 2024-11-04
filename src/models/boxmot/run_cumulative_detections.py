@@ -16,21 +16,21 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 # Add boxmot to the Python path
 sys.path.append('/home/nele_pauline_suffo/projects/boxmot')
-from boxmot import DeepOCSORT, StrongSORT
+from boxmot import DeepOcSort, StrongSort
 
 # Initialize YOLO model and tracker
 yolo_model = YOLO('/home/nele_pauline_suffo/models/yolov8_trained.pt')
 
-deep_oc_sort_tracker = DeepOCSORT(
-    model_weights=Path('resnet50_dukemtmcreid.pt'),  # which ReID model to use
+deep_oc_sort_tracker = DeepOcSort(
+    reid_weights=Path('resnet50_dukemtmcreid.pt'),  # which ReID model to use
     device='cuda:0',
-    fp16=False,
+    half=False,
 )
 
-strongsort_tracker = StrongSORT(
-    model_weights=Path('resnet50_dukemtmcreid.pt'),  # which ReID model to use
+strongsort_tracker = StrongSort(
+    reid_weights=Path('resnet50_dukemtmcreid.pt'),  # which ReID model to use
     device='cuda:0',
-    fp16=False,
+    half=False,
 )   
     
 def extract_detections(video_path: Path, output_folder: Path):
@@ -133,12 +133,12 @@ def run_tracking_on_detections(
         logging.error(f"Failed to open video: {video_path}")
         return
 
-    # Initialize the tracking data
-    all_tracking_data = {
-        'tracked_boxes': {},
-        'image_names': [],
-        'images': []
-    }
+    # # Initialize the tracking data
+    # all_tracking_data = {
+    #     'tracked_boxes': {},
+    #     'image_names': [],
+    #     'images': []
+    # }
     if save_video:
         # Prepare the output video writer
         frame_width = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -164,9 +164,9 @@ def run_tracking_on_detections(
 
         # Run the tracking model on the detections      
         if tracker == 'deep_oc_sort':
-            tracked_image, tracking_data = run_deep_oc_sort_model(detections, image)
+            tracked_image = run_deep_oc_sort_model(detections, image)
         elif tracker == 'strong_sort':
-            tracked_image, tracking_data = run_strong_sort_model(detections, image)
+            tracked_image = run_strong_sort_model(detections, image)
         else:
             logging.error(f"Unknown tracker: {tracker}. Please use 'deep_oc_sort' or 'strong_sort'.")
             return      
@@ -176,14 +176,14 @@ def run_tracking_on_detections(
             # Write the processed frame to the output video
             video_writer.write(tracked_image)
         
-        all_tracking_data['tracked_boxes'].update(tracking_data['tracked_boxes'])
-        all_tracking_data['images'].append(tracked_image)
-        all_tracking_data['image_names'].append(image_name)
+        # all_tracking_data['tracked_boxes'].update(tracking_data['tracked_boxes'])
+        # all_tracking_data['images'].append(tracked_image)
+        # all_tracking_data['image_names'].append(image_name)
         
         frame_index += 1
 
-    np.save(output_path, all_tracking_data)
-    logging.info(f"Saved tracking results for {video_name} to {output_path}")
+    #np.save(output_path, all_tracking_data)
+    #logging.info(f"Saved tracking results for {video_name} to {output_path}")
     
     if save_video:
         video.release()
@@ -242,9 +242,9 @@ def run_deep_oc_sort_model(detections: np.ndarray, image: np.ndarray) -> Tuple[n
         deep_oc_sort_tracker.update(detections, image)  # M X (x, y, x, y, id, conf, cls, ind)
     
     # Get tracking results and plot them on the image
-    tracked_image, tracking_data = deep_oc_sort_tracker.plot_results(image, show_trajectories=True)
+    tracked_image = deep_oc_sort_tracker.plot_results(image, show_trajectories=True)
     
-    return tracked_image, tracking_data
+    return tracked_image
 
 
 def run_strong_sort_model(detections: np.ndarray, image: np.ndarray, embeddings: np.ndarray = None) -> Tuple[np.ndarray, Dict]:
@@ -267,9 +267,9 @@ def run_strong_sort_model(detections: np.ndarray, image: np.ndarray, embeddings:
         strongsort_tracker.update(detections, image, embeddings)  # M X (x, y, x, y, id, conf, cls, ind)
 
     # Get tracking results and plot them on the image
-    tracked_image, tracking_data = strongsort_tracker.plot_results(image, show_trajectories=True)
+    tracked_image = strongsort_tracker.plot_results(image, show_trajectories=True)
     
-    return tracked_image, tracking_data
+    return tracked_image
 
 
 def main():
