@@ -2,7 +2,7 @@ import xml.etree.ElementTree as ET
 import json
 import logging
 import sqlite3
-from src.projects.social_interactions.common.constants import LabelToCategoryMapping, DetectionPaths, DetectionParameters
+from config import LabelToCategoryMapping
 from collections import defaultdict
 from datetime import datetime
 

@@ -7,8 +7,8 @@ import logging
 from pathlib import Path
 from itertools import chain
 from typing import Tuple, Dict
-from src.projects.social_interactions.common.constants import YoloPaths, StrongSortPaths, DetectionPaths
-from src.projects.social_interactions.config.config import DetectionParameters
+from src.constants import YoloPaths, StrongSortPaths, DetectionPaths
+from src.config import DetectionParameters
 from ultralytics import YOLO
 
 # Set up logging

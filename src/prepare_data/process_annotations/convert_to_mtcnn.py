@@ -1,7 +1,7 @@
 import json
 import logging
-from src.projects.shared.utils import fetch_all_annotations
-from src.projects.social_interactions.common.constants import MtcnnPaths as MP
+from utils import fetch_all_annotations
+from constants import MtcnnPaths
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -17,7 +17,7 @@ def save_annotations(annotations: list) -> None:
         (image_id, video_id, category_id, bbox, image_file_name, video_file_name)
     """
     logging.info("Saving annotations in MTCNN format.")
-    output_file_path = MP.data_dir
+    output_file_path = MtcnnPaths.data_dir
     output_dir = output_file_path.parent
     output_dir.mkdir(parents=True, exist_ok=True)
     

@@ -6,8 +6,8 @@ import random
 from PIL import Image
 from torchvision import transforms
 from torch.utils.data import Dataset, DataLoader, random_split
-from src.projects.social_interactions.common.constants import ResNetParameters as RNP, DetectionPaths
-from src.projects.social_interactions.config.config import ResNetConfig as RNC, TrainingConfig
+from constants import ResNetParameters, DetectionPaths
+from config import ResNetConfig, TrainingConfig
 #from torchvision.models import ResNet18_Weights
 
 class GazeDataset(Dataset):
@@ -66,7 +66,7 @@ def train_model():
     ])
 
     # Load the dataset
-    dataset = GazeDataset(csv_file=RNP.gaze_labels_csv_path, root_dir=DetectionPaths.images_input_dir, transform=transform)
+    dataset = GazeDataset(csv_file=ResNetParameters.gaze_labels_csv_path, root_dir=DetectionPaths.images_input_dir, transform=transform)
     
      # Set random seed for reproducibility
     random_seed = TrainingConfig.random_seed
@@ -84,8 +84,8 @@ def train_model():
     train_dataset, val_dataset = torch.utils.data.random_split(dataset, [train_size, val_size], generator=generator)
     
     # Create DataLoaders for each subset
-    train_loader = DataLoader(train_dataset, batch_size=RNC.batch_size, shuffle=True, num_workers=4)
-    val_loader = DataLoader(val_dataset, batch_size=RNC.batch_size, shuffle=False, num_workers=4)
+    train_loader = DataLoader(train_dataset, batch_size=ResNetConfig.batch_size, shuffle=True, num_workers=4)
+    val_loader = DataLoader(val_dataset, batch_size=ResNetConfig.batch_size, shuffle=False, num_workers=4)
     
     # Load the pretrained model
     model = GazeEstimationModel(pretrained=True).to('cuda:0')
@@ -94,7 +94,7 @@ def train_model():
     optimizer = optim.Adam(model.parameters(), lr=1e-4)
 
     # Train the model
-    num_epochs = RNC.num_epochs
+    num_epochs = ResNetConfig.num_epochs
 
     for epoch in range(num_epochs):
         model.train()
@@ -124,7 +124,7 @@ def train_model():
                 total += labels.size(0)
             print(f'Validation Loss: {val_loss/len(val_loader)}, Accuracy: {100 * correct / total}%')
 
-    torch.save(model.state_dict(), RNP.trained_model_path)
+    torch.save(model.state_dict(), ResNetParameters.trained_model_path)
 
 if __name__ == "__main__":
     train_model()

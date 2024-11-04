@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from projects.social_interactions.src.models.mtcnn.utils import utils
+from models.mtcnn.utils import utils
 
 
 # Define optimizer and loss function for MTCNN

@@ -6,8 +6,7 @@ import os
 import sqlite3
 import subprocess
 from pathlib import Path
-from src.projects.social_interactions.common.constants import DetectionPaths, TrainParameters, YoloParameters as Yolo, MtcnnParameters as Mtcnn
-from src.projects.shared.utils import split_videos_into_train_val
+from constants import DetectionPaths, TrainParameters, YoloParameters as Yolo, MtcnnParameters as Mtcnn
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 

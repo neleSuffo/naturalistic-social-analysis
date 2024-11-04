@@ -2,9 +2,9 @@ import json
 import logging
 import cv2
 from pathlib import Path
-from src.projects.shared.utils import fetch_all_annotations
-from src.projects.social_interactions.common.constants import YoloPaths as YP, DetectionPaths
-from src.projects.social_interactions.config.config import YoloConfig as YC
+from utils import fetch_all_annotations
+from constants import YoloPaths, DetectionPaths
+from config import YoloConfig
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -93,7 +93,7 @@ def save_annotations(
         the list of annotations
     """
     logging.info("Saving annotations in YOLO format.")
-    output_dir = YP.labels_input_dir
+    output_dir = YoloPaths.labels_input_dir
     output_dir.mkdir(parents=True, exist_ok=True)
     file_contents = {}
 
@@ -153,7 +153,7 @@ def save_annotations(
 def main() -> None:
     logging.info("Starting the conversion process for Yolo.")
     try:
-        annotations = fetch_all_annotations(category_ids = YC.target_class_ids)
+        annotations = fetch_all_annotations(category_ids = YoloConfig.target_class_ids)
         logging.info(f"Fetched {len(annotations)} annotations.")
         save_annotations(annotations)
         logging.info("Successfully saved all annotations.")

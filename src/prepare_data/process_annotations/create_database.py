@@ -3,15 +3,15 @@ import json
 import cv2
 import logging
 import re
-from pathlib import Path
 import xml.etree.ElementTree as ET
-from src.projects.social_interactions.common.constants import DetectionPaths
-from src.projects.shared.prepare_data.process_annotations.utils import (
+from pathlib import Path
+from constants import DetectionPaths
+from prepare_data.process_annotations.utils import (
     get_task_ids_names_lengths,
     generate_cum_sum_frame_count,
     get_video_id_from_name_db,
 )
-from src.projects.social_interactions.config.config import VideoConfig, LabelToCategoryMapping
+from config import VideoConfig, LabelToCategoryMapping
 
 
 # Configure logging

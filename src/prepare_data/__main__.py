@@ -1,6 +1,6 @@
 import subprocess
 import logging
-from src.projects.shared.prepare_data.prepare_training import main as prepare_training
+from prepare_data.prepare_training import main as prepare_training
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

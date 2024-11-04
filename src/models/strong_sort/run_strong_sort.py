@@ -3,7 +3,7 @@ import cv2
 from pathlib import Path
 from ultralytics import YOLO
 from strong_sort import StrongSORT
-from src.projects.social_interactions.common.constants import YoloPaths
+from constants import YoloPaths
 
 # Initialize YOLO model
 yolo_model = YOLO(YoloPaths.trained_weights_path) 

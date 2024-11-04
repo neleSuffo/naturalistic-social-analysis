@@ -1,7 +1,7 @@
 import subprocess
 import logging
-from src.projects.social_interactions.common.constants import StrongSortPaths as SSP, FastReIDPaths as FRP, BasePaths as BP
-from src.projects.social_interactions.config.config import FastReIDConfig as FRC
+from constants import StrongSortPaths, FastReIDPaths, BasePaths
+from config import FastReIDConfig
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -11,16 +11,16 @@ def generate_ecc_results():
     This function generates the ECC results for the train and val videos.
     """
     # Command to activate environment and run the ECC script for train and val
-    command_train = f"conda run -n strongsort python {SSP.ecc_script} --mot_dir {SSP.train_videos_dir} --output_path {SSP.ecc_train_output_path}"
-    command_val = f"conda run -n strongsort python {SSP.ecc_script} --mot_dir {SSP.val_videos_dir} --output_path {SSP.ecc_val_output_path}"
+    command_train = f"conda run -n strongsort python {StrongSortPaths.ecc_script} --mot_dir {StrongSortPaths.train_videos_dir} --output_path {StrongSortPaths.ecc_train_output_path}"
+    command_val = f"conda run -n strongsort python {StrongSortPaths.ecc_script} --mot_dir {StrongSortPaths.val_videos_dir} --output_path {StrongSortPaths.ecc_val_output_path}"
 
     # Execute the train command
-    logging.info(f"Generating ECC results for train videos {SSP.train_videos_dir}.")
+    logging.info(f"Generating ECC results for train videos {StrongSortPaths.train_videos_dir}.")
     process_train = subprocess.Popen(command_train, shell=True, executable='/bin/bash')
     process_train.communicate()  # Wait for train process to complete
 
     # Execute the val command
-    logging.info(f"Generating ECC results for val videos {SSP.val_videos_dir}.")
+    logging.info(f"Generating ECC results for val videos {StrongSortPaths.val_videos_dir}.")
     process_val = subprocess.Popen(command_val, shell=True, executable='/bin/bash')
     process_val.communicate()  # Wait for val process to complete
     
@@ -39,8 +39,8 @@ def generate_fast_re_id_features():
         input_path = f"{video_name}/*jpg"
         
         # Check if the folder exists in either train or val directories
-        output_dir_train = SSP.train_videos_dir/ video_name.name
-        output_dir_val = SSP.val_videos_dir/ video_name.name
+        output_dir_train = StrongSortPaths.train_videos_dir/ video_name.name
+        output_dir_val = StrongSortPaths.val_videos_dir/ video_name.name
         
         if output_dir_train.exists():
             output_path = output_dir_train
@@ -48,7 +48,7 @@ def generate_fast_re_id_features():
             output_path = output_dir_val
         else:
             raise FileNotFoundError(f"Neither {output_dir_train} nor {output_dir_val} exists.")
-        python_executable = FRP.python_env_path/"bin/python"
+        python_executable = FastReIDPaths.python_env_path/"bin/python"
         model_path = "/home/nele_pauline_suffo/models/duke_R101.engine"
         
         command = [
@@ -56,25 +56,25 @@ def generate_fast_re_id_features():
             "tools/deploy/trt_inference.py",
             "--model-path", model_path,
             "--input", input_path,
-            "--batch-size", str(FRC.trt_batch_size),
-            "--height", str(FRC.trt_height),
-            "--width", str(FRC.trt_width),
+            "--batch-size", str(FastReIDConfig.trt_batch_size),
+            "--height", str(FastReIDConfig.trt_height),
+            "--width", str(FastReIDConfig.trt_width),
             "--output", output_path
 ]
         # Run the command
         #subprocess.run(command, shell=True, executable='/bin/bash', check=True)
         try:
-            subprocess.run(command, cwd=str(BP.fast_re_id_dir), check=True)
+            subprocess.run(command, cwd=str(BasePaths.fast_re_id_dir), check=True)
         except subprocess.CalledProcessError as e:
             print(f"Error: {e}")
             
-    for video_subfolder in FRP.images_train_dir.iterdir():
-        logging.info(f"Found {len(list(FRP.images_train_dir.iterdir()))} video(s) in train.")
+    for video_subfolder in FastReIDPaths.images_train_dir.iterdir():
+        logging.info(f"Found {len(list(FastReIDPaths.images_train_dir.iterdir()))} video(s) in train.")
         generate_re_id_features_per_video(video_subfolder)
         logging.info(f"Generated FastReID features for {video_subfolder}.")
         
-    for video_subfolder in FRP.images_val_dir.iterdir():
-        logging.info(f"Found {len(list(FRP.images_val_dir.iterdir()))} video(s) in val.")
+    for video_subfolder in FastReIDPaths.images_val_dir.iterdir():
+        logging.info(f"Found {len(list(FastReIDPaths.images_val_dir.iterdir()))} video(s) in val.")
         generate_re_id_features_per_video(video_subfolder)
         logging.info(f"Generated FastReID features for {video_subfolder}.")
 
