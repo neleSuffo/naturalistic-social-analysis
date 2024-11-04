@@ -7,7 +7,7 @@ from tqdm import tqdm
 from typing import Optional
 from src.projects.social_interactions.common.constants import DetectionPaths
 from src.projects.social_interactions.common.my_utils import create_video_writer
-from src.projects.social_interactions.config.config import generate_detection_output_video, DetectionParameters as DP, YoloConfig as YC
+from src.projects.social_interactions.config.config import generate_detection_output_video, DetectionParameters, YoloConfig as YC
 
 
 def run_yolo(
@@ -41,10 +41,9 @@ def run_yolo(
     
     # If a detection output video should be generated
     if generate_detection_output_video:
-        video_output_path = DetectionPaths.person_detections_dir / f"{video_file_name}.mp4"
+        video_output_path = DetectionPaths.person_detections_dir / f"{video_file_name}_yolo_detections.mp4"
         process_and_save_video(
             cap, 
-            video_file,
             video_output_path, 
             model)
         logging.info(f"Detection output video generated at {video_output_path}.")
@@ -145,8 +144,8 @@ def detection_json_output(
     
     # Initialize the detection output for the video
     detection_output = {
-        DP.output_key_images: [],
-        DP.output_key_categories: []
+        DetectionParameters.output_key_images: [],
+        DetectionParameters.output_key_categories: []
     }    
     
     # Process each frame
@@ -160,7 +159,7 @@ def detection_json_output(
             # Update progress bar
             pbar.update()
             
-            if frame_count % DP.frame_step_interval == 0:
+            if frame_count % DetectionParameters.frame_step_interval == 0:
                 # Perform detection on the current frame
                 results = model(frame, iou=YC.iou_threshold)
                 
@@ -170,7 +169,7 @@ def detection_json_output(
                 # Initialize the dictionary for the current image
                 image_detections = {
                     "image_id": file_name,
-                    DP.output_key_annotations: []
+                    DetectionParameters.output_key_annotations: []
                 }
                 
                 # Add the annotations for the detected objects
@@ -184,13 +183,13 @@ def detection_json_output(
                     category_name = model.names[category_id]
                     
                     # Append the detection data to the list for this image
-                    image_detections[DP.output_key_annotations].append({
+                    image_detections[DetectionParameters.output_key_annotations].append({
                         "class": category_name,
                         "bbox": [x_center.item(), y_center.item(), width.item(), height.item()],
                         "confidence": conf.item()
                     })
                 # Add the image's detection data to the video-level output
-                detection_output[DP.output_key_images].append(image_detections)      
+                detection_output[DetectionParameters.output_key_images].append(image_detections)      
 
     return detection_output
 
@@ -216,7 +215,7 @@ def detection_video_output(
 
     class_index_det = next(
         key for key, value in model.names.items()
-        if value == DP.yolo_detection_target
+        if value == DetectionParameters.yolo_detection_target
     )
     
     # Process each frame
@@ -228,18 +227,17 @@ def detection_video_output(
 
             pbar.update()
 
-            if frame_count % DP.frame_step_interval == 0:
-                results = model(frame)
+            results = model(frame)
 
-                if results.pred[0] is not None:
-                    for det in results.pred[0]:
-                        x1, y1, x2, y2, conf, cls = det
-                        if int(cls) == class_index_det:
-                            cv2.rectangle(frame, (int(x1), int(y1)), (int(x2), int(y2)), (146, 123, 45), 2)
-                            cv2.putText(frame, f"person {conf:.2f}", (int(x1), int(y1) - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (146, 123, 45), 2)
+            if results[0].boxes is not None:
+                for boxes in results[0].boxes:
+                    x1, y1, x2, y2 = boxes.xyxy[0]
+                    confidence = boxes.conf[0]
+                    # Draw bounding box
+                    cv2.rectangle(frame, (int(x1), int(y1)), (int(x2), int(y2)), (146, 123, 45), 2)
+                    cv2.putText(frame, f"person {confidence:.2f}", (int(x1), int(y1) - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (146, 123, 45), 2)
 
             out.write(frame)
 
         cap.release()
         out.release()
-        cv2.destroyAllWindows()
