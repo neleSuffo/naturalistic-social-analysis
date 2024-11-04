@@ -1,4 +1,5 @@
-from src.projects.social_interactions.common.constants import VTCParameters
+from src.projects.social_interactions.common.constants import VTCPaths
+from src.projects.social_interactions.config.config import VTCConfig
 from moviepy.editor import VideoFileClip
 from pathlib import Path
 import tempfile
@@ -122,11 +123,11 @@ def extract_audio_from_video(video: VideoFileClip, filename: str) -> None:
     video.audio.write_audiofile(temp_file.name + ".wav", codec="pcm_s16le")
 
     # Create the output directory if it doesn't exist
-    VTCParameters.audio_path.mkdir(parents=True, exist_ok=True)
+    VTCPaths.output_dir.mkdir(parents=True, exist_ok=True)
 
     # Convert the audio to 16kHz with sox and
     # save it to the output file
-    output_file = VTCParameters.audio_path / f"{filename}{VTCParameters.audio_name_ending}"
+    output_file = VTCPaths.output_dir / f"{filename}{VTCConfig.audio_file_suffix}"
 
     subprocess.run(
         ["sox", temp_file.name + ".wav", "-r", "16000", output_file],
@@ -147,7 +148,7 @@ def extract_audio_from_videos_in_folder(folder_path: Path) -> None:
         if video_file.suffix.lower() not in ['.mp4']:
             continue  # Skip non-video files
         
-        audio_path = VTCParameters.audio_path / f"{video_file.stem}{VTCParameters.audio_name_ending}"
+        audio_path = VTCPaths.output_dir / f"{video_file.stem}{VTCConfig.audio_file_suffix}"
         
         # Check if the audio file already exists
         if not audio_path.exists():
