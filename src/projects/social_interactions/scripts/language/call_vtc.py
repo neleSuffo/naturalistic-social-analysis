@@ -1,4 +1,4 @@
-from src.projects.social_interactions.common.constants import VTCParameters
+from src.projects.social_interactions.common.constants import VTCPaths
 import subprocess
 import os
 import logging
@@ -16,7 +16,7 @@ def run_voice_type_classifier_in_env():
     # and the command to run the voice-type-classifier
     env = os.environ.copy()
     env["PATH"] = (
-        str(VTCParameters.environment_path.parent) + os.pathsep + env["PATH"]
+        str(VTCPaths.python_env_path.parent) + os.pathsep + env["PATH"]
     )
     env["PYTHONPATH"] = "/home/nele_pauline_suffo/projects/leuphana-IPE"
     
@@ -24,7 +24,7 @@ def run_voice_type_classifier_in_env():
     # using the voice-type-classifier environment
     try:
         subprocess.run(
-            [VTCParameters.environment_path, VTCParameters.execution_file_path],
+            [VTCPaths.python_env_path, VTCPaths.command_script_path],
             env=env,
             check=True  # This will raise an exception if the command fails
         )
