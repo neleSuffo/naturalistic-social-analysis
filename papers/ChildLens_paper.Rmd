@@ -1,5 +1,6 @@
 ---
-title: "ChildLens: An Egocentric Video Dataset for Activity Analysis in Children"
+title             : "ChildLens: An Egocentric Video Dataset for Activity Analysis in Children"
+shorttitle        : "ChildLens Dataset"
 author:
   - name: "Nele-Pauline Suffo"
     affiliation: '1'
@@ -21,18 +22,20 @@ author:
     address: "Deutscher Pl. 6, 04103 Leipzig"
     email: "daniel.haun@eva.mpg.de"
   - name: "Manuel Bohn"
-    affiliation: '1'
+    affiliation: '1, 2'
     corresponding: false
     address: "Universitätsallee 1, 21335 Lüneburg"
     email: "manuel.bohn@leuphana.de"
     role:
       - "Writing - Review & Editing"
       - "Supervision"
-shorttitle: "ChildLens Dataset"
-output:
-  papaja::apa6_pdf:
-    keep_tex: true
-bibliography: "/Users/nelesuffo/Documents/Activity_Classification_bibliography.bib"
+
+affiliation:
+  - id: '1'
+    institution: "Institute of Psychology in Education, Leuphana University Lüneburg"
+  - id: '2'
+    institution: "Max Planck Institute for Evolutionary Anthropology"
+    
 authornote: |
   Add complete departmental affiliations for each author here. Each new line herein must be indented, like this line.
   Enter author note here.
@@ -45,54 +48,98 @@ abstract: |
   One or two sentences to put the results into a more **general context**.
   Two or three sentences to provide a **broader perspective**, readily comprehensible to a scientist in any discipline.
 
-keywords: "keywords"
-wordcount: X
-affiliation:
-  - id: '1'
-    institution: "Institute of Psychology in Education, Leuphana University Lüneburg"
-  - id: '2'
-    institution: "Max Planck Institute for Evolutionary Anthropology"
+output:
+  papaja::apa6_pdf:
+    keep_tex: true
+bibliography: "Activity_Classification_bibliography.bib"
+
+
+floatsintext      : yes
+figurelist        : no
+tablelist         : no
+footnotelist      : no
+linenumbers       : no
+mask              : no
+draft             : no
+
+documentclass     : "apa6"
+classoption       : "man"
 ---
 
+
 ```{r setup, include = FALSE}
-library("papaja")
-library(bookdown)
-r_refs("r-references.bib")
+library(papaja)
+library(tidyverse)
+library(ggplot2)
+library(brms)
+library(ggthemes)
+library(ggpubr)
+library(BayesFactor)
+library(broom)
+library(coda)
+library(reshape2)
+library(ggridges)
+
+estimate_mode <- function(s) {
+  d <- density(s)
+  return(d$x[which.max(d$y)])
+}
+
+hdi_upper<- function(s){
+  m <- HPDinterval(mcmc(s))
+  return(m["var1","upper"])
+}
+
+hdi_lower<- function(s){
+  m <- HPDinterval(mcmc(s))
+  return(m["var1","lower"])
+}
 ```
 
 ```{r analysis-preferences}
 # Seed for random number generation
 set.seed(42)
 knitr::opts_chunk$set(cache.extra = knitr::rand_seed)
+knitr::opts_chunk$set(echo = F, warning = F, message = F)
 ```
-
 
 # Introduction
 
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed ac purus sit amet nisl tincidunt tincidunt. Nullam nec turpis at libero tincidunt tincidunt. Sed nec mi nec nunc tincidunt tincidunt. Nullam nec turpis at libero tincidunt tincidunt. Sed nec mi nec nunc
+
 # Dataset Overview
 
-### Activity Classes
+#### Activity Classes
+The ChildLens dataset contains a total of 14 activity and 5 location classes. The activities are based on the actions of the child in the video and can be divided into _person-only_ activities, such as "child talking" or "other person talking, and _person-object interaction_ activities, such as "drawing" or "playing with object". You can find the complete list of activity classes in the appendix.. The activities can be further divided into _audio-based_, _visual-based_, and _audio-visual_ activities. The following list provides an overview of the different activity types:
 
-- 14 classes in total
-- some focus on person alone: like child talking
-- some on person object interaciton: like drawing, playing with an object
+- **Audio-based activities**: _child talking_, _other person talking_, _overheard speech_, _singing / humming_, _listening to music / audiobook_
+- **Visual-based activities**: _watching something_, _drawing_, _crafting things_, _dancing_
+- **Multimodal activities**: _playing with object_, _playing without object_, _pretend play_, _reading book_, _making music_
 
-#### Statistics: 
-For every of the 14 activity classes we have a different number of clips ranging from *x-x* clips per class. The clips have different lengths based on the activities where audio-related actions like "child talking" can only last a few seconds up to activities like "reading a book" lasting several minutes. There is a total of xxx video files that are split into *xx-xx *videos per class for training, *xx** videos per class for validation and *xx* videos per class for testing. Table \@ref(tab:table_train_val_test) provides the corresponding statistics.
-\@ref(tab:table_train_val_test)
+The location 
+#### Statistics
+We have varying numbers of clips for each of the 14 activity classes, ranging from *x* to *x* clips per class. The duration of the clips differs depending on the activity; for example, audio-related actions like "child talking" may only last a few seconds, while activities like "reading a book" may last several minutes. The xxx video files are divided into *xx-xx * training videos, *xx** validation videos, and *xx* testing videos for each class.
 
-
+#### Multi-label exhaustive annotation
+The dataset contains annotations for each video clip, including the start and end times of the activity, the activity class as well as the current location of the child in the video. 
 ```{r tab:table_train_val_test, echo=FALSE, message=FALSE, warnings=FALSE, results='asis'}
-require(pander)
-panderOptions('table.split.table', Inf)
-my.data <- " training | validation | testing
-  xx        | xx           | xx"
-df <- read.delim(textConnection(my.data),header=FALSE,sep="|",strip.white=TRUE,stringsAsFactors=FALSE)
-names(df) <- unname(as.list(df[1,])) # put headers on
-df <- df[-1,] # remove first row
-row.names(df)<-NULL
-pander(df, style = 'rmarkdown')
+my.data <- "training | validation | testing
+            10        | 10           | 10"
+df <- read.delim(textConnection(my.data), header=FALSE, sep="|", strip.white=TRUE, stringsAsFactors=FALSE)
+# Set the first row as column names
+names(df) <- unname(as.list(df[1,]))
+# Remove the first row (which is now used as column names)
+df <- df[-1,] 
+row.names(df) <- NULL
+# Create the table using apa_table function
+apa_table(
+  df,
+  caption = "Number of clips per class",
+  escape = TRUE,
+)
 ```
+
+\ref{tab:table_train_val_test} provides an overview of the number of clips per class in the training, validation, and testing sets.
 
 # How the Dataset was Built
 ## Step 1: Generating a labeling strategy 
@@ -109,18 +156,27 @@ We utilize the BMN model [@linBMNBoundaryMatchingNetwork2019] for temporal activ
 
 # Conclusion
 
-We used `r cite_r("r-references.bib")` for all our analyses.
 
 
 # Results
+
 
 # Discussion
 
 
 \newpage
-
 # References
+We used `r cite_r("r-references.bib")` for all our analyses.
+```{r create_r-references}
+r_refs(file = "Activity_Classification_bibliography.bib")
+```
 
+\begingroup
+\setlength{\parindent}{-0.5in}
+\setlength{\leftskip}{0.5in}
+
+<div id = "refs"></div>
+\endgroup
 
 \newpage
 # Appendix
@@ -130,7 +186,7 @@ We used `r cite_r("r-references.bib")` for all our analyses.
 The dataset contains the following list of activities. The number of clips for each activity class is indicated by the number in brackets behind each class.
 
 1. playing with object \textcolor{red}{TBD}
-2. playing without object \\textcolor{red}{TBD}
+2. playing without object \textcolor{red}{TBD}
 3. pretend play \textcolor{red}{TBD}
 4. watching something \textcolor{red}{TBD}
 5. reading book \textcolor{red}{TBD}
@@ -143,4 +199,13 @@ The dataset contains the following list of activities. The number of clips for e
 12. making music \textcolor{red}{TBD}
 13. dancing \textcolor{red}{TBD}
 14. listening to music / audiobook \textcolor{red}{TBD}
+
+## List of ChildLens Location Classes
+
+
+1. livingroom
+2. playroom
+3. bathroom
+4. hallawy
+5. other
 
