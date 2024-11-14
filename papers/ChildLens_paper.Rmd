@@ -1,0 +1,146 @@
+---
+title: "ChildLens: An Egocentric Video Dataset for Activity Analysis in Children"
+author:
+  - name: "Nele-Pauline Suffo"
+    affiliation: '1'
+    corresponding: true
+    address: "Universitätsallee 1, 21335 Lüneburg"
+    email: "nele.suffo@leuphana.de"
+    role:
+      - "Conceptualization"
+      - "Writing - Original Draft Preparation"
+      - "Writing - Review & Editing"
+  - name: "Pierre-Etienne Martin"
+    affiliation: '2'
+    corresponding: false
+    address: "Deutscher Pl. 6, 04103 Leipzig"
+    email: "pierre_etienne_martin@eva.mpg.de"
+  - name: "Daniel Haun"
+    affiliation: '2'
+    corresponding: false
+    address: "Deutscher Pl. 6, 04103 Leipzig"
+    email: "daniel.haun@eva.mpg.de"
+  - name: "Manuel Bohn"
+    affiliation: '1'
+    corresponding: false
+    address: "Universitätsallee 1, 21335 Lüneburg"
+    email: "manuel.bohn@leuphana.de"
+    role:
+      - "Writing - Review & Editing"
+      - "Supervision"
+shorttitle: "ChildLens Dataset"
+output:
+  papaja::apa6_pdf:
+    keep_tex: true
+bibliography: "/Users/nelesuffo/Documents/Activity_Classification_bibliography.bib"
+authornote: |
+  Add complete departmental affiliations for each author here. Each new line herein must be indented, like this line.
+  Enter author note here.
+abstract: |
+  One or two sentences providing a **basic introduction** to the field, comprehensible to a scientist in any discipline.
+  Two to three sentences of **more detailed background**, comprehensible to scientists in related disciplines.
+  One sentence clearly stating the **general problem** being addressed by this particular study.
+  One sentence summarizing the main result (with the words "**here we show**" or their equivalent).
+  Two or three sentences explaining what the **main result** reveals in direct comparison to what was thought to be the case previously, or how the main result adds to previous knowledge.
+  One or two sentences to put the results into a more **general context**.
+  Two or three sentences to provide a **broader perspective**, readily comprehensible to a scientist in any discipline.
+
+keywords: "keywords"
+wordcount: X
+affiliation:
+  - id: '1'
+    institution: "Institute of Psychology in Education, Leuphana University Lüneburg"
+  - id: '2'
+    institution: "Max Planck Institute for Evolutionary Anthropology"
+---
+
+```{r setup, include = FALSE}
+library("papaja")
+library(bookdown)
+r_refs("r-references.bib")
+```
+
+```{r analysis-preferences}
+# Seed for random number generation
+set.seed(42)
+knitr::opts_chunk$set(cache.extra = knitr::rand_seed)
+```
+
+
+# Introduction
+
+# Dataset Overview
+
+### Activity Classes
+
+- 14 classes in total
+- some focus on person alone: like child talking
+- some on person object interaciton: like drawing, playing with an object
+
+#### Statistics: 
+For every of the 14 activity classes we have a different number of clips ranging from *x-x* clips per class. The clips have different lengths based on the activities where audio-related actions like "child talking" can only last a few seconds up to activities like "reading a book" lasting several minutes. There is a total of xxx video files that are split into *xx-xx *videos per class for training, *xx** videos per class for validation and *xx* videos per class for testing. Table \@ref(tab:table_train_val_test) provides the corresponding statistics.
+\@ref(tab:table_train_val_test)
+
+
+```{r tab:table_train_val_test, echo=FALSE, message=FALSE, warnings=FALSE, results='asis'}
+require(pander)
+panderOptions('table.split.table', Inf)
+my.data <- " training | validation | testing
+  xx        | xx           | xx"
+df <- read.delim(textConnection(my.data),header=FALSE,sep="|",strip.white=TRUE,stringsAsFactors=FALSE)
+names(df) <- unname(as.list(df[1,])) # put headers on
+df <- df[-1,] # remove first row
+row.names(df)<-NULL
+pander(df, style = 'rmarkdown')
+```
+
+# How the Dataset was Built
+## Step 1: Generating a labeling strategy 
+## Step 2: Manual labelling process
+## Discussion: Dataset bias
+
+# Benchmark Performance
+## Boundary-Matching Network 
+We utilize the BMN model [@linBMNBoundaryMatchingNetwork2019] for temporal activity localization.
+
+
+## VTC
+## Implementation details
+
+# Conclusion
+
+We used `r cite_r("r-references.bib")` for all our analyses.
+
+
+# Results
+
+# Discussion
+
+
+\newpage
+
+# References
+
+
+\newpage
+# Appendix
+
+## List of ChildLens Activity Classes
+
+The dataset contains the following list of activities. The number of clips for each activity class is indicated by the number in brackets behind each class.
+
+1. playing with object \textcolor{red}{TBD}
+2. playing without object \\textcolor{red}{TBD}
+3. pretend play \textcolor{red}{TBD}
+4. watching something \textcolor{red}{TBD}
+5. reading book \textcolor{red}{TBD}
+6. child talking \textcolor{red}{TBD}
+7. other person talking \textcolor{red}{TBD}
+8. overheard speech \textcolor{red}{TBD}
+9. drawing \textcolor{red}{TBD}
+10. crafting things \textcolor{red}{TBD}
+11. singing / humming \textcolor{red}{TBD}
+12. making music \textcolor{red}{TBD}
+13. dancing \textcolor{red}{TBD}
+14. listening to music / audiobook \textcolor{red}{TBD}
+
