@@ -116,13 +116,11 @@ The ChildLens dataset contains a total of 14 activity and 5 location classes. Th
 - **Visual-based activities**: _watching something_, _drawing_, _crafting things_, _dancing_
 - **Multimodal activities**: _playing with object_, _playing without object_, _pretend play_, _reading book_, _making music_
 
-The location 
+The location classes describe the current location of the child in the video and include _livingroom_, _playroom_, _bathroom_, _hallway_, and _other_.
+
 #### Statistics
 We have varying numbers of clips for each of the 14 activity classes, ranging from *x* to *x* clips per class. The duration of the clips differs depending on the activity; for example, audio-related actions like "child talking" may only last a few seconds, while activities like "reading a book" may last several minutes. The xxx video files are divided into *xx-xx * training videos, *xx** validation videos, and *xx* testing videos for each class.
-
-#### Multi-label exhaustive annotation
-The dataset contains annotations for each video clip, including the start and end times of the activity, the activity class as well as the current location of the child in the video. 
-```{r tab:table_train_val_test, echo=FALSE, message=FALSE, warnings=FALSE, results='asis'}
+```{r train-test, echo=FALSE, message=FALSE, warnings=FALSE, results='asis'}
 my.data <- "training | validation | testing
             10        | 10           | 10"
 df <- read.delim(textConnection(my.data), header=FALSE, sep="|", strip.white=TRUE, stringsAsFactors=FALSE)
@@ -138,8 +136,10 @@ apa_table(
   escape = TRUE,
 )
 ```
+Table \@ref(tab:train-test) provides an overview of the number of clips per class in the training, validation, and testing sets.
 
-\ref{tab:table_train_val_test} provides an overview of the number of clips per class in the training, validation, and testing sets.
+#### Exhaustive multi-label annotations
+The dataset provides detailed annotations for each video file. These include the start and end times of each activity, the activity class, and the child’s current location within the video. If multiple activities occur simultaneously in a video, each activity is individually labeled and extracted as a separate clip. For example, if a segment of a video shows a child “reading a book” while also “talking,” two separate clips are created: one for “reading a book” and another for “child talking.”
 
 # How the Dataset was Built
 ## Step 1: Generating a labeling strategy 
@@ -201,7 +201,6 @@ The dataset contains the following list of activities. The number of clips for e
 14. listening to music / audiobook \textcolor{red}{TBD}
 
 ## List of ChildLens Location Classes
-
 
 1. livingroom
 2. playroom
