@@ -3,7 +3,7 @@
 \PassOptionsToPackage{hyphens}{url}
 %
 \documentclass[
-  man]{apa6}
+  man,floatsintext]{apa6}
 \usepackage{amsmath,amssymb}
 \usepackage{iftex}
 \ifPDFTeX
@@ -36,16 +36,6 @@
   \KOMAoptions{parskip=half}}
 \makeatother
 \usepackage{xcolor}
-\usepackage{longtable,booktabs,array}
-\usepackage{calc} % for calculating minipage widths
-% Correct order of tables after \paragraph or \subparagraph
-\usepackage{etoolbox}
-\makeatletter
-\patchcmd\longtable{\par}{\if@noskipsec\mbox{}\fi\par}{}{}
-\makeatother
-% Allow footnotes in longtable head/foot
-\IfFileExists{footnotehyper.sty}{\usepackage{footnotehyper}}{\usepackage{footnote}}
-\makesavenoteenv{longtable}
 \usepackage{graphicx}
 \makeatletter
 \def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
@@ -193,7 +183,6 @@
   }
 {}{\PatchFailed}
 \makeatother
-\keywords{keywords\newline\indent Word count: X}
 \usepackage{csquotes}
 \ifLuaTeX
   \usepackage{selnolig}  % disable illegal ligatures
@@ -203,23 +192,19 @@
 \urlstyle{same}
 \hypersetup{
   pdftitle={ChildLens: An Egocentric Video Dataset for Activity Analysis in Children},
-  pdfauthor={Nele-Pauline Suffo1, Pierre-Etienne Martin2, Daniel Haun2, \& Manuel Bohn1},
+  pdfauthor={Nele-Pauline Suffo1, Pierre-Etienne Martin2, Daniel Haun2, \& Manuel Bohn1, 2},
   pdflang={en-EN},
-  pdfkeywords={keywords},
   hidelinks,
   pdfcreator={LaTeX via pandoc}}
 
 \title{ChildLens: An Egocentric Video Dataset for Activity Analysis in Children}
-\author{Nele-Pauline Suffo\textsuperscript{1}, Pierre-Etienne Martin\textsuperscript{2}, Daniel Haun\textsuperscript{2}, \& Manuel Bohn\textsuperscript{1}}
+\author{Nele-Pauline Suffo\textsuperscript{1}, Pierre-Etienne Martin\textsuperscript{2}, Daniel Haun\textsuperscript{2}, \& Manuel Bohn\textsuperscript{1, 2}}
 \date{}
 
 
 \shorttitle{ChildLens Dataset}
 
 \authornote{
-
-Add complete departmental affiliations for each author here. Each new line herein must be indented, like this line.
-Enter author note here.
 
 The authors made the following contributions. Nele-Pauline Suffo: Conceptualization, Writing - Original Draft Preparation, Writing - Review \& Editing; Manuel Bohn: Writing - Review \& Editing, Supervision.
 
@@ -246,36 +231,21 @@ Two or three sentences to provide a \textbf{broader perspective}, readily compre
 
 \section{Introduction}\label{introduction}
 
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed ac purus sit amet nisl tincidunt tincidunt. Nullam nec turpis at libero tincidunt tincidunt. Sed nec mi nec nunc tincidunt tincidunt. Nullam nec turpis at libero tincidunt tincidunt. Sed nec mi nec nunc
+
 \section{Dataset Overview}\label{dataset-overview}
 
-\subsubsection{Activity Classes}\label{activity-classes}
+\paragraph{Activity Classes}\label{activity-classes}
+
+The ChildLens dataset contains a total of 14 activity and 5 location classes. The activities are based on the actions of the child in the video and can be divided into \emph{person-only} activities, such as ``child talking'' or ``other person talking, and \emph{person-object interaction} activities, such as''drawing'' or ``playing with object''. You can find the complete list of activity classes in the appendix.. The activities can be further divided into \emph{audio-based}, \emph{visual-based}, and \emph{multimodal} activities. The following list provides an overview of the different activity types:
 
 \begin{itemize}
 \tightlist
 \item
-  14 classes in total
+  \textbf{Audio-based activities}: \emph{child talking}, \emph{other person talking}, \emph{overheard speech}, \emph{singing / humming}, \emph{listening to music / audiobook}
 \item
-  some focus on person alone: like child talking
+  \textbf{Visual-based activities}: \emph{watching something}, \emph{drawing}, \emph{crafting things}, \emph{dancing}
 \item
-<<<<<<< HEAD
-  some on person object interaciton: like drawing, playing with an object
-\end{itemize}
-
-\paragraph{Statistics:}\label{statistics}
-
-For every of the 14 activity classes we have a different number of clips ranging from \emph{x-x} clips per class. The clips have different lengths based on the activities where audio-related actions like ``child talking'' can only last a few seconds up to activities like ``reading a book'' lasting several minutes. There is a total of xxx video files that are split into \emph{xx-xx }videos per class for training, *xx** videos per class for validation and \emph{xx} videos per class for testing. Table @ref(tab:table\_train\_val\_test) provides the corresponding statistics.
-@ref(tab:table\_train\_val\_test)
-
-\begin{longtable}[]{@{}ccc@{}}
-\toprule\noalign{}
-training & validation & testing \\
-\midrule\noalign{}
-\endhead
-\bottomrule\noalign{}
-\endlastfoot
-xx & xx & xx \\
-\end{longtable}
-=======
   \textbf{Multimodal activities}: \emph{playing with object}, \emph{playing without object}, \emph{pretend play}, \emph{reading book}, \emph{making music}
 \end{itemize}
 
@@ -283,14 +253,14 @@ The location classes describe the current location of the child in the video and
 
 \paragraph{Statistics}\label{statistics}
 
-We have varying numbers of clips for each of the 14 activity classes, ranging from \emph{x} to \emph{x} clips per class. The duration of the clips differs depending on the activity; for example, audio-related actions like ``child talking'' may only last a few seconds, while activities like ``reading a book'' may last several minutes. The xxx video files are divided into \emph{xx-xx } training videos, *xx** validation videos, and \emph{xx} testing videos for each class.
+We have varying numbers of clips for each of the 14 activity classes, ranging from \emph{x} to \emph{x} clips per class. The duration of the clips differs depending on the activity; for example, audio-related actions like ``child talking'' may only last a few seconds, while activities like ``reading a book'' may last several minutes. The xxx video clips are divided into \emph{xx-xx } training clips, *xx** validation clips, and \emph{xx} testing clips for each class. Table \ref{tab:train-val-test} provides an overview of the numbers.
 
 \begin{table}[tbp]
 
 \begin{center}
 \begin{threeparttable}
 
-\caption{\label{tab:train-test}Number of clips per class}
+\caption{\label{tab:train-val-test}Number of clips per class}
 
 \begin{tabular}{lll}
 \toprule
@@ -305,22 +275,25 @@ training & \multicolumn{1}{c}{validation} & \multicolumn{1}{c}{testing}\\
 
 \end{table}
 
-Table \ref{tab:train-test} provides an overview of the number of clips per class in the training, validation, and testing sets.
-
 \paragraph{Exhaustive multi-label annotations}\label{exhaustive-multi-label-annotations}
 
-The dataset provides detailed annotations for each video file. These include the start and end times of each activity, the activity class, and the child's current location within the video. If multiple activities occur simultaneously in a video, each activity is individually labeled and extracted as a separate clip. For example, if a segment of a video shows a child ``reading a book'' while also ``talking,'' two separate clips are created: one for ``reading a book'' and another for ``child talking.''
->>>>>>> c5f7940 (Updated file)
+The dataset provides detailed annotations for each video file. These annotations specify the child's current location within the video, the start and end times of each activity, the activity class, and whether the child is engaged alone or with somebody else. For every person involved in the activity, we capture age and gender. If multiple activities occur simultaneously in a video, each activity is individually labeled and extracted as a separate clip. For example, if a segment shows a child ``reading a book'' while also ``talking,'' two separate clips are created: one for ``reading a book'' and another for ``child talking.'' This exhaustive labeling strategy ensures that each activity is accurately represented in the dataset.
 
 \section{How the Dataset was Built}\label{how-the-dataset-was-built}
 
-\subsection{Step 1: Generating a labeling strategy}\label{step-1-generating-a-labeling-strategy}
+This section outlines the steps taken to create the ChildLens dataset. We provide detailed information on the video collection process, the labeling strategy employed, and the generation of activity labels.
 
-\subsection{Step 2: Manual labelling process}\label{step-2-manual-labelling-process}
+\subsection{Step 1: Collection of Egocentric Videos}\label{step-1-collection-of-egocentric-videos}
 
-\subsection{Discussion: Dataset bias}\label{discussion-dataset-bias}
+The ChildLens dataset consists of egocentric videos recorded by children aged 3 to 5 years. A total of xx children from families in Leipzig, Germany, participated in the study. The videos were captured at home using a camera embedded in a vest worn by the children. This setup allows the children to move freely around the house or apartment while recording their activities. The camera records everything that happens in front of the child, while a microphone captures the sound. Additionally, the parents were handed a small checklist of activities to record, ensuring that a variety of activities were captured in the videos. The focus was on everyday activities that children typically engage in, such as playing with toys, reading books, or drawing.
+
+\subsection{Step 2: Creation of Labeling Strategy}\label{step-2-creation-of-labeling-strategy}
+
+\subsection{Step 2: Manual Labeling Process}\label{step-2-manual-labeling-process}
 
 \section{Benchmark Performance}\label{benchmark-performance}
+
+\subsection{Implementation details}\label{implementation-details}
 
 \subsection{Boundary-Matching Network}\label{boundary-matching-network}
 
@@ -328,25 +301,20 @@ We utilize the BMN model (Lin, Liu, Li, Ding, \& Wen, 2019) for temporal activit
 
 \subsection{VTC}\label{vtc}
 
-\subsection{Implementation details}\label{implementation-details}
+For the visual-based activities, we use the Voice Type Classifier (Lavechin, Bousbib, Bredin, Dupoux, \& Cristia, 2020).
 
 \section{Conclusion}\label{conclusion}
 
-<<<<<<< HEAD
-We used R (Version 4.4.1; \textbf{R-base?}) and the R-packages \emph{bookdown} (Version 0.41; \textbf{R-bookdown?}), \emph{papaja} (Version 0.1.3; \textbf{R-papaja?}) and \emph{tinylabels} (Version 0.2.4; \textbf{R-tinylabels?}) for all our analyses.
-
-=======
->>>>>>> c5f7940 (Updated file)
-\section{Results}\label{results}
-
 \section{Discussion}\label{discussion}
+
+\subsection{Dataset bias}\label{dataset-bias}
+
+\subsection{General Discussion}\label{general-discussion}
 
 \newpage
 
 \section{References}\label{references}
 
-<<<<<<< HEAD
-=======
 We used R {[}Version 4.4.1; R Core Team (2024){]} for all our analyses.
 
 \begingroup
@@ -355,6 +323,9 @@ We used R {[}Version 4.4.1; R Core Team (2024){]} for all our analyses.
 
 \phantomsection\label{refs}
 \begin{CSLReferences}{1}{0}
+\bibitem[\citeproctext]{ref-lavechinOpensourceVoiceType2020}
+Lavechin, M., Bousbib, R., Bredin, H., Dupoux, E., \& Cristia, A. (2020). \emph{An open-source voice type classifier for child-centered daylong recordings}. arXiv. \url{https://doi.org/10.48550/ARXIV.2005.12656}
+
 \bibitem[\citeproctext]{ref-linBMNBoundaryMatchingNetwork2019}
 Lin, T., Liu, X., Li, X., Ding, E., \& Wen, S. (2019). \emph{{BMN}: {Boundary-Matching Network} for {Temporal Action Proposal Generation}}. arXiv. \url{https://doi.org/10.48550/ARXIV.1907.09702}
 
@@ -365,7 +336,6 @@ R Core Team. (2024). \emph{R: A language and environment for statistical computi
 
 \endgroup
 
->>>>>>> c5f7940 (Updated file)
 \newpage
 
 \section{Appendix}\label{appendix}
@@ -380,7 +350,7 @@ The dataset contains the following list of activities. The number of clips for e
 \item
   playing with object \textcolor{red}{TBD}
 \item
-  playing without object \textbackslash textcolor\{red\}\{TBD\}
+  playing without object \textcolor{red}{TBD}
 \item
   pretend play \textcolor{red}{TBD}
 \item
@@ -407,12 +377,22 @@ The dataset contains the following list of activities. The number of clips for e
   listening to music / audiobook \textcolor{red}{TBD}
 \end{enumerate}
 
-\phantomsection\label{refs}
-\begin{CSLReferences}{1}{0}
-\bibitem[\citeproctext]{ref-linBMNBoundaryMatchingNetwork2019}
-Lin, T., Liu, X., Li, X., Ding, E., \& Wen, S. (2019). \emph{{BMN}: {Boundary-Matching Network} for {Temporal Action Proposal Generation}}. arXiv. \url{https://doi.org/10.48550/ARXIV.1907.09702}
+\subsection{List of ChildLens Location Classes}\label{list-of-childlens-location-classes}
 
-\end{CSLReferences}
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  livingroom
+\item
+  playroom
+\item
+  bathroom
+\item
+  hallawy
+\item
+  other
+\end{enumerate}
 
 
 \end{document}
