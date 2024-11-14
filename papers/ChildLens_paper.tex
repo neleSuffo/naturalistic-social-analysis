@@ -257,6 +257,7 @@ Two or three sentences to provide a \textbf{broader perspective}, readily compre
 \item
   some focus on person alone: like child talking
 \item
+<<<<<<< HEAD
   some on person object interaciton: like drawing, playing with an object
 \end{itemize}
 
@@ -274,6 +275,42 @@ training & validation & testing \\
 \endlastfoot
 xx & xx & xx \\
 \end{longtable}
+=======
+  \textbf{Multimodal activities}: \emph{playing with object}, \emph{playing without object}, \emph{pretend play}, \emph{reading book}, \emph{making music}
+\end{itemize}
+
+The location classes describe the current location of the child in the video and include \emph{livingroom}, \emph{playroom}, \emph{bathroom}, \emph{hallway}, and \emph{other}.
+
+\paragraph{Statistics}\label{statistics}
+
+We have varying numbers of clips for each of the 14 activity classes, ranging from \emph{x} to \emph{x} clips per class. The duration of the clips differs depending on the activity; for example, audio-related actions like ``child talking'' may only last a few seconds, while activities like ``reading a book'' may last several minutes. The xxx video files are divided into \emph{xx-xx } training videos, *xx** validation videos, and \emph{xx} testing videos for each class.
+
+\begin{table}[tbp]
+
+\begin{center}
+\begin{threeparttable}
+
+\caption{\label{tab:train-test}Number of clips per class}
+
+\begin{tabular}{lll}
+\toprule
+training & \multicolumn{1}{c}{validation} & \multicolumn{1}{c}{testing}\\
+\midrule
+10 & 10 & 10\\
+\bottomrule
+\end{tabular}
+
+\end{threeparttable}
+\end{center}
+
+\end{table}
+
+Table \ref{tab:train-test} provides an overview of the number of clips per class in the training, validation, and testing sets.
+
+\paragraph{Exhaustive multi-label annotations}\label{exhaustive-multi-label-annotations}
+
+The dataset provides detailed annotations for each video file. These include the start and end times of each activity, the activity class, and the child's current location within the video. If multiple activities occur simultaneously in a video, each activity is individually labeled and extracted as a separate clip. For example, if a segment of a video shows a child ``reading a book'' while also ``talking,'' two separate clips are created: one for ``reading a book'' and another for ``child talking.''
+>>>>>>> c5f7940 (Updated file)
 
 \section{How the Dataset was Built}\label{how-the-dataset-was-built}
 
@@ -295,8 +332,11 @@ We utilize the BMN model (Lin, Liu, Li, Ding, \& Wen, 2019) for temporal activit
 
 \section{Conclusion}\label{conclusion}
 
+<<<<<<< HEAD
 We used R (Version 4.4.1; \textbf{R-base?}) and the R-packages \emph{bookdown} (Version 0.41; \textbf{R-bookdown?}), \emph{papaja} (Version 0.1.3; \textbf{R-papaja?}) and \emph{tinylabels} (Version 0.2.4; \textbf{R-tinylabels?}) for all our analyses.
 
+=======
+>>>>>>> c5f7940 (Updated file)
 \section{Results}\label{results}
 
 \section{Discussion}\label{discussion}
@@ -305,6 +345,27 @@ We used R (Version 4.4.1; \textbf{R-base?}) and the R-packages \emph{bookdown} (
 
 \section{References}\label{references}
 
+<<<<<<< HEAD
+=======
+We used R {[}Version 4.4.1; R Core Team (2024){]} for all our analyses.
+
+\begingroup
+\setlength{\parindent}{-0.5in}
+\setlength{\leftskip}{0.5in}
+
+\phantomsection\label{refs}
+\begin{CSLReferences}{1}{0}
+\bibitem[\citeproctext]{ref-linBMNBoundaryMatchingNetwork2019}
+Lin, T., Liu, X., Li, X., Ding, E., \& Wen, S. (2019). \emph{{BMN}: {Boundary-Matching Network} for {Temporal Action Proposal Generation}}. arXiv. \url{https://doi.org/10.48550/ARXIV.1907.09702}
+
+\bibitem[\citeproctext]{ref-R-base}
+R Core Team. (2024). \emph{R: A language and environment for statistical computing}. Vienna, Austria: R Foundation for Statistical Computing. Retrieved from \url{https://www.R-project.org/}
+
+\end{CSLReferences}
+
+\endgroup
+
+>>>>>>> c5f7940 (Updated file)
 \newpage
 
 \section{Appendix}\label{appendix}
