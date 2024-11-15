@@ -237,7 +237,7 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed ac purus sit amet n
 
 \paragraph{Activity Classes}\label{activity-classes}
 
-The ChildLens dataset contains a total of 14 activity and 5 location classes. The activities are based on the actions of the child in the video and can be divided into \emph{person-only} activities, such as ``child talking'' or ``other person talking, and \emph{person-object interaction} activities, such as''drawing'' or ``playing with object''. You can find the complete list of activity classes in the appendix.. The activities can be further divided into \emph{audio-based}, \emph{visual-based}, and \emph{multimodal} activities. The following list provides an overview of the different activity types:
+The ChildLens dataset contains a total of 14 activity and 5 location classes. The activities are based on the actions of the child in the video and can be divided into \emph{person-only} activities, such as ``child talking'' or ``other person talking, and \emph{person-object interaction} activities, such as''drawing'' or ``playing with object''. You can find the complete list of activity classes in the appendix.. The activities can be further divided into \emph{audio-based}, \emph{visual-based}, and \emph{multimodal} activities, as presented in /(\textbf{ref?})(fig:activity-classes). The following list provides an overview of the different activity types:
 
 \begin{itemize}
 \tightlist
@@ -250,6 +250,15 @@ The ChildLens dataset contains a total of 14 activity and 5 location classes. Th
 \end{itemize}
 
 The location classes describe the current location of the child in the video and include \emph{livingroom}, \emph{playroom}, \emph{bathroom}, \emph{hallway}, and \emph{other}.
+
+\begin{figure}
+
+{\centering \includegraphics[width=5.49in]{activity_classes} 
+
+}
+
+\caption{Vest with the embedded camera worn by the children}\label{fig:activity-classes}
+\end{figure}
 
 \paragraph{Statistics}\label{statistics}
 
@@ -279,13 +288,31 @@ training & \multicolumn{1}{c}{validation} & \multicolumn{1}{c}{testing}\\
 
 The dataset provides detailed annotations for each video file. These annotations specify the child's current location within the video, the start and end times of each activity, the activity class, and whether the child is engaged alone or with somebody else. For every person involved in the activity, we capture age and gender. If multiple activities occur simultaneously in a video, each activity is individually labeled and extracted as a separate clip. For example, if a segment shows a child ``reading a book'' while also ``talking,'' two separate clips are created: one for ``reading a book'' and another for ``child talking.'' This exhaustive labeling strategy ensures that each activity is accurately represented in the dataset.
 
-\section{How the Dataset was Built}\label{how-the-dataset-was-built}
+\begin{figure}
+
+{\centering \includegraphics[width=5.76in]{SuperAnnotate} 
+
+}
+
+\caption{SuperAnnotate platform utilized for video annotation}\label{fig:superannotate}
+\end{figure}
+
+\section{Dataset Generation}\label{dataset-generation}
 
 This section outlines the steps taken to create the ChildLens dataset. We provide detailed information on the video collection process, the labeling strategy employed, and the generation of activity labels.
 
 \subsection{Step 1: Collection of Egocentric Videos}\label{step-1-collection-of-egocentric-videos}
 
-The ChildLens dataset consists of egocentric videos recorded by children aged 3 to 5 years. A total of xx children from families in Leipzig, Germany, participated in the study. The videos were captured at home using a camera embedded in a vest worn by the children. This setup allowed the children to move freely throughout their homes while recording their activities. The camera captured within the child's field of view, while an integrated camera recorded the audio. Additionally, the parents were handed a small checklist of activities to record, ensuring that a variety of activities were captured in the videos. The focus was on everyday activities that children typically engage in, such as playing with toys, reading books, or drawing. The videos were recorded over a period of xx months, resulting in a total of xx hours of video footage.
+The ChildLens dataset consists of egocentric videos recorded by children aged 3 to 5 years. A total of xx children from families living in a mid-sized city in Germany, participated in the study. The videos were captured at home using a camera embedded in a vest worn by the children, which can be seen in figure \ref{fig:camera-worn}. This setup allowed the children to move freely throughout their homes while recording their activities. The camera captured within the child's field of view, while an integrated camera recorded the audio. Additionally, the parents were handed a small checklist of activities to record, ensuring that a variety of activities were captured in the videos. The focus was on everyday activities that children typically engage in, such as playing with toys, reading books, or drawing. The videos were recorded over a period of xx months, resulting in a total of xx hours of video footage.
+
+\begin{figure}
+
+{\centering \includegraphics[width=2.19in]{camera_worn} 
+
+}
+
+\caption{Vest with the embedded camera worn by the children}\label{fig:camera-worn}
+\end{figure}
 
 \subsection{Step 2: Creation of Labeling Strategy}\label{step-2-creation-of-labeling-strategy}
 

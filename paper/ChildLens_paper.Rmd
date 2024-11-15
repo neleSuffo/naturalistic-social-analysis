@@ -107,13 +107,17 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed ac purus sit amet n
 # Dataset Overview
 
 #### Activity Classes
-The ChildLens dataset contains a total of 14 activity and 5 location classes. The activities are based on the actions of the child in the video and can be divided into _person-only_ activities, such as "child talking" or "other person talking, and _person-object interaction_ activities, such as "drawing" or "playing with object". You can find the complete list of activity classes in the appendix.. The activities can be further divided into _audio-based_, _visual-based_, and _multimodal_ activities. The following list provides an overview of the different activity types:
+The ChildLens dataset contains a total of 14 activity and 5 location classes. The activities are based on the actions of the child in the video and can be divided into _person-only_ activities, such as "child talking" or "other person talking, and _person-object interaction_ activities, such as "drawing" or "playing with object". You can find the complete list of activity classes in the appendix.. The activities can be further divided into _audio-based_, _visual-based_, and _multimodal_ activities, as presented in /@ref(fig:activity-classes). The following list provides an overview of the different activity types:
 
 - **Audio-based activities**: _child talking_, _other person talking_, _overheard speech_, _singing / humming_, _listening to music / audiobook_
 - **Visual-based activities**: _watching something_, _drawing_, _crafting things_, _dancing_
 - **Multimodal activities**: _playing with object_, _playing without object_, _pretend play_, _reading book_, _making music_
 
 The location classes describe the current location of the child in the video and include _livingroom_, _playroom_, _bathroom_, _hallway_, and _other_.
+
+```{r activity-classes, dpi=700, fig.align='center', fig.cap="Vest with the embedded camera worn by the children"}
+knitr::include_graphics("activity_classes.png")
+```
 
 #### Statistics
 We have varying numbers of clips for each of the 14 activity classes, ranging from *x* to *x* clips per class. The duration of the clips differs depending on the activity; for example, audio-related actions like "child talking" may only last a few seconds, while activities like "reading a book" may last several minutes. The xxx video clips are divided into *xx-xx * training clips, *xx** validation clips, and *xx* testing clips for each class. Table \@ref(tab:train-val-test) provides an overview of the numbers.
@@ -138,11 +142,21 @@ apa_table(
 #### Exhaustive multi-label annotations
 The dataset provides detailed annotations for each video file. These annotations specify the child’s current location within the video, the start and end times of each activity, the activity class, and whether the child is engaged alone or with somebody else. For every person involved in the activity, we capture age and gender. If multiple activities occur simultaneously in a video, each activity is individually labeled and extracted as a separate clip. For example, if a segment shows a child “reading a book” while also “talking,” two separate clips are created: one for “reading a book” and another for “child talking.” This exhaustive labeling strategy ensures that each activity is accurately represented in the dataset. 
 
-# How the Dataset was Built
+
+```{r superannotate, dpi=600, fig.align='center', fig.cap="SuperAnnotate platform utilized for video annotation"}
+knitr::include_graphics("SuperAnnotate.png")
+```
+
+# Dataset Generation
 This section outlines the steps taken to create the ChildLens dataset. We provide detailed information on the video collection process, the labeling strategy employed, and the generation of activity labels.
 
 ## Step 1: Collection of Egocentric Videos
-The ChildLens dataset consists of egocentric videos recorded by children aged 3 to 5 years. A total of xx children from families in Leipzig, Germany, participated in the study. The videos were captured at home using a camera embedded in a vest worn by the children. This setup allowed the children to move freely throughout their homes while recording their activities. The camera captured within the child's field of view, while an integrated camera recorded the audio. Additionally, the parents were handed a small checklist of activities to record, ensuring that a variety of activities were captured in the videos. The focus was on everyday activities that children typically engage in, such as playing with toys, reading books, or drawing. The videos were recorded over a period of xx months, resulting in a total of xx hours of video footage.
+The ChildLens dataset consists of egocentric videos recorded by children aged 3 to 5 years. A total of xx children from families living in a mid-sized city in Germany, participated in the study. The videos were captured at home using a camera embedded in a vest worn by the children, which can be seen in figure \@ref(fig:camera-worn). This setup allowed the children to move freely throughout their homes while recording their activities. The camera captured within the child's field of view, while an integrated camera recorded the audio. Additionally, the parents were handed a small checklist of activities to record, ensuring that a variety of activities were captured in the videos. The focus was on everyday activities that children typically engage in, such as playing with toys, reading books, or drawing. The videos were recorded over a period of xx months, resulting in a total of xx hours of video footage.
+
+
+```{r camera-worn, dpi=500, fig.align='center', fig.cap="Vest with the embedded camera worn by the children"}
+knitr::include_graphics("camera_worn.png")
+```
 
 ## Step 2: Creation of Labeling Strategy
 The labeling strategy for the ChildLens dataset was designed to capture the child's daily activities accurately and is based on the instructions given to the parents. The parents were provided with a list of activities to record, including the following activities:
@@ -155,7 +169,6 @@ After an initial review of the videos, we identified the most common activities 
 
 ## Step 3: Manual Labeling Process
 The videos were manually annotated by native German speakers who watched each video and labeled the activities present in the footage. The annotators marked the start and end points of each activity, ensuring that the annotations were accurate and detailed. The labeling process was conducted using the SuperAnnotate platform, which allowed for efficient annotation and review of the videos. 
-
 
 - labeling process means looking at the whole video and mark start and end point of each activity present in the list of activities
 - we annotate the videos using humans
