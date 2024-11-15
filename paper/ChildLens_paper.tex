@@ -285,11 +285,31 @@ This section outlines the steps taken to create the ChildLens dataset. We provid
 
 \subsection{Step 1: Collection of Egocentric Videos}\label{step-1-collection-of-egocentric-videos}
 
-The ChildLens dataset consists of egocentric videos recorded by children aged 3 to 5 years. A total of xx children from families in Leipzig, Germany, participated in the study. The videos were captured at home using a camera embedded in a vest worn by the children. This setup allows the children to move freely around the house or apartment while recording their activities. The camera records everything that happens in front of the child, while a microphone captures the sound. Additionally, the parents were handed a small checklist of activities to record, ensuring that a variety of activities were captured in the videos. The focus was on everyday activities that children typically engage in, such as playing with toys, reading books, or drawing.
+The ChildLens dataset consists of egocentric videos recorded by children aged 3 to 5 years. A total of xx children from families in Leipzig, Germany, participated in the study. The videos were captured at home using a camera embedded in a vest worn by the children. This setup allowed the children to move freely throughout their homes while recording their activities. The camera captured within the child's field of view, while an integrated camera recorded the audio. Additionally, the parents were handed a small checklist of activities to record, ensuring that a variety of activities were captured in the videos. The focus was on everyday activities that children typically engage in, such as playing with toys, reading books, or drawing. The videos were recorded over a period of xx months, resulting in a total of xx hours of video footage.
 
 \subsection{Step 2: Creation of Labeling Strategy}\label{step-2-creation-of-labeling-strategy}
 
-\subsection{Step 2: Manual Labeling Process}\label{step-2-manual-labeling-process}
+The labeling strategy for the ChildLens dataset was designed to capture the child's daily activities accurately and is based on the instructions given to the parents. The parents were provided with a list of activities to record, including the following activities:
+- Child is invited to read a book together with an adult
+- Child is invited to play with toys alone
+- Child is invited to play with toys with someone else (adult or child)
+- Child is invited to draw/craft something
+
+After an initial review of the videos, we identified the most common activities that children engage in throughout the day. The activity classes in the dataset are derived from these activities. We chose to differentiate, for example, between ``drawing'' and ``crafting things'' or ``making music'' and ``singing/humming'' in order to make the activities more granular. We also added the concepts of ``overheard speech'', which describes situations in which the child is not directly involved in a conversation but can hear it, and ``pretend play'', which refers to when the child is engaged in imaginative play. This approach allowed us to capture the diversity of activities that children engage in and create a comprehensive dataset for activity analysis.
+
+\subsection{Step 3: Manual Labeling Process}\label{step-3-manual-labeling-process}
+
+\begin{itemize}
+\tightlist
+\item
+  use SuperAnnotate platform for labeling
+\item
+  review system: always two annotators label the same video,
+  *-TODO: ask how exacxtly the review process works
+\item
+\item
+  native germans for labeling task
+\end{itemize}
 
 \section{Benchmark Performance}\label{benchmark-performance}
 
