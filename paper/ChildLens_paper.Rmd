@@ -107,7 +107,7 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed ac purus sit amet n
 # Dataset Overview
 
 #### Activity Classes
-The ChildLens dataset contains a total of 14 activity and 5 location classes. The activities are based on the actions of the child in the video and can be divided into _person-only_ activities, such as "child talking" or "other person talking, and _person-object interaction_ activities, such as "drawing" or "playing with object". You can find the complete list of activity classes in the appendix.. The activities can be further divided into _audio-based_, _visual-based_, and _multimodal_ activities, as presented in /@ref(fig:activity-classes). The following list provides an overview of the different activity types:
+The ChildLens dataset contains a total of 14 activity and 5 location classes. The activities are based on the actions of the child in the video and can be divided into _person-only_ activities, such as "child talking" or "other person talking, and _person-object_ activities, such as "drawing" or "playing with object". You can find the complete list of activity classes with a brief description in the appendix. The activities can be further divided into _audio-based_, _visual-based_, and _multimodal_ activities, as presented in \@ref(fig:activity-classes). The following list provides an overview of the different activity types:
 
 - **Audio-based activities**: _child talking_, _other person talking_, _overheard speech_, _singing / humming_, _listening to music / audiobook_
 - **Visual-based activities**: _watching something_, _drawing_, _crafting things_, _dancing_
@@ -115,7 +115,7 @@ The ChildLens dataset contains a total of 14 activity and 5 location classes. Th
 
 The location classes describe the current location of the child in the video and include _livingroom_, _playroom_, _bathroom_, _hallway_, and _other_.
 
-```{r activity-classes, dpi=700, fig.align='center', fig.cap="Vest with the embedded camera worn by the children"}
+```{r activity-classes, dpi=600, fig.align='center', fig.cap="ChildLens Activity Class Categories"}
 knitr::include_graphics("activity_classes.png")
 ```
 
@@ -140,8 +140,7 @@ apa_table(
 ```
 
 #### Exhaustive multi-label annotations
-The dataset provides detailed annotations for each video file. These annotations specify the child’s current location within the video, the start and end times of each activity, the activity class, and whether the child is engaged alone or with somebody else. For every person involved in the activity, we capture age and gender. If multiple activities occur simultaneously in a video, each activity is individually labeled and extracted as a separate clip. For example, if a segment shows a child “reading a book” while also “talking,” two separate clips are created: one for “reading a book” and another for “child talking.” This exhaustive labeling strategy ensures that each activity is accurately represented in the dataset. 
-
+The dataset provides detailed annotations for each video file. These annotations specify the child’s current location within the video, the start and end times of each activity, the activity class, and whether the child is engaged alone or with somebody else. For every person involved in the activity, we capture age and gender. If multiple activities occur simultaneously in a video, each activity is individually labeled and extracted as a separate clip. For example, if a segment shows a child “reading a book” while also “talking,” two separate clips are created: one for “reading a book” and another for “child talking.” This exhaustive labeling strategy ensures that each activity is accurately represented in the dataset. Figure \@ref(fig:superannotate) provides a screenshot of the SuperAnnotate platform used for video annotation.
 
 ```{r superannotate, dpi=600, fig.align='center', fig.cap="SuperAnnotate platform utilized for video annotation"}
 knitr::include_graphics("SuperAnnotate.png")
@@ -151,19 +150,20 @@ knitr::include_graphics("SuperAnnotate.png")
 This section outlines the steps taken to create the ChildLens dataset. We provide detailed information on the video collection process, the labeling strategy employed, and the generation of activity labels.
 
 ## Step 1: Collection of Egocentric Videos
-The ChildLens dataset consists of egocentric videos recorded by children aged 3 to 5 years. A total of xx children from families living in a mid-sized city in Germany, participated in the study. The videos were captured at home using a camera embedded in a vest worn by the children, which can be seen in figure \@ref(fig:camera-worn). This setup allowed the children to move freely throughout their homes while recording their activities. The camera captured within the child's field of view, while an integrated camera recorded the audio. Additionally, the parents were handed a small checklist of activities to record, ensuring that a variety of activities were captured in the videos. The focus was on everyday activities that children typically engage in, such as playing with toys, reading books, or drawing. The videos were recorded over a period of xx months, resulting in a total of xx hours of video footage.
+The ChildLens dataset consists of egocentric videos recorded by children aged 3 to 5 years. A total of xx children from families living in a mid-sized city in Germany, participated in the study. The videos were captured at home using a camera embedded in a vest worn by the children, which can be seen in figure \@ref(fig:camera-worn). This setup allowed the children to move freely throughout their homes while recording their activities. The camera, a _PatrolEyes WiFi HD Infrared Police Body Camera_, was equipped with a 140-degree wide-angle lens and captured everything within the child's field of view with a resolution of 1920x1080p at 30 fps. The camera also recorded audio, allowing us to capture the child's speech and other sounds in the environment. Additionally, the parents were handed a small checklist of activities to record, ensuring that a variety of activities were captured in the videos. The focus was on capturing everyday activities that children typically engage in. Parents were therefore asked to include the following activities in the recordings:
+- Child is invited to read a book together with an adult
+- Child is invited to play with toys alone
+- Child is invited to play with toys with someone else (adult or child)
+- Child is invited to draw/craft something
 
+The videos were recorded over a period of xx months, resulting in a total of xx hours of video footage.
 
 ```{r camera-worn, dpi=500, fig.align='center', fig.cap="Vest with the embedded camera worn by the children"}
 knitr::include_graphics("camera_worn.png")
 ```
 
 ## Step 2: Creation of Labeling Strategy
-The labeling strategy for the ChildLens dataset was designed to capture the child's daily activities accurately and is based on the instructions given to the parents. The parents were provided with a list of activities to record, including the following activities:
-- Child is invited to read a book together with an adult
-- Child is invited to play with toys alone
-- Child is invited to play with toys with someone else (adult or child)
-- Child is invited to draw/craft something
+
 
 After an initial review of the videos, we identified the most common activities that children engage in throughout the day. The activity classes in the dataset are derived from these activities. We chose to differentiate, for example, between "drawing" and "crafting things" or "making music" and "singing/humming" in order to make the activities more granular. We also added the concepts of "overheard speech", which describes situations in which the child is not directly involved in a conversation but can hear it, and "pretend play", which refers to when the child is engaged in imaginative play. This approach allowed us to capture the diversity of activities that children engage in and create a comprehensive dataset for activity analysis.
 
@@ -208,7 +208,7 @@ For the visual-based activities, we use the Voice Type Classifier [@lavechinOpen
 
 \newpage
 # References
-We used `r cite_r("r-references.bib")` for all our analyses.
+<!--e used `r cite_r("bibliography.bib")` for all our analyses.-->    
 ```{r create_r-references}
 r_refs(file = "bibliography.bib")
 ```
@@ -227,20 +227,20 @@ r_refs(file = "bibliography.bib")
 
 The dataset contains the following list of activities. The number of clips for each activity class is indicated by the number in brackets behind each class.
 
-1. playing with object \textcolor{red}{TBD}
-2. playing without object \textcolor{red}{TBD}
-3. pretend play \textcolor{red}{TBD}
-4. watching something \textcolor{red}{TBD}
-5. reading book \textcolor{red}{TBD}
-6. child talking \textcolor{red}{TBD}
-7. other person talking \textcolor{red}{TBD}
-8. overheard speech \textcolor{red}{TBD}
-9. drawing \textcolor{red}{TBD}
-10. crafting things \textcolor{red}{TBD}
-11. singing / humming \textcolor{red}{TBD}
-12. making music \textcolor{red}{TBD}
-13. dancing \textcolor{red}{TBD}
-14. listening to music / audiobook \textcolor{red}{TBD}
+1. **playing with object**: The child is playing with an object, such as a toy or a ball.  (x clips)
+2. **playing without object**: The child is playing without an object, such as playing hide and seek or catch. (x clips)
+3. **pretend play**: The child is engaged in imaginative play, such as pretending to be a doctor or a firefighter. (x clips)
+4. **watching something**: The child is watching a movie, TV show, or video on either a screen or a device. (x clips)
+5. **reading book**: The child is reading a book or looking at pictures in a book (x clips)
+6. **child talking**: The child is talking to themselves or to someone else (x clips)
+7. **other person talking**: Another person is talking to the child. (x clips)
+8. **overheard speech**: Conversations that the child can hear but is not directly involved in. (x clips)
+9. **drawing**: The child is drawing or coloring a picture. (x clips)
+10. **crafting things**: The child is engaged in a craft activity, such as making a bracelet or decoration. (x clips)
+11. **singing / humming**: The child is singing or humming a song or a mekody. (x clips)
+12. **making music**: The child is playing a musical instrument or making music in another way (x clips)
+13. **dancing**: The child is dancing to music or moving to a rhythm. (x clips)
+14. **listening to music / audiobook**: The child is listening to music or an audiobook. (x clips)
 
 ## List of ChildLens Location Classes
 
