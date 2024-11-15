@@ -154,12 +154,23 @@ The labeling strategy for the ChildLens dataset was designed to capture the chil
 After an initial review of the videos, we identified the most common activities that children engage in throughout the day. The activity classes in the dataset are derived from these activities. We chose to differentiate, for example, between "drawing" and "crafting things" or "making music" and "singing/humming" in order to make the activities more granular. We also added the concepts of "overheard speech", which describes situations in which the child is not directly involved in a conversation but can hear it, and "pretend play", which refers to when the child is engaged in imaginative play. This approach allowed us to capture the diversity of activities that children engage in and create a comprehensive dataset for activity analysis.
 
 ## Step 3: Manual Labeling Process
+The videos were manually annotated by native German speakers who watched each video and labeled the activities present in the footage. The annotators marked the start and end points of each activity, ensuring that the annotations were accurate and detailed. The labeling process was conducted using the SuperAnnotate platform, which allowed for efficient annotation and review of the videos. 
 
+
+- labeling process means looking at the whole video and mark start and end point of each activity present in the list of activities
+- we annotate the videos using humans
+- native germans for labeling task
 - use SuperAnnotate platform for labeling
 - review system: always two annotators label the same video, 
-*-TODO: ask how exacxtly the review process works
-*
-- native germans for labeling task
+*-TODO: ask how exactly the review process works
+
+- in setup meeting we discussed the labeling strategy and the classes and handed over the annotation strategy to the annotators
+- before starting annotation process, we made sure that all questions were answered and that the annotators understood the task
+- before the actual annotation process started, the annotators labeled  25 videos to get a feeling for the task
+- the annotations then were reviewed by us and feedback was shared
+- in total three feedback loops were conducted to ensure that the annotators followed the labeling strategy
+
+
 
 # Benchmark Performance
 ## Implementation details
