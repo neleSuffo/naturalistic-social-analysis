@@ -76,6 +76,8 @@ library(broom)
 library(coda)
 library(reshape2)
 library(ggridges)
+library(readxl)
+library(dplyr)
 
 estimate_mode <- function(s) {
   d <- density(s)
@@ -140,6 +142,30 @@ apa_table(
 )
 ```
 
+
+
+```{r import-and-plot, echo=TRUE, message=FALSE, warning=FALSE}
+file_path <- "quantex_share_data_sheet.xlsx"
+data <- read_excel(file_path)
+
+# Remove duplicates
+unique_data <- data %>%
+  distinct(ID, Minutes_per_ID, .keep_all = TRUE)
+
+unique_data$ID <- as.factor(unique_data$ID)
+
+ggplot(unique_data, aes(x = ID, y = Minutes_per_ID, fill = ID)) + 
+  geom_bar(stat = "identity") + 
+  theme_minimal() +
+  scale_fill_hue(c = 30) +
+  labs(title = "Minutes of video recordings per child",
+       x = "Child ID",
+       y = "Minutes per child") +
+  theme(axis.text.x = element_blank(),
+        legend.position = "none") 
+```
+
+
 #### Exhaustive multi-label annotations
 The dataset provides detailed annotations for each video file. These annotations specify the child’s current location within the video, the start and end times of each activity, the activity class, and whether the child is engaged alone or with somebody else. For every person involved in the activity, we capture age and gender. If multiple activities occur simultaneously in a video, each activity is individually labeled and extracted as a separate clip. For example, if a segment shows a child “reading a book” while also “talking,” two separate clips are created: one for “reading a book” and another for “child talking.” This exhaustive labeling strategy ensures that each activity is accurately represented in the dataset. Figure \@ref(fig:superannotate) provides a screenshot of the SuperAnnotate platform used for video annotation.
 
@@ -166,26 +192,13 @@ knitr::include_graphics("camera_worn.png")
 
 ## Step 2: Creation of Labeling Strategy
 
-
 After an initial review of the videos, we identified the most common activities that children engage in throughout the day. The activity classes in the dataset are derived from these activities. We chose to differentiate, for example, between "drawing" and "crafting things" or "making music" and "singing/humming" in order to make the activities more granular. We also added the concepts of "overheard speech", which describes situations in which the child is not directly involved in a conversation but can hear it, and "pretend play", which refers to when the child is engaged in imaginative play. This approach allowed us to capture the diversity of activities that children engage in and create a comprehensive dataset for activity analysis.
 
 ## Step 3: Manual Labeling Process
-The videos were manually annotated by native German speakers who watched each video and labeled the activities present in the footage. The annotators marked the start and end points of each activity, ensuring that the annotations were accurate and detailed. The labeling process was conducted using the SuperAnnotate platform, which allowed for efficient annotation and review of the videos. 
+The videos were manually annotated by native German speakers who watched each video and labeled the activities present in the footage. The annotators marked the start and end points of each activity, ensuring that the annotations were accurate and detailed. The labeling process was conducted using the SuperAnnotate platform, which allowed for efficient annotation and review of the videos. To ensure the quality of the annotations, **.... review system?**
+In a setup meeting, the annotators received instructions and our labeling strategy to follow. Before starting the annotation process, the annotators labeled 25 videos to get a feeling for the task. The annotations were then reviewed by us and feedback was shared. In total, three feedback loops were conducted to ensure that the annotators followed the labeling strategy.
 
-- labeling process means looking at the whole video and mark start and end point of each activity present in the list of activities
-- we annotate the videos using humans
-- native germans for labeling task
-- use SuperAnnotate platform for labeling
-- review system: always two annotators label the same video, 
-*-TODO: ask how exactly the review process works
-
-- in setup meeting we discussed the labeling strategy and the classes and handed over the annotation strategy to the annotators
-- before starting annotation process, we made sure that all questions were answered and that the annotators understood the task
-- before the actual annotation process started, the annotators labeled  25 videos to get a feeling for the task
-- the annotations then were reviewed by us and feedback was shared
-- in total three feedback loops were conducted to ensure that the annotators followed the labeling strategy
-
-
+**-TODO: ask how exactly the review process works**
 
 # Benchmark Performance
 ## Implementation details

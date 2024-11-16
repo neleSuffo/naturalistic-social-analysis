@@ -36,6 +36,46 @@
   \KOMAoptions{parskip=half}}
 \makeatother
 \usepackage{xcolor}
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\usepackage{framed}
+\definecolor{shadecolor}{RGB}{248,248,248}
+\newenvironment{Shaded}{\begin{snugshade}}{\end{snugshade}}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{0.94,0.16,0.16}{#1}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\BuiltInTok}[1]{#1}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{0.64,0.00,0.00}{\textbf{#1}}}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\ImportTok}[1]{#1}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.81,0.36,0.00}{\textbf{#1}}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{#1}}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.81,0.36,0.00}{\textbf{#1}}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
 \usepackage{graphicx}
 \makeatletter
 \def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
@@ -285,6 +325,31 @@ training & \multicolumn{1}{c}{validation} & \multicolumn{1}{c}{testing}\\
 
 \end{table}
 
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{file\_path }\OtherTok{\textless{}{-}} \StringTok{"quantex\_share\_data\_sheet.xlsx"}
+\NormalTok{data }\OtherTok{\textless{}{-}} \FunctionTok{read\_excel}\NormalTok{(file\_path)}
+
+\CommentTok{\# Remove duplicates}
+\NormalTok{unique\_data }\OtherTok{\textless{}{-}}\NormalTok{ data }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{distinct}\NormalTok{(ID, Minutes\_per\_ID, }\AttributeTok{.keep\_all =} \ConstantTok{TRUE}\NormalTok{)}
+
+\NormalTok{unique\_data}\SpecialCharTok{$}\NormalTok{ID }\OtherTok{\textless{}{-}} \FunctionTok{as.factor}\NormalTok{(unique\_data}\SpecialCharTok{$}\NormalTok{ID)}
+
+\FunctionTok{ggplot}\NormalTok{(unique\_data, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ ID, }\AttributeTok{y =}\NormalTok{ Minutes\_per\_ID, }\AttributeTok{fill =}\NormalTok{ ID)) }\SpecialCharTok{+} 
+  \FunctionTok{geom\_bar}\NormalTok{(}\AttributeTok{stat =} \StringTok{"identity"}\NormalTok{) }\SpecialCharTok{+} 
+  \FunctionTok{theme\_minimal}\NormalTok{() }\SpecialCharTok{+}
+  \FunctionTok{scale\_fill\_hue}\NormalTok{(}\AttributeTok{c =} \DecValTok{30}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{labs}\NormalTok{(}\AttributeTok{title =} \StringTok{"Minutes of video recordings per child"}\NormalTok{,}
+       \AttributeTok{x =} \StringTok{"Child ID"}\NormalTok{,}
+       \AttributeTok{y =} \StringTok{"Minutes per child"}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{theme}\NormalTok{(}\AttributeTok{axis.text.x =} \FunctionTok{element\_blank}\NormalTok{(),}
+        \AttributeTok{legend.position =} \StringTok{"none"}\NormalTok{) }
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{ChildLens_paper_files/figure-latex/import-and-plot-1.pdf}
+
 \paragraph{Exhaustive multi-label annotations}\label{exhaustive-multi-label-annotations}
 
 The dataset provides detailed annotations for each video file. These annotations specify the child's current location within the video, the start and end times of each activity, the activity class, and whether the child is engaged alone or with somebody else. For every person involved in the activity, we capture age and gender. If multiple activities occur simultaneously in a video, each activity is individually labeled and extracted as a separate clip. For example, if a segment shows a child ``reading a book'' while also ``talking,'' two separate clips are created: one for ``reading a book'' and another for ``child talking.'' This exhaustive labeling strategy ensures that each activity is accurately represented in the dataset. Figure \ref{fig:superannotate} provides a screenshot of the SuperAnnotate platform used for video annotation.
@@ -335,31 +400,10 @@ After an initial review of the videos, we identified the most common activities 
 
 \subsection{Step 3: Manual Labeling Process}\label{step-3-manual-labeling-process}
 
-The videos were manually annotated by native German speakers who watched each video and labeled the activities present in the footage. The annotators marked the start and end points of each activity, ensuring that the annotations were accurate and detailed. The labeling process was conducted using the SuperAnnotate platform, which allowed for efficient annotation and review of the videos.
+The videos were manually annotated by native German speakers who watched each video and labeled the activities present in the footage. The annotators marked the start and end points of each activity, ensuring that the annotations were accurate and detailed. The labeling process was conducted using the SuperAnnotate platform, which allowed for efficient annotation and review of the videos. To ensure the quality of the annotations, \textbf{\ldots. review system?}
+In a setup meeting, the annotators received instructions and our labeling strategy to follow. Before starting the annotation process, the annotators labeled 25 videos to get a feeling for the task. The annotations were then reviewed by us and feedback was shared. In total, three feedback loops were conducted to ensure that the annotators followed the labeling strategy.
 
-\begin{itemize}
-\item
-  labeling process means looking at the whole video and mark start and end point of each activity present in the list of activities
-\item
-  we annotate the videos using humans
-\item
-  native germans for labeling task
-\item
-  use SuperAnnotate platform for labeling
-\item
-  review system: always two annotators label the same video,
-  *-TODO: ask how exactly the review process works
-\item
-  in setup meeting we discussed the labeling strategy and the classes and handed over the annotation strategy to the annotators
-\item
-  before starting annotation process, we made sure that all questions were answered and that the annotators understood the task
-\item
-  before the actual annotation process started, the annotators labeled 25 videos to get a feeling for the task
-\item
-  the annotations then were reviewed by us and feedback was shared
-\item
-  in total three feedback loops were conducted to ensure that the annotators followed the labeling strategy
-\end{itemize}
+\textbf{-TODO: ask how exactly the review process works}
 
 \section{Benchmark Performance}\label{benchmark-performance}
 
