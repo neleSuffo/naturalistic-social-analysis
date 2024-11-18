@@ -228,7 +228,7 @@ The videos were manually annotated by native German speakers who watched each vi
 3. **Review process**: After the initial annotations are completed, the annotations are reviewed by the internal team to ensure that they are accurate and complete. Any discrepancies or errors are corrected before the final submission.
 
 # Benchmark Performance
-In this chapter we present the results of two model architectures applied to the ChildLens dataset. While the dataset can be used for multimodal activity analysis, we focus on two specific tasks: temporal activity localization using video data and voice type classification using audio data. We apply the Boundary-Matching Network (BMN) for temporal activity localization and the Voice Type Classifier (VTC) for voice type classification. Both models were trained from scratch on the ChildLens dataset to provide initial results and a benchmark for future research. A short architecture overview of the models is presented in figure \@ref(fig:architecture-overview) and figure \@ref(fig:bmn-architecture).
+In this chapter we present the results of two model architectures applied to the ChildLens dataset. While the dataset can be used for multimodal activity analysis, we focus on two specific tasks: temporal activity localization using video data and voice type classification using audio data. We apply the Boundary-Matching Network (BMN) for temporal activity localization and the Voice Type Classifier (VTC) for voice type classification. Both models were trained from scratch on the ChildLens dataset to provide initial results and a benchmark for future research. A short architecture overview of the models is presented in figure \@ref(fig:vtc-architecture) and figure \@ref(fig:bmn-architecture).
 
 ```{r vtc-architecture, dpi=600, fig.align='center', fig.cap="Voice Type Classifier architecture applied to ChildLens audio data"}
 knitr::include_graphics("VTC_architecture.png")
@@ -241,7 +241,7 @@ knitr::include_graphics("BMN_architecture.png")
 ## Implementation details
 
 ## Boundary-Matching Network 
-We utilize the BMN model [@linBMNBoundaryMatchingNetwork2019] for temporal activity localization.
+We utilize the Boundary-Matching Network model [@linBMNBoundaryMatchingNetwork2019] for temporal activity localization.
 
 
 ## VTC
@@ -253,7 +253,7 @@ For the visual-based activities, we use the Voice Type Classifier [@lavechinOpen
 
 
 # Discussion
-## Dataset bias
+## Dataset Bias
 
 ## General Discussion
 
