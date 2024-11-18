@@ -78,6 +78,9 @@ library(reshape2)
 library(ggridges)
 library(readxl)
 library(dplyr)
+library(lubridate)
+library(zoo)
+
 
 estimate_mode <- function(s) {
   d <- density(s)
@@ -124,36 +127,46 @@ knitr::include_graphics("activity_classes.png")
 #### Statistics
 
 ```{r video-statistics, echo=FALSE, message=FALSE, warning=FALSE, fig.cap="Video recording duration (in minutes) per child ID."}
-file_path <- "quantex_share_data_sheet.xlsx"
-data <- read_excel(file_path)
+data <- read_csv2("quantex_share_data_sheet.csv")
 
 unique_data <- data %>%
-  filter(!is.na(Minutes_per_ID)) %>%
-  filter(!is.na(ID)) %>%
-  distinct(ID, Minutes_per_ID, .keep_all = TRUE) %>%
-  filter(Labeled == "yes")
+  filter(!is.na(Minutes_per_ID), Minutes_per_ID != 0, 
+         !is.na(ID), Labeled == "yes") %>%
+  distinct(ID, Minutes_per_ID, .keep_all = TRUE)
+
+filtered_data <- data %>%
+  filter(!is.na(Date), Labeled == "yes") %>%
+  mutate(Date = as.Date(Date, format = "%d.%m.%Y")) 
 
 min_minutes <- min(unique_data$Minutes_per_ID[unique_data$Minutes_per_ID > 0], na.rm = TRUE)
 max_minutes <- max(unique_data$Minutes_per_ID, na.rm = TRUE)
-sum_minutes <- sum(unique_data$Minutes_per_ID, na.rm = TRUE)/60
+sum_minutes <- sum(unique_data$Minutes_per_ID, na.rm = TRUE)
+sum_hours <- sum_minutes/60
 nr_children <- nrow(unique_data)
 
+oldest_date <- min(filtered_data$Date)
+youngest_date <- max(filtered_data$Date)
+
+oldest_year <- as.numeric(format(oldest_date, "%Y"))
+oldest_month <- as.numeric(format(oldest_date, "%m"))
+youngest_year <- as.numeric(format(youngest_date, "%Y"))
+youngest_month <- as.numeric(format(youngest_date, "%m"))
+
+# Calculate the interval between the two dates
+time_span_months <- (youngest_year - oldest_year) * 12 + (youngest_month - oldest_month)+1
 ```
-The ChildLens dataset comprises `r sum_minutes` hours of video material recorded by `r nr_children` children aged 3 to 5 years. For each child, the duration of recorded video material varies between `r min_minutes` and `r max_minutes` minutes. A detailed distribution of the video duration per child can be found in figure \@ref(fig:minutes-per-child). This diverse dataset also includes a varying number of clips for each of the 14 activity classes, ranging from **x** to **x** clips per class. The clip duration depends on the activity; for example, audio-related actions like "child talking" may only last a few seconds, while activities like "reading a book" may last several minutes. As shown in table \@ref(tab:train-val-test), the total number of **xx** clips is divided into **xx** training clips, **xx** validation clips, and **xx** testing clips for each class.
+
+The ChildLens dataset comprises `r sum_hours` hours of video material recorded by `r nr_children` children aged 3 to 5 years. For each child, the duration of recorded video material varies between `r min_minutes` and `r max_minutes` minutes. A detailed distribution of the video duration per child can be found in figure \@ref(fig:minutes-per-child). This diverse dataset also includes a varying number of clips for each of the 14 activity classes, ranging from **x** to **x** clips per class. The clip duration depends on the activity; for example, audio-related actions like "child talking" may only last a few seconds, while activities like "reading a book" may last several minutes. As shown in table \@ref(tab:train-val-test), the total number of **xx** clips is divided into **xx** training clips, **xx** validation clips, and **xx** testing clips for each class.
 
 
 ```{r minutes-per-child, echo=FALSE, message=FALSE, warning=FALSE, fig.cap="Video recording duration (in minutes) per child ID."}
 unique_data$ID <- as.factor(unique_data$ID)
 
-ggplot(unique_data, aes(x = ID, y = Minutes_per_ID, fill = ID)) + 
-  geom_bar(stat = "identity") + 
-  theme_minimal() +
-  scale_fill_hue(c = 20) +
-  labs(x = "Child ID",
-       y = "Minutes per child") +
-  theme(axis.text.x = element_blank(),
-        axis.ticks.x = element_blank(),
-        legend.position = "none") 
+ggplot(unique_data, aes(x = Minutes_per_ID)) +
+  geom_histogram(binwidth = 10) +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 10), labels = scales::label_number(accuracy = 1)) +
+  labs(x = "Minutes per ID", y = "Count") +
+  theme_minimal()
 ```
 
 
@@ -181,14 +194,14 @@ The dataset provides detailed annotations for each video file. These annotations
 This section outlines the steps taken to create the ChildLens dataset. We provide detailed information on the video collection process, the labeling strategy employed, and the generation of activity labels.
 
 ## Step 1: Collection of Egocentric Videos
-The ChildLens dataset consists of egocentric videos recorded by children aged 3 to 5 years. A total of xx children from families living in a mid-sized city in Germany, participated in the study. The videos were captured at home using a camera embedded in a vest worn by the children, which can be seen in figure \@ref(fig:camera-worn). This setup allowed the children to move freely throughout their homes while recording their activities. The camera, a _PatrolEyes WiFi HD Infrared Police Body Camera_, was equipped with a 140-degree wide-angle lens and captured everything within the child's field of view with a resolution of 1920x1080p at 30 fps. The camera also recorded audio, allowing us to capture the child's speech and other sounds in the environment. Additionally, the parents were handed a small checklist of activities to record, ensuring that a variety of activities were captured in the videos. The focus was on capturing everyday activities that children typically engage in. Parents were therefore asked to include the following activities in the recordings:
+The ChildLens dataset consists of egocentric videos recorded by children aged 3 to 5 years. A total of `r nr_children` children from families living in a mid-sized city in Germany, participated in the study. The videos were captured at home using a camera embedded in a vest worn by the children, which can be seen in figure \@ref(fig:camera-worn). This setup allowed the children to move freely throughout their homes while recording their activities. The camera, a _PatrolEyes WiFi HD Infrared Police Body Camera_, was equipped with a 140-degree wide-angle lens and captured everything within the child's field of view with a resolution of 1920x1080p at 30 fps. The camera also recorded audio, allowing us to capture the child's speech and other sounds in the environment. Additionally, the parents were handed a small checklist of activities to record, ensuring that a variety of activities were captured in the videos. The focus was on capturing everyday activities that children typically engage in. Parents were therefore asked to include the following activities in the recordings:
 
 - Child is invited to read a book together with an adult
 - Child is invited to play with toys alone
 - Child is invited to play with toys with someone else (adult or child)
 - Child is invited to draw/craft something
 
-The videos were recorded over a period of xx months, resulting in a total of xx hours of video footage.
+The videos were recorded over a period of `r time_span_months` months, resulting in a total of `r sum_hours` hours of video footage.
 
 ```{r camera-worn, dpi=500, fig.align='center', fig.cap="Vest with the embedded camera worn by the children"}
 knitr::include_graphics("camera_worn.png")
