@@ -80,6 +80,8 @@ library(readxl)
 library(dplyr)
 library(lubridate)
 library(zoo)
+library(gridExtra)
+library(grid)
 
 
 estimate_mode <- function(s) {
@@ -208,7 +210,9 @@ knitr::include_graphics("camera_worn.png")
 ```
 
 ## Step 2: Creation of Labeling Strategy
-To create a comprehensive labeling strategy for the ChildLens dataset, we first defined a list of activities that children typically engage in. This list was based on previous research on child development and the activities that children are known to participate in. We then developed a detailed catalog of activities that were likely to be captured in the videos and chose to make the activity classes more granular by distinguishing between activities like "making music" and "singing/humming" or "drawing" and "crafting things". After an initial review of the videos, we decided to add another class "overheard speech" to capture situations in which the child is not directly involved in a conversation but can hear it. We also added "pretend play" as a separate class to capture situations in which the child is engaged in imaginative play. This approach allowed us to capture the diversity of activities that children engage in and create a comprehensive dataset for activity analysis.
+To create a comprehensive labeling strategy for the ChildLens dataset, we first defined a list of activities that children typically engage in. This list was based on previous research on child development and the activities that children are known to participate in. We then developed a detailed catalog of activities that were likely to be captured in the videos and chose to make the activity classes more granular by distinguishing between activities like "making music" and "singing/humming" or "drawing" and "crafting things". 
+
+After an initial review of the videos, we decided to add another class "overheard speech" to capture situations in which the child is not directly involved in a conversation but can hear it. We also added "pretend play" as a separate class to capture situations in which the child is engaged in imaginative play. This approach allowed us to capture the diversity of activities that children engage in and create a comprehensive dataset for activity analysis.
 
 ```{r superannotate, dpi=600, fig.align='center', fig.cap="SuperAnnotate platform utilized for video annotation"}
 knitr::include_graphics("SuperAnnotate.png")
@@ -224,6 +228,16 @@ The videos were manually annotated by native German speakers who watched each vi
 3. **Review process**: After the initial annotations are completed, the annotations are reviewed by the internal team to ensure that they are accurate and complete. Any discrepancies or errors are corrected before the final submission.
 
 # Benchmark Performance
+In this chapter we present the results of two model architectures applied to the ChildLens dataset. While the dataset can be used for multimodal activity analysis, we focus on two specific tasks: temporal activity localization using video data and voice type classification using audio data. We apply the Boundary-Matching Network (BMN) for temporal activity localization and the Voice Type Classifier (VTC) for voice type classification. Both models were trained from scratch on the ChildLens dataset to provide initial results and a benchmark for future research. A short architecture overview of the models is presented in figure \@ref(fig:architecture-overview) and figure \@ref(fig:bmn-architecture).
+
+```{r vtc-architecture, dpi=600, fig.align='center', fig.cap="Voice Type Classifier architecture applied to ChildLens audio data"}
+knitr::include_graphics("VTC_architecture.png")
+```
+
+```{r bmn-architecture, dpi=600, fig.align='center', fig.cap="Boundary Matching Network architecture applied to ChildLens video data"}
+knitr::include_graphics("BMN_architecture.png")
+```
+
 ## Implementation details
 
 ## Boundary-Matching Network 
