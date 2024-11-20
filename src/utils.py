@@ -550,7 +550,7 @@ def extract_audio_from_videos_in_folder(folder_path: Path) -> None:
     Extracts audio from all video files in the specified folder, if not already done.
     """
     for video_file in folder_path.iterdir():
-        if video_file.suffix.lower() not in ['.mp4']:
+        if video_file.suffix.lower() not in ['.mp4', '.MP4']:
             continue  # Skip non-video files
         
         audio_path = VTCPaths.output_dir / f"{video_file.stem}{VTCConfig.audio_file_suffix}"
