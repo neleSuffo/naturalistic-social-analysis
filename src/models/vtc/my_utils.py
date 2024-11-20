@@ -13,10 +13,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 def convert_utterances_to_coco(
     df: pd.DataFrame,
-    annotation_id: multiprocessing.Value,
-    image_id: multiprocessing.Value,
     video_file_name : str,
-    file_id: int,
 ) -> dict:
     """
     This function generates a dictionary where each key is a second in the audio file
@@ -26,14 +23,8 @@ def convert_utterances_to_coco(
     ----------
     df : pd.DataFrame
         the DataFrame containing the voice-type-classifier output
-    annotation_id : multiprocessing.Value
-        the unique annotation ID to assign to the detections
-    image_id : multiprocessing.Value
-        the unique image ID
     video_file_name : str
         the name of the video file
-    file_id: int
-        the unique video file id
 
     Returns
     -------
@@ -63,8 +54,6 @@ def convert_utterances_to_coco(
             # Add image information to COCO output
             detection_output["images"].append(
                 {
-                "id": image_id.value, # unique incrementing image_id
-                "video_id": file_id, # unique video_id
                 "frame_id": frame_count, # frame number
                 "file_name": f"{video_file_name}_{frame_count}.jpg",
                 }
@@ -72,19 +61,12 @@ def convert_utterances_to_coco(
             
             detection_output["annotations"].append(
                 {
-                    "id": annotation_id.value, # unique incrementing annotation_id
-                    "image_id": image_id.value, # image id corresponds to the unique id in images
                     "category_id": category_id, # face category_id
                     "voice_type": row.Voice_type, # what type of voice is detected
                     "start_time": row.Utterance_Start, # start time of the utterance
                     "end_time": row.Utterance_End, # end time of the utterance
                 }
             )
-            # Increment the annotation_id and image_id
-            with annotation_id.get_lock():
-                annotation_id.value += 1
-            with image_id.get_lock():
-                image_id.value += 1
                 
     logging.info("Detection output generation completed")
     return detection_output
