@@ -5,22 +5,9 @@ import logging
 import multiprocessing
 
 
-def run_voice_detection(
-    video_file_ids_dict: dict,
-    annotation_id: multiprocessing.Value,
-    image_id: multiprocessing.Value,
-) -> dict:
+def run_voice_detection() -> dict:
     """
     This function runs the voice-type-classifier and generates the detection results in COCO format.
-
-    Parameters
-    ----------
-    video_file_ids_dict : dict
-        the dictionary containing the video file IDs
-    annotation_id : multiprocessing.Value
-        the unique annotation ID to assign to the detections
-    image_id : multiprocessing.Value
-        the unique image ID
 
     Returns
     -------
@@ -51,23 +38,19 @@ def run_voice_detection(
     for file_name in unique_files:
         # Get the video file name and file ID
         cleaned_audio_file_name = file_name.replace(VTCConfig.audio_file_suffix.stem, '')
-        file_id = video_file_ids_dict[cleaned_audio_file_name]
         
         # Filter DataFrame for current file
         file_df = voice_detection_df[voice_detection_df['audio_file_name'] == file_name]
 
         # Generate and append video entry
         detection_output["videos"].append({
-            "id": file_id,
+            "id": cleaned_audio_file_name,
             "file_name": file_name,
         })
         # Generate detection output in COCO format
         file_detection_output = my_utils.convert_utterances_to_coco(
             file_df,
-            annotation_id,
-            image_id,
             file_name,
-            file_id,
         )
         # Accumulate annotations and images
         detection_output[DetectionParameters.output_key_annotations].extend(file_detection_output[DetectionParameters.output_key_annotations])
