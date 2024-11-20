@@ -15,7 +15,7 @@ class DetectionPaths:
     face_detections_dir = Path(BasePaths.home_dir/"outputs/mtcnn/")
     #videos_input_dir = Path(BasePaths.data_dir//"videos_train/") 
     #videos_input_dir = Path(BasePaths.data_dir//"videos/") 
-    videos_input_dir = Path(BasePaths.data_dir/"videos_example/") 
+    videos_input_dir = Path(BasePaths.data_dir/"videos_superannotate_all/") 
     images_input_dir = Path(BasePaths.data_dir/"images/")
     # Path variable to the annotation xml files
     annotations_dir = Path(BasePaths.data_dir/"annotations/")
