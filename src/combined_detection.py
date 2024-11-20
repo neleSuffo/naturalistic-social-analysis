@@ -272,7 +272,7 @@ class VoiceTypeProcessor:
     def extract_audio_from_videos(self):
         """This function extracts audio from videos for voice detection."""
         logging.info("Extracting audio for voice detection...")
-        utils.extract_audio_from_videos_in_folder(DetectionPaths.videos_input)
+        utils.extract_audio_from_videos_in_folder(DetectionPaths.videos_input_dir)
         
     def run_voice_detection(self):
         """This function runs voice detection on the extracted audio files.
@@ -283,7 +283,7 @@ class VoiceTypeProcessor:
             the detection results in COCO format
         """
         logging.info("Running voice detection...")
-        detection_output = detect_voices.run_voice_detection(self.video_file_ids_dict, self.annotation_id, self.image_id)
+        detection_output = detect_voices.run_voice_detection()
 
         # Merge the results into the combined output
         self.output_merger.merge(detection_output)
@@ -291,8 +291,8 @@ class VoiceTypeProcessor:
     def process_all(self):
         """This function extracts audio from videos and runs voice detection."""
         self.extract_audio_from_videos()
-        detection_output = self.run_voice_detection()
-        return detection_output 
+        #detection_output = self.run_voice_detection()
+        #return detection_output 
 
 
 def main(detections: dict, batch_size: int) -> None:
@@ -333,6 +333,6 @@ def main(detections: dict, batch_size: int) -> None:
 if __name__ == "__main__":
     os.environ['OMP_NUM_THREADS'] = '1'
     # Define which detections to perform
-    detections = {"person": True, "face": False, "voice": False}
+    detections = {"person": False, "face": False, "voice": True}
     batch_size = 2
     main(detections, batch_size)
