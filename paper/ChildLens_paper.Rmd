@@ -132,10 +132,10 @@ knitr::include_graphics("activity_classes.png")
 
 ```{r video-statistics, echo=FALSE, message=FALSE, warning=FALSE, fig.cap="Video recording duration (in minutes) per child ID."}
 data <- read_csv2("quantex_share_data_sheet.csv")
-subject_infos <- read_csv("subjects_quantex_at_home.csv")
+#subject_infos <- read_csv("quantex_share_data_sheet.csv")
 
-subject_infos <- subject_infos %>%
-  rename(ID = `ID No.`)
+#subject_infos <- subject_infos %>%
+#  rename(ID = `ID No.`)
 
 unique_data <- data %>%
   filter(!is.na(Minutes_per_ID), Minutes_per_ID != 0, 
@@ -145,22 +145,17 @@ unique_data <- data %>%
 unique_data <- unique_data %>%
   mutate(ID = as.double(ID))
 
-subject_infos <- subject_infos %>%
-  mutate(ID = as.double(ID))
+#subject_infos <- subject_infos %>%
+#  mutate(ID = as.double(ID))
 
 # Merge unique_data with subject_infos based on ID
-merged_data <- unique_data %>%
-  inner_join(subject_infos, by = "ID")
-print(unique_data$ID)
-print(subject_infos$ID)
-print(merged_data)
+#merged_data <- unique_data %>%
+#  inner_join(subject_infos, by = "ID")
 
-gender_counts <- merged_data %>%
-  group_by(Gender) %>%
-  summarise(count = n(), .groups = "drop")
+#gender_counts <- merged_data %>%
+#  group_by(Gender) %>%
+#  summarise(count = n(), .groups = "drop")
 
-# Print the result
-print(gender_counts)
 filtered_data <- data %>%
   filter(!is.na(Date), Labeled == "yes") %>%
   mutate(Date = as.Date(Date, format = "%d.%m.%Y")) 
@@ -337,6 +332,8 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed ac purus sit amet n
 
 
 ## Dataset Bias
+- is there gender bias in the dataset itself (how many female how many male)
+- is ther gender bias in some categories (e.g. more female for drawing etc.)
 
 ## General Discussion
 

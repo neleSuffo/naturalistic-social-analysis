@@ -268,41 +268,6 @@ The location classes describe the current location of the child in the video and
 
 \paragraph{Statistics}\label{statistics}
 
-\begin{verbatim}
-##  [1] 260730 264521 262703 265674 266686 275146 264576 265943 280429 271735
-## [11] 260062 262174 267139 262273 266369 279886 260444 264436 277887 262381
-## [21] 264614 264395 264362 264751 262944 265688 271693 260777 264304 265568
-## [31] 266216 266799 262222 265619 263338 280817 266935 262495 260455 280599
-## [41] 260040 262472 265566 262661 268900 280427 262564 262020 279536 263229
-## [51] 260439 279613 265705 265706 280989 273291 265891 264433 262181 263265
-## [61] 263157
-\end{verbatim}
-
-\begin{verbatim}
-##  [1] 255944 254922 255237 261609 255706 258392 256354 255695 257609 257573
-## [11] 257291 257108 256461 257608 257492 257147 266822 257578 258541 271700
-## [21] 258309 258192 258827 258274 257511 260178 260772 260123 260539 260261
-## [31] 260478 260176 260106 263986 261610 260120 260694 260275 265285 268898
-## [41] 262565 263293 263190 262726 262758 267094 265779 262691 263199 262456
-## [51] 265487 263239 269068 271611 262179 262356 265286 265514 273855 262208
-## [61] 264089 263284 262246 267863 262748 264356 265041 264585 265023 263880
-## [71] 264683 264235 266606 266971 266063
-\end{verbatim}
-
-\begin{verbatim}
-## # A tibble: 0 x 20
-## # i 20 variables: PROJECT <chr>, ID <dbl>, Date <chr>, Nr <dbl>,
-## #   Seconds per ID <dbl>, Minutes_per_ID <dbl>, Seconds <dbl>, Duration <time>,
-## #   Comments <chr>, file name  (generated automatically) <chr>, SA_name <dbl>,
-## #   powershell rename command <chr>, Labeled <chr>, ...14 <lgl>, nr str <chr>,
-## #   date_str <chr>, ...17 <lgl>, ...18 <chr>, Gender <chr>, Date of Birth <chr>
-\end{verbatim}
-
-\begin{verbatim}
-## # A tibble: 0 x 2
-## # i 2 variables: Gender <chr>, count <int>
-\end{verbatim}
-
 The ChildLens dataset comprises 106.10 hours of video material recorded by 61 children aged 3 to 5 years. For each child, the duration of recorded video material varies between 4.03 and 303.42 minutes. A detailed distribution of the video duration per child can be found in figure \ref{fig:minutes-per-child}. This diverse dataset also includes a varying number of clips for each of the 14 activity classes, ranging from \textbf{x} to \textbf{x} clips per class. The clip duration depends on the activity; for example, audio-related actions like ``child talking'' may only last a few seconds, while activities like ``reading a book'' may last several minutes. As shown in table \ref{tab:train-val-test}, the total number of \textbf{xx} clips is divided into \textbf{xx} training clips, \textbf{xx} validation clips, and \textbf{xx} testing clips for each class.
 
 \begin{figure}
@@ -505,6 +470,14 @@ ChildLens & 68.7 & 33.2 & 42.9 & 63.4 & 78.4 & 57.3\\
 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed ac purus sit amet nisl tincidunt tincidunt. Nullam nec turpis at libero tincidunt tincidunt. Sed nec mi nec nunc tincidunt tincidunt. Nullam nec turpis at libero tincidunt tincidunt. Sed nec mi nec nunc
 
 \subsection{Dataset Bias}\label{dataset-bias}
+
+\begin{itemize}
+\tightlist
+\item
+  is there gender bias in the dataset itself (how many female how many male)
+\item
+  is ther gender bias in some categories (e.g.~more female for drawing etc.)
+\end{itemize}
 
 \subsection{General Discussion}\label{general-discussion}
 
