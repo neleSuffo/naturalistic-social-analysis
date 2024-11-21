@@ -111,6 +111,8 @@ knitr::opts_chunk$set(echo = F, warning = F, message = F)
 
 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed ac purus sit amet nisl tincidunt tincidunt. Nullam nec turpis at libero tincidunt tincidunt. Sed nec mi nec nunc tincidunt tincidunt. Nullam nec turpis at libero tincidunt tincidunt. Sed nec mi nec nunc
 
+- TODO: research about egocentric video datasets
+
 # Dataset Overview
 
 #### Activity Classes
@@ -130,12 +132,35 @@ knitr::include_graphics("activity_classes.png")
 
 ```{r video-statistics, echo=FALSE, message=FALSE, warning=FALSE, fig.cap="Video recording duration (in minutes) per child ID."}
 data <- read_csv2("quantex_share_data_sheet.csv")
+subject_infos <- read_csv("subjects_quantex_at_home.csv")
+
+subject_infos <- subject_infos %>%
+  rename(ID = `ID No.`)
 
 unique_data <- data %>%
   filter(!is.na(Minutes_per_ID), Minutes_per_ID != 0, 
          !is.na(ID), Labeled == "yes") %>%
   distinct(ID, Minutes_per_ID, .keep_all = TRUE)
 
+unique_data <- unique_data %>%
+  mutate(ID = as.double(ID))
+
+subject_infos <- subject_infos %>%
+  mutate(ID = as.double(ID))
+
+# Merge unique_data with subject_infos based on ID
+merged_data <- unique_data %>%
+  inner_join(subject_infos, by = "ID")
+print(unique_data$ID)
+print(subject_infos$ID)
+print(merged_data)
+
+gender_counts <- merged_data %>%
+  group_by(Gender) %>%
+  summarise(count = n(), .groups = "drop")
+
+# Print the result
+print(gender_counts)
 filtered_data <- data %>%
   filter(!is.na(Date), Labeled == "yes") %>%
   mutate(Date = as.Date(Date, format = "%d.%m.%Y")) 
@@ -161,7 +186,7 @@ time_span_months <- (youngest_year - oldest_year) * 12 + (youngest_month - oldes
 The ChildLens dataset comprises `r sum_hours` hours of video material recorded by `r nr_children` children aged 3 to 5 years. For each child, the duration of recorded video material varies between `r min_minutes` and `r max_minutes` minutes. A detailed distribution of the video duration per child can be found in figure \@ref(fig:minutes-per-child). This diverse dataset also includes a varying number of clips for each of the 14 activity classes, ranging from **x** to **x** clips per class. The clip duration depends on the activity; for example, audio-related actions like "child talking" may only last a few seconds, while activities like "reading a book" may last several minutes. As shown in table \@ref(tab:train-val-test), the total number of **xx** clips is divided into **xx** training clips, **xx** validation clips, and **xx** testing clips for each class.
 
 
-```{r minutes-per-child, echo=FALSE, message=FALSE, warning=FALSE, fig.cap="Video recording duration (in minutes) per child ID."}
+```{r minutes-per-child-density, echo=FALSE, message=FALSE, warning=FALSE, eval=FALSE, fig.cap="Video recording duration (in minutes) per child ID."}
 unique_data$ID <- as.factor(unique_data$ID)
 
 ggplot(unique_data, aes(x = Minutes_per_ID)) +
@@ -171,6 +196,19 @@ ggplot(unique_data, aes(x = Minutes_per_ID)) +
   theme_minimal()
 ```
 
+```{r minutes-per-child, echo=FALSE, message=FALSE, warning=FALSE, fig.cap="Video recording duration (in minutes) per child ID."}
+unique_data$ID <- as.factor(unique_data$ID)
+
+ggplot(unique_data, aes(x = Minutes_per_ID)) +
+  geom_point(aes(y = 0), shape = "I", size = 5) + 
+  geom_density(fill = "gray", alpha = 0.5, color = "black") + 
+  theme_minimal() +
+  theme(legend.position = "none") +
+  labs(
+    x = "Minutes per ID",
+    y = "Density"
+  )
+```
 
 ```{r train-val-test, echo=FALSE, message=FALSE, warnings=FALSE, results='asis', eval=FALSE}
 my.data <- "training | validation | testing
@@ -228,35 +266,82 @@ The videos were manually annotated by native German speakers who watched each vi
 3. **Review process**: After the initial annotations are completed, the annotations are reviewed by the internal team to ensure that they are accurate and complete. Any discrepancies or errors are corrected before the final submission.
 
 # Benchmark Performance
-In this chapter we present the results of two model architectures applied to the ChildLens dataset. While the dataset can be used for multimodal activity analysis, we focus on two specific tasks: temporal activity localization using video data and voice type classification using audio data. We apply the Boundary-Matching Network (BMN) for temporal activity localization and the Voice Type Classifier (VTC) for voice type classification. Both models were trained from scratch on the ChildLens dataset to provide initial results and a benchmark for future research. A short architecture overview of the models is presented in figure \@ref(fig:vtc-architecture) and figure \@ref(fig:bmn-architecture).
-
-```{r vtc-architecture, dpi=600, fig.align='center', fig.cap="Voice Type Classifier architecture applied to ChildLens audio data"}
-knitr::include_graphics("VTC_architecture.png")
-```
+In this chapter, we present the results of applying two model architectures to the ChildLens dataset. While the dataset supports multimodal activity analysis, we focus on two specific tasks: temporal activity localization using video data and voice type classification using audio data. For temporal activity localization, we use the Boundary-Matching Network (BMN) model, a state-of-the-art approach in this domain, and train it from scratch on the unique activity classes in the ChildLens video data. For voice type classification, we apply the Voice Type Classifier (VTC) [@lavechinOpensourceVoiceType2020], also state-of-the-art, which was trained on similar data. Both models provide initial results and establish a benchmark for future research. A short architecture overview of the models is presented in figure \@ref(fig:bmn-architecture) and figure \@ref(fig:vtc-architecture).
 
 ```{r bmn-architecture, dpi=600, fig.align='center', fig.cap="Boundary Matching Network architecture applied to ChildLens video data"}
 knitr::include_graphics("BMN_architecture.png")
 ```
 
-## Implementation details
+```{r vtc-architecture, dpi=600, fig.align='center', fig.cap="Voice Type Classifier architecture applied to ChildLens audio data"}
+knitr::include_graphics("VTC_architecture.png")
+```
 
 ## Boundary-Matching Network 
 We utilize the Boundary-Matching Network model [@linBMNBoundaryMatchingNetwork2019] for temporal activity localization.
 
+### Implementation Details
+- details on training
+- optimization strategy
+- video prepocessing etc
 
-## VTC
-For the visual-based activities, we use the Voice Type Classifier [@lavechinOpensourceVoiceType2020].
+### Evaluation
+The most relevant findings of the BMN evaluation are summarized in the following sections.
 
+- Class accuracy differences
+  - full list of classification accuracy can be bound in figure **xx**
+  - classes **xx** and **xx** are hardest to classify, because of **xx**
+  - **xx** classes were easier to classify than others such as **xx** and **xx** because of **xx**
 
-# Conclusion
+- Class confusion
+  - describe which classes are often confused with each other (e.g. **xx** and **xx**)
+  
+## Voice Type Classifier
+The Voice Type Classifier [@lavechinOpensourceVoiceType2020] is a state-of-the-art model designed to classify audio rawfiles into five distinct voice types: _key child_, _other child_, _male speech_, _female speech_, and _speech._ Its architecture processes audio by first dividing it into 2-second chunks, which are passed through a SincNet to extract low-level features. These features are then fed into a stack of two bi-directional LSTMs, followed by three feed-forward layers. The output layer uses a sigmoid activation function to produce a score between 0 and 1 for each class. The VTC is trained on 260 hours of audio material obtained from different child-centered audio datasets. Model valuation is performed by utilizing the \( F_1 \)-measure, which combines precision and recall using the following formula: 
+\[
+F_1 = 2 \cdot \frac{\text{precision} \cdot \text{recall}}{\text{precision} + \text{recall}}
+\]
+where \(\text{precision} = \frac{\text{tp}}{\text{tp} + \text{fp}}\) and  \(\text{recall} = \frac{\text{tp}}{\text{tp} + \text{fn}}\) with
 
+- \(\text{tp}\) being the number of true positives,
+- \(\text{fp}\) being the number of false positives, and
+- \(\text{fn}\) being the number of false negatives.
+
+The \( F_1 \) score is calculated for each class, and the scores are averaged to obtain a final score. No collar is applied to the evaluation, meaning that the prediction have to be exact to be considered correct. The model achieves an \( F_1 \)  score of 57.3, outperforming the previous state-of-the-art LENA model by 10.6 points.
+
+### Evaluation
+The most relevant findings of the VTC evaluation are summarized in the following sections.
+- summarize most crucial findings
+
+```{r vtc-results, echo=FALSE, message=FALSE, warnings=FALSE, results='asis', eval=TRUE}
+my.data <- "Dataset       | KCHI | OCH  | MAL   | FEM  | SPEECH | AVG
+            ACLEW-Random  | 68.7 | 33.2 | 42.9  | 63.4 | 78.4   | 57.3
+            ChildLens     | 68.7 | 33.2 | 42.9  | 63.4 | 78.4   | 57.3"
+df <- read.delim(textConnection(my.data), header=FALSE, sep="|", strip.white=TRUE, stringsAsFactors=FALSE)
+names(df) <- unname(as.list(df[1,]))
+df <- df[-1,] 
+row.names(df) <- NULL
+apa_table(
+  df,
+  caption = "Comparison of VTC performance on the ACLEW-Random dataset (used for model evaluation) and the ChildLens dataset, highlighting the F1  measure for each class and the average F1 score",
+  escape = TRUE,
+)
+```
+
+- which class performs worst - maybe why?
+- which is best?
+- how is the average compared to the ACLEW-Random dataset
 
 
 # Discussion
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed ac purus sit amet nisl tincidunt tincidunt. Nullam nec turpis at libero tincidunt tincidunt. Sed nec mi nec nunc tincidunt tincidunt. Nullam nec turpis at libero tincidunt tincidunt. Sed nec mi nec nunc
+
+
 ## Dataset Bias
 
 ## General Discussion
 
+# Conclusion
+In this paper, we introduced the ChildLens dataset, a novel egocentric video dataset designed for activity analysis in children. The dataset contains a wide range of children’s daily live activities, captured in naturalistic environments. We outlined the data collection process and the generation of activity labels, providing detailed information on the labeling strategy employed. Initial results of applying two state-of-the-art models to the dataset were presented, establishing a benchmark for future research. While our current analysis treats audio and video independently, future studies could leverage multimodal approaches to gain deeper insights into children’s behavior and activity patterns, advancing the understanding of developmental and interactional contexts.
 
 \newpage
 # References
