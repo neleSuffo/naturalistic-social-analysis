@@ -268,7 +268,7 @@ The location classes describe the current location of the child in the video and
 
 \paragraph{Statistics}\label{statistics}
 
-The ChildLens dataset comprises 106.10 hours of video material recorded by 61 children aged 3 to 5 years. For each child, the duration of recorded video material varies between 4.03 and 303.42 minutes. A detailed distribution of the video duration per child can be found in figure \ref{fig:minutes-per-child}. This diverse dataset also includes a varying number of clips for each of the 14 activity classes, ranging from \textbf{x} to \textbf{x} clips per class. The clip duration depends on the activity; for example, audio-related actions like ``child talking'' may only last a few seconds, while activities like ``reading a book'' may last several minutes. As shown in table \ref{tab:train-val-test}, the total number of \textbf{xx} clips is divided into \textbf{xx} training clips, \textbf{xx} validation clips, and \textbf{xx} testing clips for each class.
+The ChildLens dataset comprises 106.10 hours of video material recorded by 61 children aged 3 to 5 years. It includes 107 videos from children aged 3, 122 videos from children aged 4, and 114 videos from children aged 5. For each child, the duration of recorded video material varies between 4.03 and 303.42 minutes. A detailed distribution of the video duration per child can be found in figure \ref{fig:minutes-per-child}. This diverse dataset also includes a varying number of clips for each of the 14 activity classes, ranging from \textbf{x} to \textbf{x} clips per class. The clip duration depends on the activity; for example, audio-related actions like ``child talking'' may only last a few seconds, while activities like ``reading a book'' may last several minutes. As shown in table \ref{tab:train-val-test}, the total number of \textbf{xx} clips is divided into \textbf{xx} training clips, \textbf{xx} validation clips, and \textbf{xx} testing clips for each class.
 
 \begin{figure}
 \centering
@@ -429,6 +429,10 @@ where \(\text{precision} = \frac{\text{tp}}{\text{tp} + \text{fp}}\) and \(\text
 
 The \(F_1\) score is calculated for each class, and the scores are averaged to obtain a final score. No collar is applied to the evaluation, meaning that the prediction have to be exact to be considered correct. The model achieves an \(F_1\) score of 57.3, outperforming the previous state-of-the-art LENA model by 10.6 points.
 
+\subsubsection{Implementation Details}\label{implementation-details-1}
+
+The Voice Type Classifier was applied to the ChildLens dataset. A total of 343 raw files, with a total duration of 106.10, were processed by the model in 91.02 minutes.
+
 \subsubsection{Evaluation}\label{evaluation-1}
 
 The most relevant findings of the VTC evaluation are summarized in the following sections.
@@ -470,6 +474,8 @@ ChildLens & 68.7 & 33.2 & 42.9 & 63.4 & 78.4 & 57.3\\
 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed ac purus sit amet nisl tincidunt tincidunt. Nullam nec turpis at libero tincidunt tincidunt. Sed nec mi nec nunc tincidunt tincidunt. Nullam nec turpis at libero tincidunt tincidunt. Sed nec mi nec nunc
 
 \subsection{Dataset Bias}\label{dataset-bias}
+
+Overall, the dataset demographics are balanced. From the 61 children who participated in the study, 32 children are female and 29 are male.
 
 \begin{itemize}
 \tightlist
