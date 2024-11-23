@@ -28,7 +28,7 @@ def determine_new_label(label: str, age: str, gender: str) -> str:
             elif gender == "Male":
                 return "MAL"
         elif age == "Child":
-            return "CHI"
+            return "OCH"
     elif label == "Overheard Speech":
         return "SPEECH"
     return None
@@ -87,6 +87,16 @@ def convert_annotations_to_dataframe(data: Dict, fps: float = 30.0) -> pd.DataFr
                         "Voice_type": new_label,
                         "Utterance_End": end_seconds,
                     })
+                    
+                    # Duplicate the row with "SPEECH" as the new label if applicable
+                    if new_label in ["KCHI", "OCH", "MAL", "FEM"]:
+                        rows.append({
+                            "audio_file_name": short_video_id,
+                            "Utterance_Start": start_seconds,
+                            "Utterance_Duration": duration,
+                            "Voice_type": "SPEECH",
+                            "Utterance_End": end_seconds,
+                        })
     
     # Create a DataFrame from the rows
     df = pd.DataFrame(rows)
