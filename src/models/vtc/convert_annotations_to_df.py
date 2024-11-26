@@ -78,15 +78,6 @@ def convert_annotations_to_dataframe(data: Dict, fps: float = 30.0) -> pd.DataFr
                     start_seconds = round(start_time / 1_000_000.0, 3)
                     end_seconds = round(end_time / 1_000_000.0, 3)
                     duration = round(end_seconds - start_seconds, 3)
-                
-                    # Append the row for this annotation
-                    rows.append({
-                        "audio_file_name": short_video_id,
-                        "Utterance_Start": start_seconds,
-                        "Utterance_Duration": duration,
-                        "Voice_type": new_label,
-                        "Utterance_End": end_seconds,
-                    })
                     
                     # Duplicate the row with "SPEECH" as the new label if applicable
                     if new_label in ["KCHI", "OCH", "MAL", "FEM"]:
@@ -97,6 +88,17 @@ def convert_annotations_to_dataframe(data: Dict, fps: float = 30.0) -> pd.DataFr
                             "Voice_type": "SPEECH",
                             "Utterance_End": end_seconds,
                         })
+                    
+                    # Append the row for this annotation
+                    rows.append({
+                        "audio_file_name": short_video_id,
+                        "Utterance_Start": start_seconds,
+                        "Utterance_Duration": duration,
+                        "Voice_type": new_label,
+                        "Utterance_End": end_seconds,
+                    })
+                    
+
     
     # Create a DataFrame from the rows
     df = pd.DataFrame(rows)
@@ -126,8 +128,8 @@ def process_all_json_files_to_dataframe(folder_path: Path, fps: float = 30.0) ->
     return combined_df
 
 if __name__ == '__main__':
-    input_dir = Path("/home/nele_pauline_suffo/ProcessedData/annotations_superannotate/annotations_Batch_1B/files")
-    output_file = Path("/home/nele_pauline_suffo/ProcessedData/annotations_superannotate/quantex_share_annotations_1b")
+    input_dir = Path("/home/nele_pauline_suffo/ProcessedData/annotations_superannotate/annotations_dry_run/files")
+    output_file = Path("/home/nele_pauline_suffo/ProcessedData/annotations_superannotate/quantex_share_annotations_dr")
     
     # Process all JSON files and convert to DataFrame
     combined_df = process_all_json_files_to_dataframe(input_dir)
