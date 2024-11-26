@@ -146,6 +146,7 @@ unique_data <- unique_data %>%
 cleaned_data <- data %>%
   filter(!is.na(Minutes_per_ID), Minutes_per_ID != 0, 
          !is.na(ID), Labeled == "yes")
+sum_videos <- nrow(cleaned_data)
 
 data_gender_count <- unique_data %>%
   left_join(subject_infos, by = "ID") %>%
@@ -202,7 +203,7 @@ youngest_month <- as.numeric(format(youngest_date, "%m"))
 time_span_months <- (youngest_year - oldest_year) * 12 + (youngest_month - oldest_month)+1
 ```
 
-The ChildLens dataset comprises `r sum_hours` hours of video material recorded by `r nr_children` children aged 3 to 5 years. It includes `r count_3_plus` videos from children aged 3, `r count_4_plus` videos from children aged 4, and `r count_5_plus` videos from children aged 5. For each child, the duration of recorded video material varies between `r min_minutes` and `r max_minutes` minutes. A detailed distribution of the video duration per child can be found in figure \@ref(fig:minutes-per-child). This diverse dataset also includes a varying number of clips for each of the 14 activity classes, ranging from **x** to **x** clips per class. The clip duration depends on the activity; for example, audio-related actions like "child talking" may only last a few seconds, while activities like "reading a book" may last several minutes. As shown in table \@ref(tab:train-val-test), the total number of **xx** clips is divided into **xx** training clips, **xx** validation clips, and **xx** testing clips for each class.
+The ChildLens dataset comprises of `r sum_videos` video files with a total of `r sum_hours` hours recorded by `r nr_children` children aged 3 to 5 years. It includes `r count_3_plus` videos from children aged 3, `r count_4_plus` videos from children aged 4, and `r count_5_plus` videos from children aged 5. For each child, the duration of recorded video material varies between `r min_minutes` and `r max_minutes` minutes. A detailed distribution of the video duration per child can be found in figure \@ref(fig:minutes-per-child). This diverse dataset also includes a varying number of clips for each of the 14 activity classes, ranging from **x** to **x** clips per class. The clip duration depends on the activity; for example, audio-related actions like "child talking" may only last a few seconds, while activities like "reading a book" may last several minutes. As shown in table \@ref(tab:train-val-test), the total number of **xx** clips is divided into **xx** training clips, **xx** validation clips, and **xx** testing clips for each class.
 
 
 ```{r minutes-per-child-density, echo=FALSE, message=FALSE, warning=FALSE, eval=FALSE, fig.cap="Video recording duration (in minutes) per child ID."}
