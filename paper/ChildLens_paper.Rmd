@@ -116,7 +116,7 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed ac purus sit amet n
 # Dataset Overview
 
 #### Activity Classes
-The ChildLens dataset contains a total of 14 activity and 5 location classes. The activities are based on the actions of the child in the video and can be divided into _person-only_ activities, such as "child talking" or "other person talking, and _person-object_ activities, such as "drawing" or "playing with object". You can find the complete list of activity classes with a brief description in the appendix. The activities can be further divided into _audio-based_, _visual-based_, and _multimodal_ activities, as presented in figure \@ref(fig:activity-classes). The following list provides an overview of the different activity types:
+The ChildLens dataset contains a total of 14 activity and 5 location classes. The activities are based on the actions of the child in the video and can be divided into _person-only_ activities, such as "child talking" or "other person talking, and _person-object_ activities, such as "drawing" or "playing with object". You can find a brief description of each class in the appendix. The activities can be further divided into _audio-based_, _visual-based_, and _multimodal_ activities, as presented in figure \@ref(fig:activity-classes). The following list provides an overview of the different activity types:
 
 - **Audio-based activities**: _child talking_, _other person talking_, _overheard speech_, _singing / humming_, _listening to music / audiobook_
 - **Visual-based activities**: _watching something_, _drawing_, _crafting things_, _dancing_
@@ -203,7 +203,7 @@ youngest_month <- as.numeric(format(youngest_date, "%m"))
 time_span_months <- (youngest_year - oldest_year) * 12 + (youngest_month - oldest_month)+1
 ```
 
-The ChildLens dataset comprises of `r sum_videos` video files with a total of `r sum_hours` hours recorded by `r nr_children` children aged 3 to 5 years. It includes `r count_3_plus` videos from children aged 3, `r count_4_plus` videos from children aged 4, and `r count_5_plus` videos from children aged 5. For each child, the duration of recorded video material varies between `r min_minutes` and `r max_minutes` minutes. A detailed distribution of the video duration per child can be found in figure \@ref(fig:minutes-per-child). This diverse dataset also includes a varying number of clips for each of the 14 activity classes, ranging from **x** to **x** clips per class. The clip duration depends on the activity; for example, audio-related actions like "child talking" may only last a few seconds, while activities like "reading a book" may last several minutes. As shown in table \@ref(tab:train-val-test), the total number of **xx** clips is divided into **xx** training clips, **xx** validation clips, and **xx** testing clips for each class.
+The ChildLens dataset comprises of `r sum_videos` video files with a total of `r sum_hours` hours recorded by `r nr_children` children aged 3 to 5 years [MB:mittelwert und sd für alter]. It includes `r count_3_plus` videos from children aged 3, `r count_4_plus` videos from children aged 4, and `r count_5_plus` videos from children aged 5. The duration of recorded video material per child varies between `r min_minutes` and `r max_minutes` minutes [MB: hie rnoch den mittelwert angeben und vll noch die standardabweichung]. A detailed distribution of the video duration per child can be found in figure \@ref(fig:minutes-per-child). This diverse dataset also includes a varying number of clips [MB: unklar was clips sind - das kommt ja später noch oft vor, von dem her gerne definieren.] for each of the 14 activity classes, ranging from **x** to **x** clips per class [MB: nicht klar was du hier meinst. sind das instances für jede class oder unique annotations?]. The clip duration depends on the activity; for example, audio-related actions like "child talking" may only last a few seconds, while activities like "reading a book" may last several minutes. As shown in table \@ref(tab:train-val-test), the total number of **xx** clips is divided into **xx** training clips, **xx** validation clips, and **xx** testing clips for each class.
 
 
 ```{r minutes-per-child-density, echo=FALSE, message=FALSE, warning=FALSE, eval=FALSE, fig.cap="Video recording duration (in minutes) per child ID."}
@@ -275,9 +275,11 @@ The ChildLens dataset consists of egocentric videos recorded by children aged 3 
 - Child is invited to read a book together with an adult
 - Child is invited to play with toys alone
 - Child is invited to play with toys with someone else (adult or child)
-- Child is invited to draw/craft something
+- Child is invited to draw/craft something [MB: hatten wir nicht noch dass die Kinder verschiedene räuzme besuchen sollen?]
 
-The videos were recorded over a period of `r time_span_months` months, resulting in a total of `r sum_hours` hours of video footage.
+The videos were recorded over a period of `r time_span_months` months, resulting in a total of `r sum_hours` hours of video footage [MB:die info hast du oben schon].
+
+[MB: figure camera-worn noch hervorheben wo die Kamera war]
 
 ```{r camera-worn, dpi=500, fig.align='center', fig.cap="Vest with the embedded camera worn by the children"}
 knitr::include_graphics("camera_worn.png")
@@ -293,16 +295,18 @@ knitr::include_graphics("SuperAnnotate.png")
 ```
 
 ## Step 3: Manual Labeling Process
-Before the actual annotation process, a setup meeting was held to introduce the annotators to the labeling strategy. To familiarize themselves with the task, the annotators were assigned 25 sample videos to practice and gain hands-on experience. These initial annotations were reviewed by us, and feedback was provided to refine their approach. A total of three feedback loops were conducted to ensurethat the annotators follow the labeling strategy properly.
+Before the actual annotation process, a setup meeting was held to introduce the annotators to the labeling strategy. To familiarize themselves with the task, the annotators were assigned 25 sample videos to practice and gain hands-on experience. These initial annotations were reviewed by the research team, and feedback was provided to refine the approach. A total of three feedback loops were conducted to ensure that the annotators follow the labeling strategy properly.
 
 The videos were manually annotated by native German speakers who watched each video and labeled the activities present in the footage. The annotators marked the start and end points of each activity, ensuring that the annotations were accurate and detailed. The labeling process was conducted using the SuperAnnotate platform, which allowed for efficient annotation and review of the videos. Figure \@ref(fig:superannotate) provides a screenshot of the SuperAnnotate platform used for video annotation. To ensure the quality of the annotations the following steps were taken:
 
 1. **Initial round of annotations**: Each set of videos is assigned to specific annotators, who handle the annotations, make changes, and apply corrections as needed. In total, three annotators were actively working on the annotation process.
 2. **Quality assurance**: One person is dedicated to quality assurance, ensuring that the annotations are accurate and consistent across all videos.
-3. **Review process**: After the initial annotations are completed, the annotations are reviewed by the internal team to ensure that they are accurate and complete. Any discrepancies or errors are corrected before the final submission.
+3. **Review process**: After the initial annotations are completed, the annotations are reviewed by the internal team [MB:meinst du uns? dann besser research team, oder gleich first author of the paper] to ensure that they are accurate and complete. Any discrepancies or errors are corrected before the final submission.
 
 # Benchmark Performance
 In this chapter, we present the results of applying two model architectures to the ChildLens dataset. While the dataset supports multimodal activity analysis, we focus on two specific tasks: temporal activity localization using video data and voice type classification using audio data. For temporal activity localization, we use the Boundary-Matching Network (BMN) model, a state-of-the-art approach in this domain, and train it from scratch on the unique activity classes in the ChildLens video data. For voice type classification, we apply the Voice Type Classifier (VTC) [@lavechinOpensourceVoiceType2020], also state-of-the-art, which was trained on similar data. Both models provide initial results and establish a benchmark for future research. A short architecture overview of the models is presented in figure \@ref(fig:bmn-architecture) and figure \@ref(fig:vtc-architecture).
+
+[MB:figure bmn-architecture - hast du die selbst gemacht oder aus einem anderen paper? falls ja, müssten wir uns erst die erlaubnis dafür holen. ich denke aber es braucht nicht unbedingt eine figure für die beiden model architectures weil das ja nicht der fokus ist]
 
 ```{r bmn-architecture, dpi=600, fig.align='center', fig.cap="Boundary Matching Network architecture applied to ChildLens video data"}
 knitr::include_graphics("BMN_architecture.png")
@@ -332,7 +336,7 @@ The most relevant findings of the BMN evaluation are summarized in the following
   - describe which classes are often confused with each other (e.g. **xx** and **xx**)
   
 ## Voice Type Classifier
-The Voice Type Classifier [@lavechinOpensourceVoiceType2020] is a state-of-the-art model designed to classify audio rawfiles into five distinct voice types: _key child_, _other child_, _male speech_, _female speech_, and _speech._ Its architecture processes audio by first dividing it into 2-second chunks, which are passed through a SincNet to extract low-level features. These features are then fed into a stack of two bi-directional LSTMs, followed by three feed-forward layers. The output layer uses a sigmoid activation function to produce a score between 0 and 1 for each class. The VTC is trained on 260 hours of audio material obtained from different child-centered audio datasets. Model valuation is performed by utilizing the \( F_1 \)-measure, which combines precision and recall using the following formula: 
+The Voice Type Classifier [@lavechinOpensourceVoiceType2020] is a state-of-the-art model designed to classify audio rawfiles into five distinct voice types: _key child_, _other child_, _male speech_, _female speech_, and _speech._ Its architecture processes audio by first dividing it into 2-second chunks, which are passed through a SincNet to extract low-level features. These features are then fed into a stack of two bi-directional LSTMs, followed by three feed-forward layers. The output layer uses a sigmoid activation function to produce a score between 0 and 1 for each class. The VTC is trained on 260 hours of audio material obtained from different child-centered audio datasets. Model valuation is performed by utilizing the \( F_1 \)-measure [MB: gibts da vll eine Einschätzung was gute und was schlechte werte sind? oder zumindest was perfekter fit und was nur zufällig wäre?], which combines precision and recall using the following formula: 
 \[
 F_1 = 2 \cdot \frac{\text{precision} \cdot \text{recall}}{\text{precision} + \text{recall}}
 \]
@@ -356,7 +360,7 @@ num_audio_files <- 343
 ```
 
 ### Implementation Details
-The Voice Type Classifier was applied to the ChildLens dataset. A total of `r num_audio_files` raw files, with a total duration of `r sum_hours`, were processed by the model in `r vtc_minutes_run` minutes. 
+The Voice Type Classifier was applied to the ChildLens dataset. A total of `r num_audio_files` raw files, with a total duration of `r sum_hours`, were processed by the model in `r vtc_minutes_run` minutes [MB: den teil braucht es nicht, ist ja egal wie schnell das läuft :) - der ganze absatz kann raus. Wenn dann würde ich unter implementation details nur sahcen beschreiben die anderen helfen deine ergebnisse zu reproduzieren]. 
 
 ### Evaluation
 The most relevant findings of the VTC evaluation are summarized in the following sections.
