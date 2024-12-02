@@ -53,6 +53,7 @@ loguru = "^0.7.2"
 opencv-python-headless = "^4.10.0.84"
 ultralytics = "^8.3.27"
 gdown = "^5.2.0"
+pyannote-metrics = "^3.2.1"
 
 
 [tool.poetry.group.dev.dependencies]
