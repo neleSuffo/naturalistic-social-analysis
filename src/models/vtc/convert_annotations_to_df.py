@@ -128,11 +128,19 @@ def process_all_json_files_to_dataframe(folder_path: Path, fps: float = 30.0) ->
     return combined_df
 
 if __name__ == '__main__':
-    input_dir = Path("/home/nele_pauline_suffo/ProcessedData/annotations_superannotate/annotations_dry_run/files")
-    output_file = Path("/home/nele_pauline_suffo/ProcessedData/annotations_superannotate/quantex_share_annotations_dr")
+    base_input_dir = Path("/home/nele_pauline_suffo/ProcessedData/annotations_superannotate")
     
-    # Process all JSON files and convert to DataFrame
-    combined_df = process_all_json_files_to_dataframe(input_dir)
-    
-    # Save the DataFrame to a pickle file
-    combined_df.to_pickle(output_file.with_suffix('.pkl'))
+    # Iterate over all subfolders that start with "annotations_"
+    for subfolder in base_input_dir.glob("annotations_*"):
+        if subfolder.is_dir():
+            logging.info(f"Processing subfolder: {subfolder}")
+            
+            # Process all JSON files and convert to DataFrame
+            combined_df = process_all_json_files_to_dataframe(subfolder)
+            
+            # Generate the output file path based on the subfolder name
+            output_file = base_input_dir / f"quantex_share_{subfolder.name}"
+            
+            # Save the DataFrame to a pickle file
+            combined_df.to_pickle(output_file.with_suffix('.pkl'))
+            logging.info(f"DataFrame saved to: {output_file.with_suffix('.pkl')}")
