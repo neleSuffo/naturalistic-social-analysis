@@ -1,10 +1,9 @@
-from constants import VTCPaths
-from config import VTCConfig, LabelToCategoryMapping, DetectionParameters
+from src.constants import VTCPaths
+from src.config import VTCConfig, LabelToCategoryMapping, DetectionParameters
 from moviepy.editor import VideoFileClip
 from pathlib import Path
 import pandas as pd
 import subprocess
-import multiprocessing
 import tempfile
 import logging
 
