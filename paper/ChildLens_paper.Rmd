@@ -116,23 +116,23 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed ac purus sit amet n
 # Dataset Overview
 
 #### Activity Classes
-The ChildLens dataset contains a total of 14 activity and 5 location classes. The activities are based on the actions of the child in the video and can be divided into _person-only_ activities, such as "child talking" or "other person talking, and _person-object_ activities, such as "drawing" or "playing with object". You can find a brief description of each class in the appendix. The activities can be further divided into _audio-based_, _visual-based_, and _multimodal_ activities, as presented in figure \@ref(fig:activity-classes). The following list provides an overview of the different activity types:
+The ChildLens dataset contains a total of 14 activity and 5 location classes. The activities are based on the activities of the child in the video and can be divided into _person-only_ activities, such as "child talking" or "other person talking", and _person-object_ activities, such as "drawing" or "playing with object". You can find a brief description of each class in the appendix. The activities can be further divided into _audio-based_, _visual-based_, and _multimodal_ activities, as presented in figure \@ref(fig:activity-classes). The following list provides an overview of the different activity types:
 
 - **Audio-based activities**: _child talking_, _other person talking_, _overheard speech_, _singing / humming_, _listening to music / audiobook_
 - **Visual-based activities**: _watching something_, _drawing_, _crafting things_, _dancing_
 - **Multimodal activities**: _playing with object_, _playing without object_, _pretend play_, _reading book_, _making music_
 
-The location classes describe the current location of the child in the video and include _livingroom_, _playroom_, _bathroom_, _hallway_, and _other_.
+For every activity, the dataset includes information on the start and end times of the activity, the activity class, and whether the child is engaged alone or with somebody else. For every external person involved in the activity, we capture age and gender. The location classes describe the current location of the child in the video and include _livingroom_, _playroom_, _bathroom_, _hallway_, and _other_.
 
 ```{r activity-classes, dpi=600, fig.align='center', fig.cap="ChildLens Activity Class Categories"}
-knitr::include_graphics("activity_classes.png")
+knitr::include_graphics("images/ChildLens_activity_classes.png")
 ```
 
 #### Statistics
 
 ```{r video-statistics, echo=FALSE, message=FALSE, warning=FALSE, fig.cap="Video recording duration (in minutes) per child ID."}
-data <- read_csv2("quantex_share_data_sheet.csv")
-subject_infos <- read_csv2("subjects_quantex_share.csv")
+data <- read_csv2("data/ChildLens_data_sheet.csv")
+subject_infos <- read_csv2("data/ChildLens_subjects.csv")
 subject_infos <- subject_infos %>%
   distinct(ID, .keep_all = TRUE)
 
@@ -236,6 +236,29 @@ ggplot(data_age_count_plot, aes(x = Age_group, fill = Age_group)) +
     fill = "Age Group"
   ) +
   theme(legend.position = "none")
+
+plot_age <- ggplot(data_age_count_plot, aes(x = Age_group, fill = Age_group)) +
+  geom_bar(position = "dodge", alpha = 0.7, width = 0.5) +
+  scale_fill_manual(values = c("3+" = "#B7B794", "4+" = "#8A8A8A", "5+" = "#B7AD94")) + 
+  theme(
+    legend.position = "none",
+    axis.title = element_text(size = 25),      # Increase label size
+    axis.text = element_text(size = 25),       # Increase tick label size
+    axis.ticks.length = unit(0.5, "cm")        # Increase tick size
+  ) +  labs(
+    x = "Age Group",
+    y = "Count",
+    fill = "Age Group"
+  ) +
+  theme(legend.position = "none")
+
+# Specify the file path and name
+output_folder <- "/Users/nelesuffo/Promotion/projects/leuphana-IPE/paper/images" 
+file_name <- "video_count_per_age_group.png"
+file_path <- file.path(output_folder, file_name)
+
+# Save the plot
+ggsave(filename = file_path, plot = plot_age, width = 8, height = 6, dpi = 300)
 ```
 
 ```{r minutes-per-child, echo=FALSE, message=FALSE, warning=FALSE, fig.cap="Video recording duration (in minutes) per child ID."}
@@ -250,6 +273,28 @@ ggplot(unique_data, aes(x = Minutes_per_ID)) +
     x = "Minutes per ID",
     y = "Density"
   )
+plot <- ggplot(unique_data, aes(x = Minutes_per_ID)) +
+  geom_point(aes(y = 0), shape = "I", size = 5) + 
+  geom_density(fill = "gray", alpha = 0.5, color = "black") + 
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.title = element_text(size = 25),      # Increase label size
+    axis.text = element_text(size = 25),       # Increase tick label size
+    axis.ticks.length = unit(0.5, "cm")        # Increase tick size
+  ) +
+  labs(
+    x = "Minutes per ID",
+    y = "Density"
+  )
+
+# Specify the file path and name
+output_folder <- "/Users/nelesuffo/Promotion/projects/leuphana-IPE/paper/images" 
+file_name <- "minutes_per_id_plot.png"
+file_path <- file.path(output_folder, file_name)
+
+# Save the plot
+ggsave(filename = file_path, plot = plot, width = 8, height = 6, dpi = 300)
 ```
 
 ```{r train-val-test, echo=FALSE, message=FALSE, warnings=FALSE, results='asis', eval=FALSE}
@@ -285,7 +330,7 @@ The ChildLens dataset consists of egocentric videos recorded by children aged 3 
 - Child is invited to draw/craft something
 
 ```{r camera-worn, dpi=500, fig.align='center', fig.cap="Vest with the embedded camera worn by the children"}
-knitr::include_graphics("camera_worn.png")
+knitr::include_graphics("images/camera_worn.png")
 ```
 
 ## Step 2: Creation of Labeling Strategy
@@ -294,7 +339,7 @@ To create a comprehensive labeling strategy for the ChildLens dataset, we first 
 After an initial review of the videos, we decided to add another class "overheard speech" to capture situations in which the child is not directly involved in a conversation but can hear it. We also added "pretend play" as a separate class to capture situations in which the child is engaged in imaginative play. This approach allowed us to capture the diversity of activities that children engage in and create a comprehensive dataset for activity analysis.
 
 ```{r superannotate, dpi=600, fig.align='center', fig.cap="SuperAnnotate platform utilized for video annotation"}
-knitr::include_graphics("SuperAnnotate.png")
+knitr::include_graphics("images/SuperAnnotate.png")
 ```
 
 ## Step 3: Manual Labeling Process
@@ -310,12 +355,12 @@ The videos were manually annotated by native German speakers who watched each vi
 In this chapter, we present the results of applying two model architectures to the ChildLens dataset. While the dataset supports multimodal activity analysis, we focus on two specific tasks: temporal activity localization using video data and voice type classification using audio data. For temporal activity localization, we use the Boundary-Matching Network (BMN) model, a state-of-the-art approach in this domain, and train it from scratch on the unique activity classes in the ChildLens video data. For voice type classification, we apply the Voice Type Classifier (VTC) [@lavechinOpensourceVoiceType2020], also state-of-the-art, which was trained on similar data. Both models provide initial results and establish a benchmark for future research. 
 
 ```{r bmn-architecture, dpi=600, fig.align='center', eval=FALSE, fig.cap="Boundary Matching Network architecture applied to ChildLens video data"}
-knitr::include_graphics("BMN_architecture.png")
+knitr::include_graphics("images/BMN_architecture.png")
 #A short architecture overview of the models is presented in figure \@ref(fig:bmn-architecture) and figure \@ref(fig:vtc-architecture).
 ```
 
 ```{r vtc-architecture, dpi=600, fig.align='center', eval=FALSE, fig.cap="Voice Type Classifier architecture applied to ChildLens audio data"}
-knitr::include_graphics("VTC_architecture.png")
+knitr::include_graphics("images/VTC_architecture.png")
 ```
 
 ## Boundary-Matching Network 
@@ -366,7 +411,7 @@ The most relevant findings of the VTC evaluation are summarized in the following
 - summarize most crucial findings
 
 ```{r vtc-results, echo=FALSE, message=FALSE, warnings=FALSE, results='asis', eval=TRUE}
-my.data <- "Dataset       | KCHI | OCH  | MAL   | FEM  | SPEECH | AVG
+my.data <- "Dataset       | KCHI | CHI  | MAL   | FEM  | SPEECH | AVG
             ACLEW-Random  | 68.7 | 33.2 | 42.9  | 63.4 | 78.4   | 57.3
             ChildLens     | 59.1 | 79.2 | 17.8  | 33.4 | 68.3   | 51.5"
 df <- read.delim(textConnection(my.data), header=FALSE, sep="|", strip.white=TRUE, stringsAsFactors=FALSE)
@@ -445,3 +490,161 @@ The dataset contains the following list of activities. The number of clips for e
 4. hallawy
 5. other
 
+```{r quantex-statistics, echo=FALSE, message=FALSE, warning=FALSE, fig.cap="Video recording duration (in minutes) per child ID."}
+quantex_data <- read_csv2("data/Quantex_data_sheet.csv")
+quantex_subject_infos <- read_csv2("data/Quantex_subjects.csv")
+quantex_subject_infos <- quantex_subject_infos %>%
+  distinct(ID, .keep_all = TRUE)
+
+quantex_unique_data <- quantex_data %>%
+  distinct() %>%  # Removes duplicate rows
+  filter(!is.na(Minutes_per_ID), Minutes_per_ID != 0, 
+         !is.na(ID), Include == "yes") %>%
+  distinct(ID, Minutes_per_ID, .keep_all = TRUE)
+quantex_unique_data <- quantex_unique_data %>%
+  mutate(ID = as.double(ID))
+
+quantex_cleaned_data <- quantex_data %>%
+  filter(!is.na(Minutes_per_ID), Minutes_per_ID != 0, 
+         !is.na(ID), Include == "yes")
+quantex_sum_videos <- nrow(quantex_cleaned_data)
+
+quantex_data_gender_count <- quantex_unique_data %>%
+  left_join(quantex_subject_infos, by = "ID") %>%
+  distinct(ID, .keep_all = TRUE)
+quantex_male_count <- quantex_data_gender_count %>%
+  filter(gender == "Male") %>%
+  nrow()
+quantex_female_count <- quantex_data_gender_count %>%
+  filter(gender == "Female") %>%
+  nrow()
+
+quantex_data_age_count <- quantex_cleaned_data %>%
+  left_join(quantex_subject_infos, by = "ID")%>%
+  select(ID, birthday, DATE)
+
+quantex_data_age_count <- quantex_data_age_count %>%
+  mutate(
+    birthday = dmy(birthday),  # Convert birthday to Date type
+    Date = dmy(DATE),          # Convert Date to Date type
+    Age = as.numeric(difftime(Date, birthday, units = "weeks")) / 52.25,  # Calculate age in years
+    Age_group = case_when(
+      Age >= 2 & Age < 4 ~ "3+",
+      Age >= 4 & Age < 5 ~ "4+",
+      Age >= 5 ~ "5+",
+      TRUE ~ NA_character_  # For cases where age is missing or not within the desired ranges
+    )
+  )
+
+quantex_mean_age <- mean(data_age_count$Age, na.rm = TRUE)
+quantex_sd_age <- sd(data_age_count$Age, na.rm = TRUE)
+
+quantex_age_group_counts <- quantex_data_age_count %>%
+  count(Age_group, name = "count")
+count_3_plus <- quantex_age_group_counts$count[quantex_age_group_counts$Age_group == "3+"]
+count_4_plus <- quantex_age_group_counts$count[quantex_age_group_counts$Age_group == "4+"]
+count_5_plus <- quantex_age_group_counts$count[quantex_age_group_counts$Age_group == "5+"]
+
+quantex_filtered_data <- quantex_data %>%
+  filter(!is.na(Date), Include == "yes") %>%
+  mutate(Date = as.Date(DATE, format = "%d.%m.%Y")) 
+
+quantex_min_minutes <- min(quantex_unique_data$Minutes_per_ID[quantex_unique_data$Minutes_per_ID > 0], na.rm = TRUE)
+quantex_max_minutes <- max(quantex_unique_data$Minutes_per_ID, na.rm = TRUE)
+quantex_sum_minutes <- sum(as.numeric(quantex_unique_data$Minutes_per_ID), na.rm = TRUE)
+quantex_mean_minutes <- mean(quantex_unique_data$Minutes_per_ID, na.rm = TRUE)
+quantex_sd_minutes <- sd(quantex_unique_data$Minutes_per_ID, na.rm = TRUE)
+# Convert the time strings into seconds
+quantex_unique_data$Seconds_per_ID <- as.numeric(hms::as_hms(quantex_unique_data$Minutes_per_ID))
+total_seconds <- sum(quantex_unique_data$Seconds_per_ID, na.rm = TRUE)
+total_hours <- total_seconds / 3600
+
+quantex_nr_children <- nrow(quantex_unique_data)
+
+quantex_oldest_date <- min(quantex_filtered_data$Date)
+quantex_youngest_date <- max(quantex_filtered_data$Date)
+
+quantex_oldest_year <- as.numeric(format(quantex_oldest_date, "%Y"))
+quantex_oldest_month <- as.numeric(format(quantex_oldest_date, "%m"))
+quantex_youngest_year <- as.numeric(format(quantex_youngest_date, "%Y"))
+quantex_youngest_month <- as.numeric(format(quantex_youngest_date, "%m"))
+
+# Calculate the interval between the two dates
+quantex_time_span_months <- (quantex_youngest_year - quantex_oldest_year) * 12 + (quantex_youngest_month - quantex_oldest_month)+1
+```
+
+```{r quantex-minutes-per-child, echo=FALSE, message=FALSE, warning=FALSE, fig.cap="Video recording duration (in minutes) per child ID."}
+quantex_unique_data$ID <- as.factor(quantex_unique_data$ID)
+
+ggplot(quantex_unique_data, aes(x = Minutes_per_ID)) +
+  geom_point(aes(y = 0), shape = "I", size = 5) + 
+  geom_density(fill = "gray", alpha = 0.5, color = "black") + 
+  theme_minimal() +
+  theme(legend.position = "none") +
+  labs(
+    x = "Minutes per ID",
+    y = "Density"
+  )
+quantex_1_plot <- ggplot(quantex_unique_data, aes(x = Minutes_per_ID)) +
+  geom_point(aes(y = 0), shape = "I", size = 5) + 
+  geom_density(fill = "gray", alpha = 0.5, color = "black") + 
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.title = element_text(size = 25),      # Increase label size
+    axis.text = element_text(size = 25),       # Increase tick label size
+    axis.ticks.length = unit(0.5, "cm")        # Increase tick size
+  ) +
+  labs(
+    x = "Minutes per ID",
+    y = "Density"
+  )
+
+# Specify the file path and name
+quantex_1_output_folder <- "/Users/nelesuffo/Promotion/projects/leuphana-IPE/paper/images" 
+file_name_1 <- "quantex_minutes_per_id_plot.png"
+quantex_file_path_1 <- file.path(quantex_1_output_folder, file_name_1)
+
+# Save the plot
+ggsave(filename = quantex_file_path_1, plot = quantex_1_plot, width = 8, height = 6, dpi = 300)
+```
+
+```{r quantex-age-distribution, echo=FALSE, message=FALSE, warning=FALSE, fig.cap="Number of videos per age group."}
+quantex_data_age_count_plot <- quantex_data_age_count
+quantex_data_age_count_plot$ID <- as.factor(quantex_data_age_count_plot$ID)
+
+ggplot(quantex_data_age_count_plot, aes(x = Age_group, fill = Age_group)) +
+  geom_bar(position = "dodge", alpha = 0.7, width = 0.5) +
+  scale_fill_manual(values = c("3+" = "#A6ADAF", "4+" = "#A18D92", "5+" = "#BBBB9B")) + 
+  theme_minimal() +
+  labs(
+    x = "Age Group",
+    y = "Count",
+    fill = "Age Group"
+  ) +
+  theme(legend.position = "none")
+
+quantex_2_plot_age <- ggplot(quantex_data_age_count_plot, aes(x = Age_group, fill = Age_group)) +
+  geom_bar(position = "dodge", alpha = 0.7, width = 0.5) +
+  scale_fill_manual(values = c("3+" = "#66787C", "4+" = "#A18D92", "5+" = "#B2BFC3")) + 
+  scale_y_continuous(labels = number_format(accuracy = 0.01)) + 
+  theme(
+    legend.position = "none",
+    axis.title = element_text(size = 25),      # Increase label size
+    axis.text = element_text(size = 25),       # Increase tick label size
+    axis.ticks.length = unit(0.5, "cm")        # Increase tick size
+  ) +  labs(
+    x = "Age Group",
+    y = "Count",
+    fill = "Age Group"
+  ) +
+  theme(legend.position = "none")
+
+# Specify the file path and name
+quantex_2_output_folder <- "/Users/nelesuffo/Promotion/projects/leuphana-IPE/paper/images" 
+quantex_2_file_name <- "quantex_video_count_per_age_group.png"
+quantex_2_file_path <- file.path(quantex_2_output_folder, quantex_2_file_name)
+
+# Save the plot
+ggsave(filename = quantex_2_file_path, plot = quantex_2_plot_age, width = 8, height = 6, dpi = 300)
+```
