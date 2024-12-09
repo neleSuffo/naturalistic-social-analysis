@@ -82,6 +82,7 @@ library(lubridate)
 library(zoo)
 library(gridExtra)
 library(grid)
+library(kableExtra)
 
 
 estimate_mode <- function(s) {
@@ -209,8 +210,39 @@ youngest_month <- as.numeric(format(youngest_date, "%m"))
 time_span_months <- (youngest_year - oldest_year) * 12 + (youngest_month - oldest_month)+1
 ```
 
-The ChildLens dataset comprises of `r sum_videos` video files with a total of `r sum_hours` hours recorded by `r nr_children` children aged 3 to 5 years (M=`r mean_age`, SD=`r sd_age`). It includes `r count_3_plus` videos from children aged 3, `r count_4_plus` videos from children aged 4, and `r count_5_plus` videos from children aged 5. The duration of recorded video material per child varies between `r min_minutes` and `r max_minutes` minutes (M=`r mean_minutes`, SD=`r sd_minutes`). A detailed distribution of the video duration per child can be found in figure \@ref(fig:minutes-per-child). This diverse dataset also includes a varying number of clips [**MB**: unklar was clips sind - das kommt ja später noch oft vor, von dem her gerne definieren.] for each of the 14 activity classes, ranging from **x** to **x** clips per class [**MB**: nicht klar was du hier meinst. sind das instances für jede class oder unique annotations?]. The clip duration depends on the activity; for example, audio-related actions like "child talking" may only last a few seconds, while activities like "reading a book" may last several minutes. As shown in table \@ref(tab:train-val-test), the total number of **xx** clips is divided into **xx** training clips, **xx** validation clips, and **xx** testing clips for each class.
+The ChildLens dataset comprises of `r sum_videos` video files with a total of `r sum_hours` hours recorded by `r nr_children` children aged 3 to 5 years (M=`r mean_age`, SD=`r sd_age`). It includes `r count_3_plus` videos from children aged 3, `r count_4_plus` videos from children aged 4, and `r count_5_plus` videos from children aged 5. The duration of recorded video material per child varies between `r min_minutes` and `r max_minutes` minutes (M=`r mean_minutes`, SD=`r sd_minutes`). A detailed distribution of the video duration per child can be found in figure \@ref(fig:minutes-per-child). 
 
+```{r audio-classes-statistics, echo=FALSE, message=FALSE, warnings=FALSE, results='asis', eval=TRUE}
+df <- data.frame(
+  `Audio-based Activity Class` = c("Child talking", "Other person talking", "Overheard Speech", "Singing/Humming", "Listening to music/audiobook"),
+  `Instance Count` = c(100, 100, 100, 100, 100),
+  `Total Duration` = c(100, 100, 100, 100, 100),
+  stringsAsFactors = FALSE
+)
+colnames(df) <- c("Audio-based Activity Class", "Instance Count", "Total Duration (min)")
+
+df %>%
+  kable("pipe", caption = "Summary of Audio-Based Activity Classes") %>%
+  kable_styling(bootstrap_options = c("striped", "hover")) %>%
+  row_spec(0, bold = TRUE)
+```
+
+This diverse dataset includes a varying number of instances across the 14 activity classes, ranging from **x** to **x** instances per class. Overlapping instances are counted separately for each activity class; if two activities occur simultaneously in a given video segment, both classes will receive a count for that segment. As a result, parts of the video may be counted multiple times, once for each activity class. The duration of each instance varies by activity. For example, audio-based activities like "child talking" may last only a few seconds, while activities like "reading a book" can span several minutes. As this paper only focuses on the audio-based and video-based activity classes, tables \@ref(tab:audio-classes-statistics) and \@ref(tab:video-classes-statistics) provide the total number of instances and the total duration of all instances for the respective activity classes. The full table with all activity classes is available in the appendix.
+
+```{r video-classes-statistics, echo=FALSE, message=FALSE, warnings=FALSE, results='asis', eval=TRUE}
+df <- data.frame(
+  `Video-based Activity Class` = c("Watching something", "Drawing", "Crafting things", "Dancing"),
+  `Instance Count` = c(100, 100, 100, 100),
+  `Total Duration` = c(100, 100, 100, 100),
+  stringsAsFactors = FALSE
+)
+colnames(df) <- c("Audio-based Activity Class", "Instance Count", "Total Duration (min)")
+
+df %>%
+  kable("pipe", caption = "Summary of Video-Based Activity Classes") %>%
+  kable_styling(bootstrap_options = c("striped", "hover")) %>%
+  row_spec(0, bold = TRUE)
+```
 
 ```{r minutes-per-child-density, echo=FALSE, message=FALSE, warning=FALSE, eval=FALSE, fig.cap="Video recording duration (in minutes) per child ID."}
 unique_data$ID <- as.factor(unique_data$ID)
@@ -345,7 +377,7 @@ knitr::include_graphics("images/SuperAnnotate.png")
 ## Step 3: Manual Labeling Process
 Before the actual annotation process, a setup meeting was held to introduce the annotators to the labeling strategy. To familiarize themselves with the task, the annotators were assigned 25 sample videos to practice and gain hands-on experience. These initial annotations were reviewed by the research team, and feedback was provided to refine the approach. A total of three feedback loops were conducted to ensure that the annotators follow the labeling strategy properly.
 
-The videos were manually annotated by native German speakers who watched each video and labeled the activities present in the footage. The annotators marked the start and end points of each activity, ensuring that the annotations were accurate and detailed. The labeling process was conducted using the SuperAnnotate platform, which allowed for efficient annotation and review of the videos. Figure \@ref(fig:superannotate) provides a screenshot of the SuperAnnotate platform used for video annotation. To ensure the quality of the annotations the following steps were taken:
+The videos were manually annotated by native German speakers who watched each video and labeled the activities present in the footage. Annotators marked the start and end points of each activity to ensure accuracy and detail. For audio annotations, we implemented a 2-second rule for the categories “other person talking” and “child talking”: if the break between two utterances was 2 seconds or less, it was considered a single event; breaks longer than 2 seconds split the activity into separate instances. The annotations were conducted using the SuperAnnotate platform, allowing for efficient annotation and review of the videos. Figure @ref(fig:superannotate) provides a screenshot of the SuperAnnotate platform used for video annotation. To ensure the quality of the annotations, the following steps were taken:
 
 1. **Initial round of annotations**: Each set of videos is assigned to specific annotators, who handle the annotations, make changes, and apply corrections as needed. In total, three annotators were actively working on the annotation process.
 2. **Quality assurance**: One person is dedicated to quality assurance, ensuring that the annotations are accurate and consistent across all videos.
@@ -404,6 +436,32 @@ The \( F_1 \) is a metric that combines precision and recall into a single value
 #Test set: 343it [11:00,  1.92s/it]
 vtc_minutes_run <- 5461/60
 num_audio_files <- 343
+```
+### Data Preparation
+Before applying the VTC to the ChildLens dataset, we mapped our audio-based activity classes to the VTC output classes to enable performance comparison. The following mapping strategy was applied:
+
+- Child talking → **`Key Child`**
+- Singing/Humming → **`Key Child`**
+- Other person talking:
+  - If `age = "Child"` → **`Other Child`**
+  - If `age = "Adult"` & `gender = "Female"` → **`Female Speech`**
+  - If `age = "Adult"` & `gender = "Male"` → **`Male Speech`**
+- Overheard Speech → **`Speech`**
+
+The activity class "Listening to music/audiobook" was not mapped to any VTC class, as it is not covered by the VTC model. The mapping process resulted in new numbers for the total durations for each VTC class, as shown in Table @ref(tab:vtc-classes-statistics).”
+
+```{r vtc-classes-statistics, echo=FALSE, message=FALSE, warnings=FALSE, results='asis', eval=TRUE}
+my.data <- "       | KCHI | CHI  | MAL   | FEM  | SPEECH 
+            Total Duration (min)  | 100 | 100 | 100  | 100 | 100"
+df <- read.delim(textConnection(my.data), header=FALSE, sep="|", strip.white=TRUE, stringsAsFactors=FALSE)
+names(df) <- unname(as.list(df[1,]))
+df <- df[-1,] 
+row.names(df) <- NULL
+apa_table(
+  df,
+  caption = "Total Duration (in minutes) of all Instances for each VTC Class",
+  escape = TRUE,
+)
 ```
 
 ### Evaluation
@@ -627,7 +685,6 @@ ggplot(quantex_data_age_count_plot, aes(x = Age_group, fill = Age_group)) +
 quantex_2_plot_age <- ggplot(quantex_data_age_count_plot, aes(x = Age_group, fill = Age_group)) +
   geom_bar(position = "dodge", alpha = 0.7, width = 0.5) +
   scale_fill_manual(values = c("3+" = "#66787C", "4+" = "#A18D92", "5+" = "#B2BFC3")) + 
-  scale_y_continuous(labels = number_format(accuracy = 0.01)) + 
   theme(
     legend.position = "none",
     axis.title = element_text(size = 25),      # Increase label size

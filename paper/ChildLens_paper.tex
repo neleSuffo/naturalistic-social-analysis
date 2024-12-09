@@ -268,7 +268,34 @@ For every activity, the dataset includes information on the start and end times 
 
 \paragraph{Statistics}\label{statistics}
 
-The ChildLens dataset comprises of 343 video files with a total of 106.10 hours recorded by 61 children aged 3 to 5 years (M=4.52, SD=0.92). It includes 107 videos from children aged 3, 122 videos from children aged 4, and 114 videos from children aged 5. The duration of recorded video material per child varies between 4.03 and 303.42 minutes (M=104.37, SD=51.65). A detailed distribution of the video duration per child can be found in figure \ref{fig:minutes-per-child}. This diverse dataset also includes a varying number of clips {[}\textbf{MB}: unklar was clips sind - das kommt ja später noch oft vor, von dem her gerne definieren.{]} for each of the 14 activity classes, ranging from \textbf{x} to \textbf{x} clips per class {[}\textbf{MB}: nicht klar was du hier meinst. sind das instances für jede class oder unique annotations?{]}. The clip duration depends on the activity; for example, audio-related actions like ``child talking'' may only last a few seconds, while activities like ``reading a book'' may last several minutes. As shown in table \ref{tab:train-val-test}, the total number of \textbf{xx} clips is divided into \textbf{xx} training clips, \textbf{xx} validation clips, and \textbf{xx} testing clips for each class.
+The ChildLens dataset comprises of 343 video files with a total of 106.10 hours recorded by 61 children aged 3 to 5 years (M=4.52, SD=0.92). It includes 107 videos from children aged 3, 122 videos from children aged 4, and 114 videos from children aged 5. The duration of recorded video material per child varies between 4.03 and 303.42 minutes (M=104.37, SD=51.65). A detailed distribution of the video duration per child can be found in figure \ref{fig:minutes-per-child}.
+
+\begin{longtable}[t]{lrr}
+\caption{\label{tab:audio-classes-statistics}\label{tab:audio-classes-statistics}Summary of Audio-Based Activity Classes}\\
+\toprule
+\textbf{Audio-based Activity Class} & \textbf{Instance Count} & \textbf{Total Duration (min)}\\
+\midrule
+Child talking & 100 & 100\\
+Other person talking & 100 & 100\\
+Overheard Speech & 100 & 100\\
+Singing/Humming & 100 & 100\\
+Listening to music/audiobook & 100 & 100\\
+\bottomrule
+\end{longtable}
+
+This diverse dataset includes a varying number of instances across the 14 activity classes, ranging from \textbf{x} to \textbf{x} instances per class. Overlapping instances are counted separately for each activity class; if two activities occur simultaneously in a given video segment, both classes will receive a count for that segment. As a result, parts of the video may be counted multiple times, once for each activity class. The duration of each instance varies by activity. For example, audio-based activities like ``child talking'' may last only a few seconds, while activities like ``reading a book'' can span several minutes. As this paper only focuses on the audio-based and video-based activity classes, tables \ref{tab:audio-classes-statistics} and \ref{tab:video-classes-statistics} provide the total number of instances and the total duration of all instances for the respective activity classes. The full table with all activity classes is available in the appendix.
+
+\begin{longtable}[t]{lrr}
+\caption{\label{tab:video-classes-statistics}\label{tab:video-classes-statistics}Summary of Video-Based Activity Classes}\\
+\toprule
+\textbf{Audio-based Activity Class} & \textbf{Instance Count} & \textbf{Total Duration (min)}\\
+\midrule
+Watching something & 100 & 100\\
+Drawing & 100 & 100\\
+Crafting things & 100 & 100\\
+Dancing & 100 & 100\\
+\bottomrule
+\end{longtable}
 
 \begin{figure}
 \centering
@@ -336,7 +363,7 @@ After an initial review of the videos, we decided to add another class ``overhea
 
 Before the actual annotation process, a setup meeting was held to introduce the annotators to the labeling strategy. To familiarize themselves with the task, the annotators were assigned 25 sample videos to practice and gain hands-on experience. These initial annotations were reviewed by the research team, and feedback was provided to refine the approach. A total of three feedback loops were conducted to ensure that the annotators follow the labeling strategy properly.
 
-The videos were manually annotated by native German speakers who watched each video and labeled the activities present in the footage. The annotators marked the start and end points of each activity, ensuring that the annotations were accurate and detailed. The labeling process was conducted using the SuperAnnotate platform, which allowed for efficient annotation and review of the videos. Figure \ref{fig:superannotate} provides a screenshot of the SuperAnnotate platform used for video annotation. To ensure the quality of the annotations the following steps were taken:
+The videos were manually annotated by native German speakers who watched each video and labeled the activities present in the footage. Annotators marked the start and end points of each activity to ensure accuracy and detail. For audio annotations, we implemented a 2-second rule for the categories ``other person talking'' and ``child talking'': if the break between two utterances was 2 seconds or less, it was considered a single event; breaks longer than 2 seconds split the activity into separate instances. The annotations were conducted using the SuperAnnotate platform, allowing for efficient annotation and review of the videos. Figure (\textbf{ref?})(fig:superannotate) provides a screenshot of the SuperAnnotate platform used for video annotation. To ensure the quality of the annotations, the following steps were taken:
 
 \begin{enumerate}
 \def\labelenumi{\arabic{enumi}.}
@@ -416,6 +443,54 @@ where \(\text{precision} = \frac{\text{tp}}{\text{tp} + \text{fp}}\) and \(\text
 \end{itemize}
 
 The \(F_1\) is a metric that combines precision and recall into a single value, calculated as their harmonic mean. It ranges from 0 to 1, with 1 representing perfect precision and recall, and 0 indicating no correct prediction The interpretation of the \(F_1\) score depends on the specific application of the model. Generally, an \(F_1\) score above 0.8 is considered good, while values above 0.9 are considered excellent. In some cases, a score around 0.5 can still be deemed acceptable, depending on the balance between precision and recall.. The \(F_1\) score is computed for each class and averaged to provide an overall measure. No collar is applied to the evaluation, meaning that the prediction have to be exact to be considered correct. The model achieves an \(F_1\) score of 57.3, outperforming the previous state-of-the-art LENA model by 10.6 points.
+
+\subsubsection{Data Preparation}\label{data-preparation}
+
+Before applying the VTC to the ChildLens dataset, we mapped our audio-based activity classes to the VTC output classes to enable performance comparison. The following mapping strategy was applied:
+
+\begin{itemize}
+\tightlist
+\item
+  Child talking → \textbf{\texttt{Key\ Child}}
+\item
+  Singing/Humming → \textbf{\texttt{Key\ Child}}
+\item
+  Other person talking:
+
+  \begin{itemize}
+  \tightlist
+  \item
+    If \texttt{age\ =\ "Child"} → \textbf{\texttt{Other\ Child}}
+  \item
+    If \texttt{age\ =\ "Adult"} \& \texttt{gender\ =\ "Female"} → \textbf{\texttt{Female\ Speech}}
+  \item
+    If \texttt{age\ =\ "Adult"} \& \texttt{gender\ =\ "Male"} → \textbf{\texttt{Male\ Speech}}
+  \end{itemize}
+\item
+  Overheard Speech → \textbf{\texttt{Speech}}
+\end{itemize}
+
+The activity class ``Listening to music/audiobook'' was not mapped to any VTC class, as it is not covered by the VTC model. The mapping process resulted in new numbers for the total durations for each VTC class, as shown in Table (\textbf{ref?})(tab:vtc-classes-statistics).''
+
+\begin{table}[tbp]
+
+\begin{center}
+\begin{threeparttable}
+
+\caption{\label{tab:vtc-classes-statistics}Total Duration (in minutes) of all Instances for each VTC Class}
+
+\begin{tabular}{llllll}
+\toprule
+ & \multicolumn{1}{c}{KCHI} & \multicolumn{1}{c}{CHI} & \multicolumn{1}{c}{MAL} & \multicolumn{1}{c}{FEM} & \multicolumn{1}{c}{SPEECH}\\
+\midrule
+Total Duration (min) & 100 & 100 & 100 & 100 & 100\\
+\bottomrule
+\end{tabular}
+
+\end{threeparttable}
+\end{center}
+
+\end{table}
 
 \subsubsection{Evaluation}\label{evaluation-1}
 
