@@ -448,7 +448,7 @@ Before applying the VTC to the ChildLens dataset, we mapped our audio-based acti
   - If `age = "Adult"` & `gender = "Male"` → **`Male Speech`**
 - Overheard Speech → **`Speech`**
 
-The activity class "Listening to music/audiobook" was not mapped to any VTC class, as it is not covered by the VTC model. The mapping process resulted in new numbers for the total durations for each VTC class, as shown in Table @ref(tab:vtc-classes-statistics).”
+The activity class "Listening to music/audiobook" was not mapped to any VTC class, as it is not covered by the VTC model. The mapping process resulted in new numbers for the total durations for each VTC class, as shown in Table \@ref(tab:vtc-classes-statistics).
 
 ```{r vtc-classes-statistics, echo=FALSE, message=FALSE, warnings=FALSE, results='asis', eval=TRUE}
 my.data <- "       | KCHI | CHI  | MAL   | FEM  | SPEECH 
@@ -465,8 +465,7 @@ apa_table(
 ```
 
 ### Evaluation
-The most relevant findings of the VTC evaluation are summarized in the following sections.
-- summarize most crucial findings
+Table \@ref(tab:vtc-results) presents the performance of the Voice Type Classifier (VTC) on the ChildLens dataset compared to the benchmark dataset from the original study. The VTC model achieves an average  \( F_1 \) score of **xx** on the ChildLens dataset, performing comparably to the benchmark dataset. It performs best on the `CHI` class with an  \( F_1 \)   score of **xx** and worst on the MAL class with an  \( F_1 \)  score of xx. Compared to the benchmark dataset, the model performs significantly better on the `CHI` class but slightly worse on the `MAL` and `FEM` classes. Analysis of False Positives and False Negatives reveals that the most common confusion occurs between the `MAL` and `FEM` classes. This may be attributed to the deeper pitch of some female voices in the German language. Additionally, the model was trained on a dataset with a different language distribution and younger children, where adults, particularly females, may use a higher pitch when interacting with infants, unlike with older children.
 
 ```{r vtc-results, echo=FALSE, message=FALSE, warnings=FALSE, results='asis', eval=TRUE}
 my.data <- "Dataset       | KCHI | CHI  | MAL   | FEM  | SPEECH | AVG
@@ -485,8 +484,6 @@ apa_table(
 
 - which class performs worst - maybe why?
 - which is best?
-- how is the average compared to the ACLEW-Random dataset
-
 
 # Discussion
 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed ac purus sit amet nisl tincidunt tincidunt. Nullam nec turpis at libero tincidunt tincidunt. Sed nec mi nec nunc tincidunt tincidunt. Nullam nec turpis at libero tincidunt tincidunt. Sed nec mi nec nunc

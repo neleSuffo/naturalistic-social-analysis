@@ -470,7 +470,7 @@ Before applying the VTC to the ChildLens dataset, we mapped our audio-based acti
   Overheard Speech → \textbf{\texttt{Speech}}
 \end{itemize}
 
-The activity class ``Listening to music/audiobook'' was not mapped to any VTC class, as it is not covered by the VTC model. The mapping process resulted in new numbers for the total durations for each VTC class, as shown in Table (\textbf{ref?})(tab:vtc-classes-statistics).''
+The activity class ``Listening to music/audiobook'' was not mapped to any VTC class, as it is not covered by the VTC model. The mapping process resulted in new numbers for the total durations for each VTC class, as shown in Table \ref{tab:vtc-classes-statistics}.
 
 \begin{table}[tbp]
 
@@ -494,8 +494,7 @@ Total Duration (min) & 100 & 100 & 100 & 100 & 100\\
 
 \subsubsection{Evaluation}\label{evaluation-1}
 
-The most relevant findings of the VTC evaluation are summarized in the following sections.
-- summarize most crucial findings
+Table \ref{tab:vtc-results} presents the performance of the Voice Type Classifier (VTC) on the ChildLens dataset compared to the benchmark dataset from the original study. The VTC model achieves an average \(F_1\) score of \textbf{xx} on the ChildLens dataset, performing comparably to the benchmark dataset. It performs best on the \texttt{CHI} class with an \(F_1\) score of \textbf{xx} and worst on the MAL class with an \(F_1\) score of xx. Compared to the benchmark dataset, the model performs significantly better on the \texttt{CHI} class but slightly worse on the \texttt{MAL} and \texttt{FEM} classes. Analysis of False Positives and False Negatives reveals that the most common confusion occurs between the \texttt{MAL} and \texttt{FEM} classes. This may be attributed to the deeper pitch of some female voices in the German language. Additionally, the model was trained on a dataset with a different language distribution and younger children, where adults, particularly females, may use a higher pitch when interacting with infants, unlike with older children.
 
 \begin{table}[tbp]
 
@@ -524,8 +523,6 @@ ChildLens & 59.1 & 79.2 & 17.8 & 33.4 & 68.3 & 51.5\\
   which class performs worst - maybe why?
 \item
   which is best?
-\item
-  how is the average compared to the ACLEW-Random dataset
 \end{itemize}
 
 \section{Discussion}\label{discussion}
