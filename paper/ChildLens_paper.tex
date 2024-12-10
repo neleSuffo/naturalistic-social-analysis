@@ -237,13 +237,25 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed ac purus sit amet n
 \tightlist
 \item
   TODO: research about egocentric video datasets
+\item
+  Saycam paper als Orientierung
+\item
+  Relevanz für die psychologische Forschung
+\item
+  Linda Smith - Indiana (egocentric perspective)
+\item
+  Roy - Child Talk (Prediction the Birth of a Spoken word)
+\item
+  Alex Christia
+\item
+  Bisherige Datensätze sind bisher nur Sprache - Sprache und Video selten zusammen und wenn nur sehr klein (mit anderer Altersgruppe)
 \end{itemize}
 
 \section{Dataset Overview}\label{dataset-overview}
 
 \paragraph{Activity Classes}\label{activity-classes}
 
-The ChildLens dataset contains a total of 14 activity and 5 location classes. The activities are based on the activities of the child in the video and can be divided into \emph{person-only} activities, such as ``child talking'' or ``other person talking'', and \emph{person-object} activities, such as ``drawing'' or ``playing with object''. You can find a brief description of each class in the appendix. The activities can be further divided into \emph{audio-based}, \emph{visual-based}, and \emph{multimodal} activities, as presented in figure \ref{fig:activity-classes}. The following list provides an overview of the different activity types:
+The ChildLens dataset contains a total of 14 activity and 5 location classes. The activities are based on the activities of the child in the video and can be divided into \emph{person-only} activities, such as ``child talking'' or ``other person talking'', and \emph{person-object} activities, such as ``drawing'' or ``playing with object''. You can find a brief description of each class in the appendix. The activities can be further divided into \emph{audio-based}, \emph{visual-based}, and \emph{multimodal} activities, as presented in figure \ref{fig:camera-superannotate-activity-classes}. The following list provides an overview of the different activity types:
 
 \begin{itemize}
 \tightlist
@@ -259,11 +271,11 @@ For every activity, the dataset includes information on the start and end times 
 
 \begin{figure}
 
-{\centering \includegraphics[width=5.95in]{images/ChildLens_activity_classes} 
+{\centering \includegraphics{ChildLens_paper_files/figure-latex/test-1} 
 
 }
 
-\caption{ChildLens Activity Class Categories}\label{fig:activity-classes}
+\caption{\textbf{A} – Vest with the embedded camera worn by the children, \textbf{B} – SuperAnnotate platform utilized for video annotation, \textbf{C} – Activity classes in the ChildLens dataset.}\label{fig:test}
 \end{figure}
 
 \paragraph{Statistics}\label{statistics}
@@ -299,12 +311,6 @@ Dancing & 100 & 100\\
 
 \begin{figure}
 \centering
-\includegraphics{ChildLens_paper_files/figure-latex/age-distribution-1.pdf}
-\caption{\label{fig:age-distribution}Number of videos per age group.}
-\end{figure}
-
-\begin{figure}
-\centering
 \includegraphics{ChildLens_paper_files/figure-latex/minutes-per-child-1.pdf}
 \caption{\label{fig:minutes-per-child}Video recording duration (in minutes) per child ID.}
 \end{figure}
@@ -319,7 +325,7 @@ This section outlines the steps taken to create the ChildLens dataset. We provid
 
 \subsection{Step 1: Collection of Egocentric Videos}\label{step-1-collection-of-egocentric-videos}
 
-The ChildLens dataset consists of egocentric videos recorded by children aged 3 to 5 years over a period of 12 months. A total of 61 children from families living in a mid-sized city in Germany, participated in the study. The videos were captured at home using a camera embedded in a vest worn by the children, which can be seen in figure \ref{fig:camera-worn}. This setup allowed the children to move freely throughout their homes while recording their activities. The camera, a \emph{PatrolEyes WiFi HD Infrared Police Body Camera}, was equipped with a 140-degree wide-angle lens and captured everything within the child's field of view with a resolution of 1920x1080p at 30 fps. The camera also recorded audio, allowing us to capture the child's speech and other sounds in the environment. Additionally, the parents were handed a small checklist of activities to record, ensuring that a variety of activities were captured in the videos. The focus was on capturing everyday activities that children typically engage in. Parents were therefore asked to include the following elements in the recordings:
+The ChildLens dataset consists of egocentric videos recorded by children aged 3 to 5 years over a period of 12 months. A total of 61 children from families living in a mid-sized city in Germany, participated in the study. The videos were captured at home using a camera embedded in a vest worn by the children, which can be seen in figure \ref{fig:camera-superannotate-activity-classes}. This setup allowed the children to move freely throughout their homes while recording their activities. The camera, a \emph{PatrolEyes WiFi HD Infrared Police Body Camera}, was equipped with a 140-degree wide-angle lens and captured everything within the child's field of view with a resolution of 1920x1080p at 30 fps. The camera also recorded audio, allowing us to capture the child's speech and other sounds in the environment. Additionally, the parents were handed a small checklist of activities to record, ensuring that a variety of activities were captured in the videos. The focus was on capturing everyday activities that children typically engage in. Parents were therefore asked to include the following elements in the recordings:
 
 \begin{itemize}
 \tightlist
@@ -335,29 +341,11 @@ The ChildLens dataset consists of egocentric videos recorded by children aged 3 
   Child is invited to draw/craft something
 \end{itemize}
 
-\begin{figure}
-
-{\centering \includegraphics[width=2.19in]{images/camera_worn} 
-
-}
-
-\caption{Vest with the embedded camera worn by the children}\label{fig:camera-worn}
-\end{figure}
-
 \subsection{Step 2: Creation of Labeling Strategy}\label{step-2-creation-of-labeling-strategy}
 
 To create a comprehensive labeling strategy for the ChildLens dataset, we first defined a list of activities that children typically engage in. This list was based on previous research on child development and the activities that children are known to participate in. We then developed a detailed catalog of activities that were likely to be captured in the videos and chose to make the activity classes more granular by distinguishing between activities like ``making music'' and ``singing/humming'' or ``drawing'' and ``crafting things''.
 
 After an initial review of the videos, we decided to add another class ``overheard speech'' to capture situations in which the child is not directly involved in a conversation but can hear it. We also added ``pretend play'' as a separate class to capture situations in which the child is engaged in imaginative play. This approach allowed us to capture the diversity of activities that children engage in and create a comprehensive dataset for activity analysis.
-
-\begin{figure}
-
-{\centering \includegraphics[width=5.76in]{images/SuperAnnotate} 
-
-}
-
-\caption{SuperAnnotate platform utilized for video annotation}\label{fig:superannotate}
-\end{figure}
 
 \subsection{Step 3: Manual Labeling Process}\label{step-3-manual-labeling-process}
 
@@ -517,13 +505,14 @@ ChildLens & 59.1 & 79.2 & 17.8 & 33.4 & 68.3 & 51.5\\
 
 \end{table}
 
-\begin{itemize}
-\tightlist
-\item
-  which class performs worst - maybe why?
-\item
-  which is best?
-\end{itemize}
+\begin{figure}
+
+{\centering \includegraphics[width=6.67in]{images/vtc_performance_evaluation} 
+
+}
+
+\caption{VTC Predictions compared to Ground Truth Annotations}\label{fig:vtc-evaluations}
+\end{figure}
 
 \section{Discussion}\label{discussion}
 
@@ -573,39 +562,39 @@ Lin, T., Liu, X., Li, X., Ding, E., \& Wen, S. (2019). \emph{{BMN}: {Boundary-Ma
 
 \subsection{List of ChildLens Activity Classes}\label{list-of-childlens-activity-classes}
 
-The dataset contains the following list of activities. The number of clips for each activity class is indicated by the number in brackets behind each class.
+The dataset contains the following list of activities.
 
 \begin{enumerate}
 \def\labelenumi{\arabic{enumi}.}
 \tightlist
 \item
-  \textbf{playing with object}: The child is playing with an object, such as a toy or a ball. (x clips)
+  \textbf{playing with object}: The child is playing with an object, such as a toy or a ball.
 \item
-  \textbf{playing without object}: The child is playing without an object, such as playing hide and seek or catch. (x clips)
+  \textbf{playing without object}: The child is playing without an object, such as playing hide and seek or catch.
 \item
-  \textbf{pretend play}: The child is engaged in imaginative play, such as pretending to be a doctor or a firefighter. (x clips)
+  \textbf{pretend play}: The child is engaged in imaginative play, such as pretending to be a doctor or a firefighter.
 \item
-  \textbf{watching something}: The child is watching a movie, TV show, or video on either a screen or a device. (x clips)
+  \textbf{watching something}: The child is watching a movie, TV show, or video on either a screen or a device.
 \item
-  \textbf{reading book}: The child is reading a book or looking at pictures in a book (x clips)
+  \textbf{reading book}: The child is reading a book or looking at pictures in a book.
 \item
-  \textbf{child talking}: The child is talking to themselves or to someone else (x clips)
+  \textbf{child talking}: The child is talking to themselves or to someone else.
 \item
-  \textbf{other person talking}: Another person is talking to the child. (x clips)
+  \textbf{other person talking}: Another person is talking to the child.
 \item
-  \textbf{overheard speech}: Conversations that the child can hear but is not directly involved in. (x clips)
+  \textbf{overheard speech}: Conversations that the child can hear but is not directly involved in.
 \item
-  \textbf{drawing}: The child is drawing or coloring a picture. (x clips)
+  \textbf{drawing}: The child is drawing or coloring a picture.
 \item
-  \textbf{crafting things}: The child is engaged in a craft activity, such as making a bracelet or decoration. (x clips)
+  \textbf{crafting things}: The child is engaged in a craft activity, such as making a bracelet or decoration.
 \item
-  \textbf{singing / humming}: The child is singing or humming a song or a mekody. (x clips)
+  \textbf{singing / humming}: The child is singing or humming a song or a melody.
 \item
-  \textbf{making music}: The child is playing a musical instrument or making music in another way (x clips)
+  \textbf{making music}: The child is playing a musical instrument or making music in another way.
 \item
-  \textbf{dancing}: The child is dancing to music or moving to a rhythm. (x clips)
+  \textbf{dancing}: The child is dancing to music or moving to a rhythm.
 \item
-  \textbf{listening to music / audiobook}: The child is listening to music or an audiobook. (x clips)
+  \textbf{listening to music / audiobook}: The child is listening to music or an audiobook.
 \end{enumerate}
 
 \subsection{List of ChildLens Location Classes}\label{list-of-childlens-location-classes}
@@ -625,17 +614,31 @@ The dataset contains the following list of activities. The number of clips for e
   other
 \end{enumerate}
 
-\begin{figure}
-\centering
-\includegraphics{ChildLens_paper_files/figure-latex/quantex-minutes-per-child-1.pdf}
-\caption{\label{fig:quantex-minutes-per-child}Video recording duration (in minutes) per child ID.}
-\end{figure}
+\subsection{Activity Class Statistics}\label{activity-class-statistics}
 
-\begin{figure}
-\centering
-\includegraphics{ChildLens_paper_files/figure-latex/quantex-age-distribution-1.pdf}
-\caption{\label{fig:quantex-age-distribution}Number of videos per age group.}
-\end{figure}
+\begin{longtable}[t]{lrr}
+\caption{\label{tab:activity-classes-statistics}\label{tab:activity-classes-statistics}Statistics of ChildLens Activity Classes}\\
+\toprule
+\textbf{Activity Class} & \textbf{Instance Count} & \textbf{Total Duration (min)}\\
+\midrule
+Child talking & 100 & 100\\
+Other person talking & 100 & 100\\
+Overheard Speech & 100 & 100\\
+Singing/Humming & 100 & 100\\
+Listening to music/audiobook & 100 & 100\\
+\addlinespace
+Playing with object & 100 & 100\\
+Reading book & 100 & 100\\
+Making music & 100 & 100\\
+Pretend Play & 100 & 100\\
+Playing without object & 100 & 100\\
+\addlinespace
+Watching something & 100 & 100\\
+Drawing & 100 & 100\\
+Crafting things & 100 & 100\\
+Dancing & 100 & 100\\
+\bottomrule
+\end{longtable}
 
 
 \end{document}
