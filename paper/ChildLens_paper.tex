@@ -215,13 +215,7 @@ Correspondence concerning this article should be addressed to Nele-Pauline Suffo
 \affiliation{\vspace{0.5cm}\textsuperscript{1} Institute of Psychology in Education, Leuphana University Lüneburg\\\textsuperscript{2} Max Planck Institute for Evolutionary Anthropology}
 
 \abstract{%
-One or two sentences providing a \textbf{basic introduction} to the field, comprehensible to a scientist in any discipline.
-Two to three sentences of \textbf{more detailed background}, comprehensible to scientists in related disciplines.
-One sentence clearly stating the \textbf{general problem} being addressed by this particular study.
-One sentence summarizing the main result (with the words ``\textbf{here we show}'' or their equivalent).
-Two or three sentences explaining what the \textbf{main result} reveals in direct comparison to what was thought to be the case previously, or how the main result adds to previous knowledge.
-One or two sentences to put the results into a more \textbf{general context}.
-Two or three sentences to provide a \textbf{broader perspective}, readily comprehensible to a scientist in any discipline.
+We present ChildLens, a novel egocentric video and audio dataset of children aged 3--5 years, containing 106.10 hours of material. The dataset comprises five location classes and 14 activity classes, spanning audio-only, video-only, and multimodal activities. Children wore a vest with an embedded camera that recorded their everyday experiences. We provide an overview of the dataset, the collection process, and the labeling strategy. Additionally, we present benchmark performance of two state-of-the-art models on the dataset: the Boundary-Matching Network for Temporal Activity Localization and the Voice-Type Classifier for detecting speech in audio. Finally, we analyze the dataset specifications and their influence on model performance. The ChildLens dataset will be made available for research purposes, providing rich data to advance computer vision and audio analysis techniques while offering new insights into developmental psychology.
 }
 
 
@@ -232,6 +226,13 @@ Two or three sentences to provide a \textbf{broader perspective}, readily compre
 \section{Introduction}\label{introduction}
 
 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed ac purus sit amet nisl tincidunt tincidunt. Nullam nec turpis at libero tincidunt tincidunt. Sed nec mi nec nunc tincidunt tincidunt. Nullam nec turpis at libero tincidunt tincidunt. Sed nec mi nec nunc
+
+\begin{verbatim}
+•   Contextualization: Explain the importance of naturalistic data in understanding development and its role in validating theories.
+•   Challenges in Data Availability: Highlight any gaps or limitations in existing datasets relevant to your research focus (e.g., few longitudinal datasets or those captured from real-world environments).
+•   Contribution of Your Dataset: Describe the new dataset you are introducing (its scope, duration, type of data captured, and any unique features it offers compared to existing datasets).
+•   Value of Data Sharing: Emphasize how sharing datasets can enable broader research advances, whether for understanding child development or enabling new computational models in areas like computer vision or audio analysis.
+\end{verbatim}
 
 \begin{itemize}
 \tightlist
@@ -271,11 +272,11 @@ For every activity, the dataset includes information on the start and end times 
 
 \begin{figure}
 
-{\centering \includegraphics{ChildLens_paper_files/figure-latex/test-1} 
+{\centering \includegraphics{ChildLens_paper_files/figure-latex/camera-superannotate-activity-classes-1} 
 
 }
 
-\caption{\textbf{A} – Vest with the embedded camera worn by the children, \textbf{B} – SuperAnnotate platform utilized for video annotation, \textbf{C} – Activity classes in the ChildLens dataset.}\label{fig:test}
+\caption{\textbf{A} – Vest with the embedded camera worn by the children, \textbf{B} – SuperAnnotate platform utilized for video annotation, \textbf{C} – Activity classes in the ChildLens dataset.}\label{fig:camera-superannotate-activity-classes}
 \end{figure}
 
 \paragraph{Statistics}\label{statistics}
@@ -294,6 +295,23 @@ Singing/Humming & 100 & 100\\
 Listening to music/audiobook & 100 & 100\\
 \bottomrule
 \end{longtable}
+
+\begin{figure}
+
+{\centering \includegraphics{ChildLens_paper_files/figure-latex/statistics-plot-1} 
+
+}
+
+\caption{\textbf{A} – Vest with the embedded camera worn by the children, \textbf{B} – SuperAnnotate platform utilized for video annotation, \textbf{C} – Activity classes in the ChildLens dataset.}\label{fig:statistics-plot-1}
+\end{figure}
+\begin{figure}
+
+{\centering \includegraphics{ChildLens_paper_files/figure-latex/statistics-plot-2} 
+
+}
+
+\caption{\textbf{A} – Vest with the embedded camera worn by the children, \textbf{B} – SuperAnnotate platform utilized for video annotation, \textbf{C} – Activity classes in the ChildLens dataset.}\label{fig:statistics-plot-2}
+\end{figure}
 
 This diverse dataset includes a varying number of instances across the 14 activity classes, ranging from \textbf{x} to \textbf{x} instances per class. Overlapping instances are counted separately for each activity class; if two activities occur simultaneously in a given video segment, both classes will receive a count for that segment. As a result, parts of the video may be counted multiple times, once for each activity class. The duration of each instance varies by activity. For example, audio-based activities like ``child talking'' may last only a few seconds, while activities like ``reading a book'' can span several minutes. As this paper only focuses on the audio-based and video-based activity classes, tables \ref{tab:audio-classes-statistics} and \ref{tab:video-classes-statistics} provide the total number of instances and the total duration of all instances for the respective activity classes. The full table with all activity classes is available in the appendix.
 
@@ -414,7 +432,7 @@ The most relevant findings of the BMN evaluation are summarized in the following
 
 \subsection{Voice Type Classifier}\label{voice-type-classifier}
 
-The Voice Type Classifier (Lavechin et al., 2020) is a state-of-the-art model designed to classify audio rawfiles into five distinct voice types: \emph{key child}, \emph{other child}, \emph{male speech}, \emph{female speech}, and \emph{speech.} Its architecture processes audio by first dividing it into 2-second chunks, which are passed through a SincNet to extract low-level features. These features are then fed into a stack of two bi-directional LSTMs, followed by three feed-forward layers. The output layer uses a sigmoid activation function to produce a score between 0 and 1 for each class. The VTC is trained on 260 hours of audio material obtained from different child-centered audio datasets. Model valuation is performed by utilizing the \(F_1\)-measure, which combines precision and recall using the following formula:
+The Voice Type Classifier (Lavechin et al., 2020) is a state-of-the-art model designed to classify audio rawfiles into five distinct voice types: \texttt{Key\ Child\ (KCHI)}, \texttt{Other\ Child\ (CHI)}, \texttt{Male\ Speech\ (MAL)}, \texttt{Female\ Speech\ (FEM)}, and \texttt{Speech\ (SPEECH)}. Its architecture processes audio by first dividing it into 2-second chunks, which are passed through a SincNet to extract low-level features. These features are then fed into a stack of two bi-directional LSTMs, followed by three feed-forward layers. The output layer uses a sigmoid activation function to produce a score between 0 and 1 for each class. The VTC is trained on 260 hours of audio material obtained from different child-centered audio datasets. Model valuation is performed by utilizing the \(F_1\)-measure, which combines precision and recall using the following formula:
 \[
 F_1 = 2 \cdot \frac{\text{precision} \cdot \text{recall}}{\text{precision} + \text{recall}}
 \]
@@ -430,7 +448,7 @@ where \(\text{precision} = \frac{\text{tp}}{\text{tp} + \text{fp}}\) and \(\text
   \(\text{fn}\) being the number of false negatives.
 \end{itemize}
 
-The \(F_1\) is a metric that combines precision and recall into a single value, calculated as their harmonic mean. It ranges from 0 to 1, with 1 representing perfect precision and recall, and 0 indicating no correct prediction The interpretation of the \(F_1\) score depends on the specific application of the model. Generally, an \(F_1\) score above 0.8 is considered good, while values above 0.9 are considered excellent. In some cases, a score around 0.5 can still be deemed acceptable, depending on the balance between precision and recall.. The \(F_1\) score is computed for each class and averaged to provide an overall measure. No collar is applied to the evaluation, meaning that the prediction have to be exact to be considered correct. The model achieves an \(F_1\) score of 57.3, outperforming the previous state-of-the-art LENA model by 10.6 points.
+The \(F_1\) is a metric that combines precision and recall into a single value, calculated as their harmonic mean. It ranges from 0 to 1, with 1 representing perfect precision and recall, and 0 indicating no correct prediction The interpretation of the \(F_1\) score depends on the specific application of the model. Generally, an \(F_1\) score above 0.8 is considered good, while values above 0.9 are considered excellent. In some cases, a score around 0.5 can still be deemed acceptable, depending on the balance between precision and recall. The \(F_1\) score is computed for each class and averaged to provide an overall measure. No collar is applied to the evaluation, meaning that the prediction have to be exact to be considered correct. The model achieves an \(F_1\) score of 57.3, outperforming the previous state-of-the-art LENA model by 10.6 points.
 
 \subsubsection{Data Preparation}\label{data-preparation}
 
@@ -439,20 +457,20 @@ Before applying the VTC to the ChildLens dataset, we mapped our audio-based acti
 \begin{itemize}
 \tightlist
 \item
-  Child talking → \textbf{\texttt{Key\ Child}}
+  Child talking → \textbf{\texttt{Key\ Child}} \& \textbf{\texttt{Speech}}
 \item
-  Singing/Humming → \textbf{\texttt{Key\ Child}}
+  Singing/Humming → \textbf{\texttt{Key\ Child}} \& \textbf{\texttt{Speech}}
 \item
   Other person talking:
 
   \begin{itemize}
   \tightlist
   \item
-    If \texttt{age\ =\ "Child"} → \textbf{\texttt{Other\ Child}}
+    If \texttt{age\ =\ "Child"} → \textbf{\texttt{Other\ Child}} \& \textbf{\texttt{Speech}}
   \item
-    If \texttt{age\ =\ "Adult"} \& \texttt{gender\ =\ "Female"} → \textbf{\texttt{Female\ Speech}}
+    If \texttt{age\ =\ "Adult"} \& \texttt{gender\ =\ "Female"} → \textbf{\texttt{Female\ Speech}} \& \textbf{\texttt{Speech}}
   \item
-    If \texttt{age\ =\ "Adult"} \& \texttt{gender\ =\ "Male"} → \textbf{\texttt{Male\ Speech}}
+    If \texttt{age\ =\ "Adult"} \& \texttt{gender\ =\ "Male"} → \textbf{\texttt{Male\ Speech}} \& \textbf{\texttt{Speech}}
   \end{itemize}
 \item
   Overheard Speech → \textbf{\texttt{Speech}}
@@ -482,7 +500,8 @@ Total Duration (min) & 100 & 100 & 100 & 100 & 100\\
 
 \subsubsection{Evaluation}\label{evaluation-1}
 
-Table \ref{tab:vtc-results} presents the performance of the Voice Type Classifier (VTC) on the ChildLens dataset compared to the benchmark dataset from the original study. The VTC model achieves an average \(F_1\) score of \textbf{xx} on the ChildLens dataset, performing comparably to the benchmark dataset. It performs best on the \texttt{CHI} class with an \(F_1\) score of \textbf{xx} and worst on the MAL class with an \(F_1\) score of xx. Compared to the benchmark dataset, the model performs significantly better on the \texttt{CHI} class but slightly worse on the \texttt{MAL} and \texttt{FEM} classes. Analysis of False Positives and False Negatives reveals that the most common confusion occurs between the \texttt{MAL} and \texttt{FEM} classes. This may be attributed to the deeper pitch of some female voices in the German language. Additionally, the model was trained on a dataset with a different language distribution and younger children, where adults, particularly females, may use a higher pitch when interacting with infants, unlike with older children.
+Table \ref{tab:vtc-results} presents the performance of the Voice Type Classifier (VTC) on the ChildLens dataset compared to the benchmark dataset from the original study. The VTC model achieves an average \(F_1\) score of \textbf{xx} on the ChildLens dataset, performing comparably to the benchmark dataset. It performs best on the \texttt{CHI} class with an \(F_1\) score of \textbf{xx} and worst on the \texttt{MAL} class with an \(F_1\) score of \textbf{xx} Compared to the benchmark dataset, the model performs significantly better on the \texttt{CHI} class but slightly worse on the \texttt{MAL} and \texttt{FEM} classes. Analysis of False Positives and False Negatives reveals that the most common confusion occurs between the \texttt{MAL} and \texttt{FEM} classes. This may be attributed to the deeper pitch of some female voices in the German language. Additionally, the model was trained on a dataset with a different language distribution and younger children, where adults, particularly females, may use a higher pitch when interacting with infants, unlike with older children.
+Figure \ref{fig:vtc-evaluations} provides a visual representation of the VTC predictions compared to the ground truth annotations.
 
 \begin{table}[tbp]
 
