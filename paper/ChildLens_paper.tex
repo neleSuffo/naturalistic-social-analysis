@@ -215,13 +215,7 @@ Correspondence concerning this article should be addressed to Nele-Pauline Suffo
 \affiliation{\vspace{0.5cm}\textsuperscript{1} Institute of Psychology in Education, Leuphana University Lüneburg\\\textsuperscript{2} Max Planck Institute for Evolutionary Anthropology}
 
 \abstract{%
-One or two sentences providing a \textbf{basic introduction} to the field, comprehensible to a scientist in any discipline.
-Two to three sentences of \textbf{more detailed background}, comprehensible to scientists in related disciplines.
-One sentence clearly stating the \textbf{general problem} being addressed by this particular study.
-One sentence summarizing the main result (with the words ``\textbf{here we show}'' or their equivalent).
-Two or three sentences explaining what the \textbf{main result} reveals in direct comparison to what was thought to be the case previously, or how the main result adds to previous knowledge.
-One or two sentences to put the results into a more \textbf{general context}.
-Two or three sentences to provide a \textbf{broader perspective}, readily comprehensible to a scientist in any discipline.
+We present ChildLens, a novel egocentric video and audio dataset of children aged 3--5 years, containing 106.10 hours of material. The dataset comprises five location classes and 14 activity classes, spanning audio-only, video-only, and multimodal activities. Children wore a vest with an embedded camera that recorded their everyday experiences. We provide an overview of the dataset, the collection process, and the labeling strategy. Additionally, we present benchmark performance of two state-of-the-art models on the dataset: the Boundary-Matching Network for Temporal Activity Localization and the Voice-Type Classifier for detecting speech in audio. Finally, we analyze the dataset specifications and their influence on model performance. The ChildLens dataset will be made available for research purposes, providing rich data to advance computer vision and audio analysis techniques while offering new insights into developmental psychology.
 }
 
 
@@ -233,17 +227,36 @@ Two or three sentences to provide a \textbf{broader perspective}, readily compre
 
 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed ac purus sit amet nisl tincidunt tincidunt. Nullam nec turpis at libero tincidunt tincidunt. Sed nec mi nec nunc tincidunt tincidunt. Nullam nec turpis at libero tincidunt tincidunt. Sed nec mi nec nunc
 
+\begin{verbatim}
+•   Contextualization: Explain the importance of naturalistic data in understanding development and its role in validating theories.
+•   Challenges in Data Availability: Highlight any gaps or limitations in existing datasets relevant to your research focus (e.g., few longitudinal datasets or those captured from real-world environments).
+•   Contribution of Your Dataset: Describe the new dataset you are introducing (its scope, duration, type of data captured, and any unique features it offers compared to existing datasets).
+•   Value of Data Sharing: Emphasize how sharing datasets can enable broader research advances, whether for understanding child development or enabling new computational models in areas like computer vision or audio analysis.
+\end{verbatim}
+
 \begin{itemize}
 \tightlist
 \item
   TODO: research about egocentric video datasets
+\item
+  Saycam paper als Orientierung
+\item
+  Relevanz für die psychologische Forschung
+\item
+  Linda Smith - Indiana (egocentric perspective)
+\item
+  Roy - Child Talk (Prediction the Birth of a Spoken word)
+\item
+  Alex Christia
+\item
+  Bisherige Datensätze sind bisher nur Sprache - Sprache und Video selten zusammen und wenn nur sehr klein (mit anderer Altersgruppe)
 \end{itemize}
 
 \section{Dataset Overview}\label{dataset-overview}
 
 \paragraph{Activity Classes}\label{activity-classes}
 
-The ChildLens dataset contains a total of 14 activity and 5 location classes. The activities are based on the actions of the child in the video and can be divided into \emph{person-only} activities, such as ``child talking'' or ``other person talking, and \emph{person-object} activities, such as''drawing'' or ``playing with object''. You can find a brief description of each class in the appendix. The activities can be further divided into \emph{audio-based}, \emph{visual-based}, and \emph{multimodal} activities, as presented in figure \ref{fig:activity-classes}. The following list provides an overview of the different activity types:
+The ChildLens dataset contains a total of 14 activity and 5 location classes. The activities are based on the activities of the child in the video and can be divided into \emph{person-only} activities, such as ``child talking'' or ``other person talking'', and \emph{person-object} activities, such as ``drawing'' or ``playing with object''. You can find a brief description of each class in the appendix. The activities can be further divided into \emph{audio-based}, \emph{visual-based}, and \emph{multimodal} activities, as presented in figure \ref{fig:camera-superannotate-activity-classes}. The following list provides an overview of the different activity types:
 
 \begin{itemize}
 \tightlist
@@ -255,26 +268,64 @@ The ChildLens dataset contains a total of 14 activity and 5 location classes. Th
   \textbf{Multimodal activities}: \emph{playing with object}, \emph{playing without object}, \emph{pretend play}, \emph{reading book}, \emph{making music}
 \end{itemize}
 
-The location classes describe the current location of the child in the video and include \emph{livingroom}, \emph{playroom}, \emph{bathroom}, \emph{hallway}, and \emph{other}.
+For every activity, the dataset includes information on the start and end times of the activity, the activity class, and whether the child is engaged alone or with somebody else. For every external person involved in the activity, we capture age and gender. The location classes describe the current location of the child in the video and include \emph{livingroom}, \emph{playroom}, \emph{bathroom}, \emph{hallway}, and \emph{other}.
 
 \begin{figure}
 
-{\centering \includegraphics[width=5.95in]{activity_classes} 
+{\centering \includegraphics{ChildLens_paper_files/figure-latex/camera-superannotate-activity-classes-1} 
 
 }
 
-\caption{ChildLens Activity Class Categories}\label{fig:activity-classes}
+\caption{\textbf{A} – Vest with the embedded camera worn by the children, \textbf{B} – SuperAnnotate platform utilized for video annotation, \textbf{C} – Activity classes in the ChildLens dataset.}\label{fig:camera-superannotate-activity-classes}
 \end{figure}
 
 \paragraph{Statistics}\label{statistics}
 
-The ChildLens dataset comprises of 343 video files with a total of 106.10 hours recorded by 61 children aged 3 to 5 years (M=4.52, SD=0.92). It includes 107 videos from children aged 3, 122 videos from children aged 4, and 114 videos from children aged 5. The duration of recorded video material per child varies between 4.03 and 303.42 minutes (M=104.37, SD=51.65). A detailed distribution of the video duration per child can be found in figure \ref{fig:minutes-per-child}. This diverse dataset also includes a varying number of clips {[}\textbf{MB}: unklar was clips sind - das kommt ja später noch oft vor, von dem her gerne definieren.{]} for each of the 14 activity classes, ranging from \textbf{x} to \textbf{x} clips per class {[}\textbf{MB}: nicht klar was du hier meinst. sind das instances für jede class oder unique annotations?{]}. The clip duration depends on the activity; for example, audio-related actions like ``child talking'' may only last a few seconds, while activities like ``reading a book'' may last several minutes. As shown in table \ref{tab:train-val-test}, the total number of \textbf{xx} clips is divided into \textbf{xx} training clips, \textbf{xx} validation clips, and \textbf{xx} testing clips for each class.
+The ChildLens dataset comprises of 343 video files with a total of 106.10 hours recorded by 61 children aged 3 to 5 years (M=4.52, SD=0.92). It includes 107 videos from children aged 3, 122 videos from children aged 4, and 114 videos from children aged 5. The duration of recorded video material per child varies between 4.03 and 303.42 minutes (M=104.37, SD=51.65). A detailed distribution of the video duration per child can be found in figure \ref{fig:minutes-per-child}.
+
+\begin{longtable}[t]{lrr}
+\caption{\label{tab:audio-classes-statistics}\label{tab:audio-classes-statistics}Summary of Audio-Based Activity Classes}\\
+\toprule
+\textbf{Audio-based Activity Class} & \textbf{Instance Count} & \textbf{Total Duration (min)}\\
+\midrule
+Child talking & 100 & 100\\
+Other person talking & 100 & 100\\
+Overheard Speech & 100 & 100\\
+Singing/Humming & 100 & 100\\
+Listening to music/audiobook & 100 & 100\\
+\bottomrule
+\end{longtable}
 
 \begin{figure}
-\centering
-\includegraphics{ChildLens_paper_files/figure-latex/age-distribution-1.pdf}
-\caption{\label{fig:age-distribution}Number of videos per age group.}
+
+{\centering \includegraphics{ChildLens_paper_files/figure-latex/statistics-plot-1} 
+
+}
+
+\caption{\textbf{A} – Vest with the embedded camera worn by the children, \textbf{B} – SuperAnnotate platform utilized for video annotation, \textbf{C} – Activity classes in the ChildLens dataset.}\label{fig:statistics-plot-1}
 \end{figure}
+\begin{figure}
+
+{\centering \includegraphics{ChildLens_paper_files/figure-latex/statistics-plot-2} 
+
+}
+
+\caption{\textbf{A} – Vest with the embedded camera worn by the children, \textbf{B} – SuperAnnotate platform utilized for video annotation, \textbf{C} – Activity classes in the ChildLens dataset.}\label{fig:statistics-plot-2}
+\end{figure}
+
+This diverse dataset includes a varying number of instances across the 14 activity classes, ranging from \textbf{x} to \textbf{x} instances per class. Overlapping instances are counted separately for each activity class; if two activities occur simultaneously in a given video segment, both classes will receive a count for that segment. As a result, parts of the video may be counted multiple times, once for each activity class. The duration of each instance varies by activity. For example, audio-based activities like ``child talking'' may last only a few seconds, while activities like ``reading a book'' can span several minutes. As this paper only focuses on the audio-based and video-based activity classes, tables \ref{tab:audio-classes-statistics} and \ref{tab:video-classes-statistics} provide the total number of instances and the total duration of all instances for the respective activity classes. The full table with all activity classes is available in the appendix.
+
+\begin{longtable}[t]{lrr}
+\caption{\label{tab:video-classes-statistics}\label{tab:video-classes-statistics}Summary of Video-Based Activity Classes}\\
+\toprule
+\textbf{Audio-based Activity Class} & \textbf{Instance Count} & \textbf{Total Duration (min)}\\
+\midrule
+Watching something & 100 & 100\\
+Drawing & 100 & 100\\
+Crafting things & 100 & 100\\
+Dancing & 100 & 100\\
+\bottomrule
+\end{longtable}
 
 \begin{figure}
 \centering
@@ -292,7 +343,7 @@ This section outlines the steps taken to create the ChildLens dataset. We provid
 
 \subsection{Step 1: Collection of Egocentric Videos}\label{step-1-collection-of-egocentric-videos}
 
-The ChildLens dataset consists of egocentric videos recorded by children aged 3 to 5 years over a period of 12 months. A total of 61 children from families living in a mid-sized city in Germany, participated in the study. The videos were captured at home using a camera embedded in a vest worn by the children, which can be seen in figure \ref{fig:camera-worn}. This setup allowed the children to move freely throughout their homes while recording their activities. The camera, a \emph{PatrolEyes WiFi HD Infrared Police Body Camera}, was equipped with a 140-degree wide-angle lens and captured everything within the child's field of view with a resolution of 1920x1080p at 30 fps. The camera also recorded audio, allowing us to capture the child's speech and other sounds in the environment. Additionally, the parents were handed a small checklist of activities to record, ensuring that a variety of activities were captured in the videos. The focus was on capturing everyday activities that children typically engage in. Parents were therefore asked to include the following elements in the recordings:
+The ChildLens dataset consists of egocentric videos recorded by children aged 3 to 5 years over a period of 12 months. A total of 61 children from families living in a mid-sized city in Germany, participated in the study. The videos were captured at home using a camera embedded in a vest worn by the children, which can be seen in figure \ref{fig:camera-superannotate-activity-classes}. This setup allowed the children to move freely throughout their homes while recording their activities. The camera, a \emph{PatrolEyes WiFi HD Infrared Police Body Camera}, was equipped with a 140-degree wide-angle lens and captured everything within the child's field of view with a resolution of 1920x1080p at 30 fps. The camera also recorded audio, allowing us to capture the child's speech and other sounds in the environment. Additionally, the parents were handed a small checklist of activities to record, ensuring that a variety of activities were captured in the videos. The focus was on capturing everyday activities that children typically engage in. Parents were therefore asked to include the following elements in the recordings:
 
 \begin{itemize}
 \tightlist
@@ -308,35 +359,17 @@ The ChildLens dataset consists of egocentric videos recorded by children aged 3 
   Child is invited to draw/craft something
 \end{itemize}
 
-\begin{figure}
-
-{\centering \includegraphics[width=2.19in]{camera_worn} 
-
-}
-
-\caption{Vest with the embedded camera worn by the children}\label{fig:camera-worn}
-\end{figure}
-
 \subsection{Step 2: Creation of Labeling Strategy}\label{step-2-creation-of-labeling-strategy}
 
 To create a comprehensive labeling strategy for the ChildLens dataset, we first defined a list of activities that children typically engage in. This list was based on previous research on child development and the activities that children are known to participate in. We then developed a detailed catalog of activities that were likely to be captured in the videos and chose to make the activity classes more granular by distinguishing between activities like ``making music'' and ``singing/humming'' or ``drawing'' and ``crafting things''.
 
 After an initial review of the videos, we decided to add another class ``overheard speech'' to capture situations in which the child is not directly involved in a conversation but can hear it. We also added ``pretend play'' as a separate class to capture situations in which the child is engaged in imaginative play. This approach allowed us to capture the diversity of activities that children engage in and create a comprehensive dataset for activity analysis.
 
-\begin{figure}
-
-{\centering \includegraphics[width=5.76in]{SuperAnnotate} 
-
-}
-
-\caption{SuperAnnotate platform utilized for video annotation}\label{fig:superannotate}
-\end{figure}
-
 \subsection{Step 3: Manual Labeling Process}\label{step-3-manual-labeling-process}
 
 Before the actual annotation process, a setup meeting was held to introduce the annotators to the labeling strategy. To familiarize themselves with the task, the annotators were assigned 25 sample videos to practice and gain hands-on experience. These initial annotations were reviewed by the research team, and feedback was provided to refine the approach. A total of three feedback loops were conducted to ensure that the annotators follow the labeling strategy properly.
 
-The videos were manually annotated by native German speakers who watched each video and labeled the activities present in the footage. The annotators marked the start and end points of each activity, ensuring that the annotations were accurate and detailed. The labeling process was conducted using the SuperAnnotate platform, which allowed for efficient annotation and review of the videos. Figure \ref{fig:superannotate} provides a screenshot of the SuperAnnotate platform used for video annotation. To ensure the quality of the annotations the following steps were taken:
+The videos were manually annotated by native German speakers who watched each video and labeled the activities present in the footage. Annotators marked the start and end points of each activity to ensure accuracy and detail. For audio annotations, we implemented a 2-second rule for the categories ``other person talking'' and ``child talking'': if the break between two utterances was 2 seconds or less, it was considered a single event; breaks longer than 2 seconds split the activity into separate instances. The annotations were conducted using the SuperAnnotate platform, allowing for efficient annotation and review of the videos. Figure (\textbf{ref?})(fig:superannotate) provides a screenshot of the SuperAnnotate platform used for video annotation. To ensure the quality of the annotations, the following steps were taken:
 
 \begin{enumerate}
 \def\labelenumi{\arabic{enumi}.}
@@ -399,7 +432,7 @@ The most relevant findings of the BMN evaluation are summarized in the following
 
 \subsection{Voice Type Classifier}\label{voice-type-classifier}
 
-The Voice Type Classifier (Lavechin et al., 2020) is a state-of-the-art model designed to classify audio rawfiles into five distinct voice types: \emph{key child}, \emph{other child}, \emph{male speech}, \emph{female speech}, and \emph{speech.} Its architecture processes audio by first dividing it into 2-second chunks, which are passed through a SincNet to extract low-level features. These features are then fed into a stack of two bi-directional LSTMs, followed by three feed-forward layers. The output layer uses a sigmoid activation function to produce a score between 0 and 1 for each class. The VTC is trained on 260 hours of audio material obtained from different child-centered audio datasets. Model valuation is performed by utilizing the \(F_1\)-measure, which combines precision and recall using the following formula:
+The Voice Type Classifier (Lavechin et al., 2020) is a state-of-the-art model designed to classify audio rawfiles into five distinct voice types: \texttt{Key\ Child\ (KCHI)}, \texttt{Other\ Child\ (CHI)}, \texttt{Male\ Speech\ (MAL)}, \texttt{Female\ Speech\ (FEM)}, and \texttt{Speech\ (SPEECH)}. Its architecture processes audio by first dividing it into 2-second chunks, which are passed through a SincNet to extract low-level features. These features are then fed into a stack of two bi-directional LSTMs, followed by three feed-forward layers. The output layer uses a sigmoid activation function to produce a score between 0 and 1 for each class. The VTC is trained on 260 hours of audio material obtained from different child-centered audio datasets. Model valuation is performed by utilizing the \(F_1\)-measure, which combines precision and recall using the following formula:
 \[
 F_1 = 2 \cdot \frac{\text{precision} \cdot \text{recall}}{\text{precision} + \text{recall}}
 \]
@@ -415,12 +448,60 @@ where \(\text{precision} = \frac{\text{tp}}{\text{tp} + \text{fp}}\) and \(\text
   \(\text{fn}\) being the number of false negatives.
 \end{itemize}
 
-The \(F_1\) is a metric that combines precision and recall into a single value, calculated as their harmonic mean. It ranges from 0 to 1, with 1 representing perfect precision and recall, and 0 indicating no correct prediction The interpretation of the \(F_1\) score depends on the specific application of the model. Generally, an \(F_1\) score above 0.8 is considered good, while values above 0.9 are considered excellent. In some cases, a score around 0.5 can still be deemed acceptable, depending on the balance between precision and recall.. The \(F_1\) score is computed for each class and averaged to provide an overall measure. No collar is applied to the evaluation, meaning that the prediction have to be exact to be considered correct. The model achieves an \(F_1\) score of 57.3, outperforming the previous state-of-the-art LENA model by 10.6 points.
+The \(F_1\) is a metric that combines precision and recall into a single value, calculated as their harmonic mean. It ranges from 0 to 1, with 1 representing perfect precision and recall, and 0 indicating no correct prediction The interpretation of the \(F_1\) score depends on the specific application of the model. Generally, an \(F_1\) score above 0.8 is considered good, while values above 0.9 are considered excellent. In some cases, a score around 0.5 can still be deemed acceptable, depending on the balance between precision and recall. The \(F_1\) score is computed for each class and averaged to provide an overall measure. No collar is applied to the evaluation, meaning that the prediction have to be exact to be considered correct. The model achieves an \(F_1\) score of 57.3, outperforming the previous state-of-the-art LENA model by 10.6 points.
+
+\subsubsection{Data Preparation}\label{data-preparation}
+
+Before applying the VTC to the ChildLens dataset, we mapped our audio-based activity classes to the VTC output classes to enable performance comparison. The following mapping strategy was applied:
+
+\begin{itemize}
+\tightlist
+\item
+  Child talking → \textbf{\texttt{Key\ Child}} \& \textbf{\texttt{Speech}}
+\item
+  Singing/Humming → \textbf{\texttt{Key\ Child}} \& \textbf{\texttt{Speech}}
+\item
+  Other person talking:
+
+  \begin{itemize}
+  \tightlist
+  \item
+    If \texttt{age\ =\ "Child"} → \textbf{\texttt{Other\ Child}} \& \textbf{\texttt{Speech}}
+  \item
+    If \texttt{age\ =\ "Adult"} \& \texttt{gender\ =\ "Female"} → \textbf{\texttt{Female\ Speech}} \& \textbf{\texttt{Speech}}
+  \item
+    If \texttt{age\ =\ "Adult"} \& \texttt{gender\ =\ "Male"} → \textbf{\texttt{Male\ Speech}} \& \textbf{\texttt{Speech}}
+  \end{itemize}
+\item
+  Overheard Speech → \textbf{\texttt{Speech}}
+\end{itemize}
+
+The activity class ``Listening to music/audiobook'' was not mapped to any VTC class, as it is not covered by the VTC model. The mapping process resulted in new numbers for the total durations for each VTC class, as shown in Table \ref{tab:vtc-classes-statistics}.
+
+\begin{table}[tbp]
+
+\begin{center}
+\begin{threeparttable}
+
+\caption{\label{tab:vtc-classes-statistics}Total Duration (in minutes) of all Instances for each VTC Class}
+
+\begin{tabular}{llllll}
+\toprule
+ & \multicolumn{1}{c}{KCHI} & \multicolumn{1}{c}{CHI} & \multicolumn{1}{c}{MAL} & \multicolumn{1}{c}{FEM} & \multicolumn{1}{c}{SPEECH}\\
+\midrule
+Total Duration (min) & 100 & 100 & 100 & 100 & 100\\
+\bottomrule
+\end{tabular}
+
+\end{threeparttable}
+\end{center}
+
+\end{table}
 
 \subsubsection{Evaluation}\label{evaluation-1}
 
-The most relevant findings of the VTC evaluation are summarized in the following sections.
-- summarize most crucial findings
+Table \ref{tab:vtc-results} presents the performance of the Voice Type Classifier (VTC) on the ChildLens dataset compared to the benchmark dataset from the original study. The VTC model achieves an average \(F_1\) score of \textbf{xx} on the ChildLens dataset, performing comparably to the benchmark dataset. It performs best on the \texttt{CHI} class with an \(F_1\) score of \textbf{xx} and worst on the \texttt{MAL} class with an \(F_1\) score of \textbf{xx} Compared to the benchmark dataset, the model performs significantly better on the \texttt{CHI} class but slightly worse on the \texttt{MAL} and \texttt{FEM} classes. Analysis of False Positives and False Negatives reveals that the most common confusion occurs between the \texttt{MAL} and \texttt{FEM} classes. This may be attributed to the deeper pitch of some female voices in the German language. Additionally, the model was trained on a dataset with a different language distribution and younger children, where adults, particularly females, may use a higher pitch when interacting with infants, unlike with older children.
+Figure \ref{fig:vtc-evaluations} provides a visual representation of the VTC predictions compared to the ground truth annotations.
 
 \begin{table}[tbp]
 
@@ -431,7 +512,7 @@ The most relevant findings of the VTC evaluation are summarized in the following
 
 \begin{tabular}{lllllll}
 \toprule
-Dataset & \multicolumn{1}{c}{KCHI} & \multicolumn{1}{c}{OCH} & \multicolumn{1}{c}{MAL} & \multicolumn{1}{c}{FEM} & \multicolumn{1}{c}{SPEECH} & \multicolumn{1}{c}{AVG}\\
+Dataset & \multicolumn{1}{c}{KCHI} & \multicolumn{1}{c}{CHI} & \multicolumn{1}{c}{MAL} & \multicolumn{1}{c}{FEM} & \multicolumn{1}{c}{SPEECH} & \multicolumn{1}{c}{AVG}\\
 \midrule
 ACLEW-Random & 68.7 & 33.2 & 42.9 & 63.4 & 78.4 & 57.3\\
 ChildLens & 59.1 & 79.2 & 17.8 & 33.4 & 68.3 & 51.5\\
@@ -443,15 +524,14 @@ ChildLens & 59.1 & 79.2 & 17.8 & 33.4 & 68.3 & 51.5\\
 
 \end{table}
 
-\begin{itemize}
-\tightlist
-\item
-  which class performs worst - maybe why?
-\item
-  which is best?
-\item
-  how is the average compared to the ACLEW-Random dataset
-\end{itemize}
+\begin{figure}
+
+{\centering \includegraphics[width=6.67in]{images/vtc_performance_evaluation} 
+
+}
+
+\caption{VTC Predictions compared to Ground Truth Annotations}\label{fig:vtc-evaluations}
+\end{figure}
 
 \section{Discussion}\label{discussion}
 
@@ -501,39 +581,39 @@ Lin, T., Liu, X., Li, X., Ding, E., \& Wen, S. (2019). \emph{{BMN}: {Boundary-Ma
 
 \subsection{List of ChildLens Activity Classes}\label{list-of-childlens-activity-classes}
 
-The dataset contains the following list of activities. The number of clips for each activity class is indicated by the number in brackets behind each class.
+The dataset contains the following list of activities.
 
 \begin{enumerate}
 \def\labelenumi{\arabic{enumi}.}
 \tightlist
 \item
-  \textbf{playing with object}: The child is playing with an object, such as a toy or a ball. (x clips)
+  \textbf{playing with object}: The child is playing with an object, such as a toy or a ball.
 \item
-  \textbf{playing without object}: The child is playing without an object, such as playing hide and seek or catch. (x clips)
+  \textbf{playing without object}: The child is playing without an object, such as playing hide and seek or catch.
 \item
-  \textbf{pretend play}: The child is engaged in imaginative play, such as pretending to be a doctor or a firefighter. (x clips)
+  \textbf{pretend play}: The child is engaged in imaginative play, such as pretending to be a doctor or a firefighter.
 \item
-  \textbf{watching something}: The child is watching a movie, TV show, or video on either a screen or a device. (x clips)
+  \textbf{watching something}: The child is watching a movie, TV show, or video on either a screen or a device.
 \item
-  \textbf{reading book}: The child is reading a book or looking at pictures in a book (x clips)
+  \textbf{reading book}: The child is reading a book or looking at pictures in a book.
 \item
-  \textbf{child talking}: The child is talking to themselves or to someone else (x clips)
+  \textbf{child talking}: The child is talking to themselves or to someone else.
 \item
-  \textbf{other person talking}: Another person is talking to the child. (x clips)
+  \textbf{other person talking}: Another person is talking to the child.
 \item
-  \textbf{overheard speech}: Conversations that the child can hear but is not directly involved in. (x clips)
+  \textbf{overheard speech}: Conversations that the child can hear but is not directly involved in.
 \item
-  \textbf{drawing}: The child is drawing or coloring a picture. (x clips)
+  \textbf{drawing}: The child is drawing or coloring a picture.
 \item
-  \textbf{crafting things}: The child is engaged in a craft activity, such as making a bracelet or decoration. (x clips)
+  \textbf{crafting things}: The child is engaged in a craft activity, such as making a bracelet or decoration.
 \item
-  \textbf{singing / humming}: The child is singing or humming a song or a mekody. (x clips)
+  \textbf{singing / humming}: The child is singing or humming a song or a melody.
 \item
-  \textbf{making music}: The child is playing a musical instrument or making music in another way (x clips)
+  \textbf{making music}: The child is playing a musical instrument or making music in another way.
 \item
-  \textbf{dancing}: The child is dancing to music or moving to a rhythm. (x clips)
+  \textbf{dancing}: The child is dancing to music or moving to a rhythm.
 \item
-  \textbf{listening to music / audiobook}: The child is listening to music or an audiobook. (x clips)
+  \textbf{listening to music / audiobook}: The child is listening to music or an audiobook.
 \end{enumerate}
 
 \subsection{List of ChildLens Location Classes}\label{list-of-childlens-location-classes}
@@ -552,6 +632,32 @@ The dataset contains the following list of activities. The number of clips for e
 \item
   other
 \end{enumerate}
+
+\subsection{Activity Class Statistics}\label{activity-class-statistics}
+
+\begin{longtable}[t]{lrr}
+\caption{\label{tab:activity-classes-statistics}\label{tab:activity-classes-statistics}Statistics of ChildLens Activity Classes}\\
+\toprule
+\textbf{Activity Class} & \textbf{Instance Count} & \textbf{Total Duration (min)}\\
+\midrule
+Child talking & 100 & 100\\
+Other person talking & 100 & 100\\
+Overheard Speech & 100 & 100\\
+Singing/Humming & 100 & 100\\
+Listening to music/audiobook & 100 & 100\\
+\addlinespace
+Playing with object & 100 & 100\\
+Reading book & 100 & 100\\
+Making music & 100 & 100\\
+Pretend Play & 100 & 100\\
+Playing without object & 100 & 100\\
+\addlinespace
+Watching something & 100 & 100\\
+Drawing & 100 & 100\\
+Crafting things & 100 & 100\\
+Dancing & 100 & 100\\
+\bottomrule
+\end{longtable}
 
 
 \end{document}

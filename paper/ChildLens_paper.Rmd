@@ -37,14 +37,7 @@ affiliation:
     institution: "Max Planck Institute for Evolutionary Anthropology"
     
 abstract: |
-  One or two sentences providing a **basic introduction** to the field, comprehensible to a scientist in any discipline.
-  Two to three sentences of **more detailed background**, comprehensible to scientists in related disciplines.
-  One sentence clearly stating the **general problem** being addressed by this particular study.
-  One sentence summarizing the main result (with the words "**here we show**" or their equivalent).
-  Two or three sentences explaining what the **main result** reveals in direct comparison to what was thought to be the case previously, or how the main result adds to previous knowledge.
-  One or two sentences to put the results into a more **general context**.
-  Two or three sentences to provide a **broader perspective**, readily comprehensible to a scientist in any discipline.
-
+  We present ChildLens, a novel egocentric video and audio dataset of children aged 3–5 years, containing 106.10 hours of material. The dataset comprises five location classes and 14 activity classes, spanning audio-only, video-only, and multimodal activities. Children wore a vest with an embedded camera that recorded their everyday experiences. We provide an overview of the dataset, the collection process, and the labeling strategy. Additionally, we present benchmark performance of two state-of-the-art models on the dataset: the Boundary-Matching Network for Temporal Activity Localization and the Voice-Type Classifier for detecting speech in audio. Finally, we analyze the dataset specifications and their influence on model performance. The ChildLens dataset will be made available for research purposes, providing rich data to advance computer vision and audio analysis techniques while offering new insights into developmental psychology.
 output:
   papaja::apa6_pdf:
     keep_tex: true
@@ -82,6 +75,10 @@ library(lubridate)
 library(zoo)
 library(gridExtra)
 library(grid)
+library(kableExtra)
+library(cowplot)
+library(patchwork)
+library(magick)
 
 
 estimate_mode <- function(s) {
@@ -111,28 +108,55 @@ knitr::opts_chunk$set(echo = F, warning = F, message = F)
 
 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed ac purus sit amet nisl tincidunt tincidunt. Nullam nec turpis at libero tincidunt tincidunt. Sed nec mi nec nunc tincidunt tincidunt. Nullam nec turpis at libero tincidunt tincidunt. Sed nec mi nec nunc
 
+	•	Contextualization: Explain the importance of naturalistic data in understanding development and its role in validating theories.
+	•	Challenges in Data Availability: Highlight any gaps or limitations in existing datasets relevant to your research focus (e.g., few longitudinal datasets or those captured from real-world environments).
+	•	Contribution of Your Dataset: Describe the new dataset you are introducing (its scope, duration, type of data captured, and any unique features it offers compared to existing datasets).
+	•	Value of Data Sharing: Emphasize how sharing datasets can enable broader research advances, whether for understanding child development or enabling new computational models in areas like computer vision or audio analysis.
+	
+
 - TODO: research about egocentric video datasets
+- Saycam paper als Orientierung
+- Relevanz für die psychologische Forschung
+- Linda Smith - Indiana (egocentric perspective)
+- Roy - Child Talk (Prediction the Birth of a Spoken word)
+- Alex Christia
+- Bisherige Datensätze sind bisher nur Sprache - Sprache und Video selten zusammen und wenn nur sehr klein (mit anderer Altersgruppe)
 
 # Dataset Overview
 
 #### Activity Classes
-The ChildLens dataset contains a total of 14 activity and 5 location classes. The activities are based on the actions of the child in the video and can be divided into _person-only_ activities, such as "child talking" or "other person talking, and _person-object_ activities, such as "drawing" or "playing with object". You can find a brief description of each class in the appendix. The activities can be further divided into _audio-based_, _visual-based_, and _multimodal_ activities, as presented in figure \@ref(fig:activity-classes). The following list provides an overview of the different activity types:
+The ChildLens dataset contains a total of 14 activity and 5 location classes. The activities are based on the activities of the child in the video and can be divided into _person-only_ activities, such as "child talking" or "other person talking", and _person-object_ activities, such as "drawing" or "playing with object". You can find a brief description of each class in the appendix. The activities can be further divided into _audio-based_, _visual-based_, and _multimodal_ activities, as presented in figure \@ref(fig:camera-superannotate-activity-classes). The following list provides an overview of the different activity types:
 
 - **Audio-based activities**: _child talking_, _other person talking_, _overheard speech_, _singing / humming_, _listening to music / audiobook_
 - **Visual-based activities**: _watching something_, _drawing_, _crafting things_, _dancing_
 - **Multimodal activities**: _playing with object_, _playing without object_, _pretend play_, _reading book_, _making music_
 
-The location classes describe the current location of the child in the video and include _livingroom_, _playroom_, _bathroom_, _hallway_, and _other_.
+For every activity, the dataset includes information on the start and end times of the activity, the activity class, and whether the child is engaged alone or with somebody else. For every external person involved in the activity, we capture age and gender. The location classes describe the current location of the child in the video and include _livingroom_, _playroom_, _bathroom_, _hallway_, and _other_.
 
-```{r activity-classes, dpi=600, fig.align='center', fig.cap="ChildLens Activity Class Categories"}
-knitr::include_graphics("activity_classes.png")
+```{r camera-superannotate-activity-classes, echo=FALSE, dpi=600, fig.align='center', fig.cap="\\textbf{A} – Vest with the embedded camera worn by the children, \\textbf{B} – SuperAnnotate platform utilized for video annotation, \\textbf{C} – Activity classes in the ChildLens dataset."}
+img1 <- ggdraw() + draw_image("images/camera_worn_close.png", scale = 0.8)
+img2 <- ggdraw() + draw_image("images/SuperAnnotate.png", scale = 0.8)
+img3 <- ggdraw() + draw_image("images/ChildLens_activity_classes.png", scale = 1)
+
+# Combine img1 and img2 into the first row with equal heights
+top_row <- (img1 + img2) + 
+  plot_layout(widths = c(0.4, 1))
+
+final_layout <- (top_row / img3) +
+  plot_layout(heights = c(1, 1))  # Adjust row heights if needed
+
+# Add labels (A), (B), (C) to the images
+final_labeled_layout <- final_layout +
+  plot_annotation(tag_levels = 'A')  # Adds "A", "B", "C" automatically
+
+# Display the final layout
+final_labeled_layout
 ```
-
 #### Statistics
 
 ```{r video-statistics, echo=FALSE, message=FALSE, warning=FALSE, fig.cap="Video recording duration (in minutes) per child ID."}
-data <- read_csv2("quantex_share_data_sheet.csv")
-subject_infos <- read_csv2("subjects_quantex_share.csv")
+data <- read_csv2("data/ChildLens_data_sheet.csv")
+subject_infos <- read_csv2("data/ChildLens_subjects.csv")
 subject_infos <- subject_infos %>%
   distinct(ID, .keep_all = TRUE)
 
@@ -209,8 +233,90 @@ youngest_month <- as.numeric(format(youngest_date, "%m"))
 time_span_months <- (youngest_year - oldest_year) * 12 + (youngest_month - oldest_month)+1
 ```
 
-The ChildLens dataset comprises of `r sum_videos` video files with a total of `r sum_hours` hours recorded by `r nr_children` children aged 3 to 5 years (M=`r mean_age`, SD=`r sd_age`). It includes `r count_3_plus` videos from children aged 3, `r count_4_plus` videos from children aged 4, and `r count_5_plus` videos from children aged 5. The duration of recorded video material per child varies between `r min_minutes` and `r max_minutes` minutes (M=`r mean_minutes`, SD=`r sd_minutes`). A detailed distribution of the video duration per child can be found in figure \@ref(fig:minutes-per-child). This diverse dataset also includes a varying number of clips [**MB**: unklar was clips sind - das kommt ja später noch oft vor, von dem her gerne definieren.] for each of the 14 activity classes, ranging from **x** to **x** clips per class [**MB**: nicht klar was du hier meinst. sind das instances für jede class oder unique annotations?]. The clip duration depends on the activity; for example, audio-related actions like "child talking" may only last a few seconds, while activities like "reading a book" may last several minutes. As shown in table \@ref(tab:train-val-test), the total number of **xx** clips is divided into **xx** training clips, **xx** validation clips, and **xx** testing clips for each class.
+The ChildLens dataset comprises of `r sum_videos` video files with a total of `r sum_hours` hours recorded by `r nr_children` children aged 3 to 5 years (M=`r mean_age`, SD=`r sd_age`). It includes `r count_3_plus` videos from children aged 3, `r count_4_plus` videos from children aged 4, and `r count_5_plus` videos from children aged 5. The duration of recorded video material per child varies between `r min_minutes` and `r max_minutes` minutes (M=`r mean_minutes`, SD=`r sd_minutes`). A detailed distribution of the video duration per child can be found in figure \@ref(fig:minutes-per-child). 
 
+```{r audio-classes-statistics, echo=FALSE, message=FALSE, warnings=FALSE, results='asis', eval=TRUE}
+df <- data.frame(
+  `Audio-based Activity Class` = c("Child talking", "Other person talking", "Overheard Speech", "Singing/Humming", "Listening to music/audiobook"),
+  `Instance Count` = c(100, 100, 100, 100, 100),
+  `Total Duration` = c(100, 100, 100, 100, 100),
+  stringsAsFactors = FALSE
+)
+colnames(df) <- c("Audio-based Activity Class", "Instance Count", "Total Duration (min)")
+
+df %>%
+  kable("pipe", caption = "Summary of Audio-Based Activity Classes") %>%
+  kable_styling(bootstrap_options = c("striped", "hover")) %>%
+  row_spec(0, bold = TRUE)
+```
+
+```{r statistics-plot, echo=FALSE, dpi=600, fig.align='center', fig.cap="\\textbf{A} – Vest with the embedded camera worn by the children, \\textbf{B} – SuperAnnotate platform utilized for video annotation, \\textbf{C} – Activity classes in the ChildLens dataset."}
+audio_table <- data.frame(
+  `Audio-based Activity Class` = c("Child talking", "Other person talking", "Overheard Speech", "Singing/Humming", "Listening to music/audiobook"),
+  `Instance Count` = c(100, 100, 100, 100, 100),
+  `Total Duration (min)` = c(100, 100, 100, 100, 100),
+  stringsAsFactors = FALSE
+) %>%
+  kable("html", escape = FALSE) %>%
+  kable_styling(bootstrap_options = c("striped", "hover")) %>%
+  as.character() %>%
+  grid::grid.text(.)
+
+# Create table for video-based activity classes
+video_table <- data.frame(
+  `Video-based Activity Class` = c("Watching something", "Drawing", "Crafting things", "Dancing"),
+  `Instance Count` = c(100, 100, 100, 100),
+  `Total Duration (min)` = c(100, 100, 100, 100),
+  stringsAsFactors = FALSE
+) %>%
+  kable("html", escape = FALSE) %>%
+  kable_styling(bootstrap_options = c("striped", "hover")) %>%
+  as.character() %>%
+  grid::grid.text(.)
+
+# Create ggplot for Minutes per Child
+minutes_plot <- ggplot(unique_data, aes(x = Minutes_per_ID)) +
+  geom_point(aes(y = 0), shape = "I", size = 5) + 
+  geom_density(fill = "gray", alpha = 0.5, color = "black") + 
+  theme_minimal() +
+  theme(legend.position = "none") +
+  labs(
+    x = "Minutes per ID",
+    y = "Density"
+  )
+
+# Use patchwork to layout the components
+top_row <- (wrap_elements(audio_table) + wrap_elements(video_table)) + 
+  plot_layout(widths = c(0.5, 0.5)) # Adjust widths of the two tables
+
+final_layout <- (top_row / minutes_plot) +
+  plot_layout(heights = c(1, 1))  # Adjust row heights
+
+# Add labels (A, B, C)
+final_labeled_layout <- final_layout +
+  plot_annotation(tag_levels = 'A')
+
+# Display the final layout
+final_labeled_layout
+```
+
+
+This diverse dataset includes a varying number of instances across the 14 activity classes, ranging from **x** to **x** instances per class. Overlapping instances are counted separately for each activity class; if two activities occur simultaneously in a given video segment, both classes will receive a count for that segment. As a result, parts of the video may be counted multiple times, once for each activity class. The duration of each instance varies by activity. For example, audio-based activities like "child talking" may last only a few seconds, while activities like "reading a book" can span several minutes. As this paper only focuses on the audio-based and video-based activity classes, tables \@ref(tab:audio-classes-statistics) and \@ref(tab:video-classes-statistics) provide the total number of instances and the total duration of all instances for the respective activity classes. The full table with all activity classes is available in the appendix.
+
+```{r video-classes-statistics, echo=FALSE, message=FALSE, warnings=FALSE, results='asis', eval=TRUE}
+df <- data.frame(
+  `Video-based Activity Class` = c("Watching something", "Drawing", "Crafting things", "Dancing"),
+  `Instance Count` = c(100, 100, 100, 100),
+  `Total Duration` = c(100, 100, 100, 100),
+  stringsAsFactors = FALSE
+)
+colnames(df) <- c("Audio-based Activity Class", "Instance Count", "Total Duration (min)")
+
+df %>%
+  kable("pipe", caption = "Summary of Video-Based Activity Classes") %>%
+  kable_styling(bootstrap_options = c("striped", "hover")) %>%
+  row_spec(0, bold = TRUE)
+```
 
 ```{r minutes-per-child-density, echo=FALSE, message=FALSE, warning=FALSE, eval=FALSE, fig.cap="Video recording duration (in minutes) per child ID."}
 unique_data$ID <- as.factor(unique_data$ID)
@@ -222,7 +328,7 @@ ggplot(unique_data, aes(x = Minutes_per_ID)) +
   theme_minimal()
 ```
 
-```{r age-distribution, echo=FALSE, message=FALSE, warning=FALSE, fig.cap="Number of videos per age group."}
+```{r age-distribution, echo=FALSE, message=FALSE, warning=FALSE, eval=FALSE, fig.cap="Number of videos per age group."}
 data_age_count_plot <- data_age_count
 data_age_count_plot$ID <- as.factor(data_age_count_plot$ID)
 
@@ -236,9 +342,32 @@ ggplot(data_age_count_plot, aes(x = Age_group, fill = Age_group)) +
     fill = "Age Group"
   ) +
   theme(legend.position = "none")
+
+plot_age <- ggplot(data_age_count_plot, aes(x = Age_group, fill = Age_group)) +
+  geom_bar(position = "dodge", alpha = 0.7, width = 0.5) +
+  scale_fill_manual(values = c("3+" = "#B7B794", "4+" = "#8A8A8A", "5+" = "#B7AD94")) + 
+  theme(
+    legend.position = "none",
+    axis.title = element_text(size = 25),      # Increase label size
+    axis.text = element_text(size = 25),       # Increase tick label size
+    axis.ticks.length = unit(0.5, "cm")        # Increase tick size
+  ) +  labs(
+    x = "Age Group",
+    y = "Count",
+    fill = "Age Group"
+  ) +
+  theme(legend.position = "none")
+
+# Specify the file path and name
+output_folder <- "/Users/nelesuffo/Promotion/projects/leuphana-IPE/paper/images" 
+file_name <- "video_count_per_age_group.png"
+file_path <- file.path(output_folder, file_name)
+
+# Save the plot
+ggsave(filename = file_path, plot = plot_age, width = 8, height = 6, dpi = 300)
 ```
 
-```{r minutes-per-child, echo=FALSE, message=FALSE, warning=FALSE, fig.cap="Video recording duration (in minutes) per child ID."}
+```{r minutes-per-child, echo=FALSE, message=FALSE, warning=FALSE, fig.cap="Video recording duration (in minutes) per child ID.", fig.height=3, fig.width=4}
 unique_data$ID <- as.factor(unique_data$ID)
 
 ggplot(unique_data, aes(x = Minutes_per_ID)) +
@@ -250,6 +379,28 @@ ggplot(unique_data, aes(x = Minutes_per_ID)) +
     x = "Minutes per ID",
     y = "Density"
   )
+plot <- ggplot(unique_data, aes(x = Minutes_per_ID)) +
+  geom_point(aes(y = 0), shape = "I", size = 5) + 
+  geom_density(fill = "gray", alpha = 0.5, color = "black") + 
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.title = element_text(size = 25),      # Increase label size
+    axis.text = element_text(size = 25),       # Increase tick label size
+    axis.ticks.length = unit(0.5, "cm")        # Increase tick size
+  ) +
+  labs(
+    x = "Minutes per ID",
+    y = "Density"
+  )
+
+# Specify the file path and name
+output_folder <- "/Users/nelesuffo/Promotion/projects/leuphana-IPE/paper/images" 
+file_name <- "minutes_per_id_plot.png"
+file_path <- file.path(output_folder, file_name)
+
+# Save the plot
+ggsave(filename = file_path, plot = plot, width = 4, height = 3, dpi = 300)
 ```
 
 ```{r train-val-test, echo=FALSE, message=FALSE, warnings=FALSE, results='asis', eval=FALSE}
@@ -276,7 +427,7 @@ The dataset provides detailed annotations for each video file. These annotations
 This section outlines the steps taken to create the ChildLens dataset. We provide detailed information on the video collection process, the labeling strategy employed, and the generation of activity labels.
 
 ## Step 1: Collection of Egocentric Videos
-The ChildLens dataset consists of egocentric videos recorded by children aged 3 to 5 years over a period of `r time_span_months` months. A total of `r nr_children` children from families living in a mid-sized city in Germany, participated in the study. The videos were captured at home using a camera embedded in a vest worn by the children, which can be seen in figure \@ref(fig:camera-worn). This setup allowed the children to move freely throughout their homes while recording their activities. The camera, a _PatrolEyes WiFi HD Infrared Police Body Camera_, was equipped with a 140-degree wide-angle lens and captured everything within the child's field of view with a resolution of 1920x1080p at 30 fps. The camera also recorded audio, allowing us to capture the child's speech and other sounds in the environment. Additionally, the parents were handed a small checklist of activities to record, ensuring that a variety of activities were captured in the videos. The focus was on capturing everyday activities that children typically engage in. Parents were therefore asked to include the following elements in the recordings:
+The ChildLens dataset consists of egocentric videos recorded by children aged 3 to 5 years over a period of `r time_span_months` months. A total of `r nr_children` children from families living in a mid-sized city in Germany, participated in the study. The videos were captured at home using a camera embedded in a vest worn by the children, which can be seen in figure \@ref(fig:camera-superannotate-activity-classes). This setup allowed the children to move freely throughout their homes while recording their activities. The camera, a _PatrolEyes WiFi HD Infrared Police Body Camera_, was equipped with a 140-degree wide-angle lens and captured everything within the child's field of view with a resolution of 1920x1080p at 30 fps. The camera also recorded audio, allowing us to capture the child's speech and other sounds in the environment. Additionally, the parents were handed a small checklist of activities to record, ensuring that a variety of activities were captured in the videos. The focus was on capturing everyday activities that children typically engage in. Parents were therefore asked to include the following elements in the recordings:
 
 - Child spends time in different rooms and performs various activities in each room
 - Child is invited to read a book together with an adult
@@ -284,23 +435,15 @@ The ChildLens dataset consists of egocentric videos recorded by children aged 3 
 - Child is invited to play with toys with someone else (adult or child)
 - Child is invited to draw/craft something
 
-```{r camera-worn, dpi=500, fig.align='center', fig.cap="Vest with the embedded camera worn by the children"}
-knitr::include_graphics("camera_worn.png")
-```
-
 ## Step 2: Creation of Labeling Strategy
 To create a comprehensive labeling strategy for the ChildLens dataset, we first defined a list of activities that children typically engage in. This list was based on previous research on child development and the activities that children are known to participate in. We then developed a detailed catalog of activities that were likely to be captured in the videos and chose to make the activity classes more granular by distinguishing between activities like "making music" and "singing/humming" or "drawing" and "crafting things". 
 
 After an initial review of the videos, we decided to add another class "overheard speech" to capture situations in which the child is not directly involved in a conversation but can hear it. We also added "pretend play" as a separate class to capture situations in which the child is engaged in imaginative play. This approach allowed us to capture the diversity of activities that children engage in and create a comprehensive dataset for activity analysis.
 
-```{r superannotate, dpi=600, fig.align='center', fig.cap="SuperAnnotate platform utilized for video annotation"}
-knitr::include_graphics("SuperAnnotate.png")
-```
-
 ## Step 3: Manual Labeling Process
 Before the actual annotation process, a setup meeting was held to introduce the annotators to the labeling strategy. To familiarize themselves with the task, the annotators were assigned 25 sample videos to practice and gain hands-on experience. These initial annotations were reviewed by the research team, and feedback was provided to refine the approach. A total of three feedback loops were conducted to ensure that the annotators follow the labeling strategy properly.
 
-The videos were manually annotated by native German speakers who watched each video and labeled the activities present in the footage. The annotators marked the start and end points of each activity, ensuring that the annotations were accurate and detailed. The labeling process was conducted using the SuperAnnotate platform, which allowed for efficient annotation and review of the videos. Figure \@ref(fig:superannotate) provides a screenshot of the SuperAnnotate platform used for video annotation. To ensure the quality of the annotations the following steps were taken:
+The videos were manually annotated by native German speakers who watched each video and labeled the activities present in the footage. Annotators marked the start and end points of each activity to ensure accuracy and detail. For audio annotations, we implemented a 2-second rule for the categories “other person talking” and “child talking”: if the break between two utterances was 2 seconds or less, it was considered a single event; breaks longer than 2 seconds split the activity into separate instances. The annotations were conducted using the SuperAnnotate platform, allowing for efficient annotation and review of the videos. Figure @ref(fig:superannotate) provides a screenshot of the SuperAnnotate platform used for video annotation. To ensure the quality of the annotations, the following steps were taken:
 
 1. **Initial round of annotations**: Each set of videos is assigned to specific annotators, who handle the annotations, make changes, and apply corrections as needed. In total, three annotators were actively working on the annotation process.
 2. **Quality assurance**: One person is dedicated to quality assurance, ensuring that the annotations are accurate and consistent across all videos.
@@ -310,12 +453,12 @@ The videos were manually annotated by native German speakers who watched each vi
 In this chapter, we present the results of applying two model architectures to the ChildLens dataset. While the dataset supports multimodal activity analysis, we focus on two specific tasks: temporal activity localization using video data and voice type classification using audio data. For temporal activity localization, we use the Boundary-Matching Network (BMN) model, a state-of-the-art approach in this domain, and train it from scratch on the unique activity classes in the ChildLens video data. For voice type classification, we apply the Voice Type Classifier (VTC) [@lavechinOpensourceVoiceType2020], also state-of-the-art, which was trained on similar data. Both models provide initial results and establish a benchmark for future research. 
 
 ```{r bmn-architecture, dpi=600, fig.align='center', eval=FALSE, fig.cap="Boundary Matching Network architecture applied to ChildLens video data"}
-knitr::include_graphics("BMN_architecture.png")
+knitr::include_graphics("images/BMN_architecture.png")
 #A short architecture overview of the models is presented in figure \@ref(fig:bmn-architecture) and figure \@ref(fig:vtc-architecture).
 ```
 
 ```{r vtc-architecture, dpi=600, fig.align='center', eval=FALSE, fig.cap="Voice Type Classifier architecture applied to ChildLens audio data"}
-knitr::include_graphics("VTC_architecture.png")
+knitr::include_graphics("images/VTC_architecture.png")
 ```
 
 ## Boundary-Matching Network 
@@ -338,7 +481,7 @@ The most relevant findings of the BMN evaluation are summarized in the following
   - describe which classes are often confused with each other (e.g. **xx** and **xx**)
   
 ## Voice Type Classifier
-The Voice Type Classifier [@lavechinOpensourceVoiceType2020] is a state-of-the-art model designed to classify audio rawfiles into five distinct voice types: _key child_, _other child_, _male speech_, _female speech_, and _speech._ Its architecture processes audio by first dividing it into 2-second chunks, which are passed through a SincNet to extract low-level features. These features are then fed into a stack of two bi-directional LSTMs, followed by three feed-forward layers. The output layer uses a sigmoid activation function to produce a score between 0 and 1 for each class. The VTC is trained on 260 hours of audio material obtained from different child-centered audio datasets. Model valuation is performed by utilizing the \( F_1 \)-measure, which combines precision and recall using the following formula: 
+The Voice Type Classifier [@lavechinOpensourceVoiceType2020] is a state-of-the-art model designed to classify audio rawfiles into five distinct voice types: `Key Child (KCHI)`, `Other Child (CHI)`, `Male Speech (MAL)`, `Female Speech (FEM)`, and `Speech (SPEECH)`. Its architecture processes audio by first dividing it into 2-second chunks, which are passed through a SincNet to extract low-level features. These features are then fed into a stack of two bi-directional LSTMs, followed by three feed-forward layers. The output layer uses a sigmoid activation function to produce a score between 0 and 1 for each class. The VTC is trained on 260 hours of audio material obtained from different child-centered audio datasets. Model valuation is performed by utilizing the \( F_1 \)-measure, which combines precision and recall using the following formula: 
 \[
 F_1 = 2 \cdot \frac{\text{precision} \cdot \text{recall}}{\text{precision} + \text{recall}}
 \]
@@ -348,7 +491,7 @@ where \(\text{precision} = \frac{\text{tp}}{\text{tp} + \text{fp}}\) and  \(\tex
 - \(\text{fp}\) being the number of false positives, and
 - \(\text{fn}\) being the number of false negatives.
 
-The \( F_1 \) is a metric that combines precision and recall into a single value, calculated as their harmonic mean. It ranges from 0 to 1, with 1 representing perfect precision and recall, and 0 indicating no correct prediction The interpretation of the \( F_1 \) score depends on the specific application of the model. Generally, an \( F_1 \) score above 0.8 is considered good, while values above 0.9 are considered excellent. In some cases, a score around 0.5 can still be deemed acceptable, depending on the balance between precision and recall.. The \( F_1 \) score is computed for each class and averaged to provide an overall measure. No collar is applied to the evaluation, meaning that the prediction have to be exact to be considered correct. The model achieves an \( F_1 \)  score of 57.3, outperforming the previous state-of-the-art LENA model by 10.6 points.
+The \( F_1 \) is a metric that combines precision and recall into a single value, calculated as their harmonic mean. It ranges from 0 to 1, with 1 representing perfect precision and recall, and 0 indicating no correct prediction The interpretation of the \( F_1 \) score depends on the specific application of the model. Generally, an \( F_1 \) score above 0.8 is considered good, while values above 0.9 are considered excellent. In some cases, a score around 0.5 can still be deemed acceptable, depending on the balance between precision and recall. The \( F_1 \) score is computed for each class and averaged to provide an overall measure. No collar is applied to the evaluation, meaning that the prediction have to be exact to be considered correct. The model achieves an \( F_1 \)  score of 57.3, outperforming the previous state-of-the-art LENA model by 10.6 points.
 
 ```{r vtc-implementation}
 #Test set: 343it [36:01,  6.30s/it]
@@ -360,13 +503,39 @@ The \( F_1 \) is a metric that combines precision and recall into a single value
 vtc_minutes_run <- 5461/60
 num_audio_files <- 343
 ```
+### Data Preparation
+Before applying the VTC to the ChildLens dataset, we mapped our audio-based activity classes to the VTC output classes to enable performance comparison. The following mapping strategy was applied:
+
+- Child talking → **`Key Child`** & **`Speech`**
+- Singing/Humming → **`Key Child`** & **`Speech`**
+- Other person talking:
+  - If `age = "Child"` → **`Other Child`** & **`Speech`**
+  - If `age = "Adult"` & `gender = "Female"` → **`Female Speech`** & **`Speech`**
+  - If `age = "Adult"` & `gender = "Male"` → **`Male Speech`** & **`Speech`**
+- Overheard Speech → **`Speech`**
+
+The activity class "Listening to music/audiobook" was not mapped to any VTC class, as it is not covered by the VTC model. The mapping process resulted in new numbers for the total durations for each VTC class, as shown in Table \@ref(tab:vtc-classes-statistics).
+
+```{r vtc-classes-statistics, echo=FALSE, message=FALSE, warnings=FALSE, results='asis', eval=TRUE}
+my.data <- "       | KCHI | CHI  | MAL   | FEM  | SPEECH 
+            Total Duration (min)  | 100 | 100 | 100  | 100 | 100"
+df <- read.delim(textConnection(my.data), header=FALSE, sep="|", strip.white=TRUE, stringsAsFactors=FALSE)
+names(df) <- unname(as.list(df[1,]))
+df <- df[-1,] 
+row.names(df) <- NULL
+apa_table(
+  df,
+  caption = "Total Duration (in minutes) of all Instances for each VTC Class",
+  escape = TRUE,
+)
+```
 
 ### Evaluation
-The most relevant findings of the VTC evaluation are summarized in the following sections.
-- summarize most crucial findings
+Table \@ref(tab:vtc-results) presents the performance of the Voice Type Classifier (VTC) on the ChildLens dataset compared to the benchmark dataset from the original study. The VTC model achieves an average  \( F_1 \) score of **xx** on the ChildLens dataset, performing comparably to the benchmark dataset. It performs best on the `CHI` class with an  \( F_1 \)   score of **xx** and worst on the `MAL` class with an  \( F_1 \)  score of **xx** Compared to the benchmark dataset, the model performs significantly better on the `CHI` class but slightly worse on the `MAL` and `FEM` classes. Analysis of False Positives and False Negatives reveals that the most common confusion occurs between the `MAL` and `FEM` classes. This may be attributed to the deeper pitch of some female voices in the German language. Additionally, the model was trained on a dataset with a different language distribution and younger children, where adults, particularly females, may use a higher pitch when interacting with infants, unlike with older children.
+Figure \@ref(fig:vtc-evaluations) provides a visual representation of the VTC predictions compared to the ground truth annotations.
 
 ```{r vtc-results, echo=FALSE, message=FALSE, warnings=FALSE, results='asis', eval=TRUE}
-my.data <- "Dataset       | KCHI | OCH  | MAL   | FEM  | SPEECH | AVG
+my.data <- "Dataset       | KCHI | CHI  | MAL   | FEM  | SPEECH | AVG
             ACLEW-Random  | 68.7 | 33.2 | 42.9  | 63.4 | 78.4   | 57.3
             ChildLens     | 59.1 | 79.2 | 17.8  | 33.4 | 68.3   | 51.5"
 df <- read.delim(textConnection(my.data), header=FALSE, sep="|", strip.white=TRUE, stringsAsFactors=FALSE)
@@ -380,10 +549,9 @@ apa_table(
 )
 ```
 
-- which class performs worst - maybe why?
-- which is best?
-- how is the average compared to the ACLEW-Random dataset
-
+```{r vtc-evaluations, dpi=180, fig.align='center', fig.cap="VTC Predictions compared to Ground Truth Annotations"}
+knitr::include_graphics("images/vtc_performance_evaluation.png")
+```
 
 # Discussion
 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed ac purus sit amet nisl tincidunt tincidunt. Nullam nec turpis at libero tincidunt tincidunt. Sed nec mi nec nunc tincidunt tincidunt. Nullam nec turpis at libero tincidunt tincidunt. Sed nec mi nec nunc
@@ -420,22 +588,22 @@ r_refs(file = "bibliography.bib")
 
 ## List of ChildLens Activity Classes
 
-The dataset contains the following list of activities. The number of clips for each activity class is indicated by the number in brackets behind each class.
+The dataset contains the following list of activities.
 
-1. **playing with object**: The child is playing with an object, such as a toy or a ball.  (x clips)
-2. **playing without object**: The child is playing without an object, such as playing hide and seek or catch. (x clips)
-3. **pretend play**: The child is engaged in imaginative play, such as pretending to be a doctor or a firefighter. (x clips)
-4. **watching something**: The child is watching a movie, TV show, or video on either a screen or a device. (x clips)
-5. **reading book**: The child is reading a book or looking at pictures in a book (x clips)
-6. **child talking**: The child is talking to themselves or to someone else (x clips)
-7. **other person talking**: Another person is talking to the child. (x clips)
-8. **overheard speech**: Conversations that the child can hear but is not directly involved in. (x clips)
-9. **drawing**: The child is drawing or coloring a picture. (x clips)
-10. **crafting things**: The child is engaged in a craft activity, such as making a bracelet or decoration. (x clips)
-11. **singing / humming**: The child is singing or humming a song or a mekody. (x clips)
-12. **making music**: The child is playing a musical instrument or making music in another way (x clips)
-13. **dancing**: The child is dancing to music or moving to a rhythm. (x clips)
-14. **listening to music / audiobook**: The child is listening to music or an audiobook. (x clips)
+1. **playing with object**: The child is playing with an object, such as a toy or a ball.
+2. **playing without object**: The child is playing without an object, such as playing hide and seek or catch.
+3. **pretend play**: The child is engaged in imaginative play, such as pretending to be a doctor or a firefighter.
+4. **watching something**: The child is watching a movie, TV show, or video on either a screen or a device.
+5. **reading book**: The child is reading a book or looking at pictures in a book.
+6. **child talking**: The child is talking to themselves or to someone else.
+7. **other person talking**: Another person is talking to the child.
+8. **overheard speech**: Conversations that the child can hear but is not directly involved in.
+9. **drawing**: The child is drawing or coloring a picture.
+10. **crafting things**: The child is engaged in a craft activity, such as making a bracelet or decoration.
+11. **singing / humming**: The child is singing or humming a song or a melody.
+12. **making music**: The child is playing a musical instrument or making music in another way.
+13. **dancing**: The child is dancing to music or moving to a rhythm.
+14. **listening to music / audiobook**: The child is listening to music or an audiobook.
 
 ## List of ChildLens Location Classes
 
@@ -445,3 +613,177 @@ The dataset contains the following list of activities. The number of clips for e
 4. hallawy
 5. other
 
+## Activity Class Statistics
+```{r activity-classes-statistics, echo=FALSE, message=FALSE, warnings=FALSE, results='asis', eval=TRUE}
+df <- data.frame(
+  `Activity Class` = c("Child talking", "Other person talking", "Overheard Speech", "Singing/Humming", "Listening to music/audiobook", "Playing with object", "Reading book", "Making music", "Pretend Play", "Playing without object", "Watching something", "Drawing", "Crafting things", "Dancing"),
+  `Instance Count` = c(100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100),
+  `Total Duration` = c(100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100),
+  stringsAsFactors = FALSE
+)
+colnames(df) <- c("Activity Class", "Instance Count", "Total Duration (min)")
+
+df %>%
+  kable("pipe", caption = "Statistics of ChildLens Activity Classes") %>%
+  kable_styling(bootstrap_options = c("striped", "hover")) %>%
+  row_spec(0, bold = TRUE)
+```
+
+
+```{r quantex-statistics, echo=FALSE, message=FALSE, warning=FALSE, fig.cap="Video recording duration (in minutes) per child ID."}
+quantex_data <- read_csv2("data/Quantex_data_sheet.csv")
+quantex_subject_infos <- read_csv2("data/Quantex_subjects.csv")
+quantex_subject_infos <- quantex_subject_infos %>%
+  distinct(ID, .keep_all = TRUE)
+
+quantex_unique_data <- quantex_data %>%
+  distinct() %>%  # Removes duplicate rows
+  filter(!is.na(Minutes_per_ID), Minutes_per_ID != 0, 
+         !is.na(ID), Include == "yes") %>%
+  distinct(ID, Minutes_per_ID, .keep_all = TRUE)
+quantex_unique_data <- quantex_unique_data %>%
+  mutate(ID = as.double(ID))
+
+quantex_cleaned_data <- quantex_data %>%
+  filter(!is.na(Minutes_per_ID), Minutes_per_ID != 0, 
+         !is.na(ID), Include == "yes")
+quantex_sum_videos <- nrow(quantex_cleaned_data)
+
+quantex_data_gender_count <- quantex_unique_data %>%
+  left_join(quantex_subject_infos, by = "ID") %>%
+  distinct(ID, .keep_all = TRUE)
+quantex_male_count <- quantex_data_gender_count %>%
+  filter(gender == "Male") %>%
+  nrow()
+quantex_female_count <- quantex_data_gender_count %>%
+  filter(gender == "Female") %>%
+  nrow()
+
+quantex_data_age_count <- quantex_cleaned_data %>%
+  left_join(quantex_subject_infos, by = "ID")%>%
+  select(ID, birthday, DATE)
+
+quantex_data_age_count <- quantex_data_age_count %>%
+  mutate(
+    birthday = dmy(birthday),  # Convert birthday to Date type
+    Date = dmy(DATE),          # Convert Date to Date type
+    Age = as.numeric(difftime(Date, birthday, units = "weeks")) / 52.25,  # Calculate age in years
+    Age_group = case_when(
+      Age >= 2 & Age < 4 ~ "3+",
+      Age >= 4 & Age < 5 ~ "4+",
+      Age >= 5 ~ "5+",
+      TRUE ~ NA_character_  # For cases where age is missing or not within the desired ranges
+    )
+  )
+
+quantex_mean_age <- mean(data_age_count$Age, na.rm = TRUE)
+quantex_sd_age <- sd(data_age_count$Age, na.rm = TRUE)
+
+quantex_age_group_counts <- quantex_data_age_count %>%
+  count(Age_group, name = "count")
+count_3_plus <- quantex_age_group_counts$count[quantex_age_group_counts$Age_group == "3+"]
+count_4_plus <- quantex_age_group_counts$count[quantex_age_group_counts$Age_group == "4+"]
+count_5_plus <- quantex_age_group_counts$count[quantex_age_group_counts$Age_group == "5+"]
+
+quantex_filtered_data <- quantex_data %>%
+  filter(!is.na(Date), Include == "yes") %>%
+  mutate(Date = as.Date(DATE, format = "%d.%m.%Y")) 
+
+quantex_min_minutes <- min(quantex_unique_data$Minutes_per_ID[quantex_unique_data$Minutes_per_ID > 0], na.rm = TRUE)
+quantex_max_minutes <- max(quantex_unique_data$Minutes_per_ID, na.rm = TRUE)
+quantex_sum_minutes <- sum(as.numeric(quantex_unique_data$Minutes_per_ID), na.rm = TRUE)
+quantex_mean_minutes <- mean(quantex_unique_data$Minutes_per_ID, na.rm = TRUE)
+quantex_sd_minutes <- sd(quantex_unique_data$Minutes_per_ID, na.rm = TRUE)
+# Convert the time strings into seconds
+quantex_unique_data$Seconds_per_ID <- as.numeric(hms::as_hms(quantex_unique_data$Minutes_per_ID))
+total_seconds <- sum(quantex_unique_data$Seconds_per_ID, na.rm = TRUE)
+total_hours <- total_seconds / 3600
+
+quantex_nr_children <- nrow(quantex_unique_data)
+
+quantex_oldest_date <- min(quantex_filtered_data$Date)
+quantex_youngest_date <- max(quantex_filtered_data$Date)
+
+quantex_oldest_year <- as.numeric(format(quantex_oldest_date, "%Y"))
+quantex_oldest_month <- as.numeric(format(quantex_oldest_date, "%m"))
+quantex_youngest_year <- as.numeric(format(quantex_youngest_date, "%Y"))
+quantex_youngest_month <- as.numeric(format(quantex_youngest_date, "%m"))
+
+# Calculate the interval between the two dates
+quantex_time_span_months <- (quantex_youngest_year - quantex_oldest_year) * 12 + (quantex_youngest_month - quantex_oldest_month)+1
+```
+
+```{r quantex-minutes-per-child, echo=FALSE, message=FALSE, warning=FALSE, eval=FALSE, fig.cap="Video recording duration (in minutes) per child ID."}
+quantex_unique_data$ID <- as.factor(quantex_unique_data$ID)
+
+ggplot(quantex_unique_data, aes(x = Minutes_per_ID)) +
+  geom_point(aes(y = 0), shape = "I", size = 5) + 
+  geom_density(fill = "gray", alpha = 0.5, color = "black") + 
+  theme_minimal() +
+  theme(legend.position = "none") +
+  labs(
+    x = "Minutes per ID",
+    y = "Density"
+  )
+quantex_1_plot <- ggplot(quantex_unique_data, aes(x = Minutes_per_ID)) +
+  geom_point(aes(y = 0), shape = "I", size = 5) + 
+  geom_density(fill = "gray", alpha = 0.5, color = "black") + 
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.title = element_text(size = 25),      # Increase label size
+    axis.text = element_text(size = 25),       # Increase tick label size
+    axis.ticks.length = unit(0.5, "cm")        # Increase tick size
+  ) +
+  labs(
+    x = "Minutes per ID",
+    y = "Density"
+  )
+
+# Specify the file path and name
+quantex_1_output_folder <- "/Users/nelesuffo/Promotion/projects/leuphana-IPE/paper/images" 
+file_name_1 <- "quantex_minutes_per_id_plot.png"
+quantex_file_path_1 <- file.path(quantex_1_output_folder, file_name_1)
+
+# Save the plot
+ggsave(filename = quantex_file_path_1, plot = quantex_1_plot, width = 8, height = 6, dpi = 300)
+```
+
+```{r quantex-age-distribution, echo=FALSE, message=FALSE, warning=FALSE, eval=FALSE, fig.cap="Number of videos per age group."}
+quantex_data_age_count_plot <- quantex_data_age_count
+quantex_data_age_count_plot$ID <- as.factor(quantex_data_age_count_plot$ID)
+
+ggplot(quantex_data_age_count_plot, aes(x = Age_group, fill = Age_group)) +
+  geom_bar(position = "dodge", alpha = 0.7, width = 0.5) +
+  scale_fill_manual(values = c("3+" = "#A6ADAF", "4+" = "#A18D92", "5+" = "#BBBB9B")) + 
+  theme_minimal() +
+  labs(
+    x = "Age Group",
+    y = "Count",
+    fill = "Age Group"
+  ) +
+  theme(legend.position = "none")
+
+quantex_2_plot_age <- ggplot(quantex_data_age_count_plot, aes(x = Age_group, fill = Age_group)) +
+  geom_bar(position = "dodge", alpha = 0.7, width = 0.5) +
+  scale_fill_manual(values = c("3+" = "#66787C", "4+" = "#A18D92", "5+" = "#B2BFC3")) + 
+  theme(
+    legend.position = "none",
+    axis.title = element_text(size = 25),      # Increase label size
+    axis.text = element_text(size = 25),       # Increase tick label size
+    axis.ticks.length = unit(0.5, "cm")        # Increase tick size
+  ) +  labs(
+    x = "Age Group",
+    y = "Count",
+    fill = "Age Group"
+  ) +
+  theme(legend.position = "none")
+
+# Specify the file path and name
+quantex_2_output_folder <- "/Users/nelesuffo/Promotion/projects/leuphana-IPE/paper/images" 
+quantex_2_file_name <- "quantex_video_count_per_age_group.png"
+quantex_2_file_path <- file.path(quantex_2_output_folder, quantex_2_file_name)
+
+# Save the plot
+ggsave(filename = quantex_2_file_path, plot = quantex_2_plot_age, width = 8, height = 6, dpi = 300)
+```
