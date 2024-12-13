@@ -164,10 +164,6 @@ def rttm_to_dataframe(rttm_file: Path) -> pd.DataFrame:
     rttm_file : path
         the path to the RTTM file
 
-    Returns
-    -------
-    pd.DataFrame
-        the content of the RTTM file as a pandas DataFrame
     """
     logging.info(f"Reading RTTM file from: {rttm_file}")
     
@@ -206,8 +202,6 @@ def rttm_to_dataframe(rttm_file: Path) -> pd.DataFrame:
     except Exception as e:
         logging.error(f"Failed to save DataFrame to file: {e}")
         raise
-    
-    return df
 
 
 def delete_directory_and_contents(
