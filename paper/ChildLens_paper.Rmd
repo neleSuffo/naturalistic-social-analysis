@@ -79,6 +79,7 @@ library(kableExtra)
 library(cowplot)
 library(patchwork)
 library(magick)
+library(ggplotify)
 
 
 estimate_mode <- function(s) {
@@ -105,13 +106,10 @@ knitr::opts_chunk$set(echo = F, warning = F, message = F)
 ```
 
 # Introduction
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed ac purus sit amet nisl tincidunt tincidunt. Nullam nec turpis at libero tincidunt tincidunt. Sed nec mi nec nunc tincidunt tincidunt. Nullam nec turpis at libero tincidunt tincidunt. Sed nec mi nec nunc
-
-	•	Contextualization: Explain the importance of naturalistic data in understanding development and its role in validating theories.
-	•	Challenges in Data Availability: Highlight any gaps or limitations in existing datasets relevant to your research focus (e.g., few longitudinal datasets or those captured from real-world environments).
-	•	Contribution of Your Dataset: Describe the new dataset you are introducing (its scope, duration, type of data captured, and any unique features it offers compared to existing datasets).
-	•	Value of Data Sharing: Emphasize how sharing datasets can enable broader research advances, whether for understanding child development or enabling new computational models in areas like computer vision or audio analysis.
+- Contextualization: Explain the importance of naturalistic data in understanding development and its role in validating theories.
+- Challenges in Data Availability: Highlight any gaps or limitations in existing datasets relevant to your research focus (e.g., few longitudinal datasets or those captured from real-world environments).
+- Contribution of Your Dataset: Describe the new dataset you are introducing (its scope, duration, type of data captured, and any unique features it offers compared to existing datasets).
+- Value of Data Sharing: Emphasize how sharing datasets can enable broader research advances, whether for understanding child development or enabling new computational models in areas like computer vision or audio analysis.
 	
 
 - TODO: research about egocentric video datasets
@@ -121,6 +119,9 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed ac purus sit amet n
 - Roy - Child Talk (Prediction the Birth of a Spoken word)
 - Alex Christia
 - Bisherige Datensätze sind bisher nur Sprache - Sprache und Video selten zusammen und wenn nur sehr klein (mit anderer Altersgruppe)
+
+
+The current project attempts to fill this gap by describing a new, openly accessible dataset of more than 415 hours of naturalistic, longitudinal recordings from three children. The SAYCam corpus contains longitudinal videos of approximately two hr per week for three children spanning from approximately six months to two and a half years of age. The data include unstructured interactions in a variety of contexts, both indoor and outdoor, as well as a variety of individuals and animals. The data also include structured annotations of context together with full transcripts for a subsample (described below), and are accompanied by monthly parent reports on vocabulary and developmental status. Together, these data present the densest look into the visual experience of individual children currently available.
 
 # Dataset Overview
 
@@ -154,7 +155,7 @@ final_labeled_layout
 ```
 #### Statistics
 
-```{r video-statistics, echo=FALSE, message=FALSE, warning=FALSE, fig.cap="Video recording duration (in minutes) per child ID."}
+```{r video-statistics, echo=FALSE, message=FALSE, warning=FALSE}
 data <- read_csv2("data/ChildLens_data_sheet.csv")
 subject_infos <- read_csv2("data/ChildLens_subjects.csv")
 subject_infos <- subject_infos %>%
@@ -235,88 +236,9 @@ time_span_months <- (youngest_year - oldest_year) * 12 + (youngest_month - oldes
 
 The ChildLens dataset comprises of `r sum_videos` video files with a total of `r sum_hours` hours recorded by `r nr_children` children aged 3 to 5 years (M=`r mean_age`, SD=`r sd_age`). It includes `r count_3_plus` videos from children aged 3, `r count_4_plus` videos from children aged 4, and `r count_5_plus` videos from children aged 5. The duration of recorded video material per child varies between `r min_minutes` and `r max_minutes` minutes (M=`r mean_minutes`, SD=`r sd_minutes`). A detailed distribution of the video duration per child can be found in figure \@ref(fig:minutes-per-child). 
 
-```{r audio-classes-statistics, echo=FALSE, message=FALSE, warnings=FALSE, results='asis', eval=TRUE}
-df <- data.frame(
-  `Audio-based Activity Class` = c("Child talking", "Other person talking", "Overheard Speech", "Singing/Humming", "Listening to music/audiobook"),
-  `Instance Count` = c(100, 100, 100, 100, 100),
-  `Total Duration` = c(100, 100, 100, 100, 100),
-  stringsAsFactors = FALSE
-)
-colnames(df) <- c("Audio-based Activity Class", "Instance Count", "Total Duration (min)")
-
-df %>%
-  kable("pipe", caption = "Summary of Audio-Based Activity Classes") %>%
-  kable_styling(bootstrap_options = c("striped", "hover")) %>%
-  row_spec(0, bold = TRUE)
-```
-
-```{r statistics-plot, echo=FALSE, dpi=600, fig.align='center', fig.cap="\\textbf{A} – Vest with the embedded camera worn by the children, \\textbf{B} – SuperAnnotate platform utilized for video annotation, \\textbf{C} – Activity classes in the ChildLens dataset."}
-audio_table <- data.frame(
-  `Audio-based Activity Class` = c("Child talking", "Other person talking", "Overheard Speech", "Singing/Humming", "Listening to music/audiobook"),
-  `Instance Count` = c(100, 100, 100, 100, 100),
-  `Total Duration (min)` = c(100, 100, 100, 100, 100),
-  stringsAsFactors = FALSE
-) %>%
-  kable("html", escape = FALSE) %>%
-  kable_styling(bootstrap_options = c("striped", "hover")) %>%
-  as.character() %>%
-  grid::grid.text(.)
-
-# Create table for video-based activity classes
-video_table <- data.frame(
-  `Video-based Activity Class` = c("Watching something", "Drawing", "Crafting things", "Dancing"),
-  `Instance Count` = c(100, 100, 100, 100),
-  `Total Duration (min)` = c(100, 100, 100, 100),
-  stringsAsFactors = FALSE
-) %>%
-  kable("html", escape = FALSE) %>%
-  kable_styling(bootstrap_options = c("striped", "hover")) %>%
-  as.character() %>%
-  grid::grid.text(.)
-
-# Create ggplot for Minutes per Child
-minutes_plot <- ggplot(unique_data, aes(x = Minutes_per_ID)) +
-  geom_point(aes(y = 0), shape = "I", size = 5) + 
-  geom_density(fill = "gray", alpha = 0.5, color = "black") + 
-  theme_minimal() +
-  theme(legend.position = "none") +
-  labs(
-    x = "Minutes per ID",
-    y = "Density"
-  )
-
-# Use patchwork to layout the components
-top_row <- (wrap_elements(audio_table) + wrap_elements(video_table)) + 
-  plot_layout(widths = c(0.5, 0.5)) # Adjust widths of the two tables
-
-final_layout <- (top_row / minutes_plot) +
-  plot_layout(heights = c(1, 1))  # Adjust row heights
-
-# Add labels (A, B, C)
-final_labeled_layout <- final_layout +
-  plot_annotation(tag_levels = 'A')
-
-# Display the final layout
-final_labeled_layout
-```
 
 
-This diverse dataset includes a varying number of instances across the 14 activity classes, ranging from **x** to **x** instances per class. Overlapping instances are counted separately for each activity class; if two activities occur simultaneously in a given video segment, both classes will receive a count for that segment. As a result, parts of the video may be counted multiple times, once for each activity class. The duration of each instance varies by activity. For example, audio-based activities like "child talking" may last only a few seconds, while activities like "reading a book" can span several minutes. As this paper only focuses on the audio-based and video-based activity classes, tables \@ref(tab:audio-classes-statistics) and \@ref(tab:video-classes-statistics) provide the total number of instances and the total duration of all instances for the respective activity classes. The full table with all activity classes is available in the appendix.
-
-```{r video-classes-statistics, echo=FALSE, message=FALSE, warnings=FALSE, results='asis', eval=TRUE}
-df <- data.frame(
-  `Video-based Activity Class` = c("Watching something", "Drawing", "Crafting things", "Dancing"),
-  `Instance Count` = c(100, 100, 100, 100),
-  `Total Duration` = c(100, 100, 100, 100),
-  stringsAsFactors = FALSE
-)
-colnames(df) <- c("Audio-based Activity Class", "Instance Count", "Total Duration (min)")
-
-df %>%
-  kable("pipe", caption = "Summary of Video-Based Activity Classes") %>%
-  kable_styling(bootstrap_options = c("striped", "hover")) %>%
-  row_spec(0, bold = TRUE)
-```
+This diverse dataset includes a varying number of instances across the 14 activity classes, ranging from **x** to **x** instances per class. Overlapping instances are counted separately for each activity class; if two activities occur simultaneously in a given video segment, both classes will receive a count for that segment. As a result, parts of the video may be counted multiple times, once for each activity class. The duration of each instance varies by activity. For example, audio-based activities like "child talking" may last only a few seconds, while activities like "reading a book" can span several minutes. The table with the total number of instances and summed duration for all activity classes is available in the appendix.
 
 ```{r minutes-per-child-density, echo=FALSE, message=FALSE, warning=FALSE, eval=FALSE, fig.cap="Video recording duration (in minutes) per child ID."}
 unique_data$ID <- as.factor(unique_data$ID)
@@ -379,6 +301,9 @@ ggplot(unique_data, aes(x = Minutes_per_ID)) +
     x = "Minutes per ID",
     y = "Density"
   )
+
+unique_data$ID <- as.factor(unique_data$ID)
+
 plot <- ggplot(unique_data, aes(x = Minutes_per_ID)) +
   geom_point(aes(y = 0), shape = "I", size = 5) + 
   geom_density(fill = "gray", alpha = 0.5, color = "black") + 
@@ -401,23 +326,6 @@ file_path <- file.path(output_folder, file_name)
 
 # Save the plot
 ggsave(filename = file_path, plot = plot, width = 4, height = 3, dpi = 300)
-```
-
-```{r train-val-test, echo=FALSE, message=FALSE, warnings=FALSE, results='asis', eval=FALSE}
-my.data <- "training | validation | testing
-            10        | 10           | 10"
-df <- read.delim(textConnection(my.data), header=FALSE, sep="|", strip.white=TRUE, stringsAsFactors=FALSE)
-# Set the first row as column names
-names(df) <- unname(as.list(df[1,]))
-# Remove the first row (which is now used as column names)
-df <- df[-1,] 
-row.names(df) <- NULL
-# Create the table using apa_table function
-apa_table(
-  df,
-  caption = "Number of clips per class",
-  escape = TRUE,
-)
 ```
 
 #### Exhaustive multi-label annotations
@@ -443,14 +351,14 @@ After an initial review of the videos, we decided to add another class "overhear
 ## Step 3: Manual Labeling Process
 Before the actual annotation process, a setup meeting was held to introduce the annotators to the labeling strategy. To familiarize themselves with the task, the annotators were assigned 25 sample videos to practice and gain hands-on experience. These initial annotations were reviewed by the research team, and feedback was provided to refine the approach. A total of three feedback loops were conducted to ensure that the annotators follow the labeling strategy properly.
 
-The videos were manually annotated by native German speakers who watched each video and labeled the activities present in the footage. Annotators marked the start and end points of each activity to ensure accuracy and detail. For audio annotations, we implemented a 2-second rule for the categories “other person talking” and “child talking”: if the break between two utterances was 2 seconds or less, it was considered a single event; breaks longer than 2 seconds split the activity into separate instances. The annotations were conducted using the SuperAnnotate platform, allowing for efficient annotation and review of the videos. Figure @ref(fig:superannotate) provides a screenshot of the SuperAnnotate platform used for video annotation. To ensure the quality of the annotations, the following steps were taken:
+The videos were manually annotated by native German speakers who watched each video and labeled the activities present in the footage. Annotators marked the start and end points of each activity to ensure accuracy and detail. For audio annotations, we implemented a 2-second rule for the categories “other person talking” and “child talking”: if the break between two utterances was 2 seconds or less, it was considered a single event; breaks longer than 2 seconds split the activity into separate instances. The annotations were conducted using the SuperAnnotate platform, allowing for efficient annotation and review of the videos. Figure \@ref(fig:camera-superannotate-activity-classes) provides a screenshot of the SuperAnnotate platform used for video annotation. To ensure the quality of the annotations, the following steps were taken:
 
 1. **Initial round of annotations**: Each set of videos is assigned to specific annotators, who handle the annotations, make changes, and apply corrections as needed. In total, three annotators were actively working on the annotation process.
 2. **Quality assurance**: One person is dedicated to quality assurance, ensuring that the annotations are accurate and consistent across all videos.
 3. **Review process**: After the initial annotations are completed, the annotations are reviewed by the internal team to ensure that they are accurate and complete. Any discrepancies or errors are corrected before the final submission.
 
 # Benchmark Performance
-In this chapter, we present the results of applying two model architectures to the ChildLens dataset. While the dataset supports multimodal activity analysis, we focus on two specific tasks: temporal activity localization using video data and voice type classification using audio data. For temporal activity localization, we use the Boundary-Matching Network (BMN) model, a state-of-the-art approach in this domain, and train it from scratch on the unique activity classes in the ChildLens video data. For voice type classification, we apply the Voice Type Classifier (VTC) [@lavechinOpensourceVoiceType2020], also state-of-the-art, which was trained on similar data. Both models provide initial results and establish a benchmark for future research. 
+In this chapter, we present the results of applying two model architectures to the ChildLens dataset. While the dataset supports multimodal activity analysis, we focus on two specific tasks: temporal activity localization using video data and voice type classification using audio data. For temporal activity localization, we use the Boundary-Matching Network (BMN) model, a state-of-the-art approach in this domain, and train it from scratch on the unique video-based on multimodal activity classes in the ChildLens video data. For voice type classification, we apply the Voice Type Classifier (VTC) [@lavechinOpensourceVoiceType2020], also state-of-the-art, which was trained on similar data. Both models provide initial results and establish a benchmark for future research. 
 
 ```{r bmn-architecture, dpi=600, fig.align='center', eval=FALSE, fig.cap="Boundary Matching Network architecture applied to ChildLens video data"}
 knitr::include_graphics("images/BMN_architecture.png")
@@ -461,27 +369,52 @@ knitr::include_graphics("images/BMN_architecture.png")
 knitr::include_graphics("images/VTC_architecture.png")
 ```
 
-## Boundary-Matching Network 
-We utilize the Boundary-Matching Network model [@linBMNBoundaryMatchingNetwork2019] for temporal activity localization.
+## Boundary-Matching Network (BMN)
+We employ the Boundary-Matching Network (BMN) [@linBMNBoundaryMatchingNetwork2019] for temporal activity localization on untrimmed videos. BMN generates action proposals by predicting activity start and end boundaries and classifying these proposals into activity classes. The architecture consists of two main components: (1) a proposal generation network, which identifies candidate proposals, and (2) a proposal classification network, which classifies these proposals. The model prioritizes proposals with high recall and high temporal overlap with ground truth.
+BMN performance is evaluated using Average Recall (AR) and Area Under the Curve (AUC) metrics. AR is computed at various Intersection over Union (IoU) thresholds and for different Average Numbers of Proposals (AN) as AR@AN, where AN ranges from 0 to 100. AR@100 reflects recall performance with 100 proposals per video, while AUC quantifies the trade-off between recall and number of generated proposal On the ActivityNet-1.3 test set, BMN achieves an AR@100 of 72.46 and an AUC of 64.47, demonstrating its effectiveness in activity localization.
+
+### Data Preparation
+The videos were preprocessed following the MMAction2 guidelines to ensure compatibility with the model architecture. Prior to model training, we analyzed the number of instances per activity class to assess to evaluate the data sufficiency for training and testing purposes. The distribution of activity instances and their total duration across activity classes are presented in Table @ref(tab:activity-classes-statistics) in the appendix.
+Our analysis revealed a pronounced class imbalance in the dataset, both in terms of the number of instances and their total duration. Given that the primary aim of this study is to establish initial benchmark results, no data augmentation techniques were employed to address this imbalance. Instead, we focused on the most prevalent activity classes, namely “Playing with Object”, “Drawing”, and “Reading a Book”. The dataset was split into training, validation, and test subsets in an 80-10-10 ratio. The training set was used to optimize the model’s parameters, while the validation set was used for tuning hyperparameters and avoiding overfitting. Finally, the test set helped evaluate the model’s performance on unseen data, providing a good measure of how well it generalizes.
 
 ### Implementation Details
-- details on training
-- optimization strategy
-- video prepocessing etc
+We trained the BMN model from scratch on the ChildLens dataset to predict the start and end boundaries of the video-based activity classes. The model was implemented using MMAction2, "an open-source toolbox for video understanding based on PyTorch" [@mmaction2contributorsOpenMMLabsNextGeneration2020]. Training was conducted on a Linux server with 48 cores and 256 GB RAM. The model was optimized using the Adam optimizer with a learning rate of 0.001 and a batch size of 16. The training process involved multiple epochs, with early stopping based on validation loss to prevent overfitting.
 
 ### Evaluation
-The most relevant findings of the BMN evaluation are summarized in the following sections.
+The performance of the BMN on the ChildLens dataset compared to its original evaluation dataset is summarized in Table \@ref(tab:bmn-results). A detailed breakdown of recall performance for each activity class is provided in the appendix. Overall, BMN demonstrates satisfactory performance on the ChildLens dataset, effectively generalizing to this new domain.
 
-- Class accuracy differences
-  - full list of classification accuracy can be bound in figure **xx**
-  - classes **xx** and **xx** are hardest to classify, because of **xx**
-  - **xx** classes were easier to classify than others such as **xx** and **xx** because of **xx**
+```{r bmn-results, echo=FALSE, message=FALSE, warnings=FALSE, results='asis', eval=TRUE}
+my.data <- "Dataset           | Recall  | Recall  | Recall  | AR@100  | AUC
+            ActivityNet-1.3   | 0       | 0       | 0       | 72.46   | 64.47
+                              | Playing with Object |  Drawing | Reading a Book
+            ChildLens         | 0       | 0 | 0 | 0       | 0"
 
-- Class confusion
-  - describe which classes are often confused with each other (e.g. **xx** and **xx**)
+df <- read.delim(textConnection(my.data), header=FALSE, sep="|", strip.white=TRUE, stringsAsFactors=FALSE)
+
+# Set the column names
+names(df) <- unname(as.list(df[1,]))
+df <- df[-1,]  # Remove the first row with column names
+row.names(df) <- NULL
+
+# Merge the three 'Recall' columns into one (averaging them)
+df$Recall <- rowMeans(df[, c("Recall", "Recall.1", "Recall.2")], na.rm = TRUE)
+
+# Remove the original three 'Recall' columns
+df <- df[, !names(df) %in% c("Recall", "Recall.1", "Recall.2")]
+
+# Update the column names if necessary
+names(df)[names(df) == "Recall"] <- "Recall (Merged)"
+
+# Print the updated table
+apa_table(
+  df,
+  caption = "Comparison of BMN performance on the ActivityNet-1.3 dataset (used for model evaluation) and the ChildLens dataset, highlighting the Average Recall for 100 proposals (AR@100) and the Area Under the Curve (AUC).",
+  escape = TRUE
+)
+```
   
-## Voice Type Classifier
-The Voice Type Classifier [@lavechinOpensourceVoiceType2020] is a state-of-the-art model designed to classify audio rawfiles into five distinct voice types: `Key Child (KCHI)`, `Other Child (CHI)`, `Male Speech (MAL)`, `Female Speech (FEM)`, and `Speech (SPEECH)`. Its architecture processes audio by first dividing it into 2-second chunks, which are passed through a SincNet to extract low-level features. These features are then fed into a stack of two bi-directional LSTMs, followed by three feed-forward layers. The output layer uses a sigmoid activation function to produce a score between 0 and 1 for each class. The VTC is trained on 260 hours of audio material obtained from different child-centered audio datasets. Model valuation is performed by utilizing the \( F_1 \)-measure, which combines precision and recall using the following formula: 
+## Voice Type Classifier (VTC)
+The Voice Type Classifier [@lavechinOpensourceVoiceType2020] (VTC) is a state-of-the-art model designed to classify audio rawfiles into five distinct voice types: `Key Child (KCHI)`, `Other Child (CHI)`, `Male Speech (MAL)`, `Female Speech (FEM)`, and `Speech (SPEECH)`. Its architecture processes audio by first dividing it into 2-second chunks, which are passed through a SincNet to extract low-level features. These features are then fed into a stack of two bi-directional LSTMs, followed by three feed-forward layers. The output layer uses a sigmoid activation function to produce a score between 0 and 1 for each class. The VTC is trained on 260 hours of audio material obtained from different child-centered audio datasets. Model valuation is performed by utilizing the \( F_1 \)-measure, which combines precision and recall using the following formula: 
 \[
 F_1 = 2 \cdot \frac{\text{precision} \cdot \text{recall}}{\text{precision} + \text{recall}}
 \]
@@ -614,23 +547,50 @@ The dataset contains the following list of activities.
 5. other
 
 ## Activity Class Statistics
-```{r activity-classes-statistics, echo=FALSE, message=FALSE, warnings=FALSE, results='asis', eval=TRUE}
-df <- data.frame(
-  `Activity Class` = c("Child talking", "Other person talking", "Overheard Speech", "Singing/Humming", "Listening to music/audiobook", "Playing with object", "Reading book", "Making music", "Pretend Play", "Playing without object", "Watching something", "Drawing", "Crafting things", "Dancing"),
-  `Instance Count` = c(100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100),
-  `Total Duration` = c(100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100),
+```{r activity-classes-statistics, echo=FALSE, dpi=600, fig.align='center'}
+# Define the table data as a string with "|" delimiters
+activity_data <- "Category | Activity Class | Instance Count | Total Duration (min)
+       Audio   | Child talking        | 100             | 100
+               | Other person talking | 100             | 100
+               | Overheard Speech     | 100             | 100
+               | Singing/Humming      | 100             | 100
+               | Listening to music/audiobook | 100     | 100
+       Video   | Watching something   | 2             | 5.09
+               | Drawing              | 62             | 374.91
+               | Crafting things      | 26             | 109.14
+               | Dancing              | 2             | 0.57
+      Multimodal | Playing with object  | 318             | 1371.08
+                 | Playing without object | 25           | 28.87
+                 | Pretend play         | 59             | 158.84
+                 | Reading a book         | 83             | 334.19
+                 | Making music         | 3             | 2.13"
+# Read the table into a data frame
+activity_classes_table <- read.delim(
+  textConnection(activity_data), 
+  header = FALSE, 
+  sep = "|", 
+  strip.white = TRUE, 
   stringsAsFactors = FALSE
 )
-colnames(df) <- c("Activity Class", "Instance Count", "Total Duration (min)")
 
-df %>%
-  kable("pipe", caption = "Statistics of ChildLens Activity Classes") %>%
-  kable_styling(bootstrap_options = c("striped", "hover")) %>%
-  row_spec(0, bold = TRUE)
+# Assign column names from the first row
+names(activity_classes_table) <- unname(as.list(activity_classes_table[1, ]))
+
+# Remove the first row (header row) from the data frame
+activity_classes_table <- activity_classes_table[-1, ]
+
+# Reset row names to NULL
+row.names(activity_classes_table) <- NULL
+
+# Use apa_table to display the table with a caption
+apa_table(
+  activity_classes_table,
+  caption = "Number of video instances and the total duration (in minutes).",
+  escape = TRUE
+)
 ```
 
-
-```{r quantex-statistics, echo=FALSE, message=FALSE, warning=FALSE, fig.cap="Video recording duration (in minutes) per child ID."}
+```{r quantex-statistics, echo=FALSE, message=FALSE, warning=FALSE}
 quantex_data <- read_csv2("data/Quantex_data_sheet.csv")
 quantex_subject_infos <- read_csv2("data/Quantex_subjects.csv")
 quantex_subject_infos <- quantex_subject_infos %>%
@@ -713,7 +673,7 @@ quantex_youngest_month <- as.numeric(format(quantex_youngest_date, "%m"))
 quantex_time_span_months <- (quantex_youngest_year - quantex_oldest_year) * 12 + (quantex_youngest_month - quantex_oldest_month)+1
 ```
 
-```{r quantex-minutes-per-child, echo=FALSE, message=FALSE, warning=FALSE, eval=FALSE, fig.cap="Video recording duration (in minutes) per child ID."}
+```{r quantex-minutes-per-child, echo=FALSE, message=FALSE, warning=FALSE, eval=FALSE}
 quantex_unique_data$ID <- as.factor(quantex_unique_data$ID)
 
 ggplot(quantex_unique_data, aes(x = Minutes_per_ID)) +
