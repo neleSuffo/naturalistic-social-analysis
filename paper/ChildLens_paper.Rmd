@@ -384,10 +384,13 @@ We trained the BMN model from scratch on the ChildLens dataset to predict the st
 The performance of the BMN on the ChildLens dataset compared to its original evaluation dataset is summarized in Table \@ref(tab:bmn-results). A detailed breakdown of recall performance for each activity class is provided in the appendix. Overall, BMN demonstrates satisfactory performance on the ChildLens dataset, effectively generalizing to this new domain.
 
 ```{r bmn-results, echo=FALSE, message=FALSE, warnings=FALSE, results='asis', eval=TRUE}
-my.data <- "Dataset           | Recall  | Recall  | Recall  | AR@100  | AUC
-            ActivityNet-1.3   | 0       | 0       | 0       | 72.46   | 64.47
-                              | Playing with Object |  Drawing | Reading a Book
-            ChildLens         | 0       | 0 | 0 | 0       | 0"
+my.data <- "Dataset           | Activity Class      |  Recall   | AR@100  | AUC
+            ActivityNet-1.3   |                     |   -       | 72.46   | 64.47
+            ChildLens         |                     |   -       | 0       |0
+                              |Playing with Object  | 0         |    -    | -
+                              |Drawing              | 0         |    -    | -
+                              |Reading a Book       | 0         |    -    | -"
+
 
 df <- read.delim(textConnection(my.data), header=FALSE, sep="|", strip.white=TRUE, stringsAsFactors=FALSE)
 
@@ -396,14 +399,6 @@ names(df) <- unname(as.list(df[1,]))
 df <- df[-1,]  # Remove the first row with column names
 row.names(df) <- NULL
 
-# Merge the three 'Recall' columns into one (averaging them)
-df$Recall <- rowMeans(df[, c("Recall", "Recall.1", "Recall.2")], na.rm = TRUE)
-
-# Remove the original three 'Recall' columns
-df <- df[, !names(df) %in% c("Recall", "Recall.1", "Recall.2")]
-
-# Update the column names if necessary
-names(df)[names(df) == "Recall"] <- "Recall (Merged)"
 
 # Print the updated table
 apa_table(
