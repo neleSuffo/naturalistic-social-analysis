@@ -262,7 +262,7 @@ For every activity, the dataset includes information on the start and end times 
 
 The ChildLens dataset comprises of 343 video files with a total of 106.10 hours recorded by 61 children aged 3 to 5 years (M=4.52, SD=0.92). It includes 107 videos from children aged 3, 122 videos from children aged 4, and 114 videos from children aged 5. The duration of recorded video material per child varies between 4.03 and 303.42 minutes (M=104.37, SD=51.65). A detailed distribution of the video duration per child can be found in figure \ref{fig:minutes-per-child}.
 
-This diverse dataset includes a varying number of instances across the 14 activity classes, ranging from \textbf{x} to \textbf{x} instances per class. Overlapping instances are counted separately for each activity class; if two activities occur simultaneously in a given video segment, both classes will receive a count for that segment. As a result, parts of the video may be counted multiple times, once for each activity class. The duration of each instance varies by activity. For example, audio-based activities like ``child talking'' may last only a few seconds, while activities like ``reading a book'' can span several minutes. The table with the total number of instances and summed duration for all activity classes is available in the appendix.
+This diverse dataset includes a varying number of instances across the 14 activity classes, ranging from \textbf{x} to \textbf{x} instances per class. Overlapping instances are counted separately for each activity class, meaning that if two activities occur simultaneously in a given video segment, both classes will receive a count for that segment. As a result, parts of the video may be counted multiple times, once for each activity class. The duration of each instance varies by activity. For example, audio-based activities like ``child talking'' may last only a few seconds, while activities like ``reading a book'' can span several minutes. The table with the total number of instances and summed duration for all activity classes is available in the appendix.
 
 \begin{figure}
 \centering
@@ -339,7 +339,7 @@ We trained the BMN model from scratch on the ChildLens dataset to predict the st
 
 \subsubsection{Evaluation}\label{evaluation}
 
-The performance of the BMN on the ChildLens dataset compared to its original evaluation dataset is summarized in Table \ref{tab:bmn-results}. A detailed breakdown of recall performance for each activity class is provided in the appendix. Overall, BMN demonstrates satisfactory performance on the ChildLens dataset, effectively generalizing to this new domain.
+The performance of the BMN on the ChildLens dataset compared to its original evaluation dataset is summarized in Table \ref{tab:bmn-results}. Beside the Average recall, we also provide the Recall metrics for the three activities of interest.. Overall, BMN demonstrates satisfactory performance on the ChildLens dataset, effectively generalizing to this new domain.
 
 \begin{table}[tbp]
 
@@ -468,27 +468,13 @@ ChildLens & 59.1 & 79.2 & 17.8 & 33.4 & 68.3 & 51.5\\
 \caption{VTC Predictions compared to Ground Truth Annotations}\label{fig:vtc-evaluations}
 \end{figure}
 
-\section{Discussion}\label{discussion}
+\section{General Discussion}\label{general-discussion}
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed ac purus sit amet nisl tincidunt tincidunt. Nullam nec turpis at libero tincidunt tincidunt. Sed nec mi nec nunc tincidunt tincidunt. Nullam nec turpis at libero tincidunt tincidunt. Sed nec mi nec nunc
+We present the ChildLens dataset, a diverse egocentric video-audio dataset that documents children's everyday experiences with annotations for key activities. Unlike previous work, we find that the activity labels in ChildLens make it possible to automate analyses for both audio transcription and activity localization. The pretrained Voice-Type Classifier for audio transcription performs similarly well on our dataset as it does on earlier datasets, and the Boundary-Matching Network trained on ChildLens data for activity localization shows strong results as well. These findings demonstrate that the ChildLens dataset is a valuable tool for automating the analysis of children's daily activities, offering important insights into their psychological development and advancing research in both developmental psychology and computer vision.
 
-\subsection{Dataset Bias}\label{dataset-bias}
+Using models that analyze multimodal data can provide even deeper insights into children's daily experiences by combining visual and auditory information. By merging audio and video, we can better understand the context of children's interactions and behaviors, offering a clearer picture of their cognitive, emotional, and social growth. For example, improving activity localization with object identification could help us track the objects children interact with during their daily routines, giving us a better understanding of their learning, exploration, and engagement with their environment. This could reveal important patterns in how children focus on specific objects or activities, which is crucial for understanding their development. Additionally, this kind of analysis can offer a more detailed view of how different objects, settings, and caregivers influence children's behavior and interactions, creating new opportunities to study the role of context in shaping their development.
 
-Overall, the dataset demographics are balanced. From the 61 children who participated in the study, 32 children are female and 29 are male.
-
-\begin{itemize}
-\tightlist
-\item
-  is there gender bias in the dataset itself (how many female how many male)
-\item
-  is ther gender bias in some categories (e.g.~more female for drawing etc.)
-\end{itemize}
-
-\subsection{General Discussion}\label{general-discussion}
-
-\section{Conclusion}\label{conclusion}
-
-In this paper, we introduced the ChildLens dataset, a novel egocentric video dataset designed for activity analysis in children. The dataset contains a wide range of children's daily live activities, captured in naturalistic environments. We outlined the data collection process and the generation of activity labels, providing detailed information on the labeling strategy employed. Initial results of applying two state-of-the-art models to the dataset were presented, establishing a benchmark for future research. While our current analysis treats audio and video independently, future studies could leverage multimodal approaches to gain deeper insights into children's behavior and activity patterns, advancing the understanding of developmental and interactional contexts.
+One limitation of our dataset is the potential for selection bias. Since parents have control over when and how often they record their children's activities, the data can reflect personal choices or circumstances, introducing some variability. Also, the dataset only includes families from a mid-sized city in Germany, which may not fully represent the diversity of children's experiences. Expanding the dataset to include more diverse geographic and cultural backgrounds would improve the generalizability of the findings and capture a wider range of children's everyday experiences.
 
 \newpage
 
