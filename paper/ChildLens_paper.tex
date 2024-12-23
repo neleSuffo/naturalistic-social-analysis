@@ -225,32 +225,14 @@ We present ChildLens, a novel egocentric video and audio dataset of children age
 
 \section{Introduction}\label{introduction}
 
-\begin{itemize}
-\item
-  Contextualization: Explain the importance of naturalistic data in understanding development and its role in validating theories.
-\item
-  Challenges in Data Availability: Highlight any gaps or limitations in existing datasets relevant to your research focus (e.g., few longitudinal datasets or those captured from real-world environments).
-\item
-  Contribution of Your Dataset: Describe the new dataset you are introducing (its scope, duration, type of data captured, and any unique features it offers compared to existing datasets).
-\item
-  Value of Data Sharing: Emphasize how sharing datasets can enable broader research advances, whether for understanding child development or enabling new computational models in areas like computer vision or audio analysis.
-\item
-  TODO: research about egocentric video datasets
-\item
-  Saycam paper als Orientierung
-\item
-  Relevanz für die psychologische Forschung
-\item
-  Linda Smith - Indiana (egocentric perspective)
-\item
-  Roy - Child Talk (Prediction the Birth of a Spoken word)
-\item
-  Alex Christia
-\item
-  Bisherige Datensätze sind bisher nur Sprache - Sprache und Video selten zusammen und wenn nur sehr klein (mit anderer Altersgruppe)
-\end{itemize}
+In developmental psychology, only a small body of research provides direct insights into children's day-to-day experiences, despite their recognized significance in shaping development (Rogoff, Dahl, \& Callanan, 2018).
 
-The current project attempts to fill this gap by describing a new, openly accessible dataset of more than 415 hours of naturalistic, longitudinal recordings from three children. The SAYCam corpus contains longitudinal videos of approximately two hr per week for three children spanning from approximately six months to two and a half years of age. The data include unstructured interactions in a variety of contexts, both indoor and outdoor, as well as a variety of individuals and animals. The data also include structured annotations of context together with full transcripts for a subsample (described below), and are accompanied by monthly parent reports on vocabulary and developmental status. Together, these data present the densest look into the visual experience of individual children currently available.
+Conventional methods, like brief laboratory sessions,offer only a superficial assessment of the multi-layered construct of everyday experiences. Recent technological advances, notably wearable recording devices, provide an opportunity to capture these experiences on a larger scale through long-term
+recordings in the children's natural environments at home or in kindergarten. However, handling the huge amount of data is a challenge that we want to overcome by implementing an automated analysis procedure using Machine Learning and Computer Vision algorithms. Many studies show promising results in extracting information about detected objects/people in video data and identified voices in audio recordings (Ansari \&Singh, 2020; He et al., 2017; Lavechin et al., 2020; Redmon et al., 2015).
+
+Recent studies exploring children's perspectives and their perception of the surrounding environment have often focused exclusively on the audio component of the data (Roy, Frank, DeCamp, Miller, \& Roy, 2015; Sullivan, Mei, Perfors, Wojcik, \& Frank, 2021), solely examined video data (Borjon et al., 2018; Saber, Hansaria, Wood, Smith, \& Tiganj, 2023; Smith, Yu, Yoshida, \& Fausey, 2015; Yoshida \& Smith, 2008), or concentrated on infants under the age of two years (Sullivan et al., 2021; Tsutsui, Chandrasekaran, Reza, Crandall, \& Yu, 2020). However, the combination of audio and video data in a multimodal dataset can provide a more comprehensive understanding of children's activities and interactions. This multimodal approach has been successfully applied in adult activity recognition (Kapidis, Poppe, Van Dam, Noldus, \& Veltkamp, 2020; Truong \& Luu, 2024), but research on multimodal activity recognition in children is limited. For example, (Long et al., 2024) introduced the BabyView dataset, a large-scale multimodal dataset capturing egocentric experiences of children aged 6 months to 5 years. While it supports tasks like speech transcription and pose estimation, it does not address activity localization, leaving a key gap in understanding children's daily interactions.
+
+We therefore introduce the ChildLens dataset, a novel egocentric multimodal dataset capturing the everyday experiences of children aged 3--5 years. The dataset comprises 106 hours of video and audio material, recorded by 61 children wearing a camera-equipped vest. The dataset includes five location classes and 14 activity classes, covering audio-only, video-only, and multimodal activities. We provide detailed annotations for each activity, including the start and end times, the activity class, and whether the child is engaged alone or with somebody else. The dataset is designed to support research in developmental psychology and computer vision, offering a rich source of data for activity analysis and multimodal learning.
 
 \section{Dataset Overview}\label{dataset-overview}
 
@@ -521,14 +503,47 @@ In this paper, we introduced the ChildLens dataset, a novel egocentric video dat
 
 \phantomsection\label{refs}
 \begin{CSLReferences}{1}{0}
+\bibitem[\citeproctext]{ref-borjonViewTheirOwn2018}
+Borjon, J. I., Schroer, S. E., Bambach, S., Slone, L. K., Abney, D. H., Crandall, D. J., \& Smith, L. B. (2018). A {View} of {Their Own}: {Capturing} the {Egocentric View} of {Infants} and {Toddlers} with {Head-Mounted Cameras}. \emph{Journal of Visualized Experiments}, (140), 58445. \url{https://doi.org/10.3791/58445-v}
+
 \bibitem[\citeproctext]{ref-mmaction2contributorsOpenMMLabsNextGeneration2020}
 Contributors, M. (2020). \emph{{OpenMMLab}'s {Next Generation Video Understanding Toolbox} and {Benchmark}}. Retrieved from \url{urlhttps://github.com/open-mmlab/mmaction2}
+
+\bibitem[\citeproctext]{ref-kapidisObjectDetectionBasedLocation2020}
+Kapidis, G., Poppe, R., Van Dam, E., Noldus, L. P. J. J., \& Veltkamp, R. C. (2020). Object {Detection-Based Location} and {Activity Classification} from {Egocentric Videos}: {A Systematic Analysis}. In F. Chen, R. I. García-Betances, L. Chen, M. F. Cabrera-Umpiérrez, \& C. Nugent (Eds.), \emph{Smart {Assisted Living}} (pp. 119--145). Cham: Springer International Publishing. \url{https://doi.org/10.1007/978-3-030-25590-9_6}
 
 \bibitem[\citeproctext]{ref-lavechinOpensourceVoiceType2020}
 Lavechin, M., Bousbib, R., Bredin, H., Dupoux, E., \& Cristia, A. (2020). An open-source voice type classifier for child-centered daylong recordings. \url{https://doi.org/10.48550/ARXIV.2005.12656}
 
 \bibitem[\citeproctext]{ref-linBMNBoundaryMatchingNetwork2019}
 Lin, T., Liu, X., Li, X., Ding, E., \& Wen, S. (2019). {BMN}: {Boundary-Matching Network} for {Temporal Action Proposal Generation}. \url{https://doi.org/10.48550/ARXIV.1907.09702}
+
+\bibitem[\citeproctext]{ref-longBabyViewDatasetHighresolution2024}
+Long, B., Xiang, V., Stojanov, S., Sparks, R. Z., Yin, Z., Keene, G. E., \ldots{} Frank, M. C. (2024, June 14). The {BabyView} dataset: {High-resolution} egocentric videos of infants' and young children's everyday experiences. \url{https://doi.org/10.48550/arXiv.2406.10447}
+
+\bibitem[\citeproctext]{ref-rogoffImportanceUnderstandingChildrens2018}
+Rogoff, B., Dahl, A., \& Callanan, M. (2018). The importance of understanding children's lived experience. \emph{Developmental Review}, \emph{50}, 5--15. \url{https://doi.org/10.1016/j.dr.2018.05.006}
+
+\bibitem[\citeproctext]{ref-royPredictingBirthSpoken2015}
+Roy, B. C., Frank, M. C., DeCamp, P., Miller, M., \& Roy, D. (2015). Predicting the birth of a spoken word. \emph{Proceedings of the National Academy of Sciences}, \emph{112}(41), 12663--12668. \url{https://doi.org/10.1073/pnas.1419773112}
+
+\bibitem[\citeproctext]{ref-saberCurriculumLearningInfant2023}
+Saber, S., Hansaria, H., Wood, J. N., Smith, L. B., \& Tiganj, Z. (2023). Curriculum learning with infant egocentric videos. \emph{NIPS '23: Proceedings of the 37th International Conference on Neural Information Processing Systems}, 54199--54212.
+
+\bibitem[\citeproctext]{ref-smithContributionsHeadMountedCameras2015}
+Smith, L. B., Yu, C., Yoshida, H., \& Fausey, C. M. (2015). Contributions of {Head-Mounted Cameras} to {Studying} the {Visual Environments} of {Infants} and {Young Children}. \emph{Journal of Cognition and Development}, \emph{16}(3), 407--419. \url{https://doi.org/10.1080/15248372.2014.933430}
+
+\bibitem[\citeproctext]{ref-sullivanSAYCamLargeLongitudinal2021}
+Sullivan, J., Mei, M., Perfors, A., Wojcik, E., \& Frank, M. C. (2021). {SAYCam}: {A Large}, {Longitudinal Audiovisual Dataset Recorded From} the {Infant}'s {Perspective}. \emph{Open Mind}, \emph{5}, 20--29. \url{https://doi.org/10.1162/opmi_a_00039}
+
+\bibitem[\citeproctext]{ref-truongCrossviewActionRecognition2024}
+Truong, T.-D., \& Luu, K. (2024). Cross-view action recognition understanding from exocentric to egocentric perspective. \emph{Neurocomputing}, 128731. \url{https://doi.org/10.1016/j.neucom.2024.128731}
+
+\bibitem[\citeproctext]{ref-tsutsuiComputationalModelEarly2020}
+Tsutsui, S., Chandrasekaran, A., Reza, M. A., Crandall, D., \& Yu, C. (2020, June 4). A {Computational Model} of {Early Word Learning} from the {Infant}'s {Point} of {View}. \url{https://doi.org/10.48550/arXiv.2006.02802}
+
+\bibitem[\citeproctext]{ref-yoshidaWhatsViewToddlers2008}
+Yoshida, H., \& Smith, L. B. (2008). What's in {View} for {Toddlers}? {Using} a {Head Camera} to {Study Visual Experience}. \emph{Infancy}, \emph{13}(3), 229--248. \url{https://doi.org/10.1080/15250000802004437}
 
 \end{CSLReferences}
 

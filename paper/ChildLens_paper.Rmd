@@ -106,22 +106,16 @@ knitr::opts_chunk$set(echo = F, warning = F, message = F)
 ```
 
 # Introduction
-- Contextualization: Explain the importance of naturalistic data in understanding development and its role in validating theories.
-- Challenges in Data Availability: Highlight any gaps or limitations in existing datasets relevant to your research focus (e.g., few longitudinal datasets or those captured from real-world environments).
-- Contribution of Your Dataset: Describe the new dataset you are introducing (its scope, duration, type of data captured, and any unique features it offers compared to existing datasets).
-- Value of Data Sharing: Emphasize how sharing datasets can enable broader research advances, whether for understanding child development or enabling new computational models in areas like computer vision or audio analysis.
-	
-
-- TODO: research about egocentric video datasets
-- Saycam paper als Orientierung
-- Relevanz für die psychologische Forschung
-- Linda Smith - Indiana (egocentric perspective)
-- Roy - Child Talk (Prediction the Birth of a Spoken word)
-- Alex Christia
-- Bisherige Datensätze sind bisher nur Sprache - Sprache und Video selten zusammen und wenn nur sehr klein (mit anderer Altersgruppe)
+In developmental psychology, only a small body of research provides direct insights into children’s day-to-day experiences, despite their recognized significance in shaping development [@rogoffImportanceUnderstandingChildrens2018]. 
 
 
-The current project attempts to fill this gap by describing a new, openly accessible dataset of more than 415 hours of naturalistic, longitudinal recordings from three children. The SAYCam corpus contains longitudinal videos of approximately two hr per week for three children spanning from approximately six months to two and a half years of age. The data include unstructured interactions in a variety of contexts, both indoor and outdoor, as well as a variety of individuals and animals. The data also include structured annotations of context together with full transcripts for a subsample (described below), and are accompanied by monthly parent reports on vocabulary and developmental status. Together, these data present the densest look into the visual experience of individual children currently available.
+
+Conventional methods, like brief laboratory sessions,offer only a superficial assessment of the multi-layered construct of everyday experiences. Recent technological advances, notably wearable recording devices, provide an opportunity to capture these experiences on a larger scale through long-term
+recordings in the children’s natural environments at home or in kindergarten. However, handling the huge amount of data is a challenge that we want to overcome by implementing an automated analysis procedure using Machine Learning and Computer Vision algorithms. Many studies show promising results in extracting information about detected objects/people in video data and identified voices in audio recordings (Ansari &Singh, 2020; He et al., 2017; Lavechin et al., 2020; Redmon et al., 2015).
+
+Recent studies exploring children’s perspectives and their perception of the surrounding environment have often focused exclusively on the audio component of the data [@sullivanSAYCamLargeLongitudinal2021; @royPredictingBirthSpoken2015], solely examined video data [@yoshidaWhatsViewToddlers2008; @saberCurriculumLearningInfant2023; @smithContributionsHeadMountedCameras2015; @borjonViewTheirOwn2018], or concentrated on infants under the age of two years [@sullivanSAYCamLargeLongitudinal2021; @tsutsuiComputationalModelEarly2020]. However, the combination of audio and video data in a multimodal dataset can provide a more comprehensive understanding of children’s activities and interactions. This multimodal approach has been successfully applied in adult activity recognition [@kapidisObjectDetectionBasedLocation2020; @truongCrossviewActionRecognition2024], but research on multimodal activity recognition in children is limited. For example, [@longBabyViewDatasetHighresolution2024] introduced the BabyView dataset, a large-scale multimodal dataset capturing egocentric experiences of children aged 6 months to 5 years. While it supports tasks like speech transcription and pose estimation, it does not address activity localization, leaving a key gap in understanding children’s daily interactions.
+
+We therefore introduce the ChildLens dataset, a novel egocentric multimodal dataset capturing the everyday experiences of children aged 3–5 years. The dataset comprises 106 hours of video and audio material, recorded by 61 children wearing a camera-equipped vest. The dataset includes five location classes and 14 activity classes, covering audio-only, video-only, and multimodal activities. We provide detailed annotations for each activity, including the start and end times, the activity class, and whether the child is engaged alone or with somebody else. The dataset is designed to support research in developmental psychology and computer vision, offering a rich source of data for activity analysis and multimodal learning.
 
 # Dataset Overview
 
@@ -240,7 +234,7 @@ The ChildLens dataset comprises of `r sum_videos` video files with a total of `r
 
 This diverse dataset includes a varying number of instances across the 14 activity classes, ranging from **x** to **x** instances per class. Overlapping instances are counted separately for each activity class; if two activities occur simultaneously in a given video segment, both classes will receive a count for that segment. As a result, parts of the video may be counted multiple times, once for each activity class. The duration of each instance varies by activity. For example, audio-based activities like "child talking" may last only a few seconds, while activities like "reading a book" can span several minutes. The table with the total number of instances and summed duration for all activity classes is available in the appendix.
 
-```{r minutes-per-child-density, echo=FALSE, message=FALSE, warning=FALSE, eval=FALSE, fig.cap="Video recording duration (in minutes) per child ID."}
+```{r minutes-per-child-density, echo=FALSE, message=FALSE, warning=FALSE, eval=FALSE}
 unique_data$ID <- as.factor(unique_data$ID)
 
 ggplot(unique_data, aes(x = Minutes_per_ID)) +
@@ -289,11 +283,11 @@ file_path <- file.path(output_folder, file_name)
 ggsave(filename = file_path, plot = plot_age, width = 8, height = 6, dpi = 300)
 ```
 
-```{r minutes-per-child, echo=FALSE, message=FALSE, warning=FALSE, fig.cap="Video recording duration (in minutes) per child ID.", fig.height=3, fig.width=4}
+```{r minutes-per-child, echo=FALSE, message=FALSE, warning=FALSE, fig.cap="Video recording duration (in minutes) per child ID.", fig.height=2.5, fig.width=3.5}
 unique_data$ID <- as.factor(unique_data$ID)
 
 ggplot(unique_data, aes(x = Minutes_per_ID)) +
-  geom_point(aes(y = 0), shape = "I", size = 5) + 
+  geom_point(aes(y = 0), shape = "I", size = 4) + 
   geom_density(fill = "gray", alpha = 0.5, color = "black") + 
   theme_minimal() +
   theme(legend.position = "none") +
@@ -302,30 +296,30 @@ ggplot(unique_data, aes(x = Minutes_per_ID)) +
     y = "Density"
   )
 
-unique_data$ID <- as.factor(unique_data$ID)
+#unique_data$ID <- as.factor(unique_data$ID)
 
-plot <- ggplot(unique_data, aes(x = Minutes_per_ID)) +
-  geom_point(aes(y = 0), shape = "I", size = 5) + 
-  geom_density(fill = "gray", alpha = 0.5, color = "black") + 
-  theme_minimal() +
-  theme(
-    legend.position = "none",
-    axis.title = element_text(size = 25),      # Increase label size
-    axis.text = element_text(size = 25),       # Increase tick label size
-    axis.ticks.length = unit(0.5, "cm")        # Increase tick size
-  ) +
-  labs(
-    x = "Minutes per ID",
-    y = "Density"
-  )
+#plot <- ggplot(unique_data, aes(x = Minutes_per_ID)) +
+#  geom_point(aes(y = 0), shape = "I", size = 5) + 
+#  geom_density(fill = "gray", alpha = 0.5, color = "black") + 
+ # theme_minimal() +
+ # theme(
+  #  legend.position = "none",
+   # axis.title = element_text(size = 25),      # Increase label size
+    #axis.text = element_text(size = 25),       # Increase tick label size
+    #axis.ticks.length = unit(0.5, "cm")        # Increase tick size
+  #) +
+  #labs(
+  #  x = "Minutes per ID",
+  #  y = "Density"
+  #)
 
 # Specify the file path and name
-output_folder <- "/Users/nelesuffo/Promotion/projects/leuphana-IPE/paper/images" 
-file_name <- "minutes_per_id_plot.png"
-file_path <- file.path(output_folder, file_name)
+#output_folder <- "/Users/nelesuffo/Promotion/projects/leuphana-IPE/paper/images" 
+#file_name <- "minutes_per_id_plot.png"
+#file_path <- file.path(output_folder, file_name)
 
 # Save the plot
-ggsave(filename = file_path, plot = plot, width = 4, height = 3, dpi = 300)
+#ggsave(filename = file_path, plot = plot, width = 3, height = 2, dpi = 100)
 ```
 
 #### Exhaustive multi-label annotations
