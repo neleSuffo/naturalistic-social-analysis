@@ -495,6 +495,8 @@ apa_table(
 knitr::include_graphics("images/vtc_performance_evaluation.png")
 ```
 
+[MB: irgendwo sollte noch eine section sein die beschreibt wie man Zugang zu den Videos und den Annoatationen bekommen kann]
+
 # General Discussion
 We present the ChildLens dataset, a diverse egocentric video-audio dataset documenting children’s everyday experiences with annotations for key activities. The dataset’s quality is demonstrated by its ability to yield strong results when applied to previously well-performing models for activity localization and audio classification [MB: Das Argument finde ich ein bisschen komisch, weil die Performance von Models als qualitätsindikator für die Daten herangezogen wird. Die Qualität ergibt sich eher aus der größe und qualität der annotationenen. Selbst wenn die früheren Models abschmieren würden wäre der Datensatz gut. Die gute Performance sagt eher was über die Qualität der Models als des Datensatzes. Ich würde die performance von diesen Modellen in einem separaten Abschnitt diskutieren und aber auch klar sagen wo noch Luft nach oben ist.]. For instance, the pretrained Voice-Type Classifier for audio transcription achieves performance comparable to previous datasets. Similarly, the Boundary-Matching Network, applied to the ChildLens data for activity localization, produces robust results consistent with its performance on other datasets. This highlights the dataset’s robustness in supporting well-established models, validating its quality for further research in multimodal analysis, particularly in the context of children’s everyday experiences.
 
