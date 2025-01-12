@@ -46,22 +46,18 @@
   file = {/Users/nelesuffo/Zotero/storage/P2YJ73YD/Arabacı et al. - 2021 - Multi-modal egocentric activity recognition using .pdf}
 }
 
-@article{smith2018developing,
-  title={The developing infant creates a curriculum for statistical learning},
-  author={Smith, Linda B and Jayaraman, Swapnaa and Clerkin, Elizabeth and Yu, Chen},
-  journal={Trends in cognitive sciences},
-  volume={22},
-  number={4},
-  pages={325--336},
-  year={2018},
-  publisher={Elsevier}
-}
-
-@book{carpendale2020makes,
-  title={What makes us human: How minds develop through social interactions},
-  author={Carpendale, Jeremy and Lewis, Charlie},
-  year={2020},
-  publisher={Routledge}
+@online{baevskiWav2vec20Framework2020,
+  title = {Wav2vec 2.0: {{A Framework}} for {{Self-Supervised Learning}} of {{Speech Representations}}},
+  shorttitle = {Wav2vec 2.0},
+  author = {Baevski, Alexei and Zhou, Henry and Mohamed, Abdelrahman and Auli, Michael},
+  date = {2020},
+  doi = {10.48550/ARXIV.2006.11477},
+  url = {https://arxiv.org/abs/2006.11477},
+  urldate = {2025-01-12},
+  abstract = {We show for the first time that learning powerful representations from speech audio alone followed by fine-tuning on transcribed speech can outperform the best semi-supervised methods while being conceptually simpler. wav2vec 2.0 masks the speech input in the latent space and solves a contrastive task defined over a quantization of the latent representations which are jointly learned. Experiments using all labeled data of Librispeech achieve 1.8/3.3 WER on the clean/other test sets. When lowering the amount of labeled data to one hour, wav2vec 2.0 outperforms the previous state of the art on the 100 hour subset while using 100 times less labeled data. Using just ten minutes of labeled data and pre-training on 53k hours of unlabeled data still achieves 4.8/8.2 WER. This demonstrates the feasibility of speech recognition with limited amounts of labeled data.},
+  pubstate = {prepublished},
+  version = {3},
+  keywords = {Audio and Speech Processing (eess.AS),Computation and Language (cs.CL),FOS: Computer and information sciences,FOS: Electrical engineering electronic engineering information engineering,Machine Learning (cs.LG),Sound (cs.SD)}
 }
 
 @inproceedings{bambachLendingHandDetecting2015,
@@ -79,6 +75,24 @@
   eventtitle = {2015 {{IEEE International Conference}} on {{Computer Vision}} ({{ICCV}})},
   isbn = {978-1-4673-8391-2},
   file = {/Users/nelesuffo/Zotero/storage/NVTHGNDX/Bambach et al. - 2015 - Lending A Hand Detecting Hands and Recognizing Ac.pdf}
+}
+
+@article{bergelsonEverydayLanguageInput2023,
+  title = {Everyday Language Input and Production in 1,001 Children from Six Continents},
+  author = {Bergelson, Elika and Soderstrom, Melanie and Schwarz, Iris-Corinna and Rowland, Caroline F. and Ramírez-Esparza, Nairán and R. Hamrick, Lisa and Marklund, Ellen and Kalashnikova, Marina and Guez, Ava and Casillas, Marisa and Benetti, Lucia and Alphen, Petra Van and Cristia, Alejandrina},
+  date = {2023-12-26},
+  journaltitle = {Proceedings of the National Academy of Sciences},
+  shortjournal = {Proc. Natl. Acad. Sci. U.S.A.},
+  volume = {120},
+  number = {52},
+  pages = {e2300671120},
+  issn = {0027-8424, 1091-6490},
+  doi = {10.1073/pnas.2300671120},
+  url = {https://pnas.org/doi/10.1073/pnas.2300671120},
+  urldate = {2025-01-11},
+  abstract = {Language is a universal human ability, acquired readily by young children, who otherwise struggle with many basics of survival. And yet, language ability is variable across individuals. Naturalistic and experimental observations suggest that children’s linguistic skills vary with factors like socioeconomic status and children’s gender. But which factors really influence children’s day-to-day language use? Here, we leverage speech technology in a big-data approach to report on a unique cross-cultural and diverse data set: {$>$}2,500 d-long, child-centered audio-recordings of 1,001 2- to 48-mo-olds from 12 countries spanning six continents across urban, farmer-forager, and subsistence-farming contexts. As expected, age and language-relevant clinical risks and diagnoses predicted how much speech (and speech-like vocalization) children produced. Critically, so too did adult talk in children’s environments: Children who heard more talk from adults produced more speech. In contrast to previous conclusions based on more limited sampling methods and a different set of language proxies, socioeconomic status (operationalized as maternal education) was not significantly associated with children’s productions over the first 4 y of life, and neither were gender or multilingualism. These findings from large-scale naturalistic data advance our understanding of which factors are robust predictors of variability in the speech behaviors of young learners in a wide range of everyday contexts.},
+  langid = {english},
+  file = {/Users/nelesuffo/Zotero/storage/B4PYKNBG/Bergelson et al. - 2023 - Everyday language input and production in 1,001 ch.pdf}
 }
 
 @article{borjonViewTheirOwn2018,
@@ -111,6 +125,65 @@
   version = {10.0.15}
 }
 
+@online{caoOpenPoseRealtimeMultiPerson2018,
+  title = {{{OpenPose}}: {{Realtime Multi-Person 2D Pose Estimation}} Using {{Part Affinity Fields}}},
+  shorttitle = {{{OpenPose}}},
+  author = {Cao, Zhe and Hidalgo, Gines and Simon, Tomas and Wei, Shih-En and Sheikh, Yaser},
+  date = {2018},
+  doi = {10.48550/ARXIV.1812.08008},
+  url = {https://arxiv.org/abs/1812.08008},
+  urldate = {2025-01-11},
+  abstract = {Realtime multi-person 2D pose estimation is a key component in enabling machines to have an understanding of people in images and videos. In this work, we present a realtime approach to detect the 2D pose of multiple people in an image. The proposed method uses a nonparametric representation, which we refer to as Part Affinity Fields (PAFs), to learn to associate body parts with individuals in the image. This bottom-up system achieves high accuracy and realtime performance, regardless of the number of people in the image. In previous work, PAFs and body part location estimation were refined simultaneously across training stages. We demonstrate that a PAF-only refinement rather than both PAF and body part location refinement results in a substantial increase in both runtime performance and accuracy. We also present the first combined body and foot keypoint detector, based on an internal annotated foot dataset that we have publicly released. We show that the combined detector not only reduces the inference time compared to running them sequentially, but also maintains the accuracy of each component individually. This work has culminated in the release of OpenPose, the first open-source realtime system for multi-person 2D pose detection, including body, foot, hand, and facial keypoints.},
+  pubstate = {prepublished},
+  version = {2},
+  keywords = {Computer Vision and Pattern Recognition (cs.CV),FOS: Computer and information sciences}
+}
+
+@book{carpendaleWhatMakesUs2020,
+  title = {What {{Makes Us Human}}: {{How Minds Develop}} through {{Social Interactions}}},
+  shorttitle = {What {{Makes Us Human}}},
+  author = {Carpendale, Jeremy and Lewis, Charlie},
+  date = {2020-12-21},
+  edition = {1},
+  publisher = {Routledge},
+  doi = {10.4324/9781003125105},
+  url = {https://www.taylorfrancis.com/books/9781000283983},
+  urldate = {2025-01-11},
+  isbn = {978-1-00-312510-5},
+  langid = {english}
+}
+
+@online{carreiraQuoVadisAction2017,
+  title = {Quo {{Vadis}}, {{Action Recognition}}? {{A New Model}} and the {{Kinetics Dataset}}},
+  shorttitle = {Quo {{Vadis}}, {{Action Recognition}}?},
+  author = {Carreira, Joao and Zisserman, Andrew},
+  date = {2017},
+  doi = {10.48550/ARXIV.1705.07750},
+  url = {https://arxiv.org/abs/1705.07750},
+  urldate = {2025-01-12},
+  abstract = {The paucity of videos in current action classification datasets (UCF-101 and HMDB-51) has made it difficult to identify good video architectures, as most methods obtain similar performance on existing small-scale benchmarks. This paper re-evaluates state-of-the-art architectures in light of the new Kinetics Human Action Video dataset. Kinetics has two orders of magnitude more data, with 400 human action classes and over 400 clips per class, and is collected from realistic, challenging YouTube videos. We provide an analysis on how current architectures fare on the task of action classification on this dataset and how much performance improves on the smaller benchmark datasets after pre-training on Kinetics. We also introduce a new Two-Stream Inflated 3D ConvNet (I3D) that is based on 2D ConvNet inflation: filters and pooling kernels of very deep image classification ConvNets are expanded into 3D, making it possible to learn seamless spatio-temporal feature extractors from video while leveraging successful ImageNet architecture designs and even their parameters. We show that, after pre-training on Kinetics, I3D models considerably improve upon the state-of-the-art in action classification, reaching 80.9\% on HMDB-51 and 98.0\% on UCF-101.},
+  pubstate = {prepublished},
+  version = {3},
+  keywords = {Computer Vision and Pattern Recognition (cs.CV),FOS: Computer and information sciences,Machine Learning (cs.LG)}
+}
+
+@article{chenDyadicAffectParentChild2023,
+  title = {Dyadic {{Affect}} in {{Parent-Child Multimodal Interaction}}: {{Introducing}} the {{DAMI-P2C Dataset}} and Its {{Preliminary Analysis}}},
+  shorttitle = {Dyadic {{Affect}} in {{Parent-Child Multimodal Interaction}}},
+  author = {Chen, Huili and Alghowinem, Sharifa and Jang, Soo Jung and Breazeal, Cynthia and Park, Hae Won},
+  date = {2023-10-01},
+  journaltitle = {IEEE Transactions on Affective Computing},
+  shortjournal = {IEEE Trans. Affective Comput.},
+  volume = {14},
+  number = {4},
+  pages = {3345--3361},
+  issn = {1949-3045, 2371-9850},
+  doi = {10.1109/TAFFC.2022.3178689},
+  url = {https://ieeexplore.ieee.org/document/9784429/},
+  urldate = {2025-01-12},
+  file = {/Users/nelesuffo/Zotero/storage/XZZVRTPE/Chen et al. - 2023 - Dyadic Affect in Parent-Child Multimodal Interacti.pdf}
+}
+
 @article{debarbaroTenLessonsInfants2022,
   title = {Ten {{Lessons About Infants}}’ {{Everyday Experiences}}},
   author = {De Barbaro, Kaya and Fausey, Caitlin M.},
@@ -129,6 +202,24 @@
   file = {/Users/nelesuffo/Zotero/storage/29MXEGW7/De Barbaro and Fausey - 2022 - Ten Lessons About Infants’ Everyday Experiences.pdf}
 }
 
+@article{donnellyLongitudinalRelationshipConversational2021,
+  title = {The {{Longitudinal Relationship Between Conversational Turn}}‐{{Taking}} and {{Vocabulary Growth}} in {{Early Language Development}}},
+  author = {Donnelly, Seamus and Kidd, Evan},
+  date = {2021-03},
+  journaltitle = {Child Development},
+  shortjournal = {Child Development},
+  volume = {92},
+  number = {2},
+  pages = {609--625},
+  issn = {0009-3920, 1467-8624},
+  doi = {10.1111/cdev.13511},
+  url = {https://srcd.onlinelibrary.wiley.com/doi/10.1111/cdev.13511},
+  urldate = {2025-01-11},
+  abstract = {Children acquire language embedded within the rich social context of interaction. This paper reports on a longitudinal study investigating the developmental relationship between conversational turn‐taking and vocabulary growth in English‐acquiring children (               N               ~=~122) followed between 9 and 24~months. Daylong audio recordings obtained every 3~months provided several indices of the language environment, including the number of adult words children heard in their environment and their number of conversational turns. Vocabulary was measured independently via parental report. Growth curve analyses revealed a bidirectional relationship between conversational turns and vocabulary growth, controlling for the amount of words in children’s environments. The results are consistent with theoretical approaches that identify social interaction as a core component of early language acquisition.},
+  langid = {english},
+  file = {/Users/nelesuffo/Zotero/storage/KTKFUA2Y/Donnelly and Kidd - 2021 - The Longitudinal Relationship Between Conversation.pdf}
+}
+
 @online{duStrongSORTMakeDeepSORT2022,
   title = {{{StrongSORT}}: {{Make DeepSORT Great Again}}},
   shorttitle = {{{StrongSORT}}},
@@ -142,6 +233,32 @@
   version = {2},
   keywords = {Computer Vision and Pattern Recognition (cs.CV),FOS: Computer and information sciences},
   file = {/Users/nelesuffo/Zotero/storage/YGKFB2NL/Du et al. - 2022 - StrongSORT Make DeepSORT Great Again.pdf}
+}
+
+@online{fraileUpStoryUppsalaStorytelling2024,
+  title = {{{UpStory}}: The {{Uppsala Storytelling}} Dataset},
+  shorttitle = {{{UpStory}}},
+  author = {Fraile, Marc and Calvo-Barajas, Natalia and Apeiron, Anastasia Sophia and Varni, Giovanna and Lindblad, Joakim and Sladoje, Nataša and Castellano, Ginevra},
+  date = {2024},
+  doi = {10.48550/ARXIV.2407.04352},
+  url = {https://arxiv.org/abs/2407.04352},
+  urldate = {2025-01-12},
+  abstract = {Friendship and rapport play an important role in the formation of constructive social interactions, and have been widely studied in educational settings due to their impact on student outcomes. Given the growing interest in automating the analysis of such phenomena through Machine Learning (ML), access to annotated interaction datasets is highly valuable. However, no dataset on dyadic child-child interactions explicitly capturing rapport currently exists. Moreover, despite advances in the automatic analysis of human behaviour, no previous work has addressed the prediction of rapport in child-child dyadic interactions in educational settings. We present UpStory -- the Uppsala Storytelling dataset: a novel dataset of naturalistic dyadic interactions between primary school aged children, with an experimental manipulation of rapport. Pairs of children aged 8-10 participate in a task-oriented activity: designing a story together, while being allowed free movement within the play area. We promote balanced collection of different levels of rapport by using a within-subjects design: self-reported friendships are used to pair each child twice, either minimizing or maximizing pair separation in the friendship network. The dataset contains data for 35 pairs, totalling 3h 40m of audio and video recordings. It includes two video sources covering the play area, as well as separate voice recordings for each child. An anonymized version of the dataset is made publicly available, containing per-frame head pose, body pose, and face features; as well as per-pair information, including the level of rapport. Finally, we provide ML baselines for the prediction of rapport.},
+  pubstate = {prepublished},
+  version = {1},
+  keywords = {FOS: Computer and information sciences,Human-Computer Interaction (cs.HC),Machine Learning (cs.LG)}
+}
+
+@book{heyesCognitiveGadgetsCultural2018,
+  title = {Cognitive Gadgets: The Cultural Evolution of Thinking},
+  shorttitle = {Cognitive Gadgets},
+  author = {Heyes, Cecilia M.},
+  date = {2018},
+  publisher = {Harvard University press},
+  location = {Cambridge (Mass.)},
+  abstract = {How did human minds become so different from those of other animals? What accounts for our capacity to understand the way the physical world works, to think ourselves into the minds of others, to gossip, read, tell stories about the past, and imagine the future? These questions are not new: they have been debated by philosophers, psychologists, anthropologists, evolutionists, and neurobiologists over the course of centuries. One explanation widely accepted today is that humans have special cognitive instincts. Unlike other living animal species, we are born with complicated mechanisms for reasoning about causation, reading the minds of others, copying behaviors, and using language. Cecilia Heyes agrees that adult humans have impressive pieces of cognitive equipment. In her framing, however, these cognitive gadgets are not instincts programmed in the genes but are constructed in the course of childhood through social interaction. Cognitive gadgets are products of cultural evolution, rather than genetic evolution. At birth, the minds of human babies are only subtly different from the minds of newborn chimpanzees. We are friendlier, our attention is drawn to different things, and we have a capacity to learn and remember that outstrips the abilities of newborn chimpanzees. Yet when these subtle differences are exposed to culture-soaked human environments, they have enormous effects. They enable us to upload distinctively human ways of thinking from the social world around us. As Cognitive Gadgets makes clear, from birth our malleable human minds can learn through culture not only what to think but how to think it},
+  isbn = {978-0-674-98015-0},
+  langid = {english}
 }
 
 @incollection{kapidisObjectDetectionBasedLocation2020,
@@ -258,6 +375,53 @@
   file = {/Users/nelesuffo/Zotero/storage/I5LRFE37/Núñez-Marcos et al. - 2022 - Egocentric Vision-based Action Recognition A surv.pdf}
 }
 
+@article{piagetPartCognitiveDevelopment1964,
+  title = {Part {{I}}: {{Cognitive}} Development in Children: {{Piaget}} Development and Learning},
+  shorttitle = {Part {{I}}},
+  author = {Piaget, Jean},
+  date = {1964-09},
+  journaltitle = {Journal of Research in Science Teaching},
+  shortjournal = {J Res Sci Teach},
+  volume = {2},
+  number = {3},
+  pages = {176--186},
+  issn = {0022-4308, 1098-2736},
+  doi = {10.1002/tea.3660020306},
+  url = {https://onlinelibrary.wiley.com/doi/10.1002/tea.3660020306},
+  urldate = {2025-01-11},
+  langid = {english}
+}
+
+@online{redmonYouOnlyLook2015,
+  title = {You {{Only Look Once}}: {{Unified}}, {{Real-Time Object Detection}}},
+  shorttitle = {You {{Only Look Once}}},
+  author = {Redmon, Joseph and Divvala, Santosh and Girshick, Ross and Farhadi, Ali},
+  date = {2015},
+  doi = {10.48550/ARXIV.1506.02640},
+  url = {https://arxiv.org/abs/1506.02640},
+  urldate = {2025-01-11},
+  abstract = {We present YOLO, a new approach to object detection. Prior work on object detection repurposes classifiers to perform detection. Instead, we frame object detection as a regression problem to spatially separated bounding boxes and associated class probabilities. A single neural network predicts bounding boxes and class probabilities directly from full images in one evaluation. Since the whole detection pipeline is a single network, it can be optimized end-to-end directly on detection performance. Our unified architecture is extremely fast. Our base YOLO model processes images in real-time at 45 frames per second. A smaller version of the network, Fast YOLO, processes an astounding 155 frames per second while still achieving double the mAP of other real-time detectors. Compared to state-of-the-art detection systems, YOLO makes more localization errors but is far less likely to predict false detections where nothing exists. Finally, YOLO learns very general representations of objects. It outperforms all other detection methods, including DPM and R-CNN, by a wide margin when generalizing from natural images to artwork on both the Picasso Dataset and the People-Art Dataset.},
+  pubstate = {prepublished},
+  version = {5},
+  keywords = {Computer Vision and Pattern Recognition (cs.CV),FOS: Computer and information sciences}
+}
+
+@inproceedings{rehgDecodingChildrensSocial2013,
+  title = {Decoding {{Children}}'s {{Social Behavior}}},
+  booktitle = {2013 {{IEEE Conference}} on {{Computer Vision}} and {{Pattern Recognition}}},
+  author = {Rehg, James M. and Abowd, Gregory D. and Rozga, Agata and Romero, Mario and Clements, Mark A. and Sclaroff, Stan and Essa, Irfan and Ousley, Opal Y. and Li, Yin and Kim, Chanho and Rao, Hrishikesh and Kim, Jonathan C. and Presti, Liliana Lo and Zhang, Jianming and Lantsman, Denis and Bidwell, Jonathan and Ye, Zhefan},
+  date = {2013-06},
+  pages = {3414--3421},
+  publisher = {IEEE},
+  location = {Portland, OR, USA},
+  doi = {10.1109/CVPR.2013.438},
+  url = {http://ieeexplore.ieee.org/document/6619282/},
+  urldate = {2025-01-12},
+  eventtitle = {2013 {{IEEE Conference}} on {{Computer Vision}} and {{Pattern Recognition}} ({{CVPR}})},
+  isbn = {978-0-7695-4989-7},
+  file = {/Users/nelesuffo/Zotero/storage/WANJ69M6/Rehg et al. - 2013 - Decoding Children's Social Behavior.pdf}
+}
+
 @article{rogoffImportanceUnderstandingChildrens2018,
   title = {The Importance of Understanding Children’s Lived Experience},
   author = {Rogoff, Barbara and Dahl, Audun and Callanan, Maureen},
@@ -271,6 +435,24 @@
   url = {https://linkinghub.elsevier.com/retrieve/pii/S0273229718300236},
   urldate = {2024-12-23},
   langid = {english}
+}
+
+@article{roweDifferencesEarlyGesture2009,
+  title = {Differences in {{Early Gesture Explain SES Disparities}} in {{Child Vocabulary Size}} at {{School Entry}}},
+  author = {Rowe, Meredith L. and Goldin-Meadow, Susan},
+  date = {2009-02-13},
+  journaltitle = {Science},
+  shortjournal = {Science},
+  volume = {323},
+  number = {5916},
+  pages = {951--953},
+  issn = {0036-8075, 1095-9203},
+  doi = {10.1126/science.1167025},
+  url = {https://www.science.org/doi/10.1126/science.1167025},
+  urldate = {2025-01-11},
+  abstract = {Children from low–socioeconomic status (SES) families, on average, arrive at school with smaller vocabularies than children from high-SES families. In an effort to identify precursors to, and possible remedies for, this inequality, we videotaped 50 children from families with a range of different SES interacting with parents at 14 months and assessed their vocabulary skills at 54 months. We found that children from high-SES families frequently used gesture to communicate at 14 months, a relation that was explained by parent gesture use (with speech controlled). In turn, the fact that children from high-SES families have large vocabularies at 54 months was explained by children's gesture use at 14 months. Thus, differences in early gesture help to explain the disparities in vocabulary that children bring with them to school.},
+  langid = {english},
+  file = {/Users/nelesuffo/Zotero/storage/YQ9VHZTY/Rowe and Goldin-Meadow - 2009 - Differences in Early Gesture Explain SES Dispariti.pdf}
 }
 
 @article{royPredictingBirthSpoken2015,
@@ -289,6 +471,36 @@
   abstract = {Significance             The emergence of productive language is a critical milestone in a child’s life. Laboratory studies have identified many individual factors that contribute to word learning, and larger scale studies show correlations between aspects of the home environment and language outcomes. To date, no study has compared across many factors involved in word learning. We introduce a new ultradense set of recordings that capture a single child’s daily experience during the emergence of language. We show that words used in distinctive spatial, temporal, and linguistic contexts are produced earlier, suggesting they are easier to learn. These findings support the importance of multimodal context in word learning for one child and provide new methods for quantifying the quality of children’s language input.           ,              Children learn words through an accumulation of interactions grounded in context. Although many factors in the learning environment have been shown to contribute to word learning in individual studies, no empirical synthesis connects across factors. We introduce a new ultradense corpus of audio and video recordings of a single child’s life that allows us to measure the child’s experience of each word in his vocabulary. This corpus provides the first direct comparison, to our knowledge, between different predictors of the child’s production of individual words. We develop a series of new measures of the distinctiveness of the spatial, temporal, and linguistic contexts in which a word appears, and show that these measures are stronger predictors of learning than frequency of use and that, unlike frequency, they play a consistent role across different syntactic categories. Our findings provide a concrete instantiation of classic ideas about the role of coherent activities in word learning and demonstrate the value of multimodal data in understanding children’s language acquisition.},
   langid = {english},
   file = {/Users/nelesuffo/Zotero/storage/NKMNP2P4/Roy et al. - 2015 - Predicting the birth of a spoken word.pdf}
+}
+
+@article{ruffmanExposureBehavioralRegularities2023,
+  title = {Exposure to Behavioral Regularities in Everyday Life Predicts Infants’ Acquisition of Mental State Vocabulary},
+  author = {Ruffman, Ted and Chen, Lisa and Lorimer, Ben and Vanier, Sarah and Edgar, Kate and Scarf, Damian and Taumoepeau, Mele},
+  date = {2023-07},
+  journaltitle = {Developmental Science},
+  shortjournal = {Developmental Science},
+  volume = {26},
+  number = {4},
+  pages = {e13343},
+  issn = {1363-755X, 1467-7687},
+  doi = {10.1111/desc.13343},
+  url = {https://onlinelibrary.wiley.com/doi/10.1111/desc.13343},
+  urldate = {2025-01-11},
+  abstract = {Abstract                                           There are two broad views of children's theory of mind. The mentalist view is that it emerges in infancy and is possibly innate. The minimalist view is that it emerges more gradually in childhood and is heavily dependent on learning. According to minimalism, children initially understand behaviors rather than mental states, and they are assisted in doing so by recognizing repeating patterns in behavior. The regularities in behavior allow them to predict future behaviors, succeed on theory‐of‐mind tasks, acquire mental state words, and eventually, understand the mental states underlying behavior. The present study provided the first clear evidence for the plausibility of this view by fitting head cameras to 54 infants aged 6 to 25 months, and recording their view of the world in their daily lives. At 6 and 12 months, infants viewed an average of 146.5 repeated behaviors per hour, a rate consistent with approximately 560,000 repetitions in their first year, and with repetitions correlating with children's acquisition of mental state words, even after controlling for their general vocabulary and a range of variables indexing social interaction. We also recorded infants’ view of people searching or searching for and retrieving objects. These were 92 times less common and did not correlate with mental state vocabulary. Overall, the findings indicate that repeated behaviors provide a rich source of information for children that would readily allow them to recognize patterns in behavior and help them acquire mental state words, providing the first clear evidence for this claim of minimalism.                                         Research Highlights                                                                        Six‐ to 25‐month‐olds wore head cameras to record home life from infants’ point‐of‐view and help adjudicate between nativist and minimalist views of theory‐of‐mind (ToM).                                                           Nativists say ToM is too early developing to enable learning, whereas minimalists say infants learn to predict behaviors from behavior patterns in environment.                                                           Consistent with minimalism, infants had an incredibly rich exposure (146.5/h, {$>$}560,000 in first year) to repeated behaviors (e.g., drinking from a cup repeatedly).                                                           Consistent with minimalism, more repeated behaviors correlated with infants’ mental state vocabulary, even after controlling for gender, age, searches witnessed and non‐mental state vocabulary.},
+  langid = {english}
+}
+
+@online{russakovskyImageNetLargeScale2014,
+  title = {{{ImageNet Large Scale Visual Recognition Challenge}}},
+  author = {Russakovsky, Olga and Deng, Jia and Su, Hao and Krause, Jonathan and Satheesh, Sanjeev and Ma, Sean and Huang, Zhiheng and Karpathy, Andrej and Khosla, Aditya and Bernstein, Michael and Berg, Alexander C. and Fei-Fei, Li},
+  date = {2014},
+  doi = {10.48550/ARXIV.1409.0575},
+  url = {https://arxiv.org/abs/1409.0575},
+  urldate = {2025-01-12},
+  abstract = {The ImageNet Large Scale Visual Recognition Challenge is a benchmark in object category classification and detection on hundreds of object categories and millions of images. The challenge has been run annually from 2010 to present, attracting participation from more than fifty institutions. This paper describes the creation of this benchmark dataset and the advances in object recognition that have been possible as a result. We discuss the challenges of collecting large-scale ground truth annotation, highlight key breakthroughs in categorical object recognition, provide a detailed analysis of the current state of the field of large-scale image classification and object detection, and compare the state-of-the-art computer vision accuracy with human accuracy. We conclude with lessons learned in the five years of the challenge, and propose future directions and improvements.},
+  pubstate = {prepublished},
+  version = {3},
+  keywords = {Computer Vision and Pattern Recognition (cs.CV),FOS: Computer and information sciences,I.4.8; I.5.2}
 }
 
 @article{saberCurriculumLearningInfant2023,
@@ -328,6 +540,23 @@
   urldate = {2024-12-23},
   langid = {english},
   file = {/Users/nelesuffo/Zotero/storage/44QZX3Y5/Smith et al. - 2015 - Contributions of Head-Mounted Cameras to Studying .pdf}
+}
+
+@article{smithDevelopingInfantCreates2018,
+  title = {The {{Developing Infant Creates}} a {{Curriculum}} for {{Statistical Learning}}},
+  author = {Smith, Linda B. and Jayaraman, Swapnaa and Clerkin, Elizabeth and Yu, Chen},
+  date = {2018-04},
+  journaltitle = {Trends in Cognitive Sciences},
+  shortjournal = {Trends in Cognitive Sciences},
+  volume = {22},
+  number = {4},
+  pages = {325--336},
+  issn = {13646613},
+  doi = {10.1016/j.tics.2018.02.004},
+  url = {https://linkinghub.elsevier.com/retrieve/pii/S1364661318300275},
+  urldate = {2025-01-11},
+  langid = {english},
+  file = {/Users/nelesuffo/Zotero/storage/2MNPACN4/Smith et al. - 2018 - The Developing Infant Creates a Curriculum for Sta.pdf}
 }
 
 @article{spanglerToddlersEverydayExperiences1989,
@@ -380,6 +609,17 @@
   file = {/Users/nelesuffo/Zotero/storage/A5ANFVQR/Sullivan et al. - 2021 - SAYCam A Large, Longitudinal Audiovisual Dataset .pdf}
 }
 
+@book{tomaselloCulturalOriginsHuman2009,
+  title = {Cultural {{Origins}} of {{Human Cognition}}},
+  author = {Tomasello, Michael},
+  date = {2009},
+  publisher = {Harvard University Press},
+  location = {Cambridge},
+  isbn = {978-0-674-00582-2},
+  langid = {english},
+  pagetotal = {256}
+}
+
 @article{truongCrossviewActionRecognition2024,
   title = {Cross-View Action Recognition Understanding from Exocentric to Egocentric Perspective},
   author = {Truong, Thanh-Dat and Luu, Khoa},
@@ -411,6 +651,14 @@
   file = {/Users/nelesuffo/Zotero/storage/RQHSGKUR/Tsutsui et al. - 2020 - A Computational Model of Early Word Learning from .pdf;/Users/nelesuffo/Zotero/storage/MQUAE3QR/2006.html}
 }
 
+@book{vygotskyMindSocietyDevelopment1978,
+  title = {Mind in {{Society}}: {{The Development}} of {{Higher Psychological Processes}}},
+  author = {Vygotsky, Lev Semyonovich},
+  date = {1978},
+  publisher = {Harvard University Press},
+  location = {Cambridge, MA}
+}
+
 @online{wangFasterPersonReIdentification2020,
   title = {Faster {{Person Re-Identification}}},
   author = {Wang, Guan'an and Gong, Shaogang and Cheng, Jian and Hou, Zengguang},
@@ -433,6 +681,19 @@
   url = {https://arxiv.org/abs/1705.02953},
   urldate = {2024-11-14},
   abstract = {Deep convolutional networks have achieved great success for image recognition. However, for action recognition in videos, their advantage over traditional methods is not so evident. We present a general and flexible video-level framework for learning action models in videos. This method, called temporal segment network (TSN), aims to model long-range temporal structures with a new segment-based sampling and aggregation module. This unique design enables our TSN to efficiently learn action models by using the whole action videos. The learned models could be easily adapted for action recognition in both trimmed and untrimmed videos with simple average pooling and multi-scale temporal window integration, respectively. We also study a series of good practices for the instantiation of TSN framework given limited training samples. Our approach obtains the state-the-of-art performance on four challenging action recognition benchmarks: HMDB51 (71.0\%), UCF101 (94.9\%), THUMOS14 (80.1\%), and ActivityNet v1.2 (89.6\%). Using the proposed RGB difference for motion models, our method can still achieve competitive accuracy on UCF101 (91.0\%) while running at 340 FPS. Furthermore, based on the temporal segment networks, we won the video classification track at the ActivityNet challenge 2016 among 24 teams, which demonstrates the effectiveness of TSN and the proposed good practices.},
+  pubstate = {prepublished},
+  version = {1},
+  keywords = {Computer Vision and Pattern Recognition (cs.CV),FOS: Computer and information sciences}
+}
+
+@online{xiongCUHKETHZSIAT2016,
+  title = {{{CUHK}} \& {{ETHZ}} \& {{SIAT Submission}} to {{ActivityNet Challenge}} 2016},
+  author = {Xiong, Yuanjun and Wang, Limin and Wang, Zhe and Zhang, Bowen and Song, Hang and Li, Wei and Lin, Dahua and Qiao, Yu and Van Gool, Luc and Tang, Xiaoou},
+  date = {2016},
+  doi = {10.48550/ARXIV.1608.00797},
+  url = {https://arxiv.org/abs/1608.00797},
+  urldate = {2025-01-11},
+  abstract = {This paper presents the method that underlies our submission to the untrimmed video classification task of ActivityNet Challenge 2016. We follow the basic pipeline of temporal segment networks and further raise the performance via a number of other techniques. Specifically, we use the latest deep model architecture, e.g., ResNet and Inception V3, and introduce new aggregation schemes (top-k and attention-weighted pooling). Additionally, we incorporate the audio as a complementary channel, extracting relevant information via a CNN applied to the spectrograms. With these techniques, we derive an ensemble of deep models, which, together, attains a high classification accuracy (mAP \$93.23\textbackslash\%\$) on the testing set and secured the first place in the challenge.},
   pubstate = {prepublished},
   version = {1},
   keywords = {Computer Vision and Pattern Recognition (cs.CV),FOS: Computer and information sciences}
