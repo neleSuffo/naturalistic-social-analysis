@@ -322,20 +322,24 @@ In this chapter, we present the results of applying two model architectures to t
 
 \subsection{Boundary-Matching Network (BMN)}\label{boundary-matching-network-bmn}
 
-We employ the Boundary-Matching Network (BMN) (Lin, Liu, Li, Ding, \& Wen, 2019) for temporal activity localization on untrimmed videos. BMN generates action proposals by predicting activity start and end boundaries and classifying these proposals into activity classes. The architecture consists of two main components: (1) a proposal generation network, which identifies candidate proposals, and (2) a proposal classification network, which classifies these proposals. The model prioritizes proposals with high recall and high temporal overlap with ground truth.
+We employ the Boundary-Matching Network (BMN) (Lin, Liu, Li, Ding, \& Wen, 2019) for temporal activity localization on our dataset. BMN generates action proposals by predicting activity start and end boundaries and classifying these proposals into activity classes. The architecture consists of two main components: (1) a proposal generation network, which identifies candidate proposals, and (2) a proposal classification network, which classifies these proposals. The model prioritizes proposals with high recall and high temporal overlap with ground truth.
 BMN performance is evaluated using Average Recall (AR) and Area Under the Curve (AUC) metrics. AR is computed at various Intersection over Union (IoU) thresholds and for different Average Numbers of Proposals (AN) as \href{mailto:AR@AN}{\nolinkurl{AR@AN}}, where AN ranges from 0 to 100. \href{mailto:AR@100}{\nolinkurl{AR@100}} reflects recall performance with 100 proposals per video, while AUC quantifies the trade-off between recall and number of generated proposal On the ActivityNet-1.3 test set, BMN achieves an \href{mailto:AR@100}{\nolinkurl{AR@100}} of 72.46 and an AUC of 64.47, demonstrating its effectiveness in activity localization.
 
 \subsubsection{Data Preparation}\label{data-preparation}
 
-BMN implementation, including video preprocessing and model training, was conducted using MMAction2 toolbox {[}Contributors (2020); xiongCUHKAmpETHZ2016{]}. Data preparation consisted of multiple steps, including rawframe extraction as well as the generation of rgb and flow features for every video. Prior to model training, we analyzed the number of instances per activity class to evaluate the data sufficiency for training and testing purposes. The distribution of activity instances and their total duration across activity classes are presented in the appendix. Our analysis revealed a pronounced class imbalance in the dataset, both in terms of the number of instances and their total duration. Given that the primary aim of this study is to establish initial benchmark results, no data augmentation techniques were employed to address this imbalance. Instead, we focused on the most prevalent activity classes, namely ``Playing with Object'', ``Drawing'', and ``Reading a Book''. To optimize feature extraction and model training, the videos were divided into equal-length clips of 4000 frames each (approximately 2 minutes and 13 seconds). This resulted in a total of 1130 clips. However, only 995 of these clips had annotations, so only those were divided into training, validation, and test subsets using an 80-10-10 split. The training set was used to optimize the model's parameters, while the validation set guided hyperparameter tuning and helped mitigate overfitting. Finally, the test set was reserved for evaluating the model's performance on unseen data, providing a reliable measure of its generalization ability.
+The BMN implementation, including video preprocessing and model training, was conducted using the MMAction2 toolbox (Contributors, 2020). Data preparation involved several key steps, such as raw frame extraction and the generation of both RGB and optical flow features for each video. Before training the model, we analyzed the distribution of activity instances across the classes to assess the data's sufficiency for both training and testing. A detailed summary of the activity instances and their total durations can be found in the appendix.
+
+Our analysis highlighted a significant class imbalance in the dataset, both in terms of instance count and the total duration of recordings. Given the primary goal of establishing initial benchmark results, no data augmentation methods were employed to mitigate this imbalance. Instead, the focus was placed on the more frequent activity classes, which also had the longest durations: ``Playing with Object'' (22.85 hours of recording), ``Drawing'' (6.24 hours of recording), and ``Reading a Book'' (5.48 hours of recording).
+
+For feature extraction and model training optimization, the videos were divided into clips of 4000 frames each (correspond to approx. 2 minutes and 13 seconds). This resulted in a total of 1130 clips. However, only 995 clips had annotations, so we split these annotated clips into training, validation, and test subsets, using an 80-10-10 split. The training set was used for model optimization, the validation set guided hyperparameter tuning and overfitting prevention, and the test set was reserved for evaluating the model's generalization ability on unseen data.
 
 \subsubsection{Implementation Details}\label{implementation-details}
 
-We trained the BMN model from scratch on the ChildLens dataset to predict the start and end boundaries of the video-based activity classes. The model was implemented using MMAction2, ``an open-source toolbox for video understanding based on PyTorch'' (Contributors, 2020). Training was conducted on a Linux server with 48 cores and 187 GB RAM. The model was optimized using the Adam optimizer with a learning rate of 0.001 and a batch size of 4. The training process involved multiple epochs, with early stopping based on validation loss to prevent overfitting.
+The BMN model was trained from scratch on the ChildLens dataset to predict the start and end boundaries of activity classes in the videos. The model was implemented using MMAction2, an open-source toolbox for video understanding based on PyTorch (Contributors, 2020). Training took place on a Linux server with 48 cores and 187 GB of RAM. The Adam optimizer was used with a learning rate of 0.001 and a batch size of 4. To avoid overfitting, early stopping based on validation loss was applied during training.
 
 \subsubsection{Evaluation}\label{evaluation}
 
-The performance of the BMN on the ChildLens dataset compared to its original evaluation dataset is summarized in Table \ref{tab:bmn-results}. Beside the Average recall, we also provide the Recall metrics for the three activities of interest. Overall, BMN demonstrates satisfactory performance on the ChildLens dataset, effectively generalizing to this new domain.
+The performance of the BMN model on the ChildLens dataset, compared to its evaluation on ActivityNet-1.3, is summarized in Table \ref{tab:bmn-results}, with \href{mailto:AR@100}{\nolinkurl{AR@100}} and AUC reported for both datasets. The results indicate that the BMN model generalizes well to new domains, such as children's everyday activities, despite the ChildLens dataset's focus on social and behavioral interactions in naturalistic settings. These benchmark results highlight the potential for integrating the ChildLens dataset with existing models like BMN. Automating the analysis of this dataset can streamline the study of children's activities and interactions, facilitating more efficient research in developmental psychology and related fields.
 
 \begin{table}[tbp]
 
@@ -344,15 +348,12 @@ The performance of the BMN on the ChildLens dataset compared to its original eva
 
 \caption{\label{tab:bmn-results}Comparison of BMN performance on the ActivityNet-1.3 dataset (used for model evaluation) and the ChildLens dataset, highlighting the Average Recall for 100 proposals (AR@100) and the Area Under the Curve (AUC).}
 
-\begin{tabular}{lllll}
+\begin{tabular}{lll}
 \toprule
-Dataset & \multicolumn{1}{c}{Activity Class} & \multicolumn{1}{c}{Recall} & \multicolumn{1}{c}{AR@100} & \multicolumn{1}{c}{AUC}\\
+Dataset & \multicolumn{1}{c}{AR@100} & \multicolumn{1}{c}{AUC}\\
 \midrule
-ActivityNet-1.3 &  & - & 72.46 & 64.47\\
-ChildLens &  & - & 77.43 & 69.21\\
- & Playing with Object & 0 & - & -\\
- & Drawing & 0 & - & -\\
- & Reading a Book & 0 & - & -\\
+ActivityNet-1.3 & 72.46 & 64.47\\
+ChildLens & 77.43 & 69.21\\
 \bottomrule
 \end{tabular}
 
@@ -379,7 +380,7 @@ where \(\text{precision} = \frac{\text{tp}}{\text{tp} + \text{fp}}\) and \(\text
   \(\text{fn}\) being the number of false negatives.
 \end{itemize}
 
-The \(F_1\) is a metric that combines precision and recall into a single value, calculated as their harmonic mean. It ranges from 0 to 1, with 1 representing perfect precision and recall, and 0 indicating no correct prediction The interpretation of the \(F_1\) score depends on the specific application of the model. Generally, an \(F_1\) score above 0.8 is considered good, while values above 0.9 are considered excellent. In some cases, a score around 0.5 can still be deemed acceptable, depending on the balance between precision and recall. The \(F_1\) score is computed for each class and averaged to provide an overall measure. No collar is applied to the evaluation, meaning that the prediction have to be exact to be considered correct. The model achieves an \(F_1\) score of 57.3, outperforming the previous state-of-the-art LENA model by 10.6 points.
+It ranges from 0 to 1, with 1 representing perfect precision and recall, and 0 indicating no correct prediction The interpretation of the \(F_1\) score depends on the specific application of the model. Generally, an \(F_1\) score above 0.8 is considered good, while values above 0.9 are considered excellent. In some cases, a score around 0.5 can still be deemed acceptable, depending on the balance between precision and recall. The \(F_1\) score is computed for each class and averaged to provide an overall measure. No collar is applied to the evaluation, meaning that the prediction have to be exact to be considered correct. The model achieves an \(F_1\) score of 57.3, outperforming the previous state-of-the-art LENA model by 10.6 points.
 
 \subsubsection{Data Preparation}\label{data-preparation-1}
 
