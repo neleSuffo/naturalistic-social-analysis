@@ -2,6 +2,7 @@ import json
 import logging
 from utils import fetch_all_annotations
 from constants import MtcnnPaths
+from collections import defaultdict
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -17,28 +18,38 @@ def save_annotations(annotations: list) -> None:
         (image_id, video_id, category_id, bbox, image_file_name, video_file_name)
     """
     logging.info("Saving annotations in MTCNN format.")
-    output_file_path = MtcnnPaths.data_dir
+    output_file_path = MtcnnPaths.labels_file_path
     output_dir = output_file_path.parent
     output_dir.mkdir(parents=True, exist_ok=True)
     
-    with open(output_file_path, 'a') as f:
-        for annotation in annotations:
-            _, _, _, bbox, image_file_name, _ = annotation
-            bbox = json.loads(bbox)
-            xtl, ytl, xbr, ybr = bbox
-            width = xbr - xtl
-            height = ybr - ytl
-            # MTCNN format: xtl, ytl, width, height
-            mtcnn_bbox = (xtl, ytl, width, height)
+    annotations_by_image = defaultdict(list)
+    
+    for annotation in annotations:
+        _, _, _, bbox, image_file_name, _ , gaze = annotation
+        bbox = json.loads(bbox)
+        xtl, ytl, xbr, ybr = bbox
+        width = xbr - xtl
+        height = ybr - ytl
+        # MTCNN format: xtl, ytl, width, height
+        mtcnn_bbox = (xtl, ytl, width, height)
+        
+        # Map gaze information
+        gaze_boolean = 1 if gaze == "Yes" else 0
 
-            line = f"{image_file_name} " + " ".join(map(str, mtcnn_bbox)) + '\n'
+        annotations_by_image[image_file_name].append((mtcnn_bbox, gaze_boolean))
+    
+    with open(output_file_path, 'w') as f:
+        for image_file_name, bboxes in annotations_by_image.items():
+            line = f"{image_file_name} "
+            line += " ".join(f"{xtl},{ytl},{width},{height},{gaze_boolean}" for (xtl, ytl, width, height), gaze_boolean in bboxes)
+            line += "\n"
             f.write(line)
 
 def main() -> None:
     logging.info("Starting the conversion process for MTCNN.")
     try:
         # Fetch all annotations for category 10 (face)
-        annotations = fetch_all_annotations()
+        annotations = fetch_all_annotations(["10"])
         logging.info(f"Fetched {len(annotations)} annotations.")
         save_annotations(annotations)
         logging.info("Successfully saved all annotations.")
