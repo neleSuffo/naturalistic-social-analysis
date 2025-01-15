@@ -91,6 +91,7 @@ def write_xml_to_database() -> None:
             person_ID INTEGER,
             person_age TEXT,
             person_gender TEXT,
+            gaze_directed_at_child TEXT,
             object_interaction BOOLEAN
         )
     """)
@@ -118,142 +119,143 @@ def write_xml_to_database() -> None:
         )
     """)
 
-    # Load and parse the XML annotations
-    tree = ET.parse(DetectionPaths.annotations_xml_path)
-    root = tree.getroot()
+    # # Load and parse the XML annotations
+    # tree = ET.parse(DetectionPaths.annotations_xml_path)
+    # root = tree.getroot()
 
-    # Extract task ids, the name and length of the task
-    task_details = get_task_ids_names_lengths(root)
+    # # Extract task ids, the name and length of the task
+    # task_details = get_task_ids_names_lengths(root)
     
-     # Get the task ids from the XML file (the ones that have tracks)
-    task_ids_in_tracks = {track.get("task_id") for track in root.iter("track")}
+    #  # Get the task ids from the XML file (the ones that have tracks)
+    # task_ids_in_tracks = {track.get("task_id") for track in root.iter("track")}
     
-    # Remove keys from task_details that are not present in task_ids_in_tracks
-    task_details_reduced = {task_id: details for task_id, details in task_details.items() if task_id in task_ids_in_tracks}
+    # # Remove keys from task_details that are not present in task_ids_in_tracks
+    # task_details_reduced = {task_id: details for task_id, details in task_details.items() if task_id in task_ids_in_tracks}
     
-    # Generate the frame correction dictionary 
-    # (key: task id, value: (task name, task length, frame correction))
-    frame_correction_dict = generate_cum_sum_frame_count(task_details)
+    # # Generate the frame correction dictionary 
+    # # (key: task id, value: (task name, task length, frame correction))
+    # frame_correction_dict = generate_cum_sum_frame_count(task_details)
     
-    # Initialize the frame correction value
-    frame_correction = 0
+    # # Initialize the frame correction value
+    # frame_correction = 0
     
-    # Initialize an empty set for added categories and videos
-    added_categories = set()
-    added_videos = set()
-    added_images = set()
+    # # Initialize an empty set for added categories and videos
+    # added_categories = set()
+    # added_videos = set()
+    # added_images = set()
     
-    # Extract and insert annotations
-    for track in root.iter("track"):
-        task_id = track.get("task_id")
-        track_label = track.get("label")
-        # Map the label to its corresponding label id using the dictionary
-        # returns -1 if the label is not in the dictionary
-        track_label_id = LabelToCategoryMapping.label_to_id_mapping.get(track_label, LabelToCategoryMapping.unknown_label_id)
-        # Map the label to its corresponding supercategory using the dictionary
-        supercategory = LabelToCategoryMapping.id_to_supercategory_mapping.get(
-            track_label_id, LabelToCategoryMapping.unknown_supercategory
-        )  # returns "unknown" if the label is not in the dictionary
+    # # Extract and insert annotations
+    # for track in root.iter("track"):
+    #     task_id = track.get("task_id")
+    #     track_label = track.get("label")
+    #     # Map the label to its corresponding label id using the dictionary
+    #     # returns -1 if the label is not in the dictionary
+    #     track_label_id = LabelToCategoryMapping.label_to_id_mapping.get(track_label, LabelToCategoryMapping.unknown_label_id)
+    #     # Map the label to its corresponding supercategory using the dictionary
+    #     supercategory = LabelToCategoryMapping.id_to_supercategory_mapping.get(
+    #         track_label_id, LabelToCategoryMapping.unknown_supercategory
+    #     )  # returns "unknown" if the label is not in the dictionary
 
-        # Get the frame correction value
-        if task_id is not None:
-            frame_correction = frame_correction_dict[task_id][2]
-        # Get the task name from the task_details dictionary
-        task_name = task_details.get(task_id, next(iter(task_details.values())))[0]
-        # Get the video_id from the database using the task_name
-        task_id = get_video_id_from_name_db(task_name, cursor)
+    #     # Get the frame correction value
+    #     if task_id is not None:
+    #         frame_correction = frame_correction_dict[task_id][2]
+    #     # Get the task name from the task_details dictionary
+    #     task_name = task_details.get(task_id, next(iter(task_details.values())))[0]
+    #     # Get the video_id from the database using the task_name
+    #     task_id = get_video_id_from_name_db(task_name, cursor)
         
-        # Add video details if not already added
-        if task_id not in added_videos:
-        # Add video details if not already added
-            cursor.execute(
-            """
-            INSERT INTO videos (id, file_name)
-            VALUES (?, ?)
-            """,
-                (
-                task_id,
-                f"{task_name}.mp4",
-                ),
-            )
-            added_videos.add(task_id)
+    #     # Add video details if not already added
+    #     if task_id not in added_videos:
+    #     # Add video details if not already added
+    #         cursor.execute(
+    #         """
+    #         INSERT INTO videos (id, file_name)
+    #         VALUES (?, ?)
+    #         """,
+    #             (
+    #             task_id,
+    #             f"{task_name}.mp4",
+    #             ),
+    #         )
+    #         added_videos.add(task_id)
         
-        # Add category details if not already added
-        if track_label_id not in added_categories:
-            cursor.execute(
-            """
-            INSERT INTO categories (id, category, supercategory)
-            VALUES (?, ?, ?)
-            """,
-                (
-                track_label_id,
-                track_label,
-                supercategory,
-                ),
-            )
-            added_categories.add(track_label_id)
+    #     # Add category details if not already added
+    #     if track_label_id not in added_categories:
+    #         cursor.execute(
+    #         """
+    #         INSERT INTO categories (id, category, supercategory)
+    #         VALUES (?, ?, ?)
+    #         """,
+    #             (
+    #             track_label_id,
+    #             track_label,
+    #             supercategory,
+    #             ),
+    #         )
+    #         added_categories.add(track_label_id)
       
-        # Iterate over each 'box' element within the 'track'
-        for box in track.iter("box"):
-            row = box.attrib
-            frame_id = int(row["frame"]) - frame_correction
-            outside = int(row["outside"]) # 0 if the object is inside the frame, 1 if it is outside
-            frame_id_padded = f'{frame_id:06}'
-            bbox_json = json.dumps([float(row["xtl"]), float(row["ytl"]), float(row["xbr"]), float(row["ybr"])])
+    #     # Iterate over each 'box' element within the 'track'
+    #     for box in track.iter("box"):
+    #         row = box.attrib
+    #         frame_id = int(row["frame"]) - frame_correction
+    #         outside = int(row["outside"]) # 0 if the object is inside the frame, 1 if it is outside
+    #         frame_id_padded = f'{frame_id:06}'
+    #         bbox_json = json.dumps([float(row["xtl"]), float(row["ytl"]), float(row["xbr"]), float(row["ybr"])])
 
-            # Extract other attributes
-            person_visibility = box.find(".//attribute[@name='Visibility']")
-            person_visibility_value = int(person_visibility.text) if person_visibility is not None else None
+    #         # Extract other attributes
+    #         person_visibility = box.find(".//attribute[@name='Visibility']")
+    #         person_visibility_value = int(person_visibility.text) if person_visibility is not None else None
 
-            person_id = box.find(".//attribute[@name='ID']")
-            person_id_value = int(person_id.text) if person_id is not None else None
+    #         person_id = box.find(".//attribute[@name='ID']")
+    #         person_id_value = int(person_id.text) if person_id is not None else None
 
-            person_age = box.find(".//attribute[@name='Age']")
-            person_age_value = person_age.text if person_age is not None else None
+    #         person_age = box.find(".//attribute[@name='Age']")
+    #         person_age_value = person_age.text if person_age is not None else None
 
-            person_gender = box.find(".//attribute[@name='Gender']")
-            person_gender_value = person_gender.text if person_gender is not None else None
+    #         person_gender = box.find(".//attribute[@name='Gender']")
+    #         person_gender_value = person_gender.text if person_gender is not None else None
             
-            gaze_directed_at_child = box.find(".//attribute[@name='Gaze Directed at Child']")
-            gaze_directed_at_child_value = gaze_directed_at_child.text if gaze_directed_at_child is not None else None
+    #         gaze_directed_at_child = box.find(".//attribute[@name='Gaze Directed at Child']")
+    #         gaze_directed_at_child_value = gaze_directed_at_child.text if gaze_directed_at_child is not None else None
 
-            object_interaction = box.find(".//attribute[@name='Interaction']")
-            object_interaction_value = object_interaction.text if object_interaction is not None else "No"
+    #         object_interaction = box.find(".//attribute[@name='Interaction']")
+    #         object_interaction_value = object_interaction.text if object_interaction is not None else "No"
 
-            # Insert the annotation into the database
-            cursor.execute(
-            """
-                INSERT INTO annotations (image_id, video_id, category_id, bbox, outside, person_visibility, person_ID, person_age, person_gender, object_interaction)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-                (
-                frame_id,
-                task_id,
-                track_label_id,
-                bbox_json,
-                outside,
-                person_visibility_value,
-                person_id_value,
-                person_age_value,
-                person_gender_value,
-                object_interaction_value,
-                ),
-            )
-            # Add image details if not already added
-            image_name = f"{task_name}_{frame_id_padded}.jpg"
-            if image_name not in added_images:
-                cursor.execute(
-                """
-                    INSERT INTO images (video_id, frame_id, file_name)
-                    VALUES (?, ?, ?)
-                """,
-                    (
-                    task_id,
-                    frame_id,
-                    image_name,
-                    ),
-                ) 
-                added_images.add(image_name)
+    #         # Insert the annotation into the database
+    #         cursor.execute(
+    #         """
+    #             INSERT INTO annotations (image_id, video_id, category_id, bbox, outside, person_visibility, person_ID, person_age, person_gender, gaze_directed_at_child, object_interaction)
+    #             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    #         """,
+    #             (
+    #             frame_id,
+    #             task_id,
+    #             track_label_id,
+    #             bbox_json,
+    #             outside,
+    #             person_visibility_value,
+    #             person_id_value,
+    #             person_age_value,
+    #             person_gender_value,
+    #             gaze_directed_at_child_value,
+    #             object_interaction_value,
+    #             ),
+    #         )
+    #         # Add image details if not already added
+    #         image_name = f"{task_name}_{frame_id_padded}.jpg"
+    #         if image_name not in added_images:
+    #             cursor.execute(
+    #             """
+    #                 INSERT INTO images (video_id, frame_id, file_name)
+    #                 VALUES (?, ?, ?)
+    #             """,
+    #                 (
+    #                 task_id,
+    #                 frame_id,
+    #                 image_name,
+    #                 ),
+    #             ) 
+    #             added_images.add(image_name)
 
 
     # Commit and close the database connection
@@ -342,22 +344,30 @@ def correct_erronous_videos_in_db() -> None:
     conn = sqlite3.connect(DetectionPaths.annotations_db_path)
     cursor = conn.cursor()
     # The condition for deletion
-    video_id_threshold = 100
-    cursor.execute("DELETE FROM annotations WHERE video_id > ?", (video_id_threshold,))
-    cursor.execute("DELETE FROM images WHERE video_id > ?", (video_id_threshold,))
-    conn.commit()
-    logging.info("Finished deleting erroneous videos in the database.")
+    # video_id_threshold = 100
+    # cursor.execute("DELETE FROM annotations WHERE video_id > ?", (video_id_threshold,))
+    # cursor.execute("DELETE FROM images WHERE video_id > ?", (video_id_threshold,))
+    # conn.commit()
+    # logging.info("Finished deleting erroneous videos in the database.")
     
     # Add the correct annotations to the database
-    for file_name in DetectionPaths.annotations_individual_dir.iterdir():
-        add_annotations_to_db(cursor, conn, file_name)
+    added_images = set()
+    added_videos = set()
+    added_categories = set()
+
+    for file_name in DetectionPaths.annotations_dir.iterdir():
+        if file_name.suffix == '.xml':
+            add_annotations_to_db(cursor, conn, file_name, added_images, added_videos, added_categories)
     conn.close()
 
 
 def add_annotations_to_db(
     cursor: sqlite3.Cursor,
     conn: sqlite3.Connection,
-    xml_path: Path
+    xml_path: Path,
+    added_images: set,
+    added_videos: set,
+    added_categories: set
 ) -> None:
     """ 
     This function adds annotations from an XML file to the database.
@@ -371,9 +381,6 @@ def add_annotations_to_db(
     xml_path : Path
         the path to the XML file
     """
-    # Initialize an empty set for added categories and videos
-    added_images = set()
-
     # Load the XML file
     tree = ET.parse(xml_path)
     root = tree.getroot()
@@ -384,6 +391,20 @@ def add_annotations_to_db(
     # Extract <id> and <name> values
     task_id = task_element.find('id').text
     task_name = task_element.find('name').text
+    
+    # Add video details if not already added
+    if task_id not in added_videos:
+        cursor.execute(
+        """
+        INSERT INTO videos (id, file_name)
+        VALUES (?, ?)
+        """,
+            (
+            task_id,
+            f"{task_name}.mp4",
+            ),
+        )
+        added_videos.add(task_id)
 
     # Iterate over all 'track' elements
     for track in root.iter("track"):
@@ -397,6 +418,21 @@ def add_annotations_to_db(
             track_label_id, LabelToCategoryMapping.unknown_supercategory
         )  # returns "unknown" if the label is not in the dictionary
 
+        # Add category details if not already added
+        if track_label_id not in added_categories:
+            cursor.execute(
+            """
+            INSERT INTO categories (id, category, supercategory)
+            VALUES (?, ?, ?)
+            """,
+                (
+                track_label_id,
+                track_label,
+                supercategory,
+                ),
+            )
+            added_categories.add(track_label_id)
+    
         # Iterate over each 'box' element within the 'track'
         for box in track.iter("box"):
             row = box.attrib
@@ -415,7 +451,10 @@ def add_annotations_to_db(
             person_age_value = person_age.text if person_age is not None else None
 
             person_gender = box.find(".//attribute[@name='Gender']")
-            person_gender_value = person_gender.text if person_gender is not None else None
+            person_gender_value = person_gender.text if person_gender is not None else None#
+            
+            gaze_directed_at_child = box.find(".//attribute[@name='Gaze Directed at Child']")
+            gaze_directed_at_child_value = gaze_directed_at_child.text if gaze_directed_at_child is not None else None
 
             object_interaction = box.find(".//attribute[@name='Interaction']")
             object_interaction_value = object_interaction.text if object_interaction is not None else "No"
@@ -423,8 +462,8 @@ def add_annotations_to_db(
             # Insert the annotation into the database
             cursor.execute(
                 """
-                INSERT INTO annotations (image_id, video_id, category_id, bbox, outside, person_visibility, person_ID, person_age, person_gender, object_interaction)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO annotations (image_id, video_id, category_id, bbox, outside, person_visibility, person_ID, person_age, person_gender, gaze_directed_at_child, object_interaction)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
                 (
                     row["frame"], # image_id
@@ -436,6 +475,7 @@ def add_annotations_to_db(
                     person_id_value,
                     person_age_value,
                     person_gender_value,
+                    gaze_directed_at_child_value,
                     object_interaction_value,
                 ),
             )
