@@ -6,7 +6,7 @@ import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from constants import DetectionPaths
-from prepare_data.process_annotations.utils import (
+from prepare_data.process_annotations.anno_utils import (
     get_task_ids_names_lengths,
     generate_cum_sum_frame_count,
     get_video_id_from_name_db,
@@ -149,9 +149,9 @@ def write_xml_to_database() -> None:
         track_label = track.get("label")
         # Map the label to its corresponding label id using the dictionary
         # returns -1 if the label is not in the dictionary
-        track_label_id = LabelToCategoryMapping.label_dict.get(track_label, LabelToCategoryMapping.unknown_label_id)
+        track_label_id = LabelToCategoryMapping.label_to_id_mapping.get(track_label, LabelToCategoryMapping.unknown_label_id)
         # Map the label to its corresponding supercategory using the dictionary
-        supercategory = LabelToCategoryMapping.supercategory_dict.get(
+        supercategory = LabelToCategoryMapping.id_to_supercategory_mapping.get(
             track_label_id, LabelToCategoryMapping.unknown_supercategory
         )  # returns "unknown" if the label is not in the dictionary
 
@@ -192,7 +192,7 @@ def write_xml_to_database() -> None:
                 ),
             )
             added_categories.add(track_label_id)
-
+      
         # Iterate over each 'box' element within the 'track'
         for box in track.iter("box"):
             row = box.attrib
@@ -213,6 +213,9 @@ def write_xml_to_database() -> None:
 
             person_gender = box.find(".//attribute[@name='Gender']")
             person_gender_value = person_gender.text if person_gender is not None else None
+            
+            gaze_directed_at_child = box.find(".//attribute[@name='Gaze Directed at Child']")
+            gaze_directed_at_child_value = gaze_directed_at_child.text if gaze_directed_at_child is not None else None
 
             object_interaction = box.find(".//attribute[@name='Interaction']")
             object_interaction_value = object_interaction.text if object_interaction is not None else "No"
@@ -388,9 +391,9 @@ def add_annotations_to_db(
 
         # Map the label to its corresponding label id using the dictionary
         # returns -1 if the label is not in the dictionary
-        track_label_id = LabelToCategoryMapping.label_dict.get(track_label, -1)
+        track_label_id = LabelToCategoryMapping.label_to_id_mapping.get(track_label, -1)
         # Map the label to its corresponding supercategory using the dictionary
-        supercategory = LabelToCategoryMapping.supercategory_dict.get(
+        supercategory = LabelToCategoryMapping.id_to_supercategory_mapping.get(
             track_label_id, LabelToCategoryMapping.unknown_supercategory
         )  # returns "unknown" if the label is not in the dictionary
 
