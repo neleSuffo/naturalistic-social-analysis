@@ -14,14 +14,14 @@ def main():
     # Convert the XML annotations to COCO format and store the results in a database
     write_xml_to_database()
     # Delete the erroneous videos in the database and add the new data form the indivual xml files
-    correct_erronous_videos_in_db()
+    #correct_erronous_videos_in_db()
     
     # Exclude child body parts from the class "person" in the YOLO labels
     # Create new class "child_body_parts" and update database
     create_child_class_in_db()
     
     # Convert the annotations to YOLO format and MTCNN format
-    convert_to_yolo()
+    #convert_to_yolo()
     convert_to_mtcnn()
 
 
