@@ -6,7 +6,8 @@ import os
 import sqlite3
 import subprocess
 from pathlib import Path
-from constants import DetectionPaths, TrainParameters, YoloParameters as Yolo, MtcnnParameters as Mtcnn
+from constants import DetectionPaths, YoloPaths, MtcnnPaths
+from config import TrainingConfig
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -107,7 +108,7 @@ def copy_yolo_files(
         file_path = Path(file_path)
         # Construct the full source paths for the image and label
         src_image_path = DetectionPaths.images_input / file_path
-        src_label_path = Yolo.labels_input / file_path.with_suffix('.txt')
+        src_label_path = YoloPaths.labels_input_dir / file_path.with_suffix('.txt')
 
         # Copy the images and move the label to their new destinations
         shutil.copy(src_image_path, dest_dir_images)
@@ -195,7 +196,7 @@ def copy_mtcnn_files(
     file_names_in_val_set = {path.name.rsplit('.', 1)[0] for path in val_set}
 
     # Move the labels to the training and validation directories
-    with Mtcnn.labels_input.open('r') as original_file, train_labels_path.open('w') as train_file, val_labels_path.open('w') as validation_file:
+    with MtcnnPaths.labels_file_path.open('r') as original_file, train_labels_path.open('w') as train_file, val_labels_path.open('w') as validation_file:
         for line in original_file:
             image_file_name = line.split()[0]  # Assuming the file name is the first element
             if image_file_name in file_names_in_train_set:
@@ -242,7 +243,7 @@ def prepare_mtcnn_dataset(
     )
     
     # Delete the empty labels directory
-    Mtcnn.labels_input.unlink(missing_ok=True)
+    MtcnnPaths.data_dir.unlink(missing_ok=True)
 
 
 def get_video_length(
@@ -328,7 +329,7 @@ def balanced_train_val_video_split(
     video_files_with_length = get_video_lengths()
 
     # Set the random seed for reproducibility
-    random.seed(TrainParameters.random_seed)
+    random.seed(TrainingConfig.random_seed)
     # Shuffle the list to randomize the selection
     random.shuffle(video_files_with_length)
     
@@ -367,14 +368,14 @@ def balanced_train_val_video_split(
 
 def main():
     os.environ['OMP_NUM_THREADS'] = '10'
-    create_missing_annotation_files(DetectionPaths.images_input, Yolo.labels_input)
+    create_missing_annotation_files(DetectionPaths.images_input, YoloPaths.labels_input_dir)
     # Split video files into training and validation sets
-    train_videos, val_videos  = balanced_train_val_video_split(TrainParameters.train_test_split) 
+    train_videos, val_videos  = balanced_train_val_video_split(TrainingConfig.train_test_split) 
     # Split corresponding image files into training and validation sets
     train_files, val_files = images_train_val_split(DetectionPaths.images_input, train_videos, val_videos)
     
     # Copy label files
-    prepare_yolo_dataset(Yolo.data_input, train_files, val_files)
+    prepare_yolo_dataset(YoloPaths.data_input_dir, train_files, val_files)
     #prepare_mtcnn_dataset(Mtcnn.data_input, train_files, val_files)
 
 
