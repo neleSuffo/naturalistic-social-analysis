@@ -16,13 +16,13 @@ class DetectionPaths:
     #videos_input_dir = Path(BasePaths.data_dir//"videos_train/") 
     #videos_input_dir = Path(BasePaths.data_dir//"videos/") 
     videos_input_dir = Path(BasePaths.data_dir/"videos_superannotate_all/") 
-    images_input_dir = Path(BasePaths.data_dir/"images/")
+    images_input_dir = Path(BasePaths.data_dir/"quantex_rawframes/")
     # Path variable to the annotation xml files
     annotations_dir = Path(BasePaths.data_dir/"quantex_annotations/")
     annotations_xml_path = Path(annotations_dir/"annotations.xml")
     annotations_individual_dir = Path(BasePaths.data_dir/"quantex_annotations_individual/")
     annotations_json_path = Path(annotations_dir/"annotations.json")
-    annotations_db_path = Path(BasePaths.data_dir/"quantex_databases/annotations.db")
+    annotations_db_path = Path(annotations_dir/"annotations.db")
     combined_json_output_path = Path(BasePaths.output_dir/"combined_detections.json")
     # The file that is used to map the file names to the file ids
     file_name_id_mapping_path = Path(BasePaths.data_dir/"quantex_file_name_to_id_dict/annotations.xml")
@@ -75,6 +75,8 @@ class ResNetPaths:
 class MtcnnPaths:
     data_dir = Path(BasePaths.data_dir/"mtcnn/")
     labels_file_path = Path(data_dir/"labels.txt")
+    faces_dir = Path(BasePaths.data_dir/"quantex_faces/")
+    face_labels_file_path = Path(faces_dir/"face_labels.txt")
 
 class VideoParameters:
     success_log_path = Path("src/projects/shared/process_data/output/success.log")
