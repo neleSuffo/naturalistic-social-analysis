@@ -6,6 +6,13 @@ from tqdm import tqdm
 from collections import defaultdict
 from constants import MtcnnPaths, DetectionPaths
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,  # Set the minimum level of messages to display
+    format="%(asctime)s - %(levelname)s - %(message)s",  # Define the log message format
+    datefmt="%Y-%m-%d %H:%M:%S",  # Define the date format
+)
+
 def crop_faces_from_labels(
     labels_file: str = MtcnnPaths.labels_file_path,
     rawframe_dir: str = DetectionPaths.images_input_dir,
