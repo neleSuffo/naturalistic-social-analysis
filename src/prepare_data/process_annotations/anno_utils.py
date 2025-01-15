@@ -2,6 +2,7 @@ import xml.etree.ElementTree as ET
 import json
 import logging
 import sqlite3
+from utils import fetch_all_annotations
 from config import LabelToCategoryMapping
 from collections import defaultdict
 from datetime import datetime
@@ -36,9 +37,9 @@ def get_video_id_from_name_db(
     # If the video_file_name does not exist in the database, add it
     if result is None:
         # The video_file_name does not exist in the database, so add it
-        cursor.execute("INSERT INTO video_files (video_file_name) VALUES (?)", (video_file_name,))
+        cursor.execute("INSERT INTO video_name_id_mapping (video_file_name) VALUES (?)", (video_file_name,))
         # Retrieve the newly assigned id
-        cursor.execute("SELECT video_file_id FROM video_files WHERE video_file_name = ?", (video_file_name,))
+        cursor.execute("SELECT video_file_id FROM video_name_id_mapping WHERE video_file_name = ?", (video_file_name,))
         result = cursor.fetchone()
     
     task_id = result[0]
