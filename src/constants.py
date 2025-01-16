@@ -82,6 +82,7 @@ class MtcnnPaths:
 
 class VideoParameters:
     success_log_path = Path("src/projects/shared/process_data/output/success.log")
+    rawframes_extraction_error_log = Path(BasePaths.output_dir/"rawframes_extraction_error.log")
     
 class ModelNames:
     yolo_model = "yolo"
