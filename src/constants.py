@@ -78,6 +78,7 @@ class MtcnnPaths:
     faces_dir = Path(BasePaths.data_dir/"quantex_faces/")
     face_labels_file_path = Path(faces_dir/"face_labels.txt")
     progress_file_path = Path(data_dir/"progress.txt")
+    missing_frames_file_path = Path(data_dir/"missing_frames.txt")
 
 class VideoParameters:
     success_log_path = Path("src/projects/shared/process_data/output/success.log")
