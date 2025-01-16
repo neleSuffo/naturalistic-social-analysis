@@ -61,21 +61,39 @@ def stratified_split(image_paths, labels, train_size=0.8, val_size=0.1, test_siz
     )
     return train_paths, val_paths, test_paths, train_labels, val_labels, test_labels
 
-# Function to create transformations
-def get_transformations():
-    return transforms.Compose([
+# Function to create transformations (including data augmentation)
+def get_transformations(is_train=True):
+    transforms_list = [
         transforms.Resize((224, 224)),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-    ])
+    ]
+    
+    if is_train:
+        transforms_list = [
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomRotation(10),
+            transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2),
+            transforms.RandomAffine(10, shear=10),
+        ] + transforms_list  # Apply augmentation for training data
+    
+    return transforms.Compose(transforms_list)
 
-# Function to create the model
-def create_model():
+# Create model with dropout regularization
+def create_model(dropout_rate=0.5):
     model = models.resnet18(weights=models.ResNet18_Weights.IMAGENET1K_V1)
     # Freeze all layers except the final fully connected layer
     for param in model.parameters():
         param.requires_grad = False
-    model.fc = nn.Linear(model.fc.in_features, 2)  # Modify for binary classification
+    
+    # Modify the fully connected layer
+    model.fc = nn.Sequential(
+        nn.Linear(model.fc.in_features, 512),  # Add a dense layer with 512 units
+        nn.ReLU(),
+        nn.Dropout(dropout_rate),  # Add dropout for regularization
+        nn.Linear(512, 2)  # Modify for binary classification
+    )
+    
     return model
 
 # Function to calculate recall
@@ -139,7 +157,7 @@ class FocalLoss(nn.Module):
         else:
             return loss
 
-# Function to train the model
+# Function to train the model with dropout regularization
 def train_model(model, train_loader, val_loader, criterion, optimizer, device, output_dir, patience=5):
     best_val_recall = 0.0
     patience_counter = 0
@@ -218,103 +236,37 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, device, o
 
     return model
 
-# Function to evaluate the model
-def evaluate_model(model, test_loader, criterion, device, output_dir):
-    model.eval()
-    test_loss = 0.0
-    test_all_targets = []
-    test_all_predictions = []
-
-    with torch.no_grad():
-        for inputs, targets in test_loader:
-            inputs, targets = inputs.to(device), targets.to(device)
-            outputs = model(inputs)
-            loss = criterion(outputs, targets)
-            test_loss += loss.item()
-
-            _, predicted = torch.max(outputs, 1)
-            test_all_targets.extend(targets.cpu().numpy())
-            test_all_predictions.extend(predicted.cpu().numpy())
-
-    test_recall = calculate_recall(test_all_targets, test_all_predictions)
-    logger.info(f"Test Loss: {test_loss / len(test_loader):.4f}, Test Recall: {test_recall:.4f}")
-
-    test_cm = confusion_matrix(test_all_targets, test_all_predictions)
-    plot_confusion_matrix(test_cm, class_names=['No Gaze', 'Gaze'], output_dir=output_dir)
-
-    # Plot and save ROC and Precision-Recall curves
-    fpr, tpr, _ = roc_curve(test_all_targets, test_all_predictions)
-    roc_auc = auc(fpr, tpr)
-    plt.figure()
-    plt.plot(fpr, tpr, color='blue', lw=2, label=f'ROC curve (area = {roc_auc:.2f})')
-    plt.plot([0, 1], [0, 1], color='gray', linestyle='--')
-    plt.xlim([0.0, 1.0])
-    plt.ylim([0.0, 1.05])
-    plt.xlabel('False Positive Rate')
-    plt.ylabel('True Positive Rate')
-    plt.title('ROC Curve')
-    plt.legend(loc='lower right')
-    plt.savefig(f"{output_dir}/roc_curve.png")
-    plt.close()
-
-    precision, recall, _ = precision_recall_curve(test_all_targets, test_all_predictions)
-    average_precision = average_precision_score(test_all_targets, test_all_predictions)
-    plt.figure()
-    plt.plot(recall, precision, color='blue', lw=2, label=f'Precision-Recall curve (AP = {average_precision:.2f})')
-    plt.xlabel('Recall')
-    plt.ylabel('Precision')
-    plt.title('Precision-Recall Curve')
-    plt.legend(loc='lower left')
-    plt.savefig(f"{output_dir}/precision_recall_curve.png")
-    plt.close()
-
 # Main function
 def main():
     # Specify the output directory for saving plots
     output_dir = ResNetPaths.output_dir
     os.makedirs(output_dir, exist_ok=True)
-
+    
     # Read the data
     image_paths, labels = read_data('/home/nele_pauline_suffo/ProcessedData/quantex_faces/face_labels.txt')
-
-    # Stratified split into train, validation, and test sets
     train_paths, val_paths, test_paths, train_labels, val_labels, test_labels = stratified_split(image_paths, labels)
 
-    # Define data transformations
-    transform = get_transformations()
-
-    # Create datasets
-    train_dataset = GazeDataset(train_paths, train_labels, transform=transform)
-    val_dataset = GazeDataset(val_paths, val_labels, transform=transform)
-    test_dataset = GazeDataset(test_paths, test_labels, transform=transform)
-
-    # Handle class imbalance with a weighted sampler
-    class_counts = Counter(labels)
-    class_weights = [1.0 / class_counts[c] for c in range(len(class_counts))]
-    sample_weights = [class_weights[label] for label in train_labels]
-    sampler = WeightedRandomSampler(sample_weights, len(sample_weights))
-
-    # Create DataLoaders
-    train_loader = DataLoader(train_dataset, batch_size=32, sampler=sampler)
+    # Apply transformations
+    train_transform = get_transformations(is_train=True)
+    val_transform = get_transformations(is_train=False)
+    
+    # Create datasets and dataloaders
+    train_dataset = GazeDataset(train_paths, train_labels, transform=train_transform)
+    val_dataset = GazeDataset(val_paths, val_labels, transform=val_transform)
+    
+    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
-    test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
 
-    # Create model
-    model = create_model()
-
-    # Move model to GPU if available
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = model.to(device)
-
-    # Define criterion (Focal Loss) and optimizer
-    criterion = FocalLoss(alpha=0.25, gamma=2.0)
-    optimizer = Adam(model.fc.parameters(), lr=0.001, weight_decay=1e-4)
+    # Create model and optimizer
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model = create_model(dropout_rate=0.5).to(device)
+    criterion = FocalLoss()
+    optimizer = Adam(model.parameters(), lr=0.001)
 
     # Train the model
-    model = train_model(model, train_loader, val_loader, criterion, optimizer, device, output_dir)
-
-    # Evaluate on the test set
-    evaluate_model(model, test_loader, criterion, device, output_dir)
+    trained_model = train_model(model, train_loader, val_loader, criterion, optimizer, device, output_dir, patience=5)
+    
+    logger.info("Training complete!")
 
 if __name__ == "__main__":
     main()
