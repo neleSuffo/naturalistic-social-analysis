@@ -69,8 +69,8 @@ class FastReIDPaths:
     output_dir_val = Path(StrongSortPaths.base_dir/"quantex_val_YOLO+BoT/")
 
 class ResNetPaths:
-    trained_model_path = Path('gaze_estimation_model.pth')
-    gaze_labels_csv_path = Path(BasePaths.data_dir/'gaze_labels.csv')
+    output_dir = Path(BasePaths.data_dir/"resnet/")
+    
     
 class MtcnnPaths:
     data_dir = Path(BasePaths.data_dir/"mtcnn/")
