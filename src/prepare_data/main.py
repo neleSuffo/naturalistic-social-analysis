@@ -1,5 +1,6 @@
 import subprocess
 import logging
+import os
 from prepare_data.prepare_training import main as prepare_training
 
 # Configure logging
@@ -15,13 +16,14 @@ def run_process_annotations():
 def run_process_videos():
     # Run the process_videos module
     try:
-        subprocess.run(['python', '-m', 'src.projects.shared.process_data.process_videos.__main__'], check=True)
+        subprocess.run(['python', '-m', 'prepare_data.process_videos.__main__'], check=True)
     except subprocess.CalledProcessError as e:
         print(f"Error while running process_videos: {e}")
 
 if __name__ == "__main__":
-    #run_process_videos()
-    run_process_annotations()
+    os.num_threads = 2
+    run_process_videos()
+    #run_process_annotations()
     # Split the dataset into training and validation sets
     #prepare_training()
     logging.info("Data preparation complete.")
