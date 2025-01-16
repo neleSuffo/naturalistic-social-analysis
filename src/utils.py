@@ -333,7 +333,7 @@ def prepare_video_dataset(
                 executor.map(lambda video: process_video_strong_sort(video, train_output_dir), batch)
     logging.info("Completed frame extraction for all videos.")
 
-def extract_every_nth_frame_from_videos_in_folder(input_folder, output_root_folder, frame_step):
+def extract_every_nth_frame_from_videos_in_folder(input_folder, output_root_folder, frame_step, error_log_file):
     """
     Extract every nth frame from all .mp4 videos in a folder and save the frames.
 
@@ -341,6 +341,7 @@ def extract_every_nth_frame_from_videos_in_folder(input_folder, output_root_fold
         input_folder (str): Path to the folder containing .mp4 video files.
         output_root_folder (str): Path to the root folder where frames will be saved.
         frame_step (int): Interval of frames to extract (e.g., every nth frame).
+        error_log_file (str): Path to the text file where errors will be logged.
     """
     # Ensure the output root folder exists
     os.makedirs(output_root_folder, exist_ok=True)
@@ -360,16 +361,21 @@ def extract_every_nth_frame_from_videos_in_folder(input_folder, output_root_fold
 
         # Create a subfolder for the current video's frames
         video_output_folder = os.path.join(output_root_folder, video_name)
+
+        # Skip processing if the output folder already exists
+        if os.path.exists(video_output_folder):
+            logging.info(f"Skipping video {video_path} as output folder {video_output_folder} already exists.")
+            continue
+
         os.makedirs(video_output_folder, exist_ok=True)
 
         # Extract frames for the current video
         print(f"Processing video: {video_path}")
-        extract_every_nth_frame(video_path, video_output_folder, frame_step)
+        extract_every_nth_frame(video_path, video_output_folder, frame_step, error_log_file)
 
     print(f"All videos processed. Frames saved to {output_root_folder}.")
     
-    
-def extract_every_nth_frame(video_path, output_folder, frame_interval):
+def extract_every_nth_frame(video_path, output_folder, frame_interval, error_log_file):
     """
     Extract every nth frame from a video and save to a folder.
 
@@ -377,6 +383,7 @@ def extract_every_nth_frame(video_path, output_folder, frame_interval):
         video_path (str): Path to the input video file.
         output_folder (str): Path to the folder where frames will be saved.
         frame_interval (int): Interval of frames to extract (e.g., every nth frame).
+        error_log_file (str): Path to the text file where errors will be logged.
     """
     # Ensure the output folder exists
     os.makedirs(output_folder, exist_ok=True)
@@ -400,29 +407,34 @@ def extract_every_nth_frame(video_path, output_folder, frame_interval):
         image_name = f"{video_file_name}_{frame_idx:06d}.jpg"
         return image_name
 
-    # Initialize tqdm progress bar
-    with tqdm(total=total_frames // frame_interval, desc="Extracting frames") as pbar:
-        while frame_idx < total_frames:
-            # Set the video to read the specific frame
-            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
+    # Open the error log file
+    with open(error_log_file, 'a') as error_log:
+        # Initialize tqdm progress bar
+        with tqdm(total=total_frames // frame_interval, desc="Extracting frames") as pbar:
+            while frame_idx < total_frames:
+                # Set the video to read the specific frame
+                cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
 
-            # Read the frame
-            ret, frame = cap.read()
-            if not ret:
-                logging.info(f"Error: Unable to read frame at index {frame_idx}")
-                continue
+                # Read the frame
+                ret, frame = cap.read()
+                if not ret:
+                    logging.info(f"Error: Unable to read frame at index {frame_idx}")
+                    error_log.write(f"{video_path}, frame {frame_idx}\n")
+                    frame_idx += frame_interval  # Increment frame_idx to avoid infinite loop
+                    pbar.update(1)
+                    continue
 
-            # Save the frame as an image
-            frame_name = generate_image_name(video_path, frame_idx)
-            output_path = os.path.join(output_folder, frame_name)
-            cv2.imwrite(output_path, frame)
-            saved_frames += 1
+                # Save the frame as an image
+                frame_name = generate_image_name(video_path, frame_idx)
+                output_path = os.path.join(output_folder, frame_name)
+                cv2.imwrite(output_path, frame)
+                saved_frames += 1
 
-            # Increment by the specified interval
-            frame_idx += frame_interval
+                # Increment by the specified interval
+                frame_idx += frame_interval
 
-            # Update the progress bar
-            pbar.update(1)
+                # Update the progress bar
+                pbar.update(1)
 
     # Release the video capture object
     cap.release()
