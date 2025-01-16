@@ -32,7 +32,7 @@ def crop_faces_from_labels(
         progress_file (str): File to track processed images.
         missing_frames_file (str): File to log missing raw frames.
     """
-    cv2.setNumThreads(2)
+    cv2.setNumThreads(1)
     
     # Create output directories
     output_dir.mkdir(parents=True, exist_ok=True)
