@@ -18,6 +18,7 @@ def crop_faces_from_labels(
     rawframe_dir: str = DetectionPaths.images_input_dir,
     output_dir: str = MtcnnPaths.faces_dir,
     labels_output_file: str = MtcnnPaths.face_labels_file_path,
+    progress_file: str = MtcnnPaths.progress_file_path,  # File to track progress
 ):
     """
     Crop faces from raw frames using bounding box information in the labels file and save them.
@@ -26,9 +27,18 @@ def crop_faces_from_labels(
         labels_file (str): Path to the labels file.
         rawframe_dir (str): Directory containing raw frames.
         output_dir (str): Directory to save cropped faces and labels.
+        labels_output_file (str): File to save cropped face labels.
+        progress_file (str): File to track processed images.
     """
+    cv2.setNumThreads(2)  # Set this to the desired number of threads (e.g., 1)
     # Create output directories
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Load progress
+    processed_images = set()
+    if Path(progress_file).exists():
+        with open(progress_file, 'r') as progress_reader:
+            processed_images.update(line.strip() for line in progress_reader)
 
     annotations_by_image = defaultdict(list)
 
@@ -36,6 +46,11 @@ def crop_faces_from_labels(
         for line in tqdm(f.readlines(), desc="Processing Labels"):
             parts = line.strip().split()
             image_name = parts[0]
+
+            # Skip already processed images
+            if image_name in processed_images:
+                continue
+
             bbox_and_gaze = parts[1:]
 
             for item in bbox_and_gaze:
@@ -66,7 +81,11 @@ def crop_faces_from_labels(
 
                 annotations_by_image[image_name].append((cropped_face, gaze_label))
 
-    with open(labels_output_file, 'w') as label_writer:
+            # Log processed image
+            with open(progress_file, 'a') as progress_writer:
+                progress_writer.write(f"{image_name}\n")
+
+    with open(labels_output_file, 'a') as label_writer:
         for image_name, faces in annotations_by_image.items():
             for idx, (cropped_face, gaze_label) in enumerate(faces):
                 # Save the cropped face
@@ -79,7 +98,7 @@ def crop_faces_from_labels(
 
     logging.info(f"Cropped faces saved to {output_dir}")
     logging.info(f"Labels saved to {labels_output_file}")
-
+    logging.info(f"Progress tracked in {progress_file}")
 
 
 crop_faces_from_labels()
