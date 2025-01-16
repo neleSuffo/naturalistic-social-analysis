@@ -69,7 +69,7 @@ class FastReIDPaths:
     output_dir_val = Path(StrongSortPaths.base_dir/"quantex_val_YOLO+BoT/")
 
 class ResNetPaths:
-    output_dir = Path(BasePaths.data_dir/"resnet/")
+    output_dir = Path(BasePaths.output_dir/"resnet/")
     
     
 class MtcnnPaths:
