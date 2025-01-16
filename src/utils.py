@@ -1,4 +1,5 @@
 import cv2
+import os
 import logging
 import subprocess
 import sqlite3
@@ -7,6 +8,8 @@ import shutil
 import concurrent.futures
 from pathlib import Path
 from typing import List, Optional, Union, Tuple
+from tqdm import tqdm
+import glob
 import tempfile
 from moviepy.editor import VideoFileClip
 from constants import (
@@ -19,6 +22,7 @@ from config import (
     StrongSortConfig,
     TrainingConfig,
     VTCConfig,
+    DetectionParameters,
 )
 
 # Configure logging
@@ -329,46 +333,101 @@ def prepare_video_dataset(
                 executor.map(lambda video: process_video_strong_sort(video, train_output_dir), batch)
     logging.info("Completed frame extraction for all videos.")
 
-
-# Function to extract frames from a video
-def extract_frames_from_video(
-    video_path: str, 
-    output_dir: str
-) -> list:
+def extract_every_nth_frame_from_videos_in_folder(input_folder, output_root_folder, frame_step):
     """
-    This function extracts frames from a video file and saves them to a directory.
-    It then returns the list of extracted frames.
+    Extract every nth frame from all .mp4 videos in a folder and save the frames.
 
-    Parameters
-    ----------
-    video_path : str
-        the path to the video file
-    output_dir : str
-        the directory to save the extracted frames
-
-    Returns
-    -------
-    list
-        the list of extracted frame paths
+    Args:
+        input_folder (str): Path to the folder containing .mp4 video files.
+        output_root_folder (str): Path to the root folder where frames will be saved.
+        frame_step (int): Interval of frames to extract (e.g., every nth frame).
     """
+    # Ensure the output root folder exists
+    os.makedirs(output_root_folder, exist_ok=True)
+
+    # Get a list of all .mp4 files in the input folder
+    video_files = glob.glob(os.path.join(input_folder, "*.MP4"))
+
+    if not video_files:
+        logging.info(f"No .MP4 files found in the folder: {input_folder}")
+        return
     
+    logging.info(f"Found {len(video_files)} video files to process.")
+
+    for video_path in video_files:
+        # Extract the base name of the video file (without extension)
+        video_name = os.path.splitext(os.path.basename(video_path))[0]
+
+        # Create a subfolder for the current video's frames
+        video_output_folder = os.path.join(output_root_folder, video_name)
+        os.makedirs(video_output_folder, exist_ok=True)
+
+        # Extract frames for the current video
+        print(f"Processing video: {video_path}")
+        extract_every_nth_frame(video_path, video_output_folder, frame_step)
+
+    print(f"All videos processed. Frames saved to {output_root_folder}.")
+    
+    
+def extract_every_nth_frame(video_path, output_folder, frame_interval):
+    """
+    Extract every nth frame from a video and save to a folder.
+
+    Args:
+        video_path (str): Path to the input video file.
+        output_folder (str): Path to the folder where frames will be saved.
+        frame_interval (int): Interval of frames to extract (e.g., every nth frame).
+    """
+    # Ensure the output folder exists
+    os.makedirs(output_folder, exist_ok=True)
+
+    # Open the video file
     cap = cv2.VideoCapture(video_path)
-    frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-    frames = []
-    # Loop through frames
-    for i in range(frame_count):
-        ret, frame = cap.read()
-        if not ret:
-            break
-        frame_name = f'{video_path.stem}_frame_{i:06d}.jpg'
-        frame_path = Path(output_dir) / frame_name        # Save frame
-        cv2.imwrite(frame_path, frame)
-        # Append frame path to list
-        frames.append(frame_path)
+    if not cap.isOpened():
+        logging.info(f"Error: Unable to open video file {video_path}")
+        return
 
+    # Get the total number of frames in the video
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    frame_idx = 0
+    saved_frames = 0
+    
+    def generate_image_name(video_path, frame_idx):
+        # Remove the .MP4 extension
+        video_file_name = os.path.splitext(os.path.basename(video_path))[0]
+        # Append the frame number and .jpg extension
+        image_name = f"{video_file_name}_{frame_idx:06d}.jpg"
+        return image_name
+
+    # Initialize tqdm progress bar
+    with tqdm(total=total_frames // frame_interval, desc="Extracting frames") as pbar:
+        while frame_idx < total_frames:
+            # Set the video to read the specific frame
+            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
+
+            # Read the frame
+            ret, frame = cap.read()
+            if not ret:
+                logging.info(f"Error: Unable to read frame at index {frame_idx}")
+                continue
+
+            # Save the frame as an image
+            frame_name = generate_image_name(video_path, frame_idx)
+            output_path = os.path.join(output_folder, frame_name)
+            cv2.imwrite(output_path, frame)
+            saved_frames += 1
+
+            # Increment by the specified interval
+            frame_idx += frame_interval
+
+            # Update the progress bar
+            pbar.update(1)
+
+    # Release the video capture object
     cap.release()
-    return frames
+
+    logging.info(f"Extraction complete for {video_path}. Saved {saved_frames} frames to {output_folder}.")
 
 
 def process_video_strong_sort(video_file: Path, output_subdir: Path) -> None:
