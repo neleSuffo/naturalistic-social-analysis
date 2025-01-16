@@ -3,15 +3,17 @@ import logging
 import os
 import cv2
 import torch.nn as nn
+import numpy as np
 from torch.utils.data import DataLoader, Dataset, WeightedRandomSampler
 from torchvision import models, transforms
 from torch.optim import Adam
 from PIL import Image
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import recall_score, precision_score, f1_score, confusion_matrix, roc_curve, auc, precision_recall_curve, average_precision_score
+from sklearn.metrics import recall_score, precision_score, f1_score, confusion_matrix, roc_curve, auc, precision_recall_curve, average_precision_score, roc_auc_score
 import matplotlib.pyplot as plt
 import seaborn as sns
 from constants import ResNetPaths
+from datetime import datetime
 from collections import Counter
 
 cv2.setNumThreads(2)
@@ -140,21 +142,48 @@ def save_and_plot_metrics(epoch, train_loss, train_recall, val_loss, val_recall,
 # Define the FocalLoss class
 class FocalLoss(nn.Module):
     def __init__(self, alpha=0.25, gamma=2.0, reduction='mean'):
+        """
+        Focal Loss for addressing class imbalance.
+        
+        Args:
+            alpha (float): Scaling factor for balancing classes.
+            gamma (float): Modulating factor to focus on hard examples.
+            reduction (str): Specifies the reduction to apply to the output: 'none', 'mean', or 'sum'.
+        """
         super(FocalLoss, self).__init__()
         self.alpha = alpha
         self.gamma = gamma
         self.reduction = reduction
 
     def forward(self, inputs, targets):
-        inputs = torch.softmax(inputs, dim=-1)
-        p_t = inputs.gather(1, targets.view(-1, 1))  # Get probability for the true class
-        loss = -self.alpha * (1 - p_t) ** self.gamma * torch.log(p_t)
+        """
+        Compute the focal loss.
+        
+        Args:
+            inputs (Tensor): Model predictions (logits) of shape (batch_size, num_classes).
+            targets (Tensor): Ground truth labels of shape (batch_size,).
+        
+        Returns:
+            Tensor: Computed focal loss.
+        """
+        # Apply softmax to normalize inputs into probabilities
+        probs = torch.softmax(inputs, dim=-1)
+        
+        # Select the probabilities corresponding to the true class
+        p_t = probs.gather(1, targets.unsqueeze(1)).squeeze(1)
+        
+        # Compute the modulating factor
+        modulating_factor = (1 - p_t) ** self.gamma
+        
+        # Compute the focal loss
+        loss = -self.alpha * modulating_factor * torch.log(p_t + 1e-12)  # Add epsilon to avoid log(0)
 
+        # Apply reduction
         if self.reduction == 'mean':
             return loss.mean()
         elif self.reduction == 'sum':
             return loss.sum()
-        else:
+        else:  # 'none'
             return loss
 
 # Function to train the model with dropout regularization
@@ -236,10 +265,46 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, device, o
 
     return model
 
+def test_model(model, test_loader, device, output_dir):
+    """
+    Evaluate the model on the test set and save the confusion matrix.
+    
+    Args:
+        model: Trained PyTorch model to evaluate.
+        test_loader: DataLoader for the test dataset.
+        device: Device to perform computation on (e.g., 'cuda' or 'cpu').
+        output_dir: Directory to save the confusion matrix and other results.
+    """
+    logger.info("Starting testing phase...")
+    model.eval()  # Set the model to evaluation mode
+    test_all_targets = []
+    test_all_predictions = []
+
+    with torch.no_grad():
+        for inputs, targets in test_loader:
+            inputs, targets = inputs.to(device), targets.to(device)
+            outputs = model(inputs)
+            _, predicted = torch.max(outputs, 1)
+            test_all_targets.extend(targets.cpu().numpy())
+            test_all_predictions.extend(predicted.cpu().numpy())
+
+    # Calculate test metrics
+    test_recall = recall_score(test_all_targets, test_all_predictions, average='macro')
+    test_precision = precision_score(test_all_targets, test_all_predictions, average='macro')
+    test_f1 = f1_score(test_all_targets, test_all_predictions, average='macro')
+
+    logger.info(f"Test Metrics - Recall: {test_recall:.4f}, Precision: {test_precision:.4f}, F1 Score: {test_f1:.4f}")
+
+    # Generate and save the test confusion matrix
+    test_cm = confusion_matrix(test_all_targets, test_all_predictions)
+    plot_confusion_matrix(test_cm, class_names=['No Gaze', 'Gaze'], output_dir=output_dir)
+    logger.info("Test confusion matrix saved.")
+    
 # Main function
 def main():
     # Specify the output directory for saving plots
-    output_dir = ResNetPaths.output_dir
+    run_folder = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_dir = os.path.join(ResNetPaths.output_dir, run_folder)
     os.makedirs(output_dir, exist_ok=True)
     
     # Read the data
@@ -249,14 +314,25 @@ def main():
     # Apply transformations
     train_transform = get_transformations(is_train=True)
     val_transform = get_transformations(is_train=False)
-    
+
     # Create datasets and dataloaders
     train_dataset = GazeDataset(train_paths, train_labels, transform=train_transform)
     val_dataset = GazeDataset(val_paths, val_labels, transform=val_transform)
+    test_dataset = GazeDataset(test_paths, test_labels, transform=val_transform)
     
     train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
+    test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
 
+    # Compute class weights
+    class_counts = np.bincount(train_labels)  # Count samples for each class (0 and 1)
+    logging.info(f"Class counts: {class_counts}")
+    class_weights = 1.0 / class_counts  # Inverse of the class frequencies
+    sample_weights = [class_weights[label] for label in train_labels]  # Assign weight to each sample
+    
+    # Create WeightedRandomSampler
+    sampler = WeightedRandomSampler(weights=sample_weights, num_samples=len(sample_weights), replacement=True)
+    
     # Create model and optimizer
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = create_model(dropout_rate=0.5).to(device)
@@ -266,7 +342,9 @@ def main():
     # Train the model
     trained_model = train_model(model, train_loader, val_loader, criterion, optimizer, device, output_dir, patience=5)
     
-    logger.info("Training complete!")
-
+     # Test the model
+    test_model(trained_model, test_loader, device, output_dir)
+    logger.info("Training and testing complete!")
+    
 if __name__ == "__main__":
     main()
