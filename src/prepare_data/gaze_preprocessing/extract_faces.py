@@ -19,6 +19,7 @@ def crop_faces_from_labels(
     output_dir: str = MtcnnPaths.faces_dir,
     labels_output_file: str = MtcnnPaths.face_labels_file_path,
     progress_file: str = MtcnnPaths.progress_file_path,  # File to track progress
+    missing_frames_file: str = MtcnnPaths.missing_frames_file_path,  # File to track missing frames
 ):
     """
     Crop faces from raw frames using bounding box information in the labels file and save them.
@@ -29,8 +30,10 @@ def crop_faces_from_labels(
         output_dir (str): Directory to save cropped faces and labels.
         labels_output_file (str): File to save cropped face labels.
         progress_file (str): File to track processed images.
+        missing_frames_file (str): File to log missing raw frames.
     """
-    cv2.setNumThreads(2)  # Set this to the desired number of threads (e.g., 1)
+    cv2.setNumThreads(2)
+    
     # Create output directories
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -42,7 +45,7 @@ def crop_faces_from_labels(
 
     annotations_by_image = defaultdict(list)
 
-    with open(labels_file, 'r') as f:
+    with open(labels_file, 'r') as f, open(missing_frames_file, 'a') as missing_writer:
         for line in tqdm(f.readlines(), desc="Processing Labels"):
             parts = line.strip().split()
             image_name = parts[0]
@@ -53,6 +56,19 @@ def crop_faces_from_labels(
 
             bbox_and_gaze = parts[1:]
 
+            frame_path = Path(rawframe_dir) / image_name
+            if not frame_path.exists():
+                logging.warning(f"Frame {frame_path} not found. Logging to missing frames.")
+                missing_writer.write(f"{image_name}\n")
+                continue
+
+            # Read the frame
+            frame = cv2.imread(str(frame_path))
+            if frame is None:
+                logging.error(f"Failed to load {frame_path}. Logging to missing frames.")
+                missing_writer.write(f"{image_name}\n")
+                continue
+
             for item in bbox_and_gaze:
                 values = item.split(',')
                 bbox_values = list(map(float, values[:4]))  # First 4 values are bbox
@@ -61,22 +77,10 @@ def crop_faces_from_labels(
                 x1, y1, w, h = bbox_values
                 x2, y2 = x1 + w, y1 + h
 
-                # Construct full path to the frame
-                frame_path = Path(rawframe_dir) / image_name
-                if not frame_path.exists():
-                    print(f"Warning: Frame {frame_path} not found. Skipping.")
-                    continue
-
-                # Read the frame
-                frame = cv2.imread(str(frame_path))
-                if frame is None:
-                    print(f"Error: Failed to load {frame_path}. Skipping.")
-                    continue
-
                 # Crop the face
                 cropped_face = frame[int(y1):int(y2), int(x1):int(x2)]
                 if cropped_face.size == 0:
-                    print(f"Warning: Empty crop for {frame_path}. Skipping.")
+                    logging.warning(f"Empty crop for {frame_path}. Skipping.")
                     continue
 
                 annotations_by_image[image_name].append((cropped_face, gaze_label))
@@ -99,6 +103,7 @@ def crop_faces_from_labels(
     logging.info(f"Cropped faces saved to {output_dir}")
     logging.info(f"Labels saved to {labels_output_file}")
     logging.info(f"Progress tracked in {progress_file}")
+    logging.info(f"Missing frames logged in {missing_frames_file}")
 
 
 crop_faces_from_labels()
