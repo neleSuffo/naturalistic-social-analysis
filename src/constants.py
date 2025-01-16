@@ -14,9 +14,9 @@ class DetectionPaths:
     person_detections_dir = Path(BasePaths.home_dir/"outputs/yolov8/")
     face_detections_dir = Path(BasePaths.home_dir/"outputs/mtcnn/")
     #videos_input_dir = Path(BasePaths.data_dir//"videos_train/") 
-    #videos_input_dir = Path(BasePaths.data_dir//"videos/") 
+    quantex_videos_input_dir = Path(BasePaths.data_dir/"quantex_videos/") 
     videos_input_dir = Path(BasePaths.data_dir/"videos_superannotate_all/") 
-    images_input_dir = Path(BasePaths.data_dir/"quantex_rawframes/")
+    images_input_dir = Path(BasePaths.data_dir/"quantex_annotated_rawframes/")
     # Path variable to the annotation xml files
     annotations_dir = Path(BasePaths.data_dir/"quantex_annotations/")
     annotations_xml_path = Path(annotations_dir/"annotations.xml")
