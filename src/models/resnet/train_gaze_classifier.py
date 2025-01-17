@@ -2,6 +2,7 @@ import torch
 import logging
 import os
 import cv2
+import shutil
 import torch.nn as nn
 import numpy as np
 from torch.utils.data import DataLoader, Dataset, WeightedRandomSampler
@@ -15,6 +16,7 @@ import seaborn as sns
 from constants import ResNetPaths, MtcnnPaths
 from datetime import datetime
 from collections import Counter
+from imblearn.over_sampling import SMOTE
 
 cv2.setNumThreads(2)
 
@@ -337,6 +339,29 @@ def test_model(model, test_loader, device, output_dir):
     # Plot and save the ROC curve
     plot_roc_curve(test_all_targets, test_all_scores, output_dir)
     logger.info("ROC curve saved.")
+   
+def apply_smote(image_paths, labels):
+    """
+    Apply SMOTE to oversample the minority class in the training set.
+    
+    Args:
+        image_paths (list): List of image file paths.
+        labels (list): Corresponding list of labels.
+
+    Returns:
+        smote_image_paths, smote_labels: Oversampled image paths and labels.
+    """
+    # Convert image paths to numerical indices for SMOTE compatibility
+    indices = np.arange(len(image_paths)).reshape(-1, 1)
+    
+    # Apply SMOTE
+    smote = SMOTE(random_state=42)
+    smote_indices, smote_labels = smote.fit_resample(indices, labels)
+    
+    # Map back to the original image paths
+    smote_image_paths = [image_paths[i[0]] for i in smote_indices]
+    return smote_image_paths, smote_labels
+
     
 # Main function
 def main():
@@ -345,10 +370,18 @@ def main():
     output_dir = os.path.join(ResNetPaths.output_dir, run_folder)
     os.makedirs(output_dir, exist_ok=True)
     
+    # Copy the current script to the output directory
+    current_script_path = os.path.abspath(__file__)
+    shutil.copy(current_script_path, os.path.join(output_dir, 'train_gaze_classifier.py'))
+    
     # Read the data
     image_paths, labels = read_data(MtcnnPaths.face_labels_file_path)
     train_paths, val_paths, test_paths, train_labels, val_labels, test_labels = stratified_split(image_paths, labels)
 
+    # Apply SMOTE on the training set
+    train_paths, train_labels = apply_smote(train_paths, train_labels)
+    logger.info(f"Applied SMOTE. New training set size: {len(train_paths)} samples.")
+    
     # Apply transformations
     train_transform = get_transformations(is_train=True)
     val_transform = get_transformations(is_train=False)
@@ -365,15 +398,15 @@ def main():
     # Compute class weights
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     class_counts = np.bincount(train_labels)  # Count samples for each class (0 and 1)
-    logging.info(f"Class counts: {class_counts}")
+    logging.info(f"Class counts after SMOTE: {class_counts}")
     class_weights = 1.0 / class_counts  # Inverse of the class frequencies
     class_weights = torch.tensor(class_weights, dtype=torch.float).to(device)
-    # Convert class weights to tensor
     
     # Create model and optimizer
     model = create_model(dropout_rate=0.5).to(device)
     criterion = WeightedFocalLoss(weight=class_weights)    
-    optimizer = Adam(model.parameters(), lr=0.001)
+    # Define the optimizer with L2 regularization (weight decay)
+    optimizer = Adam(model.parameters(), lr=0.001, weight_decay=1e-5)
 
     # Train the model
     trained_model = train_model(model, train_loader, val_loader, criterion, optimizer, device, output_dir, patience=5)
