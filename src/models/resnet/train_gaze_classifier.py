@@ -12,7 +12,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import recall_score, precision_score, f1_score, confusion_matrix, roc_curve, auc, precision_recall_curve, average_precision_score, roc_auc_score
 import matplotlib.pyplot as plt
 import seaborn as sns
-from constants import ResNetPaths
+from constants import ResNetPaths, MtcnnPaths
 from datetime import datetime
 from collections import Counter
 
@@ -116,6 +116,28 @@ def plot_confusion_matrix(cm, class_names, output_dir, epoch=None):
         plt.savefig(f"{output_dir}/confusion_matrix.png")
     plt.close()
 
+def plot_precision_recall_curve(y_true, y_scores, output_dir):
+    precision, recall, _ = precision_recall_curve(y_true, y_scores)
+    plt.figure()
+    plt.plot(recall, precision, marker='.')
+    plt.xlabel('Recall')
+    plt.ylabel('Precision')
+    plt.title('Precision-Recall Curve')
+    plt.savefig(os.path.join(output_dir, 'precision_recall_curve.png'))
+    plt.close()
+
+def plot_roc_curve(y_true, y_scores, output_dir):
+    fpr, tpr, _ = roc_curve(y_true, y_scores)
+    roc_auc = auc(fpr, tpr)
+    plt.figure()
+    plt.plot(fpr, tpr, marker='.')
+    plt.plot([0, 1], [0, 1], linestyle='--')
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title(f'ROC Curve (AUC = {roc_auc:.4f})')
+    plt.savefig(os.path.join(output_dir, 'roc_curve.png'))
+    plt.close()
+    
 # Function to save and plot other metrics
 def save_and_plot_metrics(epoch, train_loss, train_recall, val_loss, val_recall, output_dir):
     # Save the loss and recall curves
@@ -140,19 +162,21 @@ def save_and_plot_metrics(epoch, train_loss, train_recall, val_loss, val_recall,
     plt.close()
 
 # Define the FocalLoss class
-class FocalLoss(nn.Module):
-    def __init__(self, alpha=0.25, gamma=2.0, reduction='mean'):
+class WeightedFocalLoss(nn.Module):
+    def __init__(self, alpha=0.25, gamma=2.0, weight=None, reduction='mean'):
         """
-        Focal Loss for addressing class imbalance.
+        Focal Loss for addressing class imbalance with class weights.
         
         Args:
             alpha (float): Scaling factor for balancing classes.
             gamma (float): Modulating factor to focus on hard examples.
+            weight (Tensor, optional): A manual rescaling weight given to each class.
             reduction (str): Specifies the reduction to apply to the output: 'none', 'mean', or 'sum'.
         """
-        super(FocalLoss, self).__init__()
+        super(WeightedFocalLoss, self).__init__()
         self.alpha = alpha
         self.gamma = gamma
+        self.weight = weight
         self.reduction = reduction
 
     def forward(self, inputs, targets):
@@ -177,6 +201,11 @@ class FocalLoss(nn.Module):
         
         # Compute the focal loss
         loss = -self.alpha * modulating_factor * torch.log(p_t + 1e-12)  # Add epsilon to avoid log(0)
+
+        # Apply class weights
+        if self.weight is not None:
+            weight = self.weight.gather(0, targets)
+            loss = loss * weight
 
         # Apply reduction
         if self.reduction == 'mean':
@@ -266,7 +295,7 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, device, o
 
 def test_model(model, test_loader, device, output_dir):
     """
-    Evaluate the model on the test set and save the confusion matrix and recall.
+    Evaluate the model on the test set and save the confusion matrix, recall, precision, precision-recall curve, and ROC curve.
 
     Args:
         model: Trained PyTorch model to evaluate.
@@ -278,14 +307,17 @@ def test_model(model, test_loader, device, output_dir):
     model.eval()  # Set the model to evaluation mode
     test_all_targets = []
     test_all_predictions = []
+    test_all_scores = []
 
     with torch.no_grad():
         for inputs, targets in test_loader:
             inputs, targets = inputs.to(device), targets.to(device)
             outputs = model(inputs)
+            probabilities = torch.softmax(outputs, dim=1)[:, 1]  # Get probabilities for the positive class
             _, predicted = torch.max(outputs, 1)
             test_all_targets.extend(targets.cpu().numpy())
             test_all_predictions.extend(predicted.cpu().numpy())
+            test_all_scores.extend(probabilities.cpu().numpy())
 
     # Calculate recall and precision
     test_recall = recall_score(test_all_targets, test_all_predictions, average='macro')
@@ -297,6 +329,14 @@ def test_model(model, test_loader, device, output_dir):
     test_cm = confusion_matrix(test_all_targets, test_all_predictions)
     plot_confusion_matrix(test_cm, class_names=['No Gaze', 'Gaze'], output_dir=output_dir)
     logger.info("Test confusion matrix saved.")
+
+    # Plot and save the precision-recall curve
+    plot_precision_recall_curve(test_all_targets, test_all_scores, output_dir)
+    logger.info("Precision-Recall curve saved.")
+
+    # Plot and save the ROC curve
+    plot_roc_curve(test_all_targets, test_all_scores, output_dir)
+    logger.info("ROC curve saved.")
     
 # Main function
 def main():
@@ -306,7 +346,7 @@ def main():
     os.makedirs(output_dir, exist_ok=True)
     
     # Read the data
-    image_paths, labels = read_data('/home/nele_pauline_suffo/ProcessedData/quantex_faces/face_labels.txt')
+    image_paths, labels = read_data(MtcnnPaths.face_labels_file_path)
     train_paths, val_paths, test_paths, train_labels, val_labels, test_labels = stratified_split(image_paths, labels)
 
     # Apply transformations
@@ -323,18 +363,16 @@ def main():
     test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
 
     # Compute class weights
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     class_counts = np.bincount(train_labels)  # Count samples for each class (0 and 1)
     logging.info(f"Class counts: {class_counts}")
     class_weights = 1.0 / class_counts  # Inverse of the class frequencies
-    sample_weights = [class_weights[label] for label in train_labels]  # Assign weight to each sample
-    
-    # Create WeightedRandomSampler
-    sampler = WeightedRandomSampler(weights=sample_weights, num_samples=len(sample_weights), replacement=True)
+    class_weights = torch.tensor(class_weights, dtype=torch.float).to(device)
+    # Convert class weights to tensor
     
     # Create model and optimizer
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = create_model(dropout_rate=0.5).to(device)
-    criterion = FocalLoss()
+    criterion = WeightedFocalLoss(weight=class_weights)    
     optimizer = Adam(model.parameters(), lr=0.001)
 
     # Train the model
