@@ -188,7 +188,7 @@ class FocalLoss(nn.Module):
 
 # Function to train the model with dropout regularization
 def train_model(model, train_loader, val_loader, criterion, optimizer, device, output_dir, patience=5):
-    best_val_recall = 0.0
+    best_val_recall = 0.0  # Track the best validation recall
     patience_counter = 0
     num_epochs = 40
     train_loss, train_recall, val_loss, val_recall = [], [], [], []
@@ -214,7 +214,8 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, device, o
 
             running_loss += loss.item()
 
-        epoch_recall = calculate_recall(all_targets, all_predictions)
+        # Compute training recall
+        epoch_recall = recall_score(all_targets, all_predictions, average='macro')
         logger.info(f"Epoch [{epoch+1}/{num_epochs}], Loss: {running_loss / len(train_loader):.4f}, Recall: {epoch_recall:.4f}")
         
         train_loss.append(running_loss / len(train_loader))
@@ -237,19 +238,17 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, device, o
                 val_all_targets.extend(targets.cpu().numpy())
                 val_all_predictions.extend(predicted.cpu().numpy())
 
-        val_recall_epoch = calculate_recall(val_all_targets, val_all_predictions)
+        # Compute validation recall
+        val_recall_epoch = recall_score(val_all_targets, val_all_predictions, average='macro')
         logger.info(f"Validation Loss: {val_loss_epoch / len(val_loader):.4f}, Validation Recall: {val_recall_epoch:.4f}")
 
         val_loss.append(val_loss_epoch / len(val_loader))
         val_recall.append(val_recall_epoch)
 
-        # Plot and save confusion matrix
-        val_cm = confusion_matrix(val_all_targets, val_all_predictions)
-        plot_confusion_matrix(val_cm, class_names=['No Gaze', 'Gaze'], output_dir=output_dir, epoch=epoch)
-
         # Save metrics plots
         save_and_plot_metrics(epoch, train_loss, train_recall, val_loss, val_recall, output_dir)
 
+        # Save the model if validation recall improves
         if val_recall_epoch > best_val_recall:
             best_val_recall = val_recall_epoch
             patience_counter = 0
@@ -267,8 +266,8 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, device, o
 
 def test_model(model, test_loader, device, output_dir):
     """
-    Evaluate the model on the test set and save the confusion matrix.
-    
+    Evaluate the model on the test set and save the confusion matrix and recall.
+
     Args:
         model: Trained PyTorch model to evaluate.
         test_loader: DataLoader for the test dataset.
@@ -288,12 +287,11 @@ def test_model(model, test_loader, device, output_dir):
             test_all_targets.extend(targets.cpu().numpy())
             test_all_predictions.extend(predicted.cpu().numpy())
 
-    # Calculate test metrics
+    # Calculate recall and precision
     test_recall = recall_score(test_all_targets, test_all_predictions, average='macro')
     test_precision = precision_score(test_all_targets, test_all_predictions, average='macro')
-    test_f1 = f1_score(test_all_targets, test_all_predictions, average='macro')
-
-    logger.info(f"Test Metrics - Recall: {test_recall:.4f}, Precision: {test_precision:.4f}, F1 Score: {test_f1:.4f}")
+    logger.info(f"Test Recall: {test_recall:.4f}")
+    logger.info(f"Test Precision: {test_precision:.4f}")
 
     # Generate and save the test confusion matrix
     test_cm = confusion_matrix(test_all_targets, test_all_predictions)
@@ -342,7 +340,7 @@ def main():
     # Train the model
     trained_model = train_model(model, train_loader, val_loader, criterion, optimizer, device, output_dir, patience=5)
     
-     # Test the model
+    # Test the model
     test_model(trained_model, test_loader, device, output_dir)
     logger.info("Training and testing complete!")
     
