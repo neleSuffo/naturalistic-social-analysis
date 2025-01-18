@@ -18,38 +18,56 @@ from constants import EfficientNetPaths, MtcnnPaths
 logging.basicConfig(level=logging.INFO)
 
 
-def split_data(source_dir, train_dir, val_dir, test_dir, train_ratio=0.8, val_ratio=0.1):
-    """
-    Split images into train, validation, and test sets.
-    """
-    os.makedirs(train_dir, exist_ok=True)
-    os.makedirs(val_dir, exist_ok=True)
-    os.makedirs(test_dir, exist_ok=True)
-
-    random.seed(42)
-    np.random.seed(42)
-
-    all_images = [f for f in os.listdir(source_dir) if f.endswith('.jpg')]
-    random.shuffle(all_images)
-
-    total_images = len(all_images)
-    num_train = int(total_images * train_ratio)
-    num_val = int(total_images * val_ratio)
-
-    train_images = all_images[:num_train]
-    val_images = all_images[num_train:num_train + num_val]
-    test_images = all_images[num_train + num_val:]
-
-    for img in train_images:
-        shutil.copy(os.path.join(source_dir, img), os.path.join(train_dir, img))
-    for img in val_images:
-        shutil.copy(os.path.join(source_dir, img), os.path.join(val_dir, img))
-    for img in test_images:
-        shutil.copy(os.path.join(source_dir, img), os.path.join(test_dir, img))
-
-    logging.info(f"Split completed:\nTrain: {len(train_images)}\nVal: {len(val_images)}\nTest: {len(test_images)}")
-
-
+def organize_data(source_dir, labels_file, train_dir, val_dir, test_dir, train_ratio=0.7, val_ratio=0.15):
+    """Organize images into class folders and split into train/val/test"""
+    # Create directories for classes
+    for split_dir in [train_dir, val_dir, test_dir]:
+        for class_idx in ['0', '1']:
+            os.makedirs(os.path.join(split_dir, class_idx), exist_ok=True)
+    
+    # Read labels
+    with open(labels_file, 'r') as f:
+        lines = f.readlines()
+    
+    # Create image-label pairs with absolute paths
+    image_labels = []
+    for line in lines:
+        full_img_path, label = line.strip().split()
+        # Verify source image exists
+        if os.path.exists(full_img_path):
+            image_labels.append((full_img_path, label))
+        else:
+            logging.warning(f"Image not found: {full_img_path}")
+    
+    # Shuffle and split
+    random.shuffle(image_labels)
+    total = len(image_labels)
+    train_idx = int(total * train_ratio)
+    val_idx = int(total * (train_ratio + val_ratio))
+    
+    # Split data
+    train_data = image_labels[:train_idx]
+    val_data = image_labels[train_idx:val_idx]
+    test_data = image_labels[val_idx:]
+    
+    # Copy files to appropriate directories
+    for data, split_dir in [(train_data, train_dir), 
+                           (val_data, val_dir), 
+                           (test_data, test_dir)]:
+        for src_path, label in data:
+            # Create destination path using just the filename
+            filename = os.path.basename(src_path)
+            dst_dir = os.path.join(split_dir, label)
+            dst_path = os.path.join(dst_dir, filename)
+            
+            try:
+                shutil.copy(src_path, dst_path)
+            except Exception as e:
+                logging.error(f"Failed to copy {src_path} to {dst_path}: {e}")
+    
+    logging.info(f"Split completed:\nTrain: {len(train_data)}\nVal: {len(val_data)}\nTest: {len(test_data)}")
+   
+ 
 def create_data_loaders(train_dir, val_dir, test_dir, image_size=(150, 150), batch_size=32):
     """
     Create data loaders for train, validation, and test sets.
@@ -220,9 +238,12 @@ def main():
     train_dir = os.path.join(MtcnnPaths.faces_dir, 'train')
     val_dir = os.path.join(MtcnnPaths.faces_dir, 'val')
     test_dir = os.path.join(MtcnnPaths.faces_dir, 'test')
+    labels_file = MtcnnPaths.face_labels_file_path
 
-    split_data(source_dir, train_dir, val_dir, test_dir)
+    # Organize data into class folders
+    organize_data(source_dir, labels_file, train_dir, val_dir, test_dir)
 
+    # Create data loaders
     train_loader, val_loader, test_loader = create_data_loaders(train_dir, val_dir, test_dir)
 
     model = train_model(train_loader, val_loader)
