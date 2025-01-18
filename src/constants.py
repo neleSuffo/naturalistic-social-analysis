@@ -68,7 +68,7 @@ class FastReIDPaths:
     output_dir_train = Path(StrongSortPaths.base_dir/"quantex_test_YOLO+BoT/")
     output_dir_val = Path(StrongSortPaths.base_dir/"quantex_val_YOLO+BoT/")
 
-class ResNetPaths:
+class EfficientNetPaths:
     output_dir = Path(BasePaths.output_dir/"resnet/")
     
     
