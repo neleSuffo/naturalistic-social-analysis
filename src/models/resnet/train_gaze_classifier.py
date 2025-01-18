@@ -1,419 +1,236 @@
-import torch
 import logging
-import os
-import cv2
-import shutil
-import torch.nn as nn
 import numpy as np
-from torch.utils.data import DataLoader, Dataset, WeightedRandomSampler
-from torchvision import models, transforms
-from torch.optim import Adam
-from PIL import Image
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import recall_score, precision_score, f1_score, confusion_matrix, roc_curve, auc, precision_recall_curve, average_precision_score, roc_auc_score
+import pandas as pd
 import matplotlib.pyplot as plt
-import seaborn as sns
-from constants import ResNetPaths, MtcnnPaths
-from datetime import datetime
-from collections import Counter
-from imblearn.over_sampling import SMOTE
 
-cv2.setNumThreads(2)
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader
+from torchvision import datasets, transforms, models
+from sklearn.metrics import confusion_matrix, roc_curve, auc
+import os
+import random
+import shutil
+from math import ceil, sqrt
+from constants import EfficientNetPaths, MtcnnPaths
 
-# Set up logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger()
+logging.basicConfig(level=logging.INFO)
 
-# Define the dataset class
-class GazeDataset(Dataset):
-    def __init__(self, image_paths, labels, transform=None):
-        self.image_paths = image_paths
-        self.labels = labels
-        self.transform = transform
 
-    def __len__(self):
-        return len(self.image_paths)
+def split_data(source_dir, train_dir, val_dir, test_dir, train_ratio=0.8, val_ratio=0.1):
+    """
+    Split images into train, validation, and test sets.
+    """
+    os.makedirs(train_dir, exist_ok=True)
+    os.makedirs(val_dir, exist_ok=True)
+    os.makedirs(test_dir, exist_ok=True)
 
-    def __getitem__(self, idx):
-        img_path = self.image_paths[idx]
-        image = Image.open(img_path).convert("RGB")
-        label = self.labels[idx]
-        
-        if self.transform:
-            image = self.transform(image)
-        
-        return image, label
+    random.seed(42)
+    np.random.seed(42)
 
-# Function to read data
-def read_data(file_path):
-    image_paths = []
-    labels = []
-    with open(file_path, 'r') as f:
-        for line in f:
-            parts = line.strip().split()
-            image_paths.append(parts[0])
-            labels.append(int(parts[1]))
-    return image_paths, labels
+    all_images = [f for f in os.listdir(source_dir) if f.endswith('.jpg')]
+    random.shuffle(all_images)
 
-# Function to perform stratified split
-def stratified_split(image_paths, labels, train_size=0.8, val_size=0.1, test_size=0.1):
-    train_paths, temp_paths, train_labels, temp_labels = train_test_split(
-        image_paths, labels, test_size=(1 - train_size), random_state=42, stratify=labels
-    )
-    val_paths, test_paths, val_labels, test_labels = train_test_split(
-        temp_paths, temp_labels, test_size=(test_size / (test_size + val_size)), random_state=42, stratify=temp_labels
-    )
-    return train_paths, val_paths, test_paths, train_labels, val_labels, test_labels
+    total_images = len(all_images)
+    num_train = int(total_images * train_ratio)
+    num_val = int(total_images * val_ratio)
 
-# Function to create transformations (including data augmentation)
-def get_transformations(is_train=True):
-    transforms_list = [
-        transforms.Resize((224, 224)),
+    train_images = all_images[:num_train]
+    val_images = all_images[num_train:num_train + num_val]
+    test_images = all_images[num_train + num_val:]
+
+    for img in train_images:
+        shutil.copy(os.path.join(source_dir, img), os.path.join(train_dir, img))
+    for img in val_images:
+        shutil.copy(os.path.join(source_dir, img), os.path.join(val_dir, img))
+    for img in test_images:
+        shutil.copy(os.path.join(source_dir, img), os.path.join(test_dir, img))
+
+    logging.info(f"Split completed:\nTrain: {len(train_images)}\nVal: {len(val_images)}\nTest: {len(test_images)}")
+
+
+def create_data_loaders(train_dir, val_dir, test_dir, image_size=(150, 150), batch_size=32):
+    """
+    Create data loaders for train, validation, and test sets.
+    """
+    transform_train = transforms.Compose([
+        transforms.Resize(image_size),
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomRotation(25),
+        transforms.ColorJitter(),
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-    ]
-    
-    if is_train:
-        transforms_list = [
-            transforms.RandomHorizontalFlip(),
-            transforms.RandomRotation(10),
-            transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2),
-            transforms.RandomAffine(10, shear=10),
-        ] + transforms_list  # Apply augmentation for training data
-    
-    return transforms.Compose(transforms_list)
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    ])
 
-# Create model with dropout regularization
-def create_model(dropout_rate=0.5):
-    model = models.resnet18(weights=models.ResNet18_Weights.IMAGENET1K_V1)
-    # Freeze all layers except the final fully connected layer
-    for param in model.parameters():
-        param.requires_grad = False
-    
-    # Modify the fully connected layer
-    model.fc = nn.Sequential(
-        nn.Linear(model.fc.in_features, 512),  # Add a dense layer with 512 units
+    transform_test = transforms.Compose([
+        transforms.Resize(image_size),
+        transforms.ToTensor(),
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    ])
+
+    train_dataset = datasets.ImageFolder(train_dir, transform=transform_train)
+    val_dataset = datasets.ImageFolder(val_dir, transform=transform_test)
+    test_dataset = datasets.ImageFolder(test_dir, transform=transform_test)
+
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+    test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False)
+
+    return train_loader, val_loader, test_loader
+
+
+def train_model(train_loader, val_loader, num_classes=2, device='cuda'):
+    """
+    Train a model using the train and validation loaders.
+    """
+    model = models.efficientnet_b3(pretrained=True)
+    model.classifier = nn.Sequential(
+        nn.Linear(model.classifier[1].in_features, 512),
         nn.ReLU(),
-        nn.Dropout(dropout_rate),  # Add dropout for regularization
-        nn.Linear(512, 2)  # Modify for binary classification
+        nn.Dropout(0.5),
+        nn.Linear(512, 256),
+        nn.ReLU(),
+        nn.Dropout(0.3),
+        nn.Linear(256, num_classes)
     )
-    
-    return model
+    model = model.to(device)
 
-# Function to calculate recall
-def calculate_recall(all_targets, all_predictions):
-    return recall_score(all_targets, all_predictions, average='macro')
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=5e-4)
+    scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
 
-# Function to plot confusion matrix
-def plot_confusion_matrix(cm, class_names, output_dir, epoch=None):
-    plt.figure(figsize=(6,6))
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=class_names, yticklabels=class_names)
-    plt.xlabel('Predicted labels')
-    plt.ylabel('True labels')
-    plt.title('Confusion Matrix')
-    
-    if epoch is not None:
-        plt.savefig(f"{output_dir}/confusion_matrix_epoch_{epoch}.png")
-    else:
-        plt.savefig(f"{output_dir}/confusion_matrix.png")
-    plt.close()
+    best_val_loss = float('inf')
+    patience = 5
+    no_improve_count = 0
 
-def plot_precision_recall_curve(y_true, y_scores, output_dir):
-    precision, recall, _ = precision_recall_curve(y_true, y_scores)
-    plt.figure()
-    plt.plot(recall, precision, marker='.')
-    plt.xlabel('Recall')
-    plt.ylabel('Precision')
-    plt.title('Precision-Recall Curve')
-    plt.savefig(os.path.join(output_dir, 'precision_recall_curve.png'))
-    plt.close()
-
-def plot_roc_curve(y_true, y_scores, output_dir):
-    fpr, tpr, _ = roc_curve(y_true, y_scores)
-    roc_auc = auc(fpr, tpr)
-    plt.figure()
-    plt.plot(fpr, tpr, marker='.')
-    plt.plot([0, 1], [0, 1], linestyle='--')
-    plt.xlabel('False Positive Rate')
-    plt.ylabel('True Positive Rate')
-    plt.title(f'ROC Curve (AUC = {roc_auc:.4f})')
-    plt.savefig(os.path.join(output_dir, 'roc_curve.png'))
-    plt.close()
-    
-# Function to save and plot other metrics
-def save_and_plot_metrics(epoch, train_loss, train_recall, val_loss, val_recall, output_dir):
-    # Save the loss and recall curves
-    plt.figure(figsize=(10, 5))
-    plt.subplot(1, 2, 1)
-    plt.plot(train_loss, label='Train Loss')
-    plt.plot(val_loss, label='Val Loss')
-    plt.title('Loss Curve')
-    plt.xlabel('Epochs')
-    plt.ylabel('Loss')
-    plt.legend()
-    plt.savefig(f"{output_dir}/loss_curve.png")
-    
-    plt.subplot(1, 2, 2)
-    plt.plot(train_recall, label='Train Recall')
-    plt.plot(val_recall, label='Val Recall')
-    plt.title('Recall Curve')
-    plt.xlabel('Epochs')
-    plt.ylabel('Recall')
-    plt.legend()
-    plt.savefig(f"{output_dir}/recall_curve.png")
-    plt.close()
-
-# Define the FocalLoss class
-class WeightedFocalLoss(nn.Module):
-    def __init__(self, alpha=0.25, gamma=2.0, weight=None, reduction='mean'):
-        """
-        Focal Loss for addressing class imbalance with class weights.
-        
-        Args:
-            alpha (float): Scaling factor for balancing classes.
-            gamma (float): Modulating factor to focus on hard examples.
-            weight (Tensor, optional): A manual rescaling weight given to each class.
-            reduction (str): Specifies the reduction to apply to the output: 'none', 'mean', or 'sum'.
-        """
-        super(WeightedFocalLoss, self).__init__()
-        self.alpha = alpha
-        self.gamma = gamma
-        self.weight = weight
-        self.reduction = reduction
-
-    def forward(self, inputs, targets):
-        """
-        Compute the focal loss.
-        
-        Args:
-            inputs (Tensor): Model predictions (logits) of shape (batch_size, num_classes).
-            targets (Tensor): Ground truth labels of shape (batch_size,).
-        
-        Returns:
-            Tensor: Computed focal loss.
-        """
-        # Apply softmax to normalize inputs into probabilities
-        probs = torch.softmax(inputs, dim=-1)
-        
-        # Select the probabilities corresponding to the true class
-        p_t = probs.gather(1, targets.unsqueeze(1)).squeeze(1)
-        
-        # Compute the modulating factor
-        modulating_factor = (1 - p_t) ** self.gamma
-        
-        # Compute the focal loss
-        loss = -self.alpha * modulating_factor * torch.log(p_t + 1e-12)  # Add epsilon to avoid log(0)
-
-        # Apply class weights
-        if self.weight is not None:
-            weight = self.weight.gather(0, targets)
-            loss = loss * weight
-
-        # Apply reduction
-        if self.reduction == 'mean':
-            return loss.mean()
-        elif self.reduction == 'sum':
-            return loss.sum()
-        else:  # 'none'
-            return loss
-
-# Function to train the model with dropout regularization
-def train_model(model, train_loader, val_loader, criterion, optimizer, device, output_dir, patience=5):
-    best_val_recall = 0.0  # Track the best validation recall
-    patience_counter = 0
-    num_epochs = 40
-    train_loss, train_recall, val_loss, val_recall = [], [], [], []
-
-    for epoch in range(num_epochs):
+    for epoch in range(50):
         model.train()
-        running_loss = 0.0
-        all_targets = []
-        all_predictions = []
-
-        for inputs, targets in train_loader:
-            inputs, targets = inputs.to(device), targets.to(device)
+        train_loss = 0
+        for inputs, labels in train_loader:
+            inputs, labels = inputs.to(device), labels.to(device)
             optimizer.zero_grad()
             outputs = model(inputs)
-            loss = criterion(outputs, targets)
+            loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
+            train_loss += loss.item()
 
-            # Store predictions and targets for recall calculation
-            _, predicted = torch.max(outputs, 1)
-            all_targets.extend(targets.cpu().numpy())
-            all_predictions.extend(predicted.cpu().numpy())
+        train_loss /= len(train_loader)
 
-            running_loss += loss.item()
-
-        # Compute training recall
-        epoch_recall = recall_score(all_targets, all_predictions, average='macro')
-        logger.info(f"Epoch [{epoch+1}/{num_epochs}], Loss: {running_loss / len(train_loader):.4f}, Recall: {epoch_recall:.4f}")
-        
-        train_loss.append(running_loss / len(train_loader))
-        train_recall.append(epoch_recall)
-
-        # Validate on the validation set
         model.eval()
-        val_loss_epoch = 0.0
-        val_all_targets = []
-        val_all_predictions = []
-
+        val_loss = 0
+        val_recall = 0
         with torch.no_grad():
-            for inputs, targets in val_loader:
-                inputs, targets = inputs.to(device), targets.to(device)
+            for inputs, labels in val_loader:
+                inputs, labels = inputs.to(device), labels.to(device)
                 outputs = model(inputs)
-                loss = criterion(outputs, targets)
-                val_loss_epoch += loss.item()
+                loss = criterion(outputs, labels)
+                val_loss += loss.item()
+                preds = torch.argmax(outputs, dim=1)
+                val_recall += (preds == labels).sum().item() / len(labels)
 
-                _, predicted = torch.max(outputs, 1)
-                val_all_targets.extend(targets.cpu().numpy())
-                val_all_predictions.extend(predicted.cpu().numpy())
+        val_loss /= len(val_loader)
+        val_recall /= len(val_loader)
 
-        # Compute validation recall
-        val_recall_epoch = recall_score(val_all_targets, val_all_predictions, average='macro')
-        logger.info(f"Validation Loss: {val_loss_epoch / len(val_loader):.4f}, Validation Recall: {val_recall_epoch:.4f}")
+        logging.info(f"Epoch {epoch + 1}: Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}, Val Recall: {val_recall:.4f}")
 
-        val_loss.append(val_loss_epoch / len(val_loader))
-        val_recall.append(val_recall_epoch)
-
-        # Save metrics plots
-        save_and_plot_metrics(epoch, train_loss, train_recall, val_loss, val_recall, output_dir)
-
-        # Save the model if validation recall improves
-        if val_recall_epoch > best_val_recall:
-            best_val_recall = val_recall_epoch
-            patience_counter = 0
-            torch.save(model.state_dict(), f"{output_dir}/best_gaze_classification_model.pth")
-            logger.info("Validation recall improved. Model saved.")
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            best_model = model
+            no_improve_count = 0
         else:
-            patience_counter += 1
-            logger.info(f"No improvement in validation recall. Patience counter: {patience_counter}/{patience}")
+            no_improve_count += 1
 
-        if patience_counter >= patience:
-            logger.info("Early stopping triggered.")
+        if no_improve_count >= patience:
+            logging.info("Early stopping triggered.")
             break
 
-    return model
+        scheduler.step()
 
-def test_model(model, test_loader, device, output_dir):
-    """
-    Evaluate the model on the test set and save the confusion matrix, recall, precision, precision-recall curve, and ROC curve.
+    return best_model
 
-    Args:
-        model: Trained PyTorch model to evaluate.
-        test_loader: DataLoader for the test dataset.
-        device: Device to perform computation on (e.g., 'cuda' or 'cpu').
-        output_dir: Directory to save the confusion matrix and other results.
+
+def evaluate_model(model, test_loader, device='cuda'):
     """
-    logger.info("Starting testing phase...")
-    model.eval()  # Set the model to evaluation mode
-    test_all_targets = []
-    test_all_predictions = []
-    test_all_scores = []
+    Evaluate the model on the test set.
+    """
+    model.eval()
+    predictions = []
+    true_labels = []
 
     with torch.no_grad():
-        for inputs, targets in test_loader:
-            inputs, targets = inputs.to(device), targets.to(device)
+        for inputs, labels in test_loader:
+            inputs = inputs.to(device)
             outputs = model(inputs)
-            probabilities = torch.softmax(outputs, dim=1)[:, 1]  # Get probabilities for the positive class
-            _, predicted = torch.max(outputs, 1)
-            test_all_targets.extend(targets.cpu().numpy())
-            test_all_predictions.extend(predicted.cpu().numpy())
-            test_all_scores.extend(probabilities.cpu().numpy())
+            preds = torch.argmax(outputs, dim=1).cpu().numpy()
+            predictions.extend(preds)
+            true_labels.extend(labels.numpy())
 
-    # Calculate recall and precision
-    test_recall = recall_score(test_all_targets, test_all_predictions, average='macro')
-    test_precision = precision_score(test_all_targets, test_all_predictions, average='macro')
-    logger.info(f"Test Recall: {test_recall:.4f}")
-    logger.info(f"Test Precision: {test_precision:.4f}")
+    return np.array(true_labels), np.array(predictions)
 
-    # Generate and save the test confusion matrix
-    test_cm = confusion_matrix(test_all_targets, test_all_predictions)
-    plot_confusion_matrix(test_cm, class_names=['No Gaze', 'Gaze'], output_dir=output_dir)
-    logger.info("Test confusion matrix saved.")
 
-    # Plot and save the precision-recall curve
-    plot_precision_recall_curve(test_all_targets, test_all_scores, output_dir)
-    logger.info("Precision-Recall curve saved.")
-
-    # Plot and save the ROC curve
-    plot_roc_curve(test_all_targets, test_all_scores, output_dir)
-    logger.info("ROC curve saved.")
-   
-def apply_smote(image_paths, labels):
+def plot_confusion_matrix(true_labels, predictions, class_names):
     """
-    Apply SMOTE to oversample the minority class in the training set.
-    
-    Args:
-        image_paths (list): List of image file paths.
-        labels (list): Corresponding list of labels.
-
-    Returns:
-        smote_image_paths, smote_labels: Oversampled image paths and labels.
+    Plot the confusion matrix.
     """
-    # Convert image paths to numerical indices for SMOTE compatibility
-    indices = np.arange(len(image_paths)).reshape(-1, 1)
-    
-    # Apply SMOTE
-    smote = SMOTE(random_state=42)
-    smote_indices, smote_labels = smote.fit_resample(indices, labels)
-    
-    # Map back to the original image paths
-    smote_image_paths = [image_paths[i[0]] for i in smote_indices]
-    return smote_image_paths, smote_labels
+    confusion = confusion_matrix(true_labels, predictions)
+    plt.figure(figsize=(8, 6))
+    plt.imshow(confusion, interpolation='nearest', cmap=plt.cm.Blues)
+    plt.title("Confusion Matrix")
+    plt.colorbar()
 
-    
-# Main function
+    tick_marks = np.arange(len(class_names))
+    plt.xticks(tick_marks, class_names, rotation=45)
+    plt.yticks(tick_marks, class_names)
+
+    for i in range(confusion.shape[0]):
+        for j in range(confusion.shape[1]):
+            plt.text(j, i, confusion[i, j],
+                     horizontalalignment="center",
+                     color="white" if confusion[i, j] > confusion.max() / 2 else "black")
+
+    plt.xlabel("Predicted Labels")
+    plt.ylabel("True Labels")
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_roc_curve(true_labels, predictions, class_names):
+    """
+    Plot the ROC curve.
+    """
+    true_one_hot = np.eye(len(class_names))[true_labels]
+    fpr, tpr, _ = roc_curve(true_one_hot.ravel(), predictions.ravel())
+    roc_auc = auc(fpr, tpr)
+
+    plt.figure(figsize=(8, 6))
+    plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (area = {roc_auc:.2f})')
+    plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('Receiver Operating Characteristic')
+    plt.legend(loc="lower right")
+    plt.show()
+
+
 def main():
-    # Specify the output directory for saving plots
-    run_folder = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = os.path.join(ResNetPaths.output_dir, run_folder)
-    os.makedirs(output_dir, exist_ok=True)
-    
-    # Copy the current script to the output directory
-    current_script_path = os.path.abspath(__file__)
-    shutil.copy(current_script_path, os.path.join(output_dir, 'train_gaze_classifier.py'))
-    
-    # Read the data
-    image_paths, labels = read_data(MtcnnPaths.face_labels_file_path)
-    train_paths, val_paths, test_paths, train_labels, val_labels, test_labels = stratified_split(image_paths, labels)
+    # Set directories
+    source_dir = MtcnnPaths.faces_dir
+    train_dir = os.path.join(MtcnnPaths.faces_dir, 'train')
+    val_dir = os.path.join(MtcnnPaths.faces_dir, 'val')
+    test_dir = os.path.join(MtcnnPaths.faces_dir, 'test')
 
-    # Apply SMOTE on the training set
-    train_paths, train_labels = apply_smote(train_paths, train_labels)
-    logger.info(f"Applied SMOTE. New training set size: {len(train_paths)} samples.")
-    
-    # Apply transformations
-    train_transform = get_transformations(is_train=True)
-    val_transform = get_transformations(is_train=False)
+    split_data(source_dir, train_dir, val_dir, test_dir)
 
-    # Create datasets and dataloaders
-    train_dataset = GazeDataset(train_paths, train_labels, transform=train_transform)
-    val_dataset = GazeDataset(val_paths, val_labels, transform=val_transform)
-    test_dataset = GazeDataset(test_paths, test_labels, transform=val_transform)
-    
-    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
-    test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
+    train_loader, val_loader, test_loader = create_data_loaders(train_dir, val_dir, test_dir)
 
-    # Compute class weights
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    class_counts = np.bincount(train_labels)  # Count samples for each class (0 and 1)
-    logging.info(f"Class counts after SMOTE: {class_counts}")
-    class_weights = 1.0 / class_counts  # Inverse of the class frequencies
-    class_weights = torch.tensor(class_weights, dtype=torch.float).to(device)
-    
-    # Create model and optimizer
-    model = create_model(dropout_rate=0.5).to(device)
-    criterion = WeightedFocalLoss(weight=class_weights)    
-    # Define the optimizer with L2 regularization (weight decay)
-    optimizer = Adam(model.parameters(), lr=0.001, weight_decay=1e-5)
+    model = train_model(train_loader, val_loader)
 
-    # Train the model
-    trained_model = train_model(model, train_loader, val_loader, criterion, optimizer, device, output_dir, patience=5)
-    
-    # Test the model
-    test_model(trained_model, test_loader, device, output_dir)
-    logger.info("Training and testing complete!")
-    
-if __name__ == "__main__":
+    true_labels, predictions = evaluate_model(model, test_loader)
+    class_names = os.listdir(train_dir)
+
+    plot_confusion_matrix(true_labels, predictions, class_names)
+
+if __name__ == '__main__':
     main()
