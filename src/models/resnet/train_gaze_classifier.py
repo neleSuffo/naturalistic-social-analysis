@@ -9,7 +9,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms, models
-from sklearn.metrics import confusion_matrix, roc_curve, auc, precision_recall_curve, average_precision_score, precision_score, recall_score, roc_auc_score
+from sklearn.metrics import confusion_matrix, roc_curve, auc, precision_recall_curve, average_precision_score, precision_score, recall_score, roc_auc_score, accuracy_score
 import os
 import random
 import shutil
@@ -17,6 +17,32 @@ from constants import EfficientNetPaths, MtcnnPaths
 
 logging.basicConfig(level=logging.INFO)
 
+class FocalLoss(nn.Module):
+    """
+    Focal Loss for binary/multi-class classification.
+    Args:
+        alpha (float): Balances the importance of positive/negative classes (default=0.25).
+        gamma (float): Modulates the importance of well-classified examples (default=2.0).
+        reduction (str): Specifies the reduction to apply to the output ('none', 'mean', or 'sum').
+    """
+    def __init__(self, alpha=0.25, gamma=2.0, reduction='mean'):
+        super(FocalLoss, self).__init__()
+        self.alpha = alpha
+        self.gamma = gamma
+        self.reduction = reduction
+
+    def forward(self, inputs, targets):
+        ce_loss = nn.CrossEntropyLoss(reduction='none')(inputs, targets)
+        pt = torch.exp(-ce_loss)  # Probabilities of the predicted classes
+        focal_loss = self.alpha * (1 - pt) ** self.gamma * ce_loss
+
+        if self.reduction == 'mean':
+            return focal_loss.mean()
+        elif self.reduction == 'sum':
+            return focal_loss.sum()
+        else:
+            return focal_loss
+        
 def create_output_directory(base_dir=EfficientNetPaths.output_dir):
     """
     Create a timestamped output directory.
@@ -137,8 +163,8 @@ def train_model(train_loader, val_loader, num_epochs, num_classes=2, device='cud
         nn.Linear(256, num_classes)
     )
     model = model.to(device)
-
-    criterion = nn.CrossEntropyLoss()
+    
+    criterion = FocalLoss(alpha=0.25, gamma=2.0, reduction='mean')
     optimizer = optim.Adam(model.parameters(), lr=5e-4)
     scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
 
@@ -237,7 +263,7 @@ def evaluate_and_plot_results(model, test_loader, class_names, output_dir, devic
     probabilities = np.array(probabilities)
     
     # Save test metrics
-    save_test_metrics(true_labels, predictions, probabilities, output_dir)
+l,.    save_test_metrics(true_labels, predictions, probabilities,class_names, output_dir)
 
     # Generate plots
     confusion = confusion_matrix(true_labels, predictions)
@@ -347,7 +373,7 @@ def save_recall_plot(val_recalls, output_dir):
     logging.info(f"Recall curve saved to {plot_path}")
     plt.close()
     
-def save_test_metrics(true_labels, predictions, probabilities, output_dir):
+def save_test_metrics(true_labels, predictions, probabilities, class_names, output_dir):
     """
     Save test metrics to a JSON file.
     
@@ -355,29 +381,41 @@ def save_test_metrics(true_labels, predictions, probabilities, output_dir):
         true_labels (np.ndarray): Ground truth labels
         predictions (np.ndarray): Model predictions
         probabilities (np.ndarray): Prediction probabilities
+        class_names (list): List of class names
         output_dir (str): Directory to save metrics
     """
     try:
-        # Calculate metrics
-        accuracy = np.mean(true_labels == predictions)
+        # Calculate overall metrics
+        accuracy = accuracy_score(true_labels, predictions)
         precision = precision_score(true_labels, predictions, average='macro')
         recall = recall_score(true_labels, predictions, average='macro')
         roc_auc = roc_auc_score(true_labels, probabilities[:, 1])  # For binary classification
         avg_precision = average_precision_score(true_labels, probabilities[:, 1])
         
+        # Calculate per-class recall
+        per_class_recall = recall_score(true_labels, predictions, average=None)
+        per_class_recall_dict = {
+            class_names[i]: float(per_class_recall[i])
+            for i in range(len(class_names))
+        }
+        
+        # Prepare metrics dictionary
         metrics = {
             "Test Accuracy": float(accuracy),
             "Test Precision": float(precision),
-            "Test Recall": float(recall),
+            "Test Recall (Average)": float(recall),
             "AUC-ROC": float(roc_auc),
             "Average Precision": float(avg_precision),
             "Number of Test Samples": len(true_labels),
             "Class Distribution": {
-                "Class 0": int(np.sum(true_labels == 0)),
-                "Class 1": int(np.sum(true_labels == 1))
-            }
+                class_names[0]: int(np.sum(true_labels == 0)),
+                class_names[1]: int(np.sum(true_labels == 1)),
+            },
+            "Per-Class Recall": per_class_recall_dict,
         }
         
+        # Save metrics to a JSON file
+        os.makedirs(output_dir, exist_ok=True)
         metrics_path = os.path.join(output_dir, "test_metrics.json")
         with open(metrics_path, 'w') as f:
             json.dump(metrics, f, indent=4)
@@ -416,7 +454,7 @@ def main():
     )
     
     # Train the model
-    model, train_losses, val_losses, val_recalls = train_model(train_loader, val_loader, num_epochs=1)
+    model, train_losses, val_losses, val_recalls = train_model(train_loader, val_loader, num_epochs=50)
     
     # Save training and validation plots
     save_loss_plot(train_losses, val_losses, output_dir)
