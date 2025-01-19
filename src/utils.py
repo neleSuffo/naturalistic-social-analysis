@@ -99,8 +99,10 @@ def fetch_all_annotations(
         JOIN videos v ON a.video_id = v.id
         WHERE a.category_id != -1 
             AND a.outside = 0
+            AND a.video_id != '255237_2022_05_08_04'
         ORDER BY a.video_id, a.image_id
         """
+        # video id255237_2022_05_08_04 is the video cut into a smaller chunk because of nudity, but children take camera off as well, so annotations are excluded
         cursor.execute(query)
 
     annotations = cursor.fetchall()
