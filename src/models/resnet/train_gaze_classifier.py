@@ -1,6 +1,6 @@
 import logging
 import datetime
-import inspect
+import json
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -9,7 +9,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms, models
-from sklearn.metrics import confusion_matrix, roc_curve, auc, precision_recall_curve, average_precision_score
+from sklearn.metrics import confusion_matrix, roc_curve, auc, precision_recall_curve, average_precision_score, precision_score, recall_score
 import os
 import random
 import shutil
@@ -30,10 +30,10 @@ def save_current_script(output_dir):
     """
     Save a copy of the current script to the output directory.
     """
-    script_path = inspect.getfile(inspect.currentframe())
+    script_path = __file__
     shutil.copy(script_path, os.path.join(output_dir, os.path.basename(script_path)))
     
-def organize_data(source_dir, labels_file, train_dir, val_dir, test_dir, train_ratio=0.7, val_ratio=0.15):
+def organize_data(source_dir, labels_file, train_dir, val_dir, test_dir, train_ratio=0.8, val_ratio=0.1):
     """Organize images into class folders and split into train/val/test"""
     # Create directories for classes
     for split_dir in [train_dir, val_dir, test_dir]:
@@ -170,7 +170,6 @@ def train_model(train_loader, val_loader, num_epochs, num_classes=2, device='cud
                 loss = criterion(outputs, labels)
                 val_loss += loss.item()
 
-                # Collect predictions and true labels for recall calculation
                 preds = torch.argmax(outputs, dim=1)
                 all_true_labels.extend(labels.cpu().numpy())
                 all_predictions.extend(preds.cpu().numpy())
@@ -179,9 +178,7 @@ def train_model(train_loader, val_loader, num_epochs, num_classes=2, device='cud
         val_losses.append(val_loss)
 
         # Calculate recall for the validation set
-        confusion = confusion_matrix(all_true_labels, all_predictions)
-        recalls = np.diag(confusion) / np.sum(confusion, axis=1)  # Per-class recall
-        val_recall = np.mean(recalls[np.isfinite(recalls)])  # Average recall
+        val_recall = recall_score(all_true_labels, all_predictions, average='macro')
         val_recalls.append(val_recall)
 
         logging.info(f"Epoch {epoch + 1}/{num_epochs}: Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}, Val Recall: {val_recall:.4f}")
@@ -193,7 +190,7 @@ def train_model(train_loader, val_loader, num_epochs, num_classes=2, device='cud
             no_improve_count = 0
         else:
             no_improve_count += 1
-
+            logging.info(f"No improvement for {no_improve_count} epochs. Best val_loss: {best_val_loss:.4f}")
         if no_improve_count >= patience:
             logging.info("Early stopping triggered.")
             break
@@ -203,23 +200,48 @@ def train_model(train_loader, val_loader, num_epochs, num_classes=2, device='cud
     return best_model, train_losses, val_losses, val_recalls
 
 
-def evaluate_model(model, test_loader, device='cuda'):
+def evaluate_and_plot_results(model, test_loader, class_names, output_dir, device='cuda'):
     """
-    Evaluate the model on the test set.
+    Evaluate the model on the test set, compute metrics, and save evaluation plots.
     """
+    logging.info("Evaluating model and generating plots...")
+
+    # Evaluate the model
     model.eval()
-    predictions = []
     true_labels = []
+    predictions = []
+    probabilities = []
 
     with torch.no_grad():
         for inputs, labels in test_loader:
-            inputs = inputs.to(device)
+            inputs, labels = inputs.to(device), labels.to(device)
             outputs = model(inputs)
-            preds = torch.argmax(outputs, dim=1).cpu().numpy()
-            predictions.extend(preds)
-            true_labels.extend(labels.numpy())
+            preds = torch.argmax(outputs, dim=1)
+            probs = torch.softmax(outputs, dim=1)
 
-    return np.array(true_labels), np.array(predictions)
+            true_labels.extend(labels.cpu().numpy())
+            predictions.extend(preds.cpu().numpy())
+            probabilities.extend(probs.cpu().numpy())
+
+    true_labels = np.array(true_labels)
+    predictions = np.array(predictions)
+    probabilities = np.array(probabilities)
+
+    # Compute metrics
+    accuracy = np.mean(true_labels == predictions)
+    precision = precision_score(true_labels, predictions, average='macro')
+    recall = recall_score(true_labels, predictions, average='macro')
+
+    # Save test metrics
+    save_test_metrics(accuracy, precision, recall, output_dir)
+
+    # Generate plots
+    confusion = confusion_matrix(true_labels, predictions)
+    save_confusion_matrix(confusion, class_names, output_dir)
+    save_precision_recall_curve(true_labels, probabilities, class_names, output_dir)
+    save_roc_curve(true_labels, probabilities, class_names, output_dir)
+
+    logging.info(f"Evaluation and plotting completed. Results saved to {output_dir}")
 
 def save_precision_recall_curve(true_labels, predictions, class_names, output_dir):
     """
@@ -265,6 +287,7 @@ def save_confusion_matrix(confusion, class_names, output_dir):
     plt.tight_layout()
     plot_path = os.path.join(output_dir, "confusion_matrix.png")
     plt.savefig(plot_path)
+    logging.info(f"Confusion matrix saved to {plot_path}")
     plt.close()
 
 def save_roc_curve(true_labels, predictions, class_names, output_dir):
@@ -284,6 +307,7 @@ def save_roc_curve(true_labels, predictions, class_names, output_dir):
     plt.legend(loc="lower right")
     plot_path = os.path.join(output_dir, "roc_curve.png")
     plt.savefig(plot_path)
+    logging.info(f"ROC curve saved to {plot_path}")
     plt.close()
 
 def save_loss_plot(train_losses, val_losses, output_dir):
@@ -300,8 +324,57 @@ def save_loss_plot(train_losses, val_losses, output_dir):
     plt.grid(True)
     plot_path = os.path.join(output_dir, "loss_curve.png")
     plt.savefig(plot_path)
+    logging.info(f"Loss curve saved to {plot_path}")
+    plt.close()
+
+def save_recall_plot(val_recalls, output_dir):
+    """
+    Save the validation recall plot.
+    """
+    plt.figure(figsize=(8, 6))
+    plt.plot(val_recalls, label='Validation Recall', color='green')
+    plt.title("Validation Recall")
+    plt.xlabel("Epochs")
+    plt.ylabel("Recall")
+    plt.legend()
+    plt.grid(True)
+    plot_path = os.path.join(output_dir, "recall_curve.png")
+    plt.savefig(plot_path)
+    logging.info(f"Recall curve saved to {plot_path}")
     plt.close()
     
+def save_test_metrics(accuracy, precision, recall, output_dir):
+    """
+    Save test metrics to a JSON file.
+    """
+    metrics = {
+        "Test Accuracy": accuracy,
+        "Test Precision": precision,
+        "Test Recall": recall,
+        "AUC-ROC": roc_auc,
+        "Average Precision": average_precision_score(true_labels, probabilities, average='macro')
+    }
+    metrics_path = os.path.join(output_dir, "test_metrics.json")
+    with open(metrics_path, 'w') as f:
+        json.dump(metrics, f, indent=4)
+    logging.info(f"Test metrics saved to {metrics_path}")
+   
+def prepare_environment(source_dir, labels_file, train_dir, val_dir, test_dir):
+    """
+    Prepare data and create output directories.
+    """
+    # Organize data into class folders
+    organize_data(source_dir, labels_file, train_dir, val_dir, test_dir)
+
+    # Create data loaders
+    train_loader, val_loader, test_loader = create_data_loaders(train_dir, val_dir, test_dir)
+
+    # Create output directory for results
+    output_dir = create_output_directory()
+    save_current_script(output_dir)
+
+    return train_loader, val_loader, test_loader, output_dir
+         
 def main():
     # Set directories
     source_dir = MtcnnPaths.faces_dir
@@ -310,50 +383,23 @@ def main():
     test_dir = os.path.join(MtcnnPaths.faces_dir, 'test')
     labels_file = MtcnnPaths.face_labels_file_path
 
-    # Organize data into class folders
-    organize_data(source_dir, labels_file, train_dir, val_dir, test_dir)
-
-    # Create data loaders
-    train_loader, val_loader, test_loader = create_data_loaders(train_dir, val_dir, test_dir)
-
-    # Set output directory for results
-    output_dir = create_output_directory()
-    save_current_script(output_dir)
-
+    # Prepare data and environment
+    train_loader, val_loader, test_loader, output_dir = prepare_environment(
+        source_dir, labels_file, train_dir, val_dir, test_dir
+    )
+    
     # Train the model
-    model, train_losses, val_losses, val_recalls = train_model(train_loader, val_loader, num_epochs=50)
-
-    # Save loss and recall curves
+    model, train_losses, val_losses, val_recalls = train_model(train_loader, val_loader, num_epochs=5)
+    
+    # Save training and validation plots
     save_loss_plot(train_losses, val_losses, output_dir)
-    save_loss_plot(range(len(val_recalls)), val_recalls, output_dir)
-
-    # Evaluate the model
-    true_labels, predictions = evaluate_model(model, test_loader)
+    save_recall_plot(val_recalls, output_dir)
 
     # Get class names
     class_names = os.listdir(train_dir)
 
-    # Convert predictions to probabilities (softmax outputs)
-    probabilities = []
-    with torch.no_grad():
-        model.eval()
-        for inputs, _ in test_loader:
-            inputs = inputs.to('cuda')  # Adjust device as necessary
-            outputs = model(inputs)
-            probabilities.append(torch.softmax(outputs, dim=1).cpu().numpy())
-        probabilities = np.vstack(probabilities)
-
-    # Save confusion matrix
-    confusion = confusion_matrix(true_labels, predictions)
-    save_confusion_matrix(confusion, class_names, output_dir)
-
-    # Save Precision-Recall Curve
-    save_precision_recall_curve(true_labels, probabilities, class_names, output_dir)
-
-    # Save ROC curve
-    save_roc_curve(true_labels, probabilities, class_names, output_dir)
-
-    logging.info(f"Results saved to {output_dir}")
+    # Evaluate and generate plots
+    evaluate_and_plot_results(model, test_loader, class_names, output_dir)
 
 if __name__ == '__main__':
     main()
