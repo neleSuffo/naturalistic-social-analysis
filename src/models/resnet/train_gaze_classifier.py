@@ -9,7 +9,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms, models
-from sklearn.metrics import confusion_matrix, roc_curve, auc, precision_recall_curve, average_precision_score, precision_score, recall_score
+from sklearn.metrics import confusion_matrix, roc_curve, auc, precision_recall_curve, average_precision_score, precision_score, recall_score, roc_auc_score
 import os
 import random
 import shutil
@@ -35,6 +35,15 @@ def save_current_script(output_dir):
     
 def organize_data(source_dir, labels_file, train_dir, val_dir, test_dir, train_ratio=0.8, val_ratio=0.1):
     """Organize images into class folders and split into train/val/test"""
+    
+    if all(os.path.exists(os.path.join(split_dir, '0')) and 
+        os.path.exists(os.path.join(split_dir, '1')) and 
+        os.listdir(os.path.join(split_dir, '0')) and 
+        os.listdir(os.path.join(split_dir, '1')) 
+        for split_dir in [train_dir, val_dir, test_dir]):
+            logging.info("Train, validation, and test subfolders already exist and are not empty. Skipping data organization.")
+            return
+    
     # Create directories for classes
     for split_dir in [train_dir, val_dir, test_dir]:
         for class_idx in ['0', '1']:
@@ -226,14 +235,9 @@ def evaluate_and_plot_results(model, test_loader, class_names, output_dir, devic
     true_labels = np.array(true_labels)
     predictions = np.array(predictions)
     probabilities = np.array(probabilities)
-
-    # Compute metrics
-    accuracy = np.mean(true_labels == predictions)
-    precision = precision_score(true_labels, predictions, average='macro')
-    recall = recall_score(true_labels, predictions, average='macro')
-
+    
     # Save test metrics
-    save_test_metrics(accuracy, precision, recall, output_dir)
+    save_test_metrics(true_labels, predictions, probabilities, output_dir)
 
     # Generate plots
     confusion = confusion_matrix(true_labels, predictions)
@@ -343,21 +347,44 @@ def save_recall_plot(val_recalls, output_dir):
     logging.info(f"Recall curve saved to {plot_path}")
     plt.close()
     
-def save_test_metrics(accuracy, precision, recall, output_dir):
+def save_test_metrics(true_labels, predictions, probabilities, output_dir):
     """
     Save test metrics to a JSON file.
+    
+    Args:
+        true_labels (np.ndarray): Ground truth labels
+        predictions (np.ndarray): Model predictions
+        probabilities (np.ndarray): Prediction probabilities
+        output_dir (str): Directory to save metrics
     """
-    metrics = {
-        "Test Accuracy": accuracy,
-        "Test Precision": precision,
-        "Test Recall": recall,
-        "AUC-ROC": roc_auc,
-        "Average Precision": average_precision_score(true_labels, probabilities, average='macro')
-    }
-    metrics_path = os.path.join(output_dir, "test_metrics.json")
-    with open(metrics_path, 'w') as f:
-        json.dump(metrics, f, indent=4)
-    logging.info(f"Test metrics saved to {metrics_path}")
+    try:
+        # Calculate metrics
+        accuracy = np.mean(true_labels == predictions)
+        precision = precision_score(true_labels, predictions, average='macro')
+        recall = recall_score(true_labels, predictions, average='macro')
+        roc_auc = roc_auc_score(true_labels, probabilities[:, 1])  # For binary classification
+        avg_precision = average_precision_score(true_labels, probabilities[:, 1])
+        
+        metrics = {
+            "Test Accuracy": float(accuracy),
+            "Test Precision": float(precision),
+            "Test Recall": float(recall),
+            "AUC-ROC": float(roc_auc),
+            "Average Precision": float(avg_precision),
+            "Number of Test Samples": len(true_labels),
+            "Class Distribution": {
+                "Class 0": int(np.sum(true_labels == 0)),
+                "Class 1": int(np.sum(true_labels == 1))
+            }
+        }
+        
+        metrics_path = os.path.join(output_dir, "test_metrics.json")
+        with open(metrics_path, 'w') as f:
+            json.dump(metrics, f, indent=4)
+        logging.info(f"Test metrics saved to {metrics_path}")
+        
+    except Exception as e:
+        logging.error(f"Failed to save test metrics: {str(e)}")
    
 def prepare_environment(source_dir, labels_file, train_dir, val_dir, test_dir):
     """
@@ -389,7 +416,7 @@ def main():
     )
     
     # Train the model
-    model, train_losses, val_losses, val_recalls = train_model(train_loader, val_loader, num_epochs=5)
+    model, train_losses, val_losses, val_recalls = train_model(train_loader, val_loader, num_epochs=1)
     
     # Save training and validation plots
     save_loss_plot(train_losses, val_losses, output_dir)
