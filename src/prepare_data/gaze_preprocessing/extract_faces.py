@@ -10,7 +10,7 @@ def crop_faces_from_labels(
     labels_file: str = MtcnnPaths.labels_file_path,
     rawframe_dir: str = DetectionPaths.images_input_dir,
     output_dir: str = MtcnnPaths.faces_dir,
-    labels_output_file: str = MtcnnPaths.face_labels_file_path,
+    labels_output_file: str = MtcnnPaths.gaze_labels_file_path,
     progress_file: str = MtcnnPaths.progress_file_path,
     missing_frames_file: str = MtcnnPaths.missing_frames_file_path,
 ):
@@ -18,9 +18,14 @@ def crop_faces_from_labels(
     
     # Convert output_dir to Path object and create directories
     output_dir.mkdir(parents=True, exist_ok=True)
-
+    progress_dir = Path(progress_file).parent
+    progress_dir.mkdir(parents=True, exist_ok=True)
     # Load progress
     processed_images = set()
+    # Create progress file if it doesn't exist
+    if not Path(progress_file).exists():
+        Path(progress_file).touch()
+    
     if Path(progress_file).exists():
         with open(progress_file, 'r') as progress_reader:
             processed_images.update(line.strip() for line in progress_reader)
