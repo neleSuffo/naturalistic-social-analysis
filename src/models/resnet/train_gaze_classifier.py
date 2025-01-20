@@ -1,21 +1,21 @@
 import logging
 import datetime
 import json
+import torch
+import os
+import random
+import shutil
 import numpy as np
 import matplotlib.pyplot as plt
-
-import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms, models
 from sklearn.metrics import confusion_matrix, roc_curve, auc, precision_recall_curve, average_precision_score, precision_score, recall_score, roc_auc_score, accuracy_score
-import os
-import random
-import shutil
 from constants import EfficientNetPaths, MtcnnPaths
 
 logging.basicConfig(level=logging.INFO)
+
 
 class FocalLoss(nn.Module):
     """
@@ -42,26 +42,25 @@ class FocalLoss(nn.Module):
             return focal_loss.sum()
         else:
             return focal_loss
-        
-def create_output_directory(base_dir=EfficientNetPaths.output_dir):
-    """
-    Create a timestamped output directory.
-    """
-    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = os.path.join(base_dir, timestamp)
-    os.makedirs(output_dir, exist_ok=True)
-    return output_dir
-
-def save_current_script(output_dir):
-    """
-    Save a copy of the current script to the output directory.
-    """
-    script_path = __file__
-    shutil.copy(script_path, os.path.join(output_dir, os.path.basename(script_path)))
+    
     
 def organize_data(source_dir, labels_file, train_dir, val_dir, test_dir, train_ratio=0.8, val_ratio=0.1):
-    """Organize images into class folders and split into train/val/test"""
+    """
+    This function organizes the data into train, validation, and test sets.
     
+    Parameters:
+        source_dir (str): Directory containing the source images.
+        labels_file (str): Path to the file containing image paths and labels.
+        train_dir (str): Directory to save the training set.
+        val_dir (str): Directory to save the validation set.
+        test_dir (str): Directory to save the test set.
+        train_ratio (float): Ratio of training data (default=0.8).
+        val_ratio (float): Ratio of validation data (default=0.1).
+    
+    Returns:
+        None
+    """
+    # Check if data is already organized
     if all(os.path.exists(os.path.join(split_dir, '0')) and 
         os.path.exists(os.path.join(split_dir, '1')) and 
         os.listdir(os.path.join(split_dir, '0')) and 
@@ -120,8 +119,21 @@ def organize_data(source_dir, labels_file, train_dir, val_dir, test_dir, train_r
  
 def create_data_loaders(train_dir, val_dir, test_dir, image_size=(150, 150), batch_size=32):
     """
-    Create data loaders for train, validation, and test sets.
+    This function creates data loaders for the train, validation, and test sets.
+    
+    Parameters:
+        train_dir (str): Directory containing the training set.
+        val_dir (str): Directory containing the validation set.
+        test_dir (str): Directory containing the test set.
+        image_size (tuple): Size to resize the images (default=(150, 150)).
+        batch_size (int): Number of samples per batch (default=32).
+        
+    Returns:
+        train_loader (torch.utils.data.DataLoader): DataLoader for the training set.
+        val_loader (torch.utils.data.DataLoader): DataLoader for the validation set.
+        test_loader (torch.utils.data.DataLoader): DataLoader for the test set.
     """
+    # Define transformations
     transform_train = transforms.Compose([
         transforms.Resize(image_size),
         transforms.RandomHorizontalFlip(),
@@ -148,9 +160,58 @@ def create_data_loaders(train_dir, val_dir, test_dir, image_size=(150, 150), bat
     return train_loader, val_loader, test_loader
 
 
-def train_model(train_loader, val_loader, num_epochs, num_classes=2, device='cuda'):
+def prepare_environment(source_dir, labels_file, train_dir, val_dir, test_dir, base_dir=EfficientNetPaths.output_dir):
     """
-    Train a model using the train and validation loaders.
+    This function prepares the environment for training the model.
+    
+    Parameters:
+        source_dir (str): Directory containing the source images.
+        labels_file (str): Path to the file containing image paths and labels.
+        train_dir (str): Directory to save the training set.
+        val_dir (str): Directory to save the validation set.
+        test_dir (str): Directory to save the test set.
+        base_dir (str): Base directory to save the results (default='output').
+        
+    Returns:
+        train_loader (torch.utils.data.DataLoader): DataLoader for the training set.
+        val_loader (torch.utils.data.DataLoader): DataLoader for the validation set.
+        test_loader (torch.utils.data.DataLoader): DataLoader for the test set.
+        output_dir (str): Directory to save the results.
+    """
+    # Organize data into class folders
+    organize_data(source_dir, labels_file, train_dir, val_dir, test_dir)
+
+    # Create data loaders
+    train_loader, val_loader, test_loader = create_data_loaders(train_dir, val_dir, test_dir)
+
+    # Create output directory for results
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_dir = os.path.join(base_dir, timestamp)
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Copy the script to the output directory
+    script_path = __file__
+    shutil.copy(script_path, os.path.join(output_dir, os.path.basename(script_path)))
+
+    return train_loader, val_loader, test_loader, output_dir
+
+def train_model(train_loader, val_loader, num_epochs, output_dir, num_classes=2, device='cuda'):
+    """
+    This function trains the model and saves the best model based on validation loss.
+    
+    Parameters:
+        train_loader (torch.utils.data.DataLoader): DataLoader for the training set.
+        val_loader (torch.utils.data.DataLoader): DataLoader for the validation set.
+        num_epochs (int): Number of epochs to train the model.
+        output_dir (str): Directory to save the best model.
+        num_classes (int): Number of classes in the dataset (default=2).
+        device (str): Device to use for training (default='cuda').
+    
+    Returns:
+        model (torch.nn.Module): Trained model.
+        train_losses (list): Training losses for each epoch.
+        val_losses (list): Validation losses for each epoch.
+        val_recalls (list): Validation recalls for each epoch.
     """
     model = models.efficientnet_b3(pretrained=True)
     model.classifier = nn.Sequential(
@@ -174,7 +235,7 @@ def train_model(train_loader, val_loader, num_epochs, num_classes=2, device='cud
 
     train_losses = []
     val_losses = []
-    val_recalls = []  # Store validation recall per epoch
+    val_recalls = []
 
     for epoch in range(num_epochs):
         # Training
@@ -212,7 +273,6 @@ def train_model(train_loader, val_loader, num_epochs, num_classes=2, device='cud
         val_loss /= len(val_loader)
         val_losses.append(val_loss)
 
-        # Calculate recall for the validation set
         val_recall = recall_score(all_true_labels, all_predictions, average='macro')
         val_recalls.append(val_recall)
 
@@ -221,7 +281,9 @@ def train_model(train_loader, val_loader, num_epochs, num_classes=2, device='cud
         # Save the best model
         if val_loss < best_val_loss:
             best_val_loss = val_loss
-            best_model = model
+            best_model_path = os.path.join(output_dir, 'best_model.pth')
+            torch.save(model.state_dict(), best_model_path)
+            logging.info(f"New best model saved at: {best_model_path}")
             no_improve_count = 0
         else:
             no_improve_count += 1
@@ -232,12 +294,22 @@ def train_model(train_loader, val_loader, num_epochs, num_classes=2, device='cud
 
         scheduler.step()
 
-    return best_model, train_losses, val_losses, val_recalls
+    return model, train_losses, val_losses, val_recalls
 
 
 def evaluate_and_plot_results(model, test_loader, class_names, output_dir, device='cuda'):
     """
-    Evaluate the model on the test set, compute metrics, and save evaluation plots.
+    This function evaluates the model and generates plots.
+    
+    Parameters:
+        model (torch.nn.Module): Trained model.
+        test_loader (torch.utils.data.DataLoader): DataLoader for the test set.
+        class_names (list): List of class names.
+        output_dir (str): Directory to save the results.
+        device (str): Device to use for evaluation (default='cuda').
+        
+    Returns:
+        None
     """
     logging.info("Evaluating model and generating plots...")
 
@@ -263,7 +335,7 @@ def evaluate_and_plot_results(model, test_loader, class_names, output_dir, devic
     probabilities = np.array(probabilities)
     
     # Save test metrics
-l,.    save_test_metrics(true_labels, predictions, probabilities,class_names, output_dir)
+    save_test_metrics(true_labels, predictions, probabilities,class_names, output_dir)
 
     # Generate plots
     confusion = confusion_matrix(true_labels, predictions)
@@ -275,8 +347,18 @@ l,.    save_test_metrics(true_labels, predictions, probabilities,class_names, ou
 
 def save_precision_recall_curve(true_labels, predictions, class_names, output_dir):
     """
-    Save the precision-recall curve for each class.
+    This function saves the precision-recall curve plot.
+    
+    Parameters:
+        true_labels (np.ndarray): Ground truth labels.
+        predictions (np.ndarray): Model predictions.
+        class_names (list): List of class names.
+        output_dir (str): Directory to save the plot.
+        
+    Returns:
+        None
     """
+    # Plot precision-recall curve
     true_one_hot = np.eye(len(class_names))[true_labels]
     plt.figure(figsize=(8, 6))
     for i, class_name in enumerate(class_names):
@@ -295,8 +377,17 @@ def save_precision_recall_curve(true_labels, predictions, class_names, output_di
     
 def save_confusion_matrix(confusion, class_names, output_dir):
     """
-    Save the confusion matrix plot.
+    This function saves the confusion matrix plot.
+    
+    Parameters:
+        confusion (np.ndarray): Confusion matrix.
+        class_names (list): List of class names.
+        output_dir (str): Directory to save the plot.
+        
+    Returns:
+        None
     """
+    # Plot confusion matrix
     plt.figure(figsize=(8, 6))
     plt.imshow(confusion, interpolation='nearest', cmap=plt.cm.Blues)
     plt.title("Confusion Matrix")
@@ -322,8 +413,18 @@ def save_confusion_matrix(confusion, class_names, output_dir):
 
 def save_roc_curve(true_labels, predictions, class_names, output_dir):
     """
-    Save the ROC curve plot.
+    This function saves the ROC curve plot.
+    
+    Parameters:
+        true_labels (np.ndarray): Ground truth labels.
+        predictions (np.ndarray): Model predictions.
+        class_names (list): List of class names.
+        output_dir (str): Directory to save the plot.
+        
+    Returns:
+        None
     """
+    # Plot ROC curve
     true_one_hot = np.eye(len(class_names))[true_labels]
     fpr, tpr, _ = roc_curve(true_one_hot.ravel(), predictions.ravel())
     roc_auc = auc(fpr, tpr)
@@ -342,7 +443,15 @@ def save_roc_curve(true_labels, predictions, class_names, output_dir):
 
 def save_loss_plot(train_losses, val_losses, output_dir):
     """
-    Save the training and validation loss plot.
+    This function saves the training and validation loss plot.
+    
+    Parameters:
+        train_losses (list): Training losses for each epoch.
+        val_losses (list): Validation losses for each epoch.
+        output_dir (str): Directory to save the plot.
+        
+    Returns:
+        None
     """
     plt.figure(figsize=(8, 6))
     plt.plot(train_losses, label='Training Loss', color='blue')
@@ -359,8 +468,16 @@ def save_loss_plot(train_losses, val_losses, output_dir):
 
 def save_recall_plot(val_recalls, output_dir):
     """
-    Save the validation recall plot.
+    This function saves the validation recall plot.
+    
+    Parameters:
+        val_recalls (list): Validation recalls for each epoch.
+        output_dir (str): Directory to save the plot.
+        
+    Returns:
+        None
     """
+    # Plot validation recall
     plt.figure(figsize=(8, 6))
     plt.plot(val_recalls, label='Validation Recall', color='green')
     plt.title("Validation Recall")
@@ -375,7 +492,7 @@ def save_recall_plot(val_recalls, output_dir):
     
 def save_test_metrics(true_labels, predictions, probabilities, class_names, output_dir):
     """
-    Save test metrics to a JSON file.
+    This function saves the test metrics to a JSON file.
     
     Args:
         true_labels (np.ndarray): Ground truth labels
@@ -383,6 +500,9 @@ def save_test_metrics(true_labels, predictions, probabilities, class_names, outp
         probabilities (np.ndarray): Prediction probabilities
         class_names (list): List of class names
         output_dir (str): Directory to save metrics
+        
+    Returns:
+        None
     """
     try:
         # Calculate overall metrics
@@ -423,22 +543,6 @@ def save_test_metrics(true_labels, predictions, probabilities, class_names, outp
         
     except Exception as e:
         logging.error(f"Failed to save test metrics: {str(e)}")
-   
-def prepare_environment(source_dir, labels_file, train_dir, val_dir, test_dir):
-    """
-    Prepare data and create output directories.
-    """
-    # Organize data into class folders
-    organize_data(source_dir, labels_file, train_dir, val_dir, test_dir)
-
-    # Create data loaders
-    train_loader, val_loader, test_loader = create_data_loaders(train_dir, val_dir, test_dir)
-
-    # Create output directory for results
-    output_dir = create_output_directory()
-    save_current_script(output_dir)
-
-    return train_loader, val_loader, test_loader, output_dir
          
 def main():
     # Set directories
@@ -454,7 +558,7 @@ def main():
     )
     
     # Train the model
-    model, train_losses, val_losses, val_recalls = train_model(train_loader, val_loader, num_epochs=50)
+    model, train_losses, val_losses, val_recalls = train_model(train_loader, val_loader, num_epochs=50, output_dir=output_dir)
     
     # Save training and validation plots
     save_loss_plot(train_losses, val_losses, output_dir)
