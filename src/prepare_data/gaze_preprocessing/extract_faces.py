@@ -23,12 +23,19 @@ def crop_faces_from_labels(
     # Load progress
     processed_images = set()
     # Create progress file if it doesn't exist
-    if not Path(progress_file).exists():
-        Path(progress_file).touch()
-    
-    if Path(progress_file).exists():
-        with open(progress_file, 'r') as progress_reader:
-            processed_images.update(line.strip() for line in progress_reader)
+# Initialize or load progress file
+    try:
+        if not progress_file.exists():
+            progress_file.touch(mode=0o666)
+            processed_images = set()
+            logging.info(f"Created new progress file: {progress_file}")
+        else:
+            with open(progress_file, 'r') as f:
+                processed_images = set(line.strip() for line in f)
+            logging.info(f"Loaded {len(processed_images)} processed images from existing progress file")
+    except Exception as e:
+        logging.error(f"Error handling progress file: {e}")
+        raise e
 
     with open(labels_file, 'r') as f, open(missing_frames_file, 'a') as missing_writer:
         for line in tqdm(f.readlines(), desc="Processing Labels"):
