@@ -5,15 +5,23 @@ import numpy as np
 from torch.utils.data import Dataset, DataLoader, random_split
 from torchvision import transforms
 from PIL import Image
+from pathlib import Path
 from facenet_pytorch import MTCNN
 import torch.optim as optim
 import torch.nn as nn
 from constants import MtcnnPaths, DetectionPaths
 
+def extract_video_folder(filename):
+    """Extract video folder name from image filename."""
+    # Remove .jpg extension and split by underscore
+    parts = filename.replace('.jpg', '').split('_')
+    # Join all parts except the last one (frame number)
+    return '_'.join(parts[:-1])
+
 # Dataset Class
 class FaceDataset(Dataset):
-    def __init__(self, label_file=MtcnnPaths.labels_file_path, image_dir=DetectionPaths.images_input_dir, transform=None):
-        self.image_dir = image_dir
+    def __init__(self, label_file, image_dir, transform=None):
+        self.image_dir = Path(image_dir)
         self.transform = transform
         self.data = []
         
@@ -21,12 +29,14 @@ class FaceDataset(Dataset):
         with open(label_file, 'r') as f:
             for line in f:
                 parts = line.strip().split()
-                image_path = parts[0]
+                image_name = parts[0]
+                video_folder = extract_video_folder(image_name)
                 bbox = list(map(float, parts[1].split(',')))  # x1, y1, width, height
                 x1, y1, width, height = bbox[:4]
                 x2, y2 = x1 + width, y1 + height
                 self.data.append({
-                    'image_path': image_path,
+                    'image_path': image_name,
+                    'video_folder': video_folder,
                     'bbox': [x1, y1, x2, y2]
                 })
     
@@ -34,16 +44,23 @@ class FaceDataset(Dataset):
         return len(self.data)
     
     def __getitem__(self, idx):
-        item = self.data[idx]
-        image_path = os.path.join(self.image_dir, item['image_path'])
-        print("Image", image_path)
-        image = Image.open(image_path).convert('RGB')
-        bbox = torch.tensor(item['bbox'], dtype=torch.float32)
-        
-        if self.transform:
-            image = self.transform(image)
-        
-        return image, bbox
+        original_idx = idx
+        while idx < len(self.data):
+            item = self.data[idx]
+            image_path = self.image_dir / item['video_folder'] / item['image_path']
+            
+            if image_path.exists():
+                print(f"Loading image: {image_path}")
+                image = Image.open(str(image_path)).convert('RGB')
+                bbox = torch.tensor(item['bbox'], dtype=torch.float32)
+                
+                if self.transform:
+                    image = self.transform(image)
+                
+                return image, bbox
+            else:
+                logging.warning(f"Skipping missing image: {image_path}")
+                idx += 1
 
 # EarlyStopping Class
 class EarlyStopping:
@@ -109,8 +126,7 @@ def main():
     ])
     
     # Dataset and DataLoader setup
-    dataset = FaceDataset(transform=transform)
-    print("Dataset", dataset)
+    dataset = FaceDataset(MtcnnPaths.labels_file_path, DetectionPaths.images_input_dir, transform)
     
     # Split the dataset
     train_size = int(0.8 * len(dataset))
