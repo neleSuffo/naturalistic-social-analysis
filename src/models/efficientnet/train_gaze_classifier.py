@@ -507,8 +507,8 @@ def save_test_metrics(true_labels, predictions, probabilities, class_names, outp
     try:
         # Calculate overall metrics
         accuracy = accuracy_score(true_labels, predictions)
-        precision = precision_score(true_labels, predictions, average='macro')
-        recall = recall_score(true_labels, predictions, average='macro')
+        precision = precision_score(true_labels, predictions, average='weighted')
+        recall = recall_score(true_labels, predictions, average='weighted')
         roc_auc = roc_auc_score(true_labels, probabilities[:, 1])  # For binary classification
         avg_precision = average_precision_score(true_labels, probabilities[:, 1])
         
@@ -550,7 +550,7 @@ def main():
     train_dir = os.path.join(MtcnnPaths.faces_dir, 'train')
     val_dir = os.path.join(MtcnnPaths.faces_dir, 'val')
     test_dir = os.path.join(MtcnnPaths.faces_dir, 'test')
-    labels_file = MtcnnPaths.face_labels_file_path
+    labels_file = MtcnnPaths.gaze_labels_file_path
 
     # Prepare data and environment
     train_loader, val_loader, test_loader, output_dir = prepare_environment(
