@@ -5,6 +5,7 @@ import torch.nn as nn
 import torchvision.transforms as transforms
 from PIL import Image
 from torchvision import models
+from pathlib import Path
 
 logging.basicConfig(level=logging.INFO)
 
@@ -83,13 +84,16 @@ def classify_gaze(model, image_tensor, class_names):
 
     return predicted_class, class_probabilities
 
-def main():
+def main(image_path):
     # Paths and configuration
-    model_path = "/home/nele_pauline_suffo/outputs/efficientnet/20250120_065451/best_model.pth"
-    image_path = "/home/nele_pauline_suffo/ProcessedData/quantex_faces/test/1/quantex_at_home_id257578_2021_05_12_06_030690_face_0.jpg"
+    model_path = "/home/nele_pauline_suffo/outputs/efficientnet/20250120_193131/best_model.pth"
     class_names = ["No Gaze", "Gaze"]  # Update as per your dataset
     num_classes = len(class_names)
 
+    # Verify path exists before processing
+    if not Path(image_path).exists():
+        raise FileNotFoundError(f"Image not found at: {image_path}")
+    
     # Load model
     model = load_model(model_path, num_classes)
 
@@ -104,4 +108,5 @@ def main():
         
         
 if __name__ == "__main__":
-    main()
+    image_path = "/home/nele_pauline_suffo/ProcessedData/quantex_faces/test/1/quantex_at_home_id261610_2022_04_01_01_035970_face_0.jpg"
+    main(image_path)
