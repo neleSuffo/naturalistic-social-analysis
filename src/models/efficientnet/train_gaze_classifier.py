@@ -229,7 +229,7 @@ def prepare_environment(source_dir, labels_file, train_dir, val_dir, test_dir, b
 
     return train_loader, val_loader, test_loader, output_dir
 
-def train_model(train_loader, val_loader, num_epochs, num_classes=2, device='cuda'):
+def train_model(train_loader, val_loader, num_epochs, output_dir, num_classes=2, device='cuda'):
     """
     Train a model using the train and validation loaders.
     """
@@ -293,6 +293,8 @@ def train_model(train_loader, val_loader, num_epochs, num_classes=2, device='cud
         # Save the best model
         if val_loss < best_val_loss:
             best_val_loss = val_loss
+            best_model_path = os.path.join(output_dir, 'best_model.pth')
+            torch.save(model.state_dict(), best_model_path)
             best_model = model
             no_improve_count = 0
         else:
@@ -510,7 +512,7 @@ def main():
     )
     
     # Train the model
-    model, train_losses, val_losses, val_recalls = train_model(train_loader, val_loader, num_epochs=50)
+    model, train_losses, val_losses, val_recalls = train_model(train_loader, val_loader, 50, output_dir)
     
     # Save training and validation plots
     save_loss_plot(train_losses, val_losses, output_dir)
