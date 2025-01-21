@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import torch.nn.functional as F
 from efficientnet_pytorch import EfficientNet
 from torch.utils.data import DataLoader, WeightedRandomSampler
 from torchvision import datasets, transforms, models
@@ -21,14 +22,13 @@ class EnhancedEfficientNet(nn.Module):
     def __init__(self, num_classes):
         super(EnhancedEfficientNet, self).__init__()
         # Load pre-trained EfficientNet
-        self.base_model = EfficientNet.from_pretrained('efficientnet-b3')
-
-        # Extract the feature extractor part
-        self.features = self.base_model.extract_features
+        self.efficientnet = EfficientNet.from_pretrained('efficientnet-b3')
+        # Get the number of features from the EfficientNet model
+        in_features = self.efficientnet._fc.in_features 
 
         # Define a new classifier with more capacity
         self.classifier = nn.Sequential(
-            nn.Linear(1280, 512),  # First layer, already 512 neurons
+            nn.Linear(in_features, 512),
             nn.ReLU(),
             nn.Dropout(0.4),
             
@@ -44,13 +44,13 @@ class EnhancedEfficientNet(nn.Module):
         )
 
     def forward(self, x):
-        # Pass through the feature extractor
-        x = self.features(x)
-
-        # Global Average Pooling
-        x = torch.mean(x, dim=(2, 3))  # Assuming input size is [B, C, H, W]
-
-        # Pass through the classifier
+        # Extract features
+        features = self.efficientnet.extract_features(x)
+        # Global average pooling
+        x = F.adaptive_avg_pool2d(features, output_size=1)
+        # Flatten
+        x = x.view(x.size(0), -1)
+        # Classification
         x = self.classifier(x)
         return x
     
@@ -80,25 +80,23 @@ class FocalLoss(nn.Module):
         else:
             return focal_loss
         
-def create_output_directory(base_dir=EfficientNetPaths.output_dir):
-    """
-    Create a timestamped output directory.
-    """
-    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = os.path.join(base_dir, timestamp)
-    os.makedirs(output_dir, exist_ok=True)
-    return output_dir
-
-def save_current_script(output_dir):
-    """
-    Save a copy of the current script to the output directory.
-    """
-    script_path = __file__
-    shutil.copy(script_path, os.path.join(output_dir, os.path.basename(script_path)))
-    
 def organize_data(source_dir, labels_file, train_dir, val_dir, test_dir, train_ratio=0.8, val_ratio=0.1):
-    """Organize images into class folders and split into train/val/test"""
+    """
+    This function organizes the data into train, validation, and test sets.
     
+    Parameters:
+        source_dir (str): Directory containing the source images.
+        labels_file (str): Path to the file containing image paths and labels.
+        train_dir (str): Directory to save the training set.
+        val_dir (str): Directory to save the validation set.
+        test_dir (str): Directory to save the test set.
+        train_ratio (float): Ratio of training data (default=0.8).
+        val_ratio (float): Ratio of validation data (default=0.1).
+    
+    Returns:
+        None
+    """
+    # Check if data is already organized
     if all(os.path.exists(os.path.join(split_dir, '0')) and 
         os.path.exists(os.path.join(split_dir, '1')) and 
         os.listdir(os.path.join(split_dir, '0')) and 
@@ -190,12 +188,46 @@ def create_data_loaders(train_dir, val_dir, test_dir, image_size=(150, 150), bat
     # Create the WeightedRandomSampler
     sampler = WeightedRandomSampler(sample_weights, num_samples=len(sample_weights), replacement=True)
 
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, sampler=sampler)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, sampler=sampler)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
     test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False)
 
     return train_loader, val_loader, test_loader
 
+def prepare_environment(source_dir, labels_file, train_dir, val_dir, test_dir, base_dir=EfficientNetPaths.output_dir):
+    """
+    This function prepares the environment for training the model.
+    
+    Parameters:
+        source_dir (str): Directory containing the source images.
+        labels_file (str): Path to the file containing image paths and labels.
+        train_dir (str): Directory to save the training set.
+        val_dir (str): Directory to save the validation set.
+        test_dir (str): Directory to save the test set.
+        base_dir (str): Base directory to save the results (default='output').
+        
+    Returns:
+        train_loader (torch.utils.data.DataLoader): DataLoader for the training set.
+        val_loader (torch.utils.data.DataLoader): DataLoader for the validation set.
+        test_loader (torch.utils.data.DataLoader): DataLoader for the test set.
+        output_dir (str): Directory to save the results.
+    """
+    # Organize data into class folders
+    organize_data(source_dir, labels_file, train_dir, val_dir, test_dir)
+
+    # Create data loaders
+    train_loader, val_loader, test_loader = create_data_loaders(train_dir, val_dir, test_dir)
+
+    # Create output directory for results
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_dir = os.path.join(base_dir, timestamp)
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Copy the script to the output directory
+    script_path = __file__
+    shutil.copy(script_path, os.path.join(output_dir, os.path.basename(script_path)))
+
+    return train_loader, val_loader, test_loader, output_dir
 
 def train_model(train_loader, val_loader, num_epochs, num_classes=2, device='cuda'):
     """
@@ -463,22 +495,6 @@ def save_test_metrics(true_labels, predictions, probabilities, class_names, outp
         
     except Exception as e:
         logging.error(f"Failed to save test metrics: {str(e)}")
-   
-def prepare_environment(source_dir, labels_file, train_dir, val_dir, test_dir):
-    """
-    Prepare data and create output directories.
-    """
-    # Organize data into class folders
-    organize_data(source_dir, labels_file, train_dir, val_dir, test_dir)
-
-    # Create data loaders
-    train_loader, val_loader, test_loader = create_data_loaders(train_dir, val_dir, test_dir)
-
-    # Create output directory for results
-    output_dir = create_output_directory()
-    save_current_script(output_dir)
-
-    return train_loader, val_loader, test_loader, output_dir
          
 def main():
     # Set directories
@@ -486,7 +502,7 @@ def main():
     train_dir = os.path.join(MtcnnPaths.faces_dir, 'train')
     val_dir = os.path.join(MtcnnPaths.faces_dir, 'val')
     test_dir = os.path.join(MtcnnPaths.faces_dir, 'test')
-    labels_file = MtcnnPaths.face_labels_file_path
+    labels_file = MtcnnPaths.gaze_labels_file_path
 
     # Prepare data and environment
     train_loader, val_loader, test_loader, output_dir = prepare_environment(
