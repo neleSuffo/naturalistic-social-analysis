@@ -15,7 +15,7 @@ model_path = hf_hub_download(repo_id="arnabdhar/YOLOv8-Face-Detection", filename
 model = YOLO(model_path)
 
 # Load and process image
-image_path = "/home/nele_pauline_suffo/ProcessedData/quantex_annotated_rawframes/quantex_at_home_id255944_2022_03_26_01/quantex_at_home_id255944_2022_03_26_01_003690.jpg"
+image_path = "/home/nele_pauline_suffo/ProcessedData/quantex_annotated_rawframes/quantex_at_home_id262691_2022_02_28_01/quantex_at_home_id262691_2022_02_28_01_043560.jpg"
 image = cv2.imread(image_path)
 output = model(Image.open(image_path))
 results = Detections.from_ultralytics(output[0])
