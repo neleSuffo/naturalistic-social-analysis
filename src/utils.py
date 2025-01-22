@@ -66,7 +66,7 @@ def fetch_all_annotations(
         # Generate a string of ? placeholders that matches the length of category_ids
         # Only fetch annotations that are not labeled noise (-1) and are not outside the frame (outside = 0)
         placeholders = ", ".join("?" for _ in category_ids)
-        additional_select = ", a.gaze_directed_at_child" if category_ids == ["10"] else ""
+        additional_select = ", a.gaze_directed_at_child" if category_ids == [10] else ""
         query = f"""
         SELECT DISTINCT 
             a.image_id, 
