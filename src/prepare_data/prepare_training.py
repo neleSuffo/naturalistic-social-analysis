@@ -28,7 +28,7 @@ def create_missing_annotation_files(
         the directory with the .txt files
     """
     # Get the list of all .jpg and .txt files
-    jpg_files = {f.stem for f in jpg_dir.glob('*.jpg')}
+    jpg_files = {f.stem for f in jpg_dir.rglob('*.jpg')}
     txt_files = {f.stem for f in txt_dir.glob('*.txt')}
     
     # Find the missing .txt files
@@ -67,7 +67,7 @@ def images_train_val_split(
     val_images = []
 
     # Iterate through all images in the directory
-    for image_file in images_dir.glob("*.jpg"):  # Assuming images are in JPG format
+    for image_file in images_dir.rglob("*.jpg"):  # Assuming images are in JPG format
         # Get the image file name without extension
         image_base_name = image_file.stem
         
@@ -106,10 +106,10 @@ def copy_yolo_files(
     # Move the files to the new directory
     for file_path in files_to_move_lst:
         file_path = Path(file_path)
+        folder_name = str(file_path)[:-11]
         # Construct the full source paths for the image and label
-        src_image_path = DetectionPaths.images_input / file_path
-        src_label_path = YoloPaths.labels_input_dir / file_path.with_suffix('.txt')
-
+        src_image_path = DetectionPaths.images_input_dir / folder_name / file_path
+        src_label_path = YoloPaths.face_labels_input_dir / file_path.with_suffix('.txt')
         # Copy the images and move the label to their new destinations
         shutil.copy(src_image_path, dest_dir_images)
         shutil.copy(src_label_path, dest_dir_labels)
@@ -293,7 +293,7 @@ def get_video_lengths() -> list:
     for video in video_files_list:
         # Construct the full path to the video file
         video_name = os.path.splitext(video)[0]
-        possible_files = list(DetectionPaths.videos_input.glob(f"{video_name}.mp4")) + list(DetectionPaths.videos_input.glob(f"{video_name}.MP4"))
+        possible_files = list(DetectionPaths.quantex_videos_input_dir.glob(f"{video_name}.mp4")) + list(DetectionPaths.quantex_videos_input_dir.glob(f"{video_name}.MP4"))
         if not possible_files:
             print(f"File not found for {video_name}, skipping...")
             continue
@@ -368,14 +368,15 @@ def balanced_train_val_video_split(
 
 def main():
     os.environ['OMP_NUM_THREADS'] = '10'
-    create_missing_annotation_files(DetectionPaths.images_input, YoloPaths.labels_input_dir)
+    create_missing_annotation_files(DetectionPaths.images_input_dir, YoloPaths.face_labels_input_dir)
     # Split video files into training and validation sets
-    train_videos, val_videos  = balanced_train_val_video_split(TrainingConfig.train_test_split) 
+    train_videos, val_videos  = balanced_train_val_video_split(TrainingConfig.train_test_split_ratio) 
     # Split corresponding image files into training and validation sets
-    train_files, val_files = images_train_val_split(DetectionPaths.images_input, train_videos, val_videos)
+    train_files, val_files = images_train_val_split(DetectionPaths.images_input_dir, train_videos, val_videos)
     
     # Copy label files
-    prepare_yolo_dataset(YoloPaths.data_input_dir, train_files, val_files)
+    #prepare_yolo_dataset(YoloPaths.person_data_input_dir, train_files, val_files)
+    prepare_yolo_dataset(YoloPaths.face_data_input_dir, train_files, val_files)
     #prepare_mtcnn_dataset(Mtcnn.data_input, train_files, val_files)
 
 
