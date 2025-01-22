@@ -19,40 +19,54 @@ from constants import EfficientNetPaths, MtcnnPaths
 logging.basicConfig(level=logging.INFO)
 
 class EnhancedEfficientNet(nn.Module):
-    def __init__(self, num_classes):
+    def __init__(self, num_classes, fine_tune=True):
         super(EnhancedEfficientNet, self).__init__()
-        # Load pre-trained EfficientNet
-        self.efficientnet = EfficientNet.from_pretrained('efficientnet-b3')
-        # Get the number of features from the EfficientNet model
-        in_features = self.efficientnet._fc.in_features 
-
-        # Define a new classifier with more capacity
-        self.classifier = nn.Sequential(
-            nn.Linear(in_features, 512),
+        # Load pretrained EfficientNet model
+        self.base_model = EfficientNet.from_pretrained('efficientnet-b3')
+        
+        # Get the number of features from the base model
+        self.feature_dim = self.base_model._fc.in_features  # Usually 1536 for efficientnet-b3
+        
+        # Fine-tune or freeze backbone layers
+        if fine_tune:
+            for param in self.base_model.parameters():
+                param.requires_grad = True
+        else:
+            for param in self.base_model.parameters():
+                param.requires_grad = False
+        
+        # Add Attention Mechanism: Squeeze-and-Excitation (SE) Block
+        self.attention_layer = nn.Sequential(
+            nn.AdaptiveAvgPool2d(1),
+            nn.Conv2d(self.feature_dim, self.feature_dim // 16, kernel_size=1),
             nn.ReLU(),
-            nn.Dropout(0.4),
-            
-            nn.Linear(512, 256),  # Additional layer
-            nn.ReLU(),
-            nn.Dropout(0.3),
-            
-            nn.Linear(256, 128),  # Another additional layer
-            nn.ReLU(),
-            nn.Dropout(0.3),
-            
-            nn.Linear(128, num_classes)  # Output layer
+            nn.Conv2d(self.feature_dim // 16, self.feature_dim, kernel_size=1),
+            nn.Sigmoid()
         )
-
+        
+        # Custom Classification Head
+        self.classifier = nn.Sequential(
+            nn.Dropout(p=0.3),
+            nn.Linear(self.feature_dim, 512),
+            nn.ReLU(),
+            nn.Dropout(p=0.2),
+            nn.Linear(512, num_classes)
+        )
+    
     def forward(self, x):
-        # Extract features
-        features = self.efficientnet.extract_features(x)
-        # Global average pooling
-        x = F.adaptive_avg_pool2d(features, output_size=1)
-        # Flatten
-        x = x.view(x.size(0), -1)
-        # Classification
-        x = self.classifier(x)
-        return x
+        # Forward through EfficientNet
+        features = self.base_model.extract_features(x)  # Shape: [batch_size, 1280, H, W]
+        
+        # Apply Attention Mechanism
+        se_weights = self.attention_layer(features)
+        features = features * se_weights
+        
+        # Global Average Pooling
+        pooled_features = torch.mean(features, dim=(2, 3))  # Shape: [batch_size, 1280]
+        
+        # Classification Head
+        output = self.classifier(pooled_features)
+        return output
     
 class FocalLoss(nn.Module):
     """
