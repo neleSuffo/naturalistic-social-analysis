@@ -76,6 +76,7 @@ class MtcnnPaths:
     data_dir = Path(BasePaths.data_dir/"mtcnn/")
     labels_file_path = Path(data_dir/"face_labels.txt")
     faces_dir = Path(BasePaths.data_dir/"quantex_faces/")
+    face_detection_results_file_path = Path(BasePaths.output_dir/"mtcnn/face_detection_results.txt")
     gaze_labels_file_path = Path(faces_dir/"gaze_labels.txt")
     progress_file_path = Path(data_dir/"progress.txt")
     missing_frames_file_path = Path(data_dir/"missing_frames.txt")
