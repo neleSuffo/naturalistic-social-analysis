@@ -108,5 +108,5 @@ def main(image_path):
         
         
 if __name__ == "__main__":
-    image_path = "/home/nele_pauline_suffo/ProcessedData/quantex_faces/test/1/quantex_at_home_id261610_2022_04_01_01_035970_face_0.jpg"
+    image_path = "/home/nele_pauline_suffo/ProcessedData/quantex_faces/quantex_at_home_id255237_2022_05_08_01_006060_face_0.jpg"
     main(image_path)
