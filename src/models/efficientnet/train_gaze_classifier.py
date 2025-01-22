@@ -1,4 +1,7 @@
 import logging
+import os
+import random
+import shutil
 import datetime
 import json
 import numpy as np
@@ -11,62 +14,51 @@ from efficientnet_pytorch import EfficientNet
 from torch.utils.data import DataLoader, WeightedRandomSampler
 from torchvision import datasets, transforms, models
 from sklearn.metrics import confusion_matrix, roc_curve, auc, precision_recall_curve, average_precision_score, precision_score, recall_score, roc_auc_score, accuracy_score
-import os
-import random
-import shutil
 from constants import EfficientNetPaths, MtcnnPaths
+from torchvision.models import efficientnet_b4
 
 logging.basicConfig(level=logging.INFO)
 
-class EnhancedEfficientNet(nn.Module):
-    def __init__(self, num_classes, fine_tune=True):
-        super(EnhancedEfficientNet, self).__init__()
-        # Load pretrained EfficientNet model
-        self.base_model = EfficientNet.from_pretrained('efficientnet-b3')
-        
-        # Get the number of features from the base model
-        self.feature_dim = self.base_model._fc.in_features  # Usually 1536 for efficientnet-b3
-        
-        # Fine-tune or freeze backbone layers
-        if fine_tune:
-            for param in self.base_model.parameters():
-                param.requires_grad = True
-        else:
-            for param in self.base_model.parameters():
-                param.requires_grad = False
-        
-        # Add Attention Mechanism: Squeeze-and-Excitation (SE) Block
-        self.attention_layer = nn.Sequential(
-            nn.AdaptiveAvgPool2d(1),
-            nn.Conv2d(self.feature_dim, self.feature_dim // 16, kernel_size=1),
-            nn.ReLU(),
-            nn.Conv2d(self.feature_dim // 16, self.feature_dim, kernel_size=1),
+class SEBlock(nn.Module):
+    def __init__(self, in_channels, reduction=16):
+        super(SEBlock, self).__init__()
+        self.pool = nn.AdaptiveAvgPool2d(1)
+        self.fc = nn.Sequential(
+            nn.Linear(in_channels, in_channels // reduction, bias=False),
+            nn.ReLU(inplace=True),
+            nn.Linear(in_channels // reduction, in_channels, bias=False),
             nn.Sigmoid()
         )
-        
-        # Custom Classification Head
-        self.classifier = nn.Sequential(
-            nn.Dropout(p=0.3),
-            nn.Linear(self.feature_dim, 512),
-            nn.ReLU(),
-            nn.Dropout(p=0.2),
-            nn.Linear(512, num_classes)
-        )
-    
+
     def forward(self, x):
-        # Forward through EfficientNet
-        features = self.base_model.extract_features(x)  # Shape: [batch_size, 1280, H, W]
+        batch, channels, _, _ = x.size()
+        weights = self.pool(x).view(batch, channels)
+        weights = self.fc(weights).view(batch, channels, 1, 1)
+        return x * weights
+    
+class EnhancedEfficientNet(nn.Module):
+    def __init__(self, num_classes, pretrained=True):
+        super(EnhancedEfficientNet, self).__init__()
+        self.base_model = efficientnet_b4(pretrained=pretrained)
         
-        # Apply Attention Mechanism
-        se_weights = self.attention_layer(features)
-        features = features * se_weights
-        
-        # Global Average Pooling
-        pooled_features = torch.mean(features, dim=(2, 3))  # Shape: [batch_size, 1280]
-        
-        # Classification Head
-        output = self.classifier(pooled_features)
-        return output
+        # Extract features and add SEBlock for attention
+        self.features = nn.Sequential(
+            *list(self.base_model.features),
+            SEBlock(in_channels=self.base_model.features[-1][0].out_channels)
+        )
+
+        # Adjust classifier for EfficientNet-b4
+        in_features = self.base_model.classifier[1].in_features
+        self.classifier = nn.Sequential(
+            nn.Dropout(p=0.4),
+            nn.Linear(in_features, num_classes)
+        )
+
+    def forward(self, x):
+        x = self.features(x)
+        x = x.mean([2, 3])  # Global Average Pooling
+        x = self.classifier(x)
+        return x
     
 class FocalLoss(nn.Module):
     """
@@ -93,16 +85,36 @@ class FocalLoss(nn.Module):
             return focal_loss.sum()
         else:
             return focal_loss
-        
-def organize_data(source_dir, labels_file, train_dir, val_dir, test_dir, train_ratio=0.8, val_ratio=0.1):
+
+def categorize_faces(bboxes, small_threshold=32, large_threshold=96):
+    """ 
+    This function categorizes the bounding boxes into small, medium, and large faces.
     """
-    This function organizes the data into train, validation, and test sets.
+    small_faces, medium_faces, large_faces = [], [], []
+    for bbox in bboxes:
+        width, height = bbox[2] - bbox[0], bbox[3] - bbox[1]
+        area = width * height
+        if area < small_threshold**2:
+            small_faces.append(bbox)
+        elif area < large_threshold**2:
+            medium_faces.append(bbox)
+        else:
+            large_faces.append(bbox)
+    return small_faces, medium_faces, large_faces
+        
+def organize_data(source_dir, labels_file, train_dir, val_dir, val_dir_small, val_dir_medium, val_dir_large,
+                  test_dir, train_ratio=0.8, val_ratio=0.1):
+    """
+    Organize data into train, validation (small/medium/large), and test sets.
     
     Parameters:
         source_dir (str): Directory containing the source images.
         labels_file (str): Path to the file containing image paths and labels.
         train_dir (str): Directory to save the training set.
         val_dir (str): Directory to save the validation set.
+        val_dir_small (str): Directory to save the validation set with small faces.
+        val_dir_medium (str): Directory to save the validation set with medium faces.
+        val_dir_large (str): Directory to save the validation set with large faces.
         test_dir (str): Directory to save the test set.
         train_ratio (float): Ratio of training data (default=0.8).
         val_ratio (float): Ratio of validation data (default=0.1).
@@ -114,16 +126,15 @@ def organize_data(source_dir, labels_file, train_dir, val_dir, test_dir, train_r
     if all(os.path.exists(os.path.join(split_dir, '0')) and 
         os.path.exists(os.path.join(split_dir, '1')) and 
         os.listdir(os.path.join(split_dir, '0')) and 
-        os.listdir(os.path.join(split_dir, '1')) 
-        for split_dir in [train_dir, val_dir, test_dir]):
+        os.listdir(os.path.join(split_dir, '1')) and
+        for split_dir in [train_dir, val_dir, test_dir, val_dir_small, val_dir_medium, val_dir_large]:):
             logging.info("Train, validation, and test subfolders already exist and are not empty. Skipping data organization.")
             return
     
     # Create directories for classes
-    for split_dir in [train_dir, val_dir, test_dir]:
+    for split_dir in [train_dir, val_dir, val_dir_small, val_dir_medium, val_dir_large, test_dir]:
         for class_idx in ['0', '1']:
             os.makedirs(os.path.join(split_dir, class_idx), exist_ok=True)
-    
     # Read labels
     with open(labels_file, 'r') as f:
         lines = f.readlines()
@@ -149,6 +160,12 @@ def organize_data(source_dir, labels_file, train_dir, val_dir, test_dir, train_r
     val_data = image_labels[train_idx:val_idx]
     test_data = image_labels[val_idx:]
     
+   # Load bounding boxes
+    bbox_dict = load_bounding_boxes(bbox_file)
+
+    # Save validation data categorized by size
+    split_and_save(val_data, os.path.dirname(val_dir), bbox_dict, small_threshold, large_threshold, "val")
+    
     # Copy files to appropriate directories
     for data, split_dir in [(train_data, train_dir), 
                            (val_data, val_dir), 
@@ -166,7 +183,6 @@ def organize_data(source_dir, labels_file, train_dir, val_dir, test_dir, train_r
     
     logging.info(f"Split completed:\nTrain: {len(train_data)}\nVal: {len(val_data)}\nTest: {len(test_data)}")
    
- 
 def create_data_loaders(train_dir, val_dir, test_dir, image_size=(150, 150), batch_size=32):
     """
     Create data loaders for train, validation, and test sets.
@@ -208,15 +224,89 @@ def create_data_loaders(train_dir, val_dir, test_dir, image_size=(150, 150), bat
 
     return train_loader, val_loader, test_loader
 
-def prepare_environment(source_dir, labels_file, train_dir, val_dir, test_dir, base_dir=EfficientNetPaths.output_dir):
+def load_bounding_boxes(file_path: MtcnnPaths.labels_file_path):
+    """
+    Load bounding boxes from a .txt file into a dictionary.
+    """
+    bbox_dict = {}
+    with open(file_path, 'r') as f:
+        for line in f:
+            image_name, bbox_str = line.strip().split(' ', 1)
+            bboxes = [list(map(float, bbox.split(','))) for bbox in bbox_str.split(';')]
+            bbox_dict[image_name] = bboxes
+    return bbox_dict
+
+def categorize_validation_data(val_data, bbox_dict, small_threshold=32, large_threshold=96):
+    """
+    Categorize validation data into small, medium, and large faces.
+    """
+    small_data, medium_data, large_data = [], [], []
+
+    for image_path, label in val_data:
+        image_name = os.path.basename(image_path)
+        if image_name in bbox_dict:
+            bboxes = bbox_dict[image_name]
+            small_faces, medium_faces, large_faces = categorize_faces(bboxes, small_threshold, large_threshold)
+
+            if small_faces:
+                small_data.append((image_path, label))
+            elif medium_faces:
+                medium_data.append((image_path, label))
+            elif large_faces:
+                large_data.append((image_path, label))
+        else:
+            logging.warning(f"No bounding boxes found for image: {image_name}")
+    
+    return small_data, medium_data, large_data
+
+def split_and_save(data, output_dir, bbox_dict, small_threshold, large_threshold, split_name):
+    """Split validation data into small, medium, and large directories."""
+    small_dir = os.path.join(output_dir, split_name + "_small")
+    medium_dir = os.path.join(output_dir, split_name + "_medium")
+    large_dir = os.path.join(output_dir, split_name + "_large")
+    
+    os.makedirs(small_dir, exist_ok=True)
+    os.makedirs(medium_dir, exist_ok=True)
+    os.makedirs(large_dir, exist_ok=True)
+
+    for img_path, label in data:
+        img_name = os.path.basename(img_path)
+        if img_name in bbox_dict:
+            bboxes = bbox_dict[img_name]
+            small, medium, large = categorize_faces(bboxes, small_threshold, large_threshold)
+            
+            if small:
+                target_dir = small_dir
+            elif medium:
+                target_dir = medium_dir
+            elif large:
+                target_dir = large_dir
+            else:
+                logging.warning(f"No valid size category for {img_name}. Skipping.")
+                continue
+
+            class_dir = os.path.join(target_dir, label)
+            os.makedirs(class_dir, exist_ok=True)
+            shutil.copy(img_path, class_dir)
+        else:
+            logging.warning(f"No bounding box for {img_name}. Skipping.")
+
+    logging.info(f"Split {split_name} data saved to {output_dir}.")
+    
+def prepare_environment(source_dir, labels_file, bounding_boxes_file, train_dir, val_dir, val_dir_small, val_dir_medium, val_dir_large,
+                        test_dir, base_dir=EfficientNetPaths.output_dir):
     """
     This function prepares the environment for training the model.
     
     Parameters:
         source_dir (str): Directory containing the source images.
         labels_file (str): Path to the file containing image paths and labels.
+        bounding_boxes_file (str): Path to the file containing image paths and bounding boxes
         train_dir (str): Directory to save the training set.
         val_dir (str): Directory to save the validation set.
+        val_dir_small (str): Directory to save the validation set with small faces.
+        val_dir_medium (str): Directory to save the validation set with medium faces.
+        val_dir_large (str): Directory to save the validation set with large faces.
         test_dir (str): Directory to save the test set.
         base_dir (str): Base directory to save the results (default='output').
         
@@ -227,7 +317,7 @@ def prepare_environment(source_dir, labels_file, train_dir, val_dir, test_dir, b
         output_dir (str): Directory to save the results.
     """
     # Organize data into class folders
-    organize_data(source_dir, labels_file, train_dir, val_dir, test_dir)
+    organize_data(source_dir, labels_file, train_dir, val_dir, val_dir_small, val_dir_medium, val_dir_large, test_dir)
 
     # Create data loaders
     train_loader, val_loader, test_loader = create_data_loaders(train_dir, val_dir, test_dir)
@@ -247,7 +337,7 @@ def train_model(train_loader, val_loader, num_epochs, output_dir, num_classes=2,
     """
     Train a model using the train and validation loaders.
     """
-    model = EnhancedEfficientNet(num_classes=num_classes)
+    model = EnhancedEfficientNet(num_classes=num_classes, pretrained=True)
     model = model.to(device)
     
     criterion = FocalLoss(alpha=0.25, gamma=2.0, reduction='mean')
@@ -321,7 +411,6 @@ def train_model(train_loader, val_loader, num_epochs, output_dir, num_classes=2,
         scheduler.step()
 
     return best_model, train_losses, val_losses, val_recalls
-
 
 def evaluate_and_plot_results(model, test_loader, class_names, output_dir, device='cuda'):
     """
@@ -517,12 +606,15 @@ def main():
     source_dir = MtcnnPaths.faces_dir
     train_dir = os.path.join(MtcnnPaths.faces_dir, 'train')
     val_dir = os.path.join(MtcnnPaths.faces_dir, 'val')
+    val_dir_small = os.path.join(MtcnnPaths.faces_dir, 'val_small')
+    val_dir_medium = os.path.join(MtcnnPaths.faces_dir, 'val_medium')
+    val_dir_large = os.path.join(MtcnnPaths.faces_dir, 'val_large')
     test_dir = os.path.join(MtcnnPaths.faces_dir, 'test')
     labels_file = MtcnnPaths.gaze_labels_file_path
 
     # Prepare data and environment
     train_loader, val_loader, test_loader, output_dir = prepare_environment(
-        source_dir, labels_file, train_dir, val_dir, test_dir
+        source_dir, labels_file, train_dir, val_dir, val_dir_small, val_dir_medium, val_dir_large, test_dir
     )
     
     # Train the model
