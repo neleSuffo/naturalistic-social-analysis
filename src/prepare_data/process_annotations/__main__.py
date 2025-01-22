@@ -5,7 +5,7 @@ from prepare_data.process_annotations.convert_to_yolo import main as convert_to_
 from prepare_data.process_annotations.convert_to_mtcnn import main as convert_to_mtcnn
 from constants import DetectionPaths
 
-def main(setup_db: bool = False):
+def main(yolo_target: str, setup_db: bool = False):
     os.environ['OMP_NUM_THREADS'] = '10'
     if setup_db == True:
         # Create a dictionary with the task name as key and a file id as valuey
@@ -22,9 +22,9 @@ def main(setup_db: bool = False):
         create_child_class_in_db()
     
     # Convert the annotations to YOLO format and MTCNN format
-    convert_to_yolo("face")
-    #convert_to_mtcnn()
+    #convert_to_yolo(yolo_target)
+    convert_to_mtcnn()
 
 
 if __name__ == "__main__":
-    main()
+    main('face')
