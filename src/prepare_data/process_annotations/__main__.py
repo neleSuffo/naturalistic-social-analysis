@@ -21,8 +21,8 @@ def main():
     create_child_class_in_db()
     
     # Convert the annotations to YOLO format and MTCNN format
-    #convert_to_yolo()
-    convert_to_mtcnn()
+    convert_to_yolo("face")
+    #convert_to_mtcnn()
 
 
 if __name__ == "__main__":
