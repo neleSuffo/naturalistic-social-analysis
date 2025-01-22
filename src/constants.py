@@ -29,11 +29,15 @@ class DetectionPaths:
 
 class YoloPaths:
     trained_weights_path = Path(BasePaths.models_dir/'yolov8_trained.pt')
-    data_config_path = Path(BasePaths.leuphana_ipe_dir/"src/projects/social_interactions/models/yolo_inference/dataset.yaml")
-    labels_input_dir = Path(BasePaths.data_dir/"yolo_labels")
+    person_data_config_path = Path(BasePaths.leuphana_ipe_dir/"src/projects/social_interactions/models/yolo_person_detection/person_dataset.yaml")
+    face_data_config_path = Path(BasePaths.leuphana_ipe_dir/"src/projects/social_interactions/models/yolo_face_detection/face_dataset.yaml")
+    person_labels_input_dir = Path(BasePaths.data_dir/"yolo_person_labels")
+    face_labels_input_dir = Path(BasePaths.data_dir/"yolo_face_labels")
     # the path to the input folder for the yolo model
-    data_input_dir = Path(BasePaths.data_dir/"yolo")
-    yolo_output_dir = Path(BasePaths.output_dir/"yolo_detections/")
+    person_data_input_dir = Path(BasePaths.data_dir/"yolo_person_input")
+    face_data_input_dir = Path(BasePaths.data_dir/"yolo_face_input")
+    person_output_dir = Path(BasePaths.output_dir/"yolo_person_detections/")
+    face_output_dir = Path(BasePaths.output_dir/"yolo_face_detections/")
 
 class VTCPaths:
     audio_dir = Path(BasePaths.data_dir/"audio")
