@@ -82,7 +82,8 @@ def find_alternative_image(
 
 
 def save_annotations(
-    annotations: list
+    annotations: list,
+    target: str
 ) -> None:
     """
     This function saves the annotations in YOLO format to text files.
@@ -91,9 +92,14 @@ def save_annotations(
     ----------
     annotations : list
         the list of annotations
+    target : str
+        the target detection type
     """
     logging.info("Saving annotations in YOLO format.")
-    output_dir = YoloPaths.labels_input_dir
+    if target == "face":
+        output_dir = YoloPaths.face_labels_input_dir
+    else: 
+        output_dir = YoloPaths.person_labels_input_dir
     output_dir.mkdir(parents=True, exist_ok=True)
     file_contents = {}
 
@@ -103,13 +109,14 @@ def save_annotations(
         _, _, category_id, bbox, image_file_name, _ = annotation
         bbox = json.loads(bbox)
         
-        # Remap the category_id
-        if category_id == 1:
-            category_id = 0  # "person"
-        elif category_id == 2:
-            category_id = 1  # "reflection"
-        elif category_id == 11:
-            category_id = 2  # "child_body_parts"
+        if target == "person":
+            # Remap the category_id
+            if category_id == 1:
+                category_id = 0  # "person"
+            elif category_id == 2:
+                category_id = 1  # "reflection"
+            elif category_id == 11:
+                category_id = 2  # "child_body_parts"
         
         # Construct the path to the image file
         image_file_path = DetectionPaths.images_input / image_file_name
@@ -150,13 +157,20 @@ def save_annotations(
             logging.error(f"Failed to write to file {txt_file}: {e}")
 
 
-def main() -> None:
-    logging.info("Starting the conversion process for Yolo.")
+def main(target: str = "person") -> None:
+    logging.info(f"Starting the conversion process for Yolo {target} detection.")
     try:
-        annotations = fetch_all_annotations(category_ids = YoloConfig.target_class_ids)
-        logging.info(f"Fetched {len(annotations)} annotations.")
-        save_annotations(annotations)
-        logging.info("Successfully saved all annotations.")
+        if target == "face":
+            annotations = fetch_all_annotations(category_ids = YoloConfig.face_target_class_ids)
+            logging.info(f"Fetched {len(annotations)} annotations.")
+            save_annotations(annotations, target)
+            logging.info(f"Successfully saved all {target} annotations.")
+
+        elif target == "person":
+            annotations = fetch_all_annotations(category_ids = YoloConfig.person_target_class_ids)
+            logging.info(f"Fetched {len(annotations)} annotations.")
+            save_annotations(annotations, target)
+            logging.info(f"Successfully saved all {target} annotations.")
     except Exception as e:
         print(f"Failed to fetch annotations or save them: {e}")
 
