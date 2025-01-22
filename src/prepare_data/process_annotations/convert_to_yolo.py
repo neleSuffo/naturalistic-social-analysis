@@ -53,7 +53,8 @@ def convert_to_yolo_format(
 
 
 def find_alternative_image(
-    image_file_name: str
+    image_file_name: str,
+    video_name: str
 ) -> Path:
     """ 
     This function searches for an alternative image file with the same quantex_at_home_id.
@@ -62,6 +63,8 @@ def find_alternative_image(
     ----------
     image_file_name : str
         The original image file name.
+    video_name: str
+        the name of the video the image belongs to
 
     Returns
     -------
@@ -74,7 +77,7 @@ def find_alternative_image(
     quantex_id = "_".join(parts[:8])
     
     # Search for alternative images in the directory with the same quantex_at_home_id
-    for image_path in DetectionPaths.images_input.glob(f"{quantex_id}*"):
+    for image_path in DetectionPaths.images_input_dir/video_name.glob(f"{quantex_id}*"):
         if image_path.name != image_file_name:
             return image_path
     
@@ -96,55 +99,43 @@ def save_annotations(
         the target detection type
     """
     logging.info("Saving annotations in YOLO format.")
-    if target == "face":
-        output_dir = YoloPaths.face_labels_input_dir
-    else: 
-        output_dir = YoloPaths.person_labels_input_dir
+    output_dir = YoloPaths.face_labels_input_dir if target == "face" else YoloPaths.person_labels_input_dir
     output_dir.mkdir(parents=True, exist_ok=True)
+    
     file_contents = {}
-
+    skipped_count = 0
+    processed_count = 0
     #(image_id, video_id, category_id, bbox, image_file_name, video_file_name)
 
     for annotation in annotations:
         _, _, category_id, bbox, image_file_name, _ = annotation
-        bbox = json.loads(bbox)
-        
-        if target == "person":
-            # Remap the category_id
-            if category_id == 1:
-                category_id = 0  # "person"
-            elif category_id == 2:
-                category_id = 1  # "reflection"
-            elif category_id == 11:
-                category_id = 2  # "child_body_parts"
-        
-        # Construct the path to the image file
-        image_file_path = DetectionPaths.images_input / image_file_name
-        
-        # Check if the image file exists
+        video_name = image_file_name[:-11]
+        image_file_path = DetectionPaths.images_input_dir / video_name / image_file_name
+
+        # Skip if image doesn't exist
         if not image_file_path.is_file():
-            logging.warning(f"Image file {image_file_path} does not exist. Trying to find an alternative.")
-            image_file_path = find_alternative_image(image_file_name)
-            
-            if image_file_path:
-                logging.info(f"Using alternative image file {image_file_path}.")
-            else:
-                logging.error(f"No alternative image found for {image_file_name}. Skipping annotation.")
-                continue
+            logging.warning(f"Image file {image_file_path} does not exist. Skipping annotation.")
+            skipped_count += 1
+            continue
+        
+        bbox = json.loads(bbox)
+        if target == "person":
+        # Map the category_id to the YOLO format
+            category_id = {1: 0, 2: 1, 11: 2}.get(category_id, category_id)
     
         # YOLO format: category_id x_center y_center width height
         try:
-            yolo_bbox = convert_to_yolo_format(image_file_path, bbox)
+            yolo_bbox = convert_to_yolo_format(image_file_path, bbox)               
+            line = f"{category_id} " + " ".join(map(str, yolo_bbox)) + '\n'
+            # Append the line to the list of lines for the image file
+            if image_file_name not in file_contents:
+                file_contents[image_file_name] = []
+            file_contents[image_file_name].append(line)
+            processed_count += 1
         except Exception as e:
             logging.error(f"Error converting bbox to YOLO format for {image_file_path}: {e}")
+            skipped_count += 1
             continue
-                
-        # Create a line for the text file
-        line = f"{category_id} " + " ".join(map(str, yolo_bbox)) + '\n'
-        # Append the line to the list of lines for the image file
-        if image_file_name not in file_contents:
-            file_contents[image_file_name] = []
-        file_contents[image_file_name].append(line)
 
     # Write the lines to text files
     for image_file_name, lines in file_contents.items():
@@ -155,20 +146,20 @@ def save_annotations(
                 f.writelines(lines)
         except IOError as e:
             logging.error(f"Failed to write to file {txt_file}: {e}")
-
-
+    logging.info(f"Processed {processed_count} annotations, skipped {skipped_count} annotations")
+    
 def main(target: str = "person") -> None:
     logging.info(f"Starting the conversion process for Yolo {target} detection.")
     try:
         if target == "face":
             annotations = fetch_all_annotations(category_ids = YoloConfig.face_target_class_ids)
-            logging.info(f"Fetched {len(annotations)} annotations.")
+            logging.info(f"Fetched {len(annotations)} {target} annotations.")
             save_annotations(annotations, target)
             logging.info(f"Successfully saved all {target} annotations.")
 
         elif target == "person":
             annotations = fetch_all_annotations(category_ids = YoloConfig.person_target_class_ids)
-            logging.info(f"Fetched {len(annotations)} annotations.")
+            logging.info(f"Fetched {len(annotations)} {target} annotations.")
             save_annotations(annotations, target)
             logging.info(f"Successfully saved all {target} annotations.")
     except Exception as e:
