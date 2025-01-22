@@ -8,6 +8,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import matplotlib.pyplot as plt
 from pathlib import Path
 from torch.utils.data import DataLoader, WeightedRandomSampler
 from torchvision import datasets, transforms
