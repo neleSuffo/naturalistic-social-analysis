@@ -3,6 +3,8 @@ import json
 import numpy as np
 import torch
 import cv2
+import seaborn as sns
+import matplotlib.pyplot as plt
 from datetime import datetime
 from facenet_pytorch import MTCNN
 from PIL import Image
@@ -96,7 +98,12 @@ def plot_confusion_matrix(tp, fp, fn, tn, output_path):
     plt.xlabel('Predicted Label')
     plt.savefig(output_path)
     plt.close()
-    
+   
+def get_matrix_path(output_path):
+    """Create path for confusion matrix plot"""
+    base_path = os.path.splitext(str(output_path))[0]
+    return f"{base_path}_confusion_matrix.png"
+ 
 # Updated Evaluation Function
 def evaluate_mtcnn_with_metrics(labels_file_path, images_folder, output_path):
     annotations = parse_labels_file(labels_file_path)
@@ -195,7 +202,7 @@ def evaluate_mtcnn_with_metrics(labels_file_path, images_folder, output_path):
     }
 
     # Plot confusion matrix
-    matrix_path = output_path.replace('.json', '_confusion_matrix.png')
+    matrix_path = get_matrix_path(output_path)
     plot_confusion_matrix(tp_total, fp_total, fn_total, tn_total, matrix_path)
     
     # Save results to file
