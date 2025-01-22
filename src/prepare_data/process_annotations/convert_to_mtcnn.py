@@ -3,6 +3,7 @@ import logging
 from utils import fetch_all_annotations
 from constants import MtcnnPaths
 from collections import defaultdict
+from config import YoloConfig
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -49,7 +50,7 @@ def main() -> None:
     logging.info("Starting the conversion process for MTCNN.")
     try:
         # Fetch all annotations for category 10 (face)
-        annotations = fetch_all_annotations(["10"])
+        annotations = fetch_all_annotations(category_ids = YoloConfig.face_target_class_ids)
         logging.info(f"Fetched {len(annotations)} annotations.")
         save_annotations(annotations)
         logging.info("Successfully saved all annotations.")
