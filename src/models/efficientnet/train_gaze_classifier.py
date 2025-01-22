@@ -5,14 +5,12 @@ import shutil
 import datetime
 import json
 import numpy as np
-import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import torch.nn.functional as F
-from efficientnet_pytorch import EfficientNet
+from pathlib import Path
 from torch.utils.data import DataLoader, WeightedRandomSampler
-from torchvision import datasets, transforms, models
+from torchvision import datasets, transforms
 from sklearn.metrics import confusion_matrix, roc_curve, auc, precision_recall_curve, average_precision_score, precision_score, recall_score, roc_auc_score, accuracy_score
 from constants import EfficientNetPaths, MtcnnPaths
 from torchvision.models import efficientnet_b4
@@ -86,24 +84,28 @@ class FocalLoss(nn.Module):
         else:
             return focal_loss
 
-def categorize_faces(bboxes, small_threshold=32, large_threshold=96):
+def categorize_faces(bbox, small_threshold=32, large_threshold=96):
     """ 
-    This function categorizes the bounding boxes into small, medium, and large faces.
+    Categorize single bounding box into small, medium, or large face.
+    Args:
+        bbox: Single bbox [x,y,w,h]
+    Returns:
+        Lists containing single bbox or empty lists
     """
+    width, height = bbox[2], bbox[3]
+    area = width * height
+    
     small_faces, medium_faces, large_faces = [], [], []
-    for bbox in bboxes:
-        width, height = bbox[2] - bbox[0], bbox[3] - bbox[1]
-        area = width * height
-        if area < small_threshold**2:
-            small_faces.append(bbox)
-        elif area < large_threshold**2:
-            medium_faces.append(bbox)
-        else:
-            large_faces.append(bbox)
+    if area < small_threshold**2:
+        small_faces = [bbox]
+    elif area < large_threshold**2:
+        medium_faces = [bbox]
+    else:
+        large_faces = [bbox]
+        
     return small_faces, medium_faces, large_faces
         
-def organize_data(source_dir, labels_file, train_dir, val_dir, val_dir_small, val_dir_medium, val_dir_large,
-                  test_dir, train_ratio=0.8, val_ratio=0.1):
+def organize_data(source_dir, labels_file, train_dir, val_dir, test_dir, train_ratio=0.8, val_ratio=0.1):
     """
     Organize data into train, validation (small/medium/large), and test sets.
     
@@ -112,27 +114,15 @@ def organize_data(source_dir, labels_file, train_dir, val_dir, val_dir_small, va
         labels_file (str): Path to the file containing image paths and labels.
         train_dir (str): Directory to save the training set.
         val_dir (str): Directory to save the validation set.
-        val_dir_small (str): Directory to save the validation set with small faces.
-        val_dir_medium (str): Directory to save the validation set with medium faces.
-        val_dir_large (str): Directory to save the validation set with large faces.
         test_dir (str): Directory to save the test set.
         train_ratio (float): Ratio of training data (default=0.8).
         val_ratio (float): Ratio of validation data (default=0.1).
     
     Returns:
         None
-    """
-    # Check if data is already organized
-    if all(os.path.exists(os.path.join(split_dir, '0')) and 
-        os.path.exists(os.path.join(split_dir, '1')) and 
-        os.listdir(os.path.join(split_dir, '0')) and 
-        os.listdir(os.path.join(split_dir, '1')) and
-        for split_dir in [train_dir, val_dir, test_dir, val_dir_small, val_dir_medium, val_dir_large]:):
-            logging.info("Train, validation, and test subfolders already exist and are not empty. Skipping data organization.")
-            return
-    
+    """    
     # Create directories for classes
-    for split_dir in [train_dir, val_dir, val_dir_small, val_dir_medium, val_dir_large, test_dir]:
+    for split_dir in [train_dir, val_dir, test_dir]:
         for class_idx in ['0', '1']:
             os.makedirs(os.path.join(split_dir, class_idx), exist_ok=True)
     # Read labels
@@ -161,11 +151,20 @@ def organize_data(source_dir, labels_file, train_dir, val_dir, val_dir_small, va
     test_data = image_labels[val_idx:]
     
    # Load bounding boxes
-    bbox_dict = load_bounding_boxes(bbox_file)
+    bbox_dict = load_bounding_boxes()
 
     # Save validation data categorized by size
-    split_and_save(val_data, os.path.dirname(val_dir), bbox_dict, small_threshold, large_threshold, "val")
+    split_and_save(val_data, os.path.dirname(val_dir), bbox_dict, "val")
     
+    # Check if data is already organized
+    if all(os.path.exists(os.path.join(split_dir, '0')) and 
+        os.path.exists(os.path.join(split_dir, '1')) and 
+        os.listdir(os.path.join(split_dir, '0')) and 
+        os.listdir(os.path.join(split_dir, '1'))
+        for split_dir in [train_dir, val_dir, test_dir]):
+            logging.info("Train, validation, and test subfolders already exist and are not empty. Skipping data organization.")
+            return
+        
     # Copy files to appropriate directories
     for data, split_dir in [(train_data, train_dir), 
                            (val_data, val_dir), 
@@ -183,7 +182,8 @@ def organize_data(source_dir, labels_file, train_dir, val_dir, val_dir_small, va
     
     logging.info(f"Split completed:\nTrain: {len(train_data)}\nVal: {len(val_data)}\nTest: {len(test_data)}")
    
-def create_data_loaders(train_dir, val_dir, test_dir, image_size=(150, 150), batch_size=32):
+def create_data_loaders(train_dir, val_dir, val_dir_small, val_dir_medium, val_dir_large,
+                        test_dir, image_size=(150, 150), batch_size=32):
     """
     Create data loaders for train, validation, and test sets.
     """
@@ -204,6 +204,9 @@ def create_data_loaders(train_dir, val_dir, test_dir, image_size=(150, 150), bat
     
     train_dataset = datasets.ImageFolder(train_dir, transform=transform_train)
     val_dataset = datasets.ImageFolder(val_dir, transform=transform_test)
+    val_small_dataset = datasets.ImageFolder(val_dir_small, transform=transform_test)
+    val_medium_dataset = datasets.ImageFolder(val_dir_medium, transform=transform_test)
+    val_large_dataset = datasets.ImageFolder(val_dir_large, transform=transform_test)
     test_dataset = datasets.ImageFolder(test_dir, transform=transform_test)
     
     # Calculate class weights based on the dataset
@@ -220,60 +223,79 @@ def create_data_loaders(train_dir, val_dir, test_dir, image_size=(150, 150), bat
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, sampler=sampler)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+    val_small_loader = DataLoader(val_small_dataset, batch_size=1, shuffle=False)
+    val_medium_loader = DataLoader(val_medium_dataset, batch_size=1, shuffle=False)
+    val_large_loader = DataLoader(val_large_dataset, batch_size=1, shuffle=False)
     test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False)
 
-    return train_loader, val_loader, test_loader
+    return train_loader, val_loader, val_small_loader, val_medium_loader, val_large_loader, test_loader
 
-def load_bounding_boxes(file_path: MtcnnPaths.labels_file_path):
+def load_bounding_boxes(file_path: Path = MtcnnPaths.labels_file_path):
     """
     Load bounding boxes from a .txt file into a dictionary.
+    Format: image_name x,y,width,height,label
+    Returns: dict with image_name: [x, y, width, height]
     """
+    # Check for cached bbox dictionary
+    cache_path = Path(file_path).parent / 'bbox_cache.json'
+    if cache_path.exists():
+        with open(cache_path, 'r') as f:
+            return json.load(f)
+        
     bbox_dict = {}
     with open(file_path, 'r') as f:
         for line in f:
-            image_name, bbox_str = line.strip().split(' ', 1)
-            bboxes = [list(map(float, bbox.split(','))) for bbox in bbox_str.split(';')]
-            bbox_dict[image_name] = bboxes
+            try:
+                parts = line.strip().split()
+                if len(parts) < 2:
+                    continue
+                    
+                image_name = parts[0]
+                bbox_strings = parts[1:]  # Get all bbox strings
+                
+                # Process each bbox in the line
+                for idx, bbox_str in enumerate(bbox_strings):
+                    coords = bbox_str.split(',')[:4]  # Ignore label
+                    bbox = list(map(float, coords))
+                    face_key = f"{image_name.split('.')[0]}_face_{idx}"
+                    bbox_dict[face_key] = bbox
+                    
+            except Exception as e:
+                logging.error(f"Error parsing line '{line.strip()}': {e}")
+                continue
+        # Cache the dictionary
+    with open(cache_path, 'w') as f:
+        json.dump(bbox_dict, f)
+        
     return bbox_dict
 
-def categorize_validation_data(val_data, bbox_dict, small_threshold=32, large_threshold=96):
-    """
-    Categorize validation data into small, medium, and large faces.
-    """
-    small_data, medium_data, large_data = [], [], []
-
-    for image_path, label in val_data:
-        image_name = os.path.basename(image_path)
-        if image_name in bbox_dict:
-            bboxes = bbox_dict[image_name]
-            small_faces, medium_faces, large_faces = categorize_faces(bboxes, small_threshold, large_threshold)
-
-            if small_faces:
-                small_data.append((image_path, label))
-            elif medium_faces:
-                medium_data.append((image_path, label))
-            elif large_faces:
-                large_data.append((image_path, label))
-        else:
-            logging.warning(f"No bounding boxes found for image: {image_name}")
-    
-    return small_data, medium_data, large_data
-
-def split_and_save(data, output_dir, bbox_dict, small_threshold, large_threshold, split_name):
+def split_and_save(data, output_dir, bbox_dict, split_name):
     """Split validation data into small, medium, and large directories."""
     small_dir = os.path.join(output_dir, split_name + "_small")
     medium_dir = os.path.join(output_dir, split_name + "_medium")
     large_dir = os.path.join(output_dir, split_name + "_large")
     
+    # Check if directories already exist and contain data
+    if all(os.path.exists(dir) and os.listdir(dir) 
+           for dir in [small_dir, medium_dir, large_dir]):
+        logging.info(f"Size-specific directories for {split_name} already exist and contain data. Skipping split.")
+        return
+    
     os.makedirs(small_dir, exist_ok=True)
     os.makedirs(medium_dir, exist_ok=True)
     os.makedirs(large_dir, exist_ok=True)
+    
+    # Create directories for classes
+    for split_dir in [small_dir, medium_dir, large_dir]:
+        for class_idx in ['0', '1']:
+            os.makedirs(os.path.join(split_dir, class_idx), exist_ok=True)
 
     for img_path, label in data:
-        img_name = os.path.basename(img_path)
+        img_name = os.path.splitext(os.path.basename(img_path))[0]
         if img_name in bbox_dict:
             bboxes = bbox_dict[img_name]
-            small, medium, large = categorize_faces(bboxes, small_threshold, large_threshold)
+            logging.info(f"Processing {img_name} with {len(bboxes)//4} bounding boxes.")
+            small, medium, large = categorize_faces(bboxes)
             
             if small:
                 target_dir = small_dir
@@ -287,13 +309,14 @@ def split_and_save(data, output_dir, bbox_dict, small_threshold, large_threshold
 
             class_dir = os.path.join(target_dir, label)
             os.makedirs(class_dir, exist_ok=True)
+            logging.info(f"Copying {img_name} to {class_dir}")
             shutil.copy(img_path, class_dir)
         else:
             logging.warning(f"No bounding box for {img_name}. Skipping.")
 
     logging.info(f"Split {split_name} data saved to {output_dir}.")
     
-def prepare_environment(source_dir, labels_file, bounding_boxes_file, train_dir, val_dir, val_dir_small, val_dir_medium, val_dir_large,
+def prepare_environment(source_dir, labels_file, train_dir, val_dir, val_dir_small, val_dir_medium, val_dir_large,
                         test_dir, base_dir=EfficientNetPaths.output_dir):
     """
     This function prepares the environment for training the model.
@@ -304,9 +327,6 @@ def prepare_environment(source_dir, labels_file, bounding_boxes_file, train_dir,
         bounding_boxes_file (str): Path to the file containing image paths and bounding boxes
         train_dir (str): Directory to save the training set.
         val_dir (str): Directory to save the validation set.
-        val_dir_small (str): Directory to save the validation set with small faces.
-        val_dir_medium (str): Directory to save the validation set with medium faces.
-        val_dir_large (str): Directory to save the validation set with large faces.
         test_dir (str): Directory to save the test set.
         base_dir (str): Base directory to save the results (default='output').
         
@@ -317,21 +337,22 @@ def prepare_environment(source_dir, labels_file, bounding_boxes_file, train_dir,
         output_dir (str): Directory to save the results.
     """
     # Organize data into class folders
-    organize_data(source_dir, labels_file, train_dir, val_dir, val_dir_small, val_dir_medium, val_dir_large, test_dir)
+    organize_data(source_dir, labels_file, train_dir, val_dir, test_dir)
 
     # Create data loaders
-    train_loader, val_loader, test_loader = create_data_loaders(train_dir, val_dir, test_dir)
+    train_loader, val_loader, val_small_loader, val_medium_loader, val_large_loader, test_loader = create_data_loaders(train_dir, val_dir, val_dir_small, val_dir_medium, val_dir_large, test_dir)
 
     # Create output directory for results
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = os.path.join(base_dir, timestamp)
+    #output_dir = os.path.join(base_dir, timestamp)
+    output_dir = os.path.join(base_dir, f"small_faces_{timestamp}")
     os.makedirs(output_dir, exist_ok=True)
     
     # Copy the script to the output directory
     script_path = __file__
     shutil.copy(script_path, os.path.join(output_dir, os.path.basename(script_path)))
 
-    return train_loader, val_loader, test_loader, output_dir
+    return train_loader, val_loader, val_small_loader, val_medium_loader, val_large_loader, test_loader, output_dir
 
 def train_model(train_loader, val_loader, num_epochs, output_dir, num_classes=2, device='cuda'):
     """
@@ -613,12 +634,11 @@ def main():
     labels_file = MtcnnPaths.gaze_labels_file_path
 
     # Prepare data and environment
-    train_loader, val_loader, test_loader, output_dir = prepare_environment(
-        source_dir, labels_file, train_dir, val_dir, val_dir_small, val_dir_medium, val_dir_large, test_dir
-    )
-    
+    train_loader, val_loader, val_small_loader, val_medium_loader, val_large_loader, test_loader, output_dir = prepare_environment(source_dir, labels_file, train_dir, val_dir,
+                                                                            val_dir_small, val_dir_medium, val_dir_large, test_dir)
+
     # Train the model
-    model, train_losses, val_losses, val_recalls = train_model(train_loader, val_loader, 50, output_dir)
+    model, train_losses, val_losses, val_recalls = train_model(train_loader, val_large_loader, 50, output_dir)
     
     # Save training and validation plots
     save_loss_plot(train_losses, val_losses, output_dir)
