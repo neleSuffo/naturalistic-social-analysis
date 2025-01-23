@@ -82,6 +82,7 @@ def fetch_all_annotations(
         WHERE a.category_id IN ({placeholders}) 
             AND a.category_id != -1 
             AND a.outside = 0
+            AND a.video_id != '255237_2022_05_08_04'
         ORDER BY a.video_id, a.image_id
         """
         cursor.execute(query, category_ids)
