@@ -8,9 +8,11 @@ model = YOLO(str(YoloPaths.face_trained_weights_path))  # Use pretrained YOLOv8 
 model.train(
     data=str(YoloPaths.face_data_config_path),  # Dataset configuration file
     epochs=50,  # Adjust epochs as needed
+    patience=5,  # Stop if no improvement in 5 consecutive epochs
     imgsz=640,  # Image size
     batch=16,   # Batch size
     project=str(YoloPaths.face_output_dir),  # Output directory
     name="yolo_face_finetune", # Experiment name
-    device=0   # GPU (use "cpu" for CPU training)
+    device=0,   # GPU (use "cpu" for CPU training)
+    fp16=True,  # Use mixed precision
 )
