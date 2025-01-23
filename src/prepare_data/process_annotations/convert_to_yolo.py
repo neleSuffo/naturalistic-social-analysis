@@ -108,7 +108,7 @@ def save_annotations(
     #(image_id, video_id, category_id, bbox, image_file_name, video_file_name)
 
     for annotation in annotations:
-        _, _, category_id, bbox, image_file_name, _ = annotation
+        _, _, category_id, bbox, image_file_name, _, _ = annotation
         video_name = image_file_name[:-11]
         image_file_path = DetectionPaths.images_input_dir / video_name / image_file_name
 
@@ -122,7 +122,9 @@ def save_annotations(
         if target == "person":
         # Map the category_id to the YOLO format
             category_id = {1: 0, 2: 1, 11: 2}.get(category_id, category_id)
-    
+        if target == "face":
+        # Map the category_id to the YOLO format
+            category_id = {10: 0}.get(category_id, category_id)
         # YOLO format: category_id x_center y_center width height
         try:
             yolo_bbox = convert_to_yolo_format(image_file_path, bbox)               
