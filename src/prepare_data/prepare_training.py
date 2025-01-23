@@ -301,38 +301,38 @@ def get_video_length(
 
 
 def get_video_lengths() -> list:
-    """
-    This function returns a list of video files with their lengths in seconds.
-
-    Returns
-    -------
-    list
-        the list of video files with their lengths
-    """
-    # Initialize the list to store the video names and lengths
+    """Returns list of (video_name, length) tuples for videos with annotations"""
     video_lengths = []
     
-    # Connect to the annotations database
+    # Connect to annotations database
     conn = sqlite3.connect(DetectionPaths.annotations_db_path)
     cursor = conn.cursor()
-    cursor.execute("SELECT file_name FROM videos")
-    video_files_list = [row[0] for row in cursor.fetchall()]
     
-    # Iterate over the video files
+    # Get unique video IDs from annotations and join with videos table
+    cursor.execute("""
+        SELECT DISTINCT v.file_name 
+        FROM annotations a
+        JOIN videos v ON a.video_id = v.id
+        WHERE v.file_name NOT LIKE '%id255237_2022_05_08_04%'
+    """)
+    video_files_list = [row[0] for row in cursor.fetchall()]
+    conn.close()
+    
+    # Get length for each video
     for video in video_files_list:
-        # Construct the full path to the video file
         video_name = os.path.splitext(video)[0]
-        possible_files = list(DetectionPaths.quantex_videos_input_dir.glob(f"{video_name}.mp4")) + list(DetectionPaths.quantex_videos_input_dir.glob(f"{video_name}.MP4"))
+        possible_files = list(DetectionPaths.quantex_videos_input_dir.glob(f"{video_name}.mp4")) + \
+                        list(DetectionPaths.quantex_videos_input_dir.glob(f"{video_name}.MP4"))
+        
         if not possible_files:
-            print(f"File not found for {video_name}, skipping...")
+            logging.warning(f"Video file not found: {video_name}")
             continue
-        # Take the first match found
-        video_path = possible_files[0]  
-        # Calculate the length of the video
+            
+        video_path = possible_files[0]
         length = get_video_length(video_path)
-        # Append the video name and length to the list
         video_lengths.append((video_name, length))
     
+    logging.info(f"Found {len(video_lengths)} videos with annotations")
     return video_lengths
 
 
