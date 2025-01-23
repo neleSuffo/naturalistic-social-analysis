@@ -39,14 +39,15 @@ def create_missing_annotation_files(
         (txt_dir / f"{file}.txt").touch()
 
 
-def images_train_val_split(
+def images_train_val_test_split(
     images_dir: Path,
     train_videos: list,
     val_videos: list,
+    test_videos: list
     ) -> tuple:
     """
-    This function splits the dataset into training and validation sets
-    and returns the list of training and validation files.
+    This function splits the dataset into training, validation and testing sets
+    and returns the list of training, validation and testing files.
 
     Parameters
     ----------
@@ -56,33 +57,30 @@ def images_train_val_split(
         the list of training videos
     val_videos : list
         the list of validation videos
+    test_videos : list
+        the list of testing videos
     
     Returns
     -------
     tuple
-        the list of training and validation images
+        the list of training, validation  and testing images
     """
     # Initialize empty lists to store image names for train and validation sets
-    train_images = []
-    val_images = []
+    train_images, val_images, test_images = [], [], []
 
     # Iterate through all images in the directory
-    for image_file in images_dir.rglob("*.jpg"):  # Assuming images are in JPG format
-        # Get the image file name without extension
-        image_base_name = image_file.stem
+    for image_file in images_dir.rglob("*.jpg"):
+        video_name_part = "_".join(image_file.stem.split("_")[:-1])
         
-        # Find the video name part (before the last underscore and digits)
-        video_name_part = "_".join(image_base_name.split("_")[:-1])
-        
-        # Check if the video name part matches any video in the train or validation sets
         if video_name_part in train_videos:
             train_images.append(image_file.name)
         elif video_name_part in val_videos:
             val_images.append(image_file.name)
+        elif video_name_part in test_videos:
+            test_images.append(image_file.name)
     
-    logging.info(f"Dataset split completed. Training files: {len(train_images)}, Validation files: {len(val_images)}")
-    return train_images, val_images
-
+    logging.info(f"Split completed: Train: {len(train_images)}, Val: {len(val_images)}, Test: {len(test_images)}")
+    return train_images, val_images, test_images
 
 def copy_yolo_files(
     files_to_move_lst: list, 
@@ -120,44 +118,52 @@ def prepare_yolo_dataset(
     destination_dir: Path,
     train_files: list,
     val_files: list,
+    test_files: list
 ):
     """
-    This function moves the training and validation files to the new yolo directories.
+    This function moves the training, validation and testing files to the new yolo directories.
 
     Parameters
     ----------
     destination_dir : Path
-        the destination directory to store the training and validation sets
+        the destination directory to store the training, validation and testing sets
     train_files : list
         the list of image training files
     val_files : list
         the list of image validation files
+    test_files : list
+        the list of image testing files
     """
     # Define source directory and new directories for training
     train_dir_images = destination_dir / "images/train"
     val_dir_images = destination_dir / "images/val"
+    test_dir_images = destination_dir / "images/test"
     train_dir_labels = destination_dir / "labels/train"
     val_dir_labels = destination_dir / "labels/val"
+    test_dir_labels = destination_dir / "labels/test"
     
     # Create necessary directories if they don't exist
-    for path in [train_dir_images, val_dir_images, train_dir_labels, val_dir_labels]:
+    for path in [train_dir_images, val_dir_images,  test_dir_images, train_dir_labels, val_dir_labels, test_dir_labels]:
         path.mkdir(parents=True, exist_ok=True)
     
     # Move the files to the new directories
     copy_yolo_files(train_files, train_dir_images, train_dir_labels)
     copy_yolo_files(val_files, val_dir_images, val_dir_labels)  
-
+    copy_yolo_files(test_files, test_dir_images, test_dir_labels)
 
 def copy_mtcnn_files(
     train_files: list,
     val_files: list, 
+    test_files: list,
     train_dir_images: Path,
     val_dir_images: Path,
+    test_dir_images: Path,
     train_labels_path: Path,
     val_labels_path: Path,
+    test_labels_path: Path
     )-> None:
     """
-    This function moves the training and validation files to the new mtcnn directories.
+    This function moves the training, validation and testing files to the new mtcnn directories.
 
     Parameters
     ----------
@@ -165,44 +171,59 @@ def copy_mtcnn_files(
         the list of training files
     val_files : list
         the list of validation files
+    test_files : list
+        the list of testing files
     train_dir_images: Path
         the directory to store the training images
     val_dir_images: Path
         the directory to store the validation images
+    test_dir_images: Path
+        the directory to store the testing images
     train_labels_path: Path
         the path to store the training labels
     val_labels_path: Path
         the path to store the validation labels
+    test_labels_path: Path
+        the path to store the testing labels
     """
-    logging.info(f"Moving MTCNN files to {train_dir_images}, {val_dir_images}, {train_labels_path} and {val_labels_path}")
+    logging.info(f"Moving MTCNN files to {train_dir_images}, {val_dir_images}, {test_dir_images}, {train_labels_path}, {val_labels_path} and {test_labels_path}")
     # Move the images to the training and validation directories
     # Convert all elements in train_files and val_files to Path objects
     train_files = [Path(file_path) for file_path in train_files]
     val_files = [Path(file_path) for file_path in val_files]
+    test_files = [Path(file_path) for file_path in test_files]
     
-    for file_path in train_files:
-        src_image_path = DetectionPaths.images_input / file_path.name
-        dest_image_path = train_dir_images / file_path.name
+    for file_path_train in train_files:
+        src_image_path = DetectionPaths.images_input / file_path_train.name
+        dest_image_path = train_dir_images / file_path_train.name
         shutil.copy(src_image_path, dest_image_path)
-    for file_path in val_files:
-        src_image_path = DetectionPaths.images_input / file_path.name
-        dest_image_path = val_dir_images / file_path.name
+    for file_path_val in val_files:
+        src_image_path = DetectionPaths.images_input / file_path_val.name
+        dest_image_path = val_dir_images / file_path_val.name
+        shutil.copy(src_image_path, dest_image_path)
+    for file_path_test in test_files:
+        src_image_path = DetectionPaths.images_input / file_path_test.name
+        dest_image_path = test_dir_images / file_path_test.name
         shutil.copy(src_image_path, dest_image_path)
     
     # Convert lists to sets and extract the file names
     train_set = set(train_files)
     val_set = set(val_files)
+    test_set = set(test_files)
     file_names_in_train_set = {path.name.rsplit('.', 1)[0] for path in train_set}
     file_names_in_val_set = {path.name.rsplit('.', 1)[0] for path in val_set}
+    file_names_in_test_set = {path.name.rsplit('.', 1)[0] for path in test_set}
 
     # Move the labels to the training and validation directories
-    with MtcnnPaths.labels_file_path.open('r') as original_file, train_labels_path.open('w') as train_file, val_labels_path.open('w') as validation_file:
+    with MtcnnPaths.labels_file_path.open('r') as original_file, train_labels_path.open('w') as train_file, val_labels_path.open('w') as validation_file, test_labels_path.open('w') as test_file:
         for line in original_file:
             image_file_name = line.split()[0]  # Assuming the file name is the first element
             if image_file_name in file_names_in_train_set:
                 train_file.write(line)
             elif image_file_name in file_names_in_val_set:
                 validation_file.write(line)
+            elif image_file_name in file_names_in_test_set:
+                test_file.write(line)
     logging.info("MTCNN files copied successfully")
 
 
@@ -210,9 +231,10 @@ def prepare_mtcnn_dataset(
     destination_dir: Path,
     train_files: list,
     val_files: list,
+    test_files: list
 ):
     """
-    This function moves the training and validation files to the new yolo directories.
+    This function moves the training, validation and testing files to the new yolo directories.
 
     Parameters
     ----------
@@ -222,28 +244,35 @@ def prepare_mtcnn_dataset(
         the list of training files
     val_files : list
         the list of validation files
+    test_files : list
+
     """
     # Define source directory and new directories for training
     train_dir_images = destination_dir / "train/images"
     train_labels_path = destination_dir / "train/train.txt"
     val_dir_images = destination_dir / "val/images"
     val_labels_path = destination_dir / "val/val.txt"
+    test_dir_images = destination_dir / "test/images"
+    test_labels_path = destination_dir / "test/test.txt"
 
     # Create necessary directories if they don't exist
-    for path in [train_dir_images, val_dir_images, train_labels_path.parent, val_labels_path.parent]:
+    for path in [train_dir_images, val_dir_images, train_labels_path.parent, val_labels_path.parent, test_dir_images, test_labels_path.parent]:
         path.mkdir(parents=True, exist_ok=True)
     
     # Move the files to the new directories
     copy_mtcnn_files(train_files, 
                     val_files, 
+                    test_files
                     train_dir_images, 
                     val_dir_images,
+                    test_dir_images,
                     train_labels_path, 
                     val_labels_path,
+                    test_labels_path
     )
     
     # Delete the empty labels directory
-    MtcnnPaths.data_dir.unlink(missing_ok=True)
+    #MtcnnPaths.data_dir.unlink(missing_ok=True)
 
 
 def get_video_length(
@@ -307,12 +336,12 @@ def get_video_lengths() -> list:
     return video_lengths
 
 
-def balanced_train_val_video_split(
+def balanced_train_val_test_split(
     train_ratio: float
 ) -> tuple:
     
     """
-    This function splits the dataset into training and validation sets
+    This function splits the dataset into training, validation and testing sets
     while balancing the cumulative length of the videos in each set.
     
     Parameters
@@ -323,9 +352,8 @@ def balanced_train_val_video_split(
     Returns
     -------
     tuple
-        the list of training and validation videos
+        the list of training, validation and testing videos
     """
-    # Get the list of video files and their lengths
     video_files_with_length = get_video_lengths()
 
     # Set the random seed for reproducibility
@@ -333,51 +361,49 @@ def balanced_train_val_video_split(
     # Shuffle the list to randomize the selection
     random.shuffle(video_files_with_length)
     
-    # Initialize training and validation sets
-    train_videos = []
-    val_videos = []
-
-    # Initialize cumulative lengths
-    train_length = 0
-    val_length = 0
-    
-    # Determine the target number of training videos based on the train_ratio
+    # Calculate split sizes
     total_videos = len(video_files_with_length)
     num_train_videos = int(train_ratio * total_videos)
-    num_val_videos = total_videos - num_train_videos
-
-    # Distribute videos to balance cumulative length
+    num_val_videos = (total_videos - num_train_videos) // 2
+    num_test_videos = total_videos - num_train_videos - num_val_videos
+    
+    train_videos, val_videos, test_videos = [], [], []
+    train_length, val_length, test_length = 0, 0, 0
+    
     for video in video_files_with_length:
-        if len(train_videos) < num_train_videos and (train_length <= val_length or len(val_videos) >= num_val_videos):
-            train_videos.append(video[0])  # Append only the video name
+        if len(train_videos) < num_train_videos:
+            train_videos.append(video[0])
             train_length += video[1]
-        else:
-            val_videos.append(video[0])  # Append only the video name
+        elif len(val_videos) < num_val_videos:
+            val_videos.append(video[0])
             val_length += video[1]
+        else:
+            test_videos.append(video[0])
+            test_length += video[1]
     
-    # Calculate average lengths
-    train_avg_length = train_length / len(train_videos) if train_videos else 0
-    val_avg_length = val_length / len(val_videos) if val_videos else 0
+    logging.info(f"Train set: {len(train_videos)} videos")
+    logging.info(f"Val set: {len(val_videos)} videos")
+    logging.info(f"Test set: {len(test_videos)} videos")
     
-    # Print the results
-    print(f"Training set: {len(train_videos)} videos, Average Length: {train_avg_length:.2f} seconds")
-    print(f"Validation set: {len(val_videos)} videos, Average Length: {val_avg_length:.2f} seconds")
+    return train_videos, val_videos, test_videos
 
-    return train_videos, val_videos
-
-
+    prepare_yolo_dataset(YoloPaths.face_data_input_dir, train_files, val_files, test_files)
 def main():
     os.environ['OMP_NUM_THREADS'] = '10'
     create_missing_annotation_files(DetectionPaths.images_input_dir, YoloPaths.face_labels_input_dir)
     # Split video files into training and validation sets
-    train_videos, val_videos  = balanced_train_val_video_split(TrainingConfig.train_test_split_ratio) 
+    train_videos, val_videos, test_videos = balanced_train_val_test_split(TrainingConfig.train_test_split_ratio)
     # Split corresponding image files into training and validation sets
-    train_files, val_files = images_train_val_split(DetectionPaths.images_input_dir, train_videos, val_videos)
-    
+    train_files, val_files, test_files = images_train_val_test_split(
+        DetectionPaths.images_input_dir, 
+        train_videos, 
+        val_videos,
+        test_videos
+    )
     # Copy label files
-    #prepare_yolo_dataset(YoloPaths.person_data_input_dir, train_files, val_files)
-    prepare_yolo_dataset(YoloPaths.face_data_input_dir, train_files, val_files)
-    #prepare_mtcnn_dataset(Mtcnn.data_input, train_files, val_files)
+    #prepare_yolo_dataset(YoloPaths.person_data_input_dir, train_files, val_files, test_files)
+    prepare_yolo_dataset(YoloPaths.face_data_input_dir, train_files, val_files, test_files)
+    #prepare_mtcnn_dataset(Mtcnn.data_input, train_files, val_files, test_files)
 
 
 if __name__ == "__main__":
