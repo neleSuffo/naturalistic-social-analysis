@@ -5,7 +5,7 @@ class BasePaths:
     models_dir = Path(home_dir/"models")
     data_dir = Path(home_dir/"ProcessedData")
     output_dir = Path(home_dir/"outputs")
-    leuphana_ipe_dir = Path(home_dir/"projects/leuphana_ipe")
+    leuphana_ipe_dir = Path(home_dir/"projects/leuphana-IPE")
     vtc_dir = Path(home_dir/"projects/voice_type_classifier")
     strong_sort_dir = Path(home_dir/"projects/StrongSORT")
     fast_re_id_dir = Path(home_dir/"projects/fast-reid")
@@ -30,8 +30,8 @@ class DetectionPaths:
 class YoloPaths:
     person_trained_weights_path = Path(BasePaths.models_dir/'yolov8_person_detection.pt')
     face_trained_weights_path = Path(BasePaths.models_dir/'yolov8_face_detection.pt')
-    person_data_config_path = Path(BasePaths.leuphana_ipe_dir/"src/projects/social_interactions/models/yolo_person_detection/person_dataset.yaml")
-    face_data_config_path = Path(BasePaths.leuphana_ipe_dir/"src/projects/social_interactions/models/yolo_face_detection/face_dataset.yaml")
+    person_data_config_path = Path(BasePaths.leuphana_ipe_dir/"src/models/yolo_person_detection/person_dataset.yaml")
+    face_data_config_path = Path(BasePaths.leuphana_ipe_dir/"src/models/yolo_face_detection/face_dataset.yaml")
     person_labels_input_dir = Path(BasePaths.data_dir/"yolo_person_labels")
     face_labels_input_dir = Path(BasePaths.data_dir/"yolo_face_labels")
     # the path to the input folder for the yolo model
