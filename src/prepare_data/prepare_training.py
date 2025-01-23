@@ -262,13 +262,13 @@ def prepare_mtcnn_dataset(
     # Move the files to the new directories
     copy_mtcnn_files(train_files, 
                     val_files, 
-                    test_files
+                    test_files,
                     train_dir_images, 
                     val_dir_images,
                     test_dir_images,
                     train_labels_path, 
                     val_labels_path,
-                    test_labels_path
+                    test_labels_path,
     )
     
     # Delete the empty labels directory
@@ -398,7 +398,7 @@ def main():
         DetectionPaths.images_input_dir, 
         train_videos, 
         val_videos,
-        test_videos
+        test_videos,
     )
     # Copy label files
     #prepare_yolo_dataset(YoloPaths.person_data_input_dir, train_files, val_files, test_files)
