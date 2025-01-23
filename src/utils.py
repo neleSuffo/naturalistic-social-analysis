@@ -58,13 +58,14 @@ def fetch_all_annotations(
     conn = sqlite3.connect(DetectionPaths.annotations_db_path)
     cursor = conn.cursor()
 
-    if category_ids:
-        # Generate a string of ? placeholders that matches the length of category_ids
-        placeholders = ", ".join("?" for _ in category_ids)
+    # Base subquery to find images with any noise annotations
+    noise_images_subquery = """
+        SELECT DISTINCT a2.video_id, a2.image_id 
+        FROM annotations a2 
+        WHERE a2.category_id = -1
+    """
 
     if category_ids:
-        # Generate a string of ? placeholders that matches the length of category_ids
-        # Only fetch annotations that are not labeled noise (-1) and are not outside the frame (outside = 0)
         placeholders = ", ".join("?" for _ in category_ids)
         additional_select = ", a.gaze_directed_at_child" if category_ids == [10] else ""
         query = f"""
@@ -80,14 +81,18 @@ def fetch_all_annotations(
         JOIN images i ON a.image_id = i.frame_id AND a.video_id = i.video_id
         JOIN videos v ON a.video_id = v.id
         WHERE a.category_id IN ({placeholders}) 
-            AND a.category_id != -1 
-            AND a.outside = 0
-            AND a.video_id != '255237_2022_05_08_04'
+            AND a.outside = 0 
+            AND v.file_name NOT LIKE '%id255237_2022_05_08_04%'
+            AND NOT EXISTS (
+                {noise_images_subquery}
+                AND a2.video_id = a.video_id 
+                AND a2.image_id = a.image_id
+            )
         ORDER BY a.video_id, a.image_id
         """
         cursor.execute(query, category_ids)
     else:
-        query = """
+        query = f"""
         SELECT DISTINCT 
             a.image_id, 
             a.video_id, 
@@ -98,14 +103,17 @@ def fetch_all_annotations(
         FROM annotations a
         JOIN images i ON a.image_id = i.frame_id AND a.video_id = i.video_id
         JOIN videos v ON a.video_id = v.id
-        WHERE a.category_id != -1 
-            AND a.outside = 0
-            AND a.video_id != '255237_2022_05_08_04'
+        WHERE a.outside = 0
+            AND v.file_name NOT LIKE '%id255237_2022_05_08_04%'
+            AND NOT EXISTS (
+                {noise_images_subquery}
+                AND a2.video_id = a.video_id 
+                AND a2.image_id = a.image_id
+            )
         ORDER BY a.video_id, a.image_id
         """
-        # video id255237_2022_05_08_04 is the video cut into a smaller chunk because of nudity, but children take camera off as well, so annotations are excluded
         cursor.execute(query)
-
+    # video id255237_2022_05_08_04 is the video cut into a smaller chunk because of nudity, but children take camera off as well, so annotations are excluded
     annotations = cursor.fetchall()
     conn.close()
     return annotations
