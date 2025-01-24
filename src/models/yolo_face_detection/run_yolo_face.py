@@ -1,21 +1,17 @@
 import os
 import cv2
 import logging
+import argparse
 import numpy as np
 from ultralytics import YOLO
 from supervision import Detections
+from pathlib import Path
+from typing import Tuple
 from PIL import Image
 from huggingface_hub import hf_hub_download
 from constants import YoloPaths
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
-)
-
-def load_model(model_path: Path: YoloPaths.face_trained_weights_path) -> YOLO:
+def load_model(model_path: Path = YoloPaths.face_trained_weights_path) -> YOLO:
     """Load YOLO model from path"""
     try:
         model = YOLO(str(model_path))
@@ -55,10 +51,14 @@ def draw_detections(image: np.ndarray, results: Detections) -> np.ndarray:
 def main():
     parser = argparse.ArgumentParser(description='YOLO Face Detection')
     parser.add_argument('--image', type=str, required=True, help='Path to input image')
-    args = parser.parse_args()
-    
-    setup_logging()
-    
+    args = parser.parse_args()  
+      
+        # Configure logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
     # Initialize paths
     output_dir = YoloPaths.face_output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -81,4 +81,4 @@ def main():
     return 0
 
 if __name__ == "__main__":
-    main()
+    exit(main())
