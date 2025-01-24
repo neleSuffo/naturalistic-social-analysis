@@ -17,10 +17,12 @@ model.train(
     imgsz=640,  # Image size
     batch=16,   # Batch size
     project=str(YoloPaths.face_output_dir),  # Output directory
-    name="yolo_face_finetune_with_augment",  # Experiment name
+    name="yolo_face_finetune_with_augment_and_earlystop",  # Experiment name
     augment=True,  # Enable YOLO's built-in augmentations
     lr0=0.01,  # Initial learning rate
     lrf=0.001,  # Final learning rate after scheduling
     cos_lr=True,  # Use cosine annealing for learning rate scheduling,
+    patience=5,  # Stop training if no improvement for 5 consecutive epochs
     device=0,  # GPU (use "cpu" for CPU training)
+    plots=True,  # Plot training results
 )
