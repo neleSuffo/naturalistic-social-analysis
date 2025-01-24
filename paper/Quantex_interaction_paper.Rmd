@@ -1,0 +1,408 @@
+---
+title             : "Exploring Aspects of Social Interaction using Machine Learning"
+shorttitle        : "Exploring Aspects of Social Interaction using Machine Learning"
+author:
+  - name: "Nele-Pauline Suffo"
+    affiliation: '1'
+    corresponding: true
+    address: "Universitätsallee 1, 21335 Lüneburg"
+    email: "nele.suffo@leuphana.de"
+    role:
+      - "Conceptualization"
+      - "Writing - Original Draft Preparation"
+      - "Writing - Review & Editing"
+  - name: "Pierre-Etienne Martin"
+    affiliation: '2'
+    corresponding: false
+    address: "Deutscher Pl. 6, 04103 Leipzig"
+    email: "pierre_etienne_martin@eva.mpg.de"
+  - name: "Daniel Haun"
+    affiliation: '2'
+    corresponding: false
+    address: "Deutscher Pl. 6, 04103 Leipzig"
+    email: "daniel.haun@eva.mpg.de"
+  - name: "Manuel Bohn"
+    affiliation: '1, 2'
+    corresponding: false
+    address: "Universitätsallee 1, 21335 Lüneburg"
+    email: "manuel.bohn@leuphana.de"
+    role:
+      - "Writing - Review & Editing"
+      - "Supervision"
+
+affiliation:
+  - id: '1'
+    institution: "Institute of Psychology in Education, Leuphana University Lüneburg"
+  - id: '2'
+    institution: "Max Planck Institute for Evolutionary Anthropology"
+    
+abstract: |
+  tbd
+output:
+  papaja::apa6_pdf:
+    keep_tex: true
+bibliography: "bibliography.bib"
+
+
+floatsintext      : yes
+figurelist        : no
+tablelist         : no
+footnotelist      : no
+linenumbers       : no
+mask              : no
+draft             : no
+
+documentclass     : "apa6"
+classoption       : "man"
+---
+
+
+```{r setup, include = FALSE}
+library(papaja)
+library(tidyverse)
+library(ggplot2)
+library(brms)
+library(ggthemes)
+library(ggpubr)
+library(BayesFactor)
+library(broom)
+library(coda)
+library(reshape2)
+library(ggridges)
+library(readxl)
+library(dplyr)
+library(lubridate)
+library(zoo)
+library(gridExtra)
+library(grid)
+library(kableExtra)
+library(cowplot)
+library(patchwork)
+library(magick)
+library(ggplotify)
+
+
+estimate_mode <- function(s) {
+  d <- density(s)
+  return(d$x[which.max(d$y)])
+}
+
+hdi_upper<- function(s){
+  m <- HPDinterval(mcmc(s))
+  return(m["var1","upper"])
+}
+
+hdi_lower<- function(s){
+  m <- HPDinterval(mcmc(s))
+  return(m["var1","lower"])
+}
+```
+
+```{r analysis-preferences}
+# Seed for random number generation
+set.seed(42)
+knitr::opts_chunk$set(cache.extra = knitr::rand_seed)
+knitr::opts_chunk$set(echo = F, warning = F, message = F)
+```
+
+# Introduction
+
+
+# Methodology
+The Quantex dataset includes
+```{r quantex-statistics, echo=FALSE, message=FALSE, warning=FALSE}
+quantex_data <- read_csv2("data/Quantex_data_sheet.csv")
+quantex_subject_infos <- read_csv2("data/Quantex_subjects.csv")
+quantex_subject_infos <- quantex_subject_infos %>%
+  distinct(ID, .keep_all = TRUE)
+
+quantex_unique_data <- quantex_data %>%
+  distinct() %>%  # Removes duplicate rows
+  filter(!is.na(Minutes_per_ID), Minutes_per_ID != 0, 
+         !is.na(ID), Include == "yes") %>%
+  distinct(ID, Minutes_per_ID, .keep_all = TRUE)
+quantex_unique_data <- quantex_unique_data %>%
+  mutate(ID = as.double(ID))
+
+quantex_cleaned_data <- quantex_data %>%
+  filter(!is.na(Minutes_per_ID), Minutes_per_ID != 0, 
+         !is.na(ID), Include == "yes")
+quantex_sum_videos <- nrow(quantex_cleaned_data)
+
+quantex_data_gender_count <- quantex_unique_data %>%
+  left_join(quantex_subject_infos, by = "ID") %>%
+  distinct(ID, .keep_all = TRUE)
+quantex_male_count <- quantex_data_gender_count %>%
+  filter(gender == "Male") %>%
+  nrow()
+quantex_female_count <- quantex_data_gender_count %>%
+  filter(gender == "Female") %>%
+  nrow()
+
+quantex_data_age_count <- quantex_cleaned_data %>%
+  left_join(quantex_subject_infos, by = "ID")%>%
+  select(ID, birthday, DATE)
+
+quantex_data_age_count <- quantex_data_age_count %>%
+  mutate(
+    birthday = dmy(birthday),  # Convert birthday to Date type
+    Date = dmy(DATE),          # Convert Date to Date type
+    Age = as.numeric(difftime(Date, birthday, units = "weeks")) / 52.25,  # Calculate age in years
+    Age_group = case_when(
+      Age >= 2 & Age < 4 ~ "3+",
+      Age >= 4 & Age < 5 ~ "4+",
+      Age >= 5 ~ "5+",
+      TRUE ~ NA_character_  # For cases where age is missing or not within the desired ranges
+    )
+  )
+
+quantex_mean_age <- mean(quantex_data_age_count$Age, na.rm = TRUE)
+quantex_sd_age <- sd(quantex_data_age_count$Age, na.rm = TRUE)
+
+quantex_age_group_counts <- quantex_data_age_count %>%
+  count(Age_group, name = "count")
+quantex_count_3_plus <- quantex_age_group_counts$count[quantex_age_group_counts$Age_group == "3+"]
+quantex_count_4_plus <- quantex_age_group_counts$count[quantex_age_group_counts$Age_group == "4+"]
+quantex_count_5_plus <- quantex_age_group_counts$count[quantex_age_group_counts$Age_group == "5+"]
+
+quantex_filtered_data <- quantex_data %>%
+  filter(!is.na(Date), Include == "yes") %>%
+  mutate(Date = as.Date(DATE, format = "%d.%m.%Y")) 
+
+quantex_min_minutes <- min(quantex_unique_data$Minutes_per_ID[quantex_unique_data$Minutes_per_ID > 0], na.rm = TRUE)
+quantex_max_minutes <- max(quantex_unique_data$Minutes_per_ID, na.rm = TRUE)
+quantex_sum_minutes <- sum(as.numeric(quantex_unique_data$Minutes_per_ID), na.rm = TRUE)
+quantex_mean_minutes <- mean(quantex_unique_data$Minutes_per_ID, na.rm = TRUE)
+quantex_sd_minutes <- sd(quantex_unique_data$Minutes_per_ID, na.rm = TRUE)
+
+quantex_sum_hours <- quantex_sum_minutes/60
+
+# Convert the time strings into seconds
+quantex_unique_data$Seconds_per_ID <- as.numeric(hms::as_hms(quantex_unique_data$Minutes_per_ID))
+total_seconds <- sum(quantex_unique_data$Seconds_per_ID, na.rm = TRUE)
+total_hours <- total_seconds / 3600
+
+quantex_nr_children <- nrow(quantex_unique_data)
+
+quantex_oldest_date <- min(quantex_filtered_data$Date)
+quantex_youngest_date <- max(quantex_filtered_data$Date)
+
+quantex_oldest_year <- as.numeric(format(quantex_oldest_date, "%Y"))
+quantex_oldest_month <- as.numeric(format(quantex_oldest_date, "%m"))
+quantex_youngest_year <- as.numeric(format(quantex_youngest_date, "%Y"))
+quantex_youngest_month <- as.numeric(format(quantex_youngest_date, "%m"))
+
+# Calculate the interval between the two dates
+quantex_time_span_months <- (quantex_youngest_year - quantex_oldest_year) * 12 + (quantex_youngest_month - quantex_oldest_month)+1
+```
+
+## Dataset Description
+### Statistics
+The Quantex dataset contains a total of `r quantex_sum_hours` hours of video footage from `r quantex_sum_videos`  video recordings, collected by `r quantex_nr_children` children aged 3 to 5 years (M=`r quantex_mean_age`, SD=`r quantex_sd_age`). The children were grouped into three age categories, with `r quantex_count_3_plus` videos being recorded of children age 3, `r quantex_count_4_plus` videos for children age 4, and `r quantex_count_5_plus` videos at age 5. Individual recording durations vary widely, ranging from `r quantex_min_minutes` to `r quantex_max_minutes` minutes per child (M=`r quantex_mean_minutes`, SD=`r quantex_sd_minutes`). Figure  \@ref(fig:quantex-minutes-per-child) illustrates the detailed distribution of recording lengths, reflecting the diversity in individual contributions to the dataset.
+
+```{r quantex-minutes-per-child, echo=FALSE, message=FALSE, warning=FALSE, fig.align='center', fig.cap="Video recording duration (in minutes) per Child in the Quantex Dataset.", fig.height=2.5, fig.width=3.5}
+quantex_unique_data$ID <- as.factor(quantex_unique_data$ID)
+
+ggplot(quantex_unique_data, aes(x = Minutes_per_ID)) +
+  geom_point(aes(y = 0), shape = "I", size = 5) + 
+  geom_density(fill = "gray", alpha = 0.5, color = "black") + 
+  theme_minimal() +
+  theme(legend.position = "none") +
+  labs(
+    x = "Minutes per ID",
+    y = "Density"
+  )
+quantex_1_plot <- ggplot(quantex_unique_data, aes(x = Minutes_per_ID)) +
+  geom_point(aes(y = 0), shape = "I", size = 5) + 
+  geom_density(fill = "gray", alpha = 0.5, color = "black") + 
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.title = element_text(size = 25),      # Increase label size
+    axis.text = element_text(size = 25),       # Increase tick label size
+    axis.ticks.length = unit(0.5, "cm")        # Increase tick size
+  ) +
+  labs(
+    x = "Minutes per ID",
+    y = "Density"
+  )
+
+# Specify the file path and name
+# <- "/Users/nelesuffo/Promotion/projects/leuphana-IPE/paper/images" 
+#file_name_1 <- "quantex_minutes_per_id_plot.png"
+#quantex_file_path_1 <- file.path(quantex_1_output_folder, file_name_1)
+
+# Save the plot
+#ggsave(filename = quantex_file_path_1, plot = quantex_1_plot, width = 8, height = 6, dpi = 300)
+```
+
+### Annotation Strategy
+The dataset annotations cover four key elements: persons, faces, objects the child interacts with, and gaze direction. Gaze information identifies whether a detected person’s gaze is directed toward the child or not. For every detected person (or reflection of a person, such as in a mirror) and face, additional attributes like age and gender are collected. Objects are categorized into six distinct groups: book, screen, animal, food, toy, and kitchenware, with an additional category for other objects. The dataset focus is on detecting and labeling instances of (social) interaction and engagement through these key categories. The annotation strategy is displayed in Figure \@ref(fig:camera-cvat-activity-classes).
+
+```{r camera-cvat-activity-classes, echo=FALSE, dpi=600, fig.align='center', fig.cap="\\textbf{A} – Vest with the embedded camera worn by the children, \\textbf{B} – CVAT platform utilized for video annotation, \\textbf{C} – Annotation strategy in the Quantex dataset."}
+img1 <- ggdraw() + draw_image("images/camera_worn_close.png", scale = 0.8)
+img2 <- ggdraw() + draw_image("images/cvat.png", scale = 0.8)
+img3 <- ggdraw() + draw_image("images/quantex_annotation_strategy_narrow.png", scale = 0.9)
+
+# Combine img1 and img2 into the first row with equal heights
+top_row <- (img1 + img2) + 
+  plot_layout(widths = c(0.4, 1))
+
+final_layout <- (top_row / img3) +
+  plot_layout(heights = c(1, 1))  # Adjust row heights if needed
+
+# Add labels (A), (B), (C) to the images
+final_labeled_layout <- final_layout +
+  plot_annotation(tag_levels = 'A')  # Adds "A", "B", "C" automatically
+
+# Display the final layout
+final_labeled_layout
+```
+
+
+## Data Collection
+This study collected egocentric video recordings from `r quantex_nr_children` children, aged 3 to 5 years, over a span of `r quantex_time_span_months` months. Participating families lived in a mid-sized city in Germany. To capture the children’s everyday experiences, a wearable vest equipped with a camera was used, as shown in figure \@ref(fig:camera-cvat-activity-classes). The camera, a _PatrolEyes WiFi HD Infrared Police Body Camera_, provided high-definition video (1920x1080p at 30 fps) with a 140-degree wide-angle lens and also recorded audio. Children were free to move around and engage in their usual activities at home without any interference or instructions given to their parents.
+
+## Data Preprocessing
+For the video data, the annotation strategy required persons, faces, and objects to be labeled even when only partially visible, as long as key features such as facial landmarks (e.g., nose, eye, or mouth) or parts of a person or object were clearly visible. Frames that were too blurry due to movement were marked as “noise” and excluded from further analysis. Additionally, frames where the child was not wearing the camera, as well as any scenes containing nudity, were also labeled as noise and removed from the dataset. To prepare the video data for analysis, one frame per second was annotated, corresponding to every 30th frame in the video. Similarly, every 30th raw frame was extracted from the annotated video files. No preprocessing was applied to the audio data, which was used in its raw form for analysis.
+
+## Automated Analysis Pipeline
+
+### Person Detection
+
+### Face Detection
+
+
+### Gaze Classification
+
+### Voice Detection and Classification
+
+## Feature Extraction
+
+
+
+
+# Results
+
+
+
+## Presence of Aspects of Social Interaction
+
+### Presence of a Person
+
+
+### Presence of a Face
+
+### Presence of Gaze Directed at the Child
+
+### Presence of Language
+## Co-occurrence of Aspects of Social Interaction 
+
+
+
+
+# General Discussion
+We present the ChildLens dataset, a unique egocentric video-audio dataset that documents children’s everyday experiences, spanning a wide age range of 3 to 5 years. This dataset is particularly distinctive due to its diversity in terms of the number of children it includes and the variety of activity labels it covers. By focusing on both visual and auditory data, the ChildLens dataset provides comprehensive annotations for a broad spectrum of key activities, offering rich insights into children’s social and behavioral interactions in naturalistic settings. This makes it a valuable resource for studying developmental processes in children, with a focus on their cognitive, emotional, and social growth.
+
+In comparison to other freely available datasets, the ChildLens dataset stands out due to its broad age span and diverse set of activity labels. Most other datasets focus either on toddlers, are limited to dyadic interactions or were recorded in lab settings, with all of them lacking a comprehensive range of activity labels. Furthermore, most of these datasets either capture only audio or video, missing the multimodal aspect crucial for understanding children’s everyday experiences. In contrast, ChildLens includes naturalistic recordings from children’s home environments, over an extended period, and features a variety of activity types. The dataset also captures whether children are engaged in activities alone or with others and provides detailed demographic information about all individuals involved. This comprehensive approach enables a deeper and more holistic understanding of children’s interactions and developmental trajectories.
+
+The usefulness of the ChildLens dataset is demonstrated by its successful application to well-established models. For example, the pretrained Voice-Type Classifier for audio transcription achieves performance comparable to previous datasets, while the Boundary-Matching Network (BMN) produces robust results for activity localization, consistent with its performance on other datasets. These results indicate that the ChildLens dataset’s annotations align well with model predictions, highlighting its quality and potential for multimodal research. Moreover, the successful application of these models demonstrates how the dataset can support and automate the analysis of children’s everyday activities.
+
+Expanding the potential for multi-method approaches, activity localization could be further enhanced by incorporating object identification, allowing for better tracking of the objects children interact with during daily routines, as demonstrated in adult-focused studies [@kazakosLittleHelpMy2021]. Research by Bambach et al. [@bambachLendingHandDetecting2015] also emphasizes the importance of hand detection in egocentric video for activity recognition. Their work on using Convolutional Neural Networks for hand segmentation highlights how such techniques can differentiate activities, offering a deeper understanding of children’s interactions and behaviors.
+
+The integration of visual and auditory data in the ChildLens dataset enables a more detailed and comprehensive understanding of children’s daily experiences. Complex activities such as pretend play and reading a book, which require both audio and video for accurate detection, exemplify the strength of this multimodal approach. While previous studies, such as those analyzing disfluencies in children’s speech during computer game play [@yildirimAutomaticDetectionDisfluency2009], have demonstrated that combining visual and auditory information can improve performance, few studies have explored this in the context of children’s naturalistic activities. With ChildLens, the combination of naturalistic data and multimodal analysis creates new opportunities for in-depth insights into children’s cognitive, emotional, and social development, particularly for activities best captured through both modalities.
+
+Despite its strengths, one limitation of the ChildLens dataset is the class imbalance, especially in underrepresented activity classes, which could affect model training and evaluation. More frequent activities, such as “child talking” (7447 instances, 649 minutes) and “playing with object” (317 instances, 1371 minutes), dominate the dataset, while less common activities like “dancing” (2 instances, 0.57 minutes) and “making music” (2 instances, 2.13 minutes) are scarcely represented. Similarly, activities like “pretend play” (59 instances, 158.84 minutes) and “reading a book” (81 instances, 328.70 minutes) appear less frequently. This imbalance may lead to skewed model performance, making it harder to accurately classify rare activities. Possible solutions to this challenge could involve merging rare activity classes into broader categories or excluding them from model training, though these approaches may reduce the dataset’s diversity. Other methods, such as resampling or augmentation, could help balance the dataset and improve model performance [@spelmenReviewHandlingImbalanced2018; @alaniClassifyingImbalancedMultimodal2020].
+
+In addition to class imbalance, another potential limitation is the sampling bias. Since the recordings are largely influenced by parental decisions about when and how often activities are captured, certain activities or settings may be overrepresented or underrepresented based on these preferences. Furthermore, the dataset primarily focuses on families from a mid-sized German city, limiting its geographic and cultural diversity. Expanding the dataset to include a broader range of families from different regions and cultures would enhance its generalizability and applicability to various research contexts.
+
+The study of children’s everyday experiences is crucial for understanding their cognitive, emotional, and social development. These daily interactions provide important insights into how children learn, grow, and engage with their environment. The ChildLens dataset makes a valuable contribution to this field by offering a rich multimodal resource that captures the complexities of children’s lives in naturalistic settings. With its comprehensive annotations and potential to automate the analysis of children’s activities, the dataset enables researchers to gain deeper and more detailed insights into children’s development. By making such analyses more efficient and accessible, the ChildLens dataset creates new opportunities for understanding the complexities of early childhood development and provides a foundation for future research in this area.
+
+\newpage
+# References
+<!--e used `r cite_r("bibliography.bib")` for all our analyses.-->    
+```{r create_r-references}
+r_refs(file = "bibliography.bib")
+```
+
+\begingroup
+\setlength{\parindent}{-0.5in}
+\setlength{\leftskip}{0.5in}
+
+<div id = "refs"></div>
+\endgroup
+
+\newpage
+# Appendix
+
+## List of ChildLens Activity Classes
+
+The dataset contains the following list of activities.
+
+1. **playing with object**: The child is playing with an object, such as a toy or a ball.
+2. **playing without object**: The child is playing without an object, such as playing hide and seek or catch.
+3. **pretend play**: The child is engaged in imaginative play, such as pretending to be a doctor or a firefighter.
+4. **watching something**: The child is watching a movie, TV show, or video on either a screen or a device.
+5. **reading book**: The child is reading a book or looking at pictures in a book.
+6. **child talking**: The child is talking to themselves or to someone else.
+7. **other person talking**: Another person is talking to the child.
+8. **overheard speech**: Conversations that the child can hear but is not directly involved in.
+9. **drawing**: The child is drawing or coloring a picture.
+10. **crafting things**: The child is engaged in a craft activity, such as making a bracelet or decoration.
+11. **singing / humming**: The child is singing or humming a song or a melody.
+12. **making music**: The child is playing a musical instrument or making music in another way.
+13. **dancing**: The child is dancing to music or moving to a rhythm.
+14. **listening to music / audiobook**: The child is listening to music or an audiobook.
+
+## List of ChildLens Location Classes
+
+1. livingroom
+2. playroom
+3. bathroom
+4. hallawy
+5. other
+
+## Activity Class Statistics
+```{r activity-classes-statistics, echo=FALSE, dpi=600, fig.align='center'}
+# Define the table data as a string with "|" delimiters
+activity_data <- "Category | Activity Class | Instance Count | Total Duration (min)
+       Audio   | Child talking        | 7447             | 649.10
+               | Other person talking | 6113             | 455.29
+               | Overheard Speech     | 1898             | 299.44
+               | Singing/Humming      | 277             | 82.00
+               | Listening to music/audiobook | 68     | 222.14
+       Video   | Watching something   | 2             | 5.09
+               | Drawing              | 62             | 374.91
+               | Crafting things      | 26             | 109.14
+               | Dancing              | 2             | 0.57
+      Multimodal | Playing with object  | 317             | 1371.06
+                 | Playing without object | 25           | 28.87
+                 | Pretend play         | 59             | 158.84
+                 | Reading a book         | 81             | 328.70
+                 | Making music         | 3             | 2.13"
+# Read the table into a data frame
+activity_classes_table <- read.delim(
+  textConnection(activity_data), 
+  header = FALSE, 
+  sep = "|", 
+  strip.white = TRUE, 
+  stringsAsFactors = FALSE
+)
+
+# Assign column names from the first row
+names(activity_classes_table) <- unname(as.list(activity_classes_table[1, ]))
+
+# Remove the first row (header row) from the data frame
+activity_classes_table <- activity_classes_table[-1, ]
+
+# Reset row names to NULL
+row.names(activity_classes_table) <- NULL
+
+# Use apa_table to display the table with a caption
+apa_table(
+  activity_classes_table,
+  caption = "Number of video instances and the total duration (in minutes).",
+  escape = TRUE
+)
+```
+
