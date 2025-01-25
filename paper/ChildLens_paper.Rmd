@@ -119,7 +119,7 @@ To address this gap, we introduce the publicly available ChildLens dataset, whic
 # Dataset Overview
 
 #### Activity Classes
-“The ChildLens dataset includes 14 activity classes and 5 location classes. The activity classes are categorized based on the child’s interactions within the video and can be divided into _person-only_ activities (e.g. "child talking", "other person talking"), and _person-object_ activities (e.g. "drawing", "playing with object"). A brief description of each class can be found in the appendix. These activities are further categorized into _audio-based_, _visual-based_, and _multimodal_ activities, as presented in Figure \@ref(fig:camera-superannotate-activity-classes). Below is an overview of the different activity types:
+The ChildLens dataset includes 14 activity classes and 5 location classes. The activity classes are categorized based on the child’s interactions within the video and can be divided into _person-only_ activities (e.g. "child talking", "other person talking"), and _person-object_ activities (e.g. "drawing", "playing with object"). A brief description of each class can be found in the appendix. These activities are further categorized into _audio-based_, _visual-based_, and _multimodal_ activities, as presented in Figure \@ref(fig:camera-superannotate-activity-classes). Below is an overview of the different activity types:
 
 - **Audio-based activities**: _child talking_, _other person talking_, _overheard speech_, _singing / humming_, _listening to music / audiobook_
 - **Visual-based activities**: _watching something_, _drawing_, _crafting things_, _dancing_
