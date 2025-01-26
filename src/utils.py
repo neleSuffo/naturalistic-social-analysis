@@ -58,13 +58,6 @@ def fetch_all_annotations(
     conn = sqlite3.connect(DetectionPaths.annotations_db_path)
     cursor = conn.cursor()
 
-    # Base subquery to find images with any noise annotations
-    noise_images_subquery = """
-        SELECT DISTINCT a2.video_id, a2.image_id 
-        FROM annotations a2 
-        WHERE a2.category_id = -1
-    """
-
     if category_ids:
         placeholders = ", ".join("?" for _ in category_ids)
         additional_select = ", a.gaze_directed_at_child" if category_ids == [10] else ""
@@ -83,11 +76,6 @@ def fetch_all_annotations(
         WHERE a.category_id IN ({placeholders}) 
             AND a.outside = 0 
             AND v.file_name NOT LIKE '%id255237_2022_05_08_04%'
-            AND NOT EXISTS (
-                {noise_images_subquery}
-                AND a2.video_id = a.video_id 
-                AND a2.image_id = a.image_id
-            )
         ORDER BY a.video_id, a.image_id
         """
         cursor.execute(query, category_ids)
@@ -105,11 +93,6 @@ def fetch_all_annotations(
         JOIN videos v ON a.video_id = v.id
         WHERE a.outside = 0
             AND v.file_name NOT LIKE '%id255237_2022_05_08_04%'
-            AND NOT EXISTS (
-                {noise_images_subquery}
-                AND a2.video_id = a.video_id 
-                AND a2.image_id = a.image_id
-            )
         ORDER BY a.video_id, a.image_id
         """
         cursor.execute(query)
