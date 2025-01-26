@@ -88,7 +88,6 @@ def load_ground_truth(label_path: str, img_width: int, img_height: int) -> np.nd
 def main():
     parser = argparse.ArgumentParser(description='YOLO Face Detection')
     parser.add_argument('--image', type=str, required=True, help='Path to input image')
-    parser.add_argument('--label', type=str, required=True, help='Path to label file')
     args = parser.parse_args()  
     
     # Configure logging
@@ -110,7 +109,8 @@ def main():
         img_height, img_width = image.shape[:2]
         
         # Load ground truth labels
-        ground_truth_boxes = load_ground_truth(args.label, img_width, img_height)
+        label_path = args.image.replace("images", "labels").replace(".jpg", ".txt")
+        ground_truth_boxes = load_ground_truth(label_path, img_width, img_height)
         
         # Loop through detections and calculate IoU
         for i, detected_bbox in enumerate(results.xyxy):
