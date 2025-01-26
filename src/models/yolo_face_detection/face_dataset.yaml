@@ -10,4 +10,4 @@ names:
  0: "face"
 
  # Class weights
-class_weights: [10.0]  # Increase the weight for "face" class
+class_weights: [15.0]  # Increase the weight for "face" class
