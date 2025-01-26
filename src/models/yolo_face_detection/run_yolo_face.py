@@ -20,7 +20,7 @@ def load_model(model_path: Path = YoloPaths.face_trained_weights_path) -> YOLO:
     except Exception as e:
         logging.error(f"Failed to load model: {e}")
         raise
-    
+
 def process_image(model: YOLO, image_path: Path) -> Tuple[np.ndarray, Detections]:
     """Process image with YOLO model"""
     try:
@@ -47,13 +47,51 @@ def draw_detections(image: np.ndarray, results: Detections) -> np.ndarray:
                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
     return annotated_image
 
+def calculate_iou(boxA: np.ndarray, boxB: np.ndarray) -> float:
+    """Calculate Intersection over Union (IoU) between two bounding boxes"""
+    xA = max(boxA[0], boxB[0])
+    yA = max(boxA[1], boxB[1])
+    xB = min(boxA[2], boxB[2])
+    yB = min(boxA[3], boxB[3])
+
+    # Compute the area of the intersection rectangle
+    interArea = max(0, xB - xA) * max(0, yB - yA)
+
+    # Compute the area of both rectangles
+    boxAArea = (boxA[2] - boxA[0]) * (boxA[3] - boxA[1])
+    boxBArea = (boxB[2] - boxB[0]) * (boxB[3] - boxB[1])
+
+    # Compute the area of the union
+    unionArea = boxAArea + boxBArea - interArea
+
+    # Compute the IoU
+    return interArea / unionArea if unionArea > 0 else 0
+
+def load_ground_truth(label_path: str, img_width: int, img_height: int) -> np.ndarray:
+    """Load ground truth bounding boxes from label file"""
+    ground_truth_boxes = []
+    with open(label_path, 'r') as f:
+        for line in f.readlines():
+            # Parse the label file: class x_center y_center width height
+            class_id, x_center, y_center, width, height = map(float, line.strip().split())
+            
+            # Convert normalized coordinates to pixel values
+            x1 = int((x_center - width / 2) * img_width)
+            y1 = int((y_center - height / 2) * img_height)
+            x2 = int((x_center + width / 2) * img_width)
+            y2 = int((y_center + height / 2) * img_height)
+            
+            ground_truth_boxes.append(np.array([x1, y1, x2, y2]))
+    
+    return np.array(ground_truth_boxes)
 
 def main():
     parser = argparse.ArgumentParser(description='YOLO Face Detection')
     parser.add_argument('--image', type=str, required=True, help='Path to input image')
+    parser.add_argument('--label', type=str, required=True, help='Path to label file')
     args = parser.parse_args()  
-      
-        # Configure logging
+    
+    # Configure logging
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(levelname)s - %(message)s',
@@ -67,6 +105,21 @@ def main():
         # Load model and process image
         model = load_model(YoloPaths.face_trained_weights_path)
         image, results = process_image(model, Path(args.image))
+        
+        # Get image dimensions for ground truth conversion
+        img_height, img_width = image.shape[:2]
+        
+        # Load ground truth labels
+        ground_truth_boxes = load_ground_truth(args.label, img_width, img_height)
+        
+        # Loop through detections and calculate IoU
+        for i, detected_bbox in enumerate(results.xyxy):
+            iou_scores = []
+            for gt_bbox in ground_truth_boxes:
+                iou = calculate_iou(detected_bbox, gt_bbox)
+                iou_scores.append(iou)
+            max_iou = max(iou_scores)
+            logging.info(f"Detected face {i+1} - Maximum IoU: {max_iou:.4f}")
         
         # Draw detections and save
         annotated_image = draw_detections(image, results)
