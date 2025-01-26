@@ -15,6 +15,10 @@ torch.set_num_threads(4)  # PyTorch threads
 
 # Load the YOLO model
 model = YOLO("/home/nele_pauline_suffo/models/yolov11_face_detection_AdamCodd.pt")  # Use pretrained YOLOv8 model
+# Save a copy of this script
+
+script_copy = output_dir / "train_yolo_face.py"
+shutil.copy(__file__, script_copy)
 
 # Define experiment name
 experiment_name = timestamp + "_yolo_face_finetune_with_augment_and_earlystop"
@@ -38,8 +42,7 @@ model.train(
 )
 
 # Save script copy and setup logging after YOLO creates the directory
-script_copy = output_dir / "train_yolo_face.py"
+
 log_file = output_dir / "output.log"
-shutil.copy(__file__, script_copy)
 sys.stdout = open(log_file, 'w', buffering=1)
 sys.stderr = sys.stdout
