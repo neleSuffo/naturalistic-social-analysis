@@ -84,7 +84,7 @@ def main():
     output_dir.mkdir(parents=True, exist_ok=True)
     correct_dir = output_dir / "correct"
     misclassified_dir = output_dir / "misclassified"
-    # detele correct_dir and misclassified_dir if they already exist
+    # delete correct_dir and misclassified_dir if they already exist
     shutil.rmtree(correct_dir, ignore_errors=True)
     shutil.rmtree(misclassified_dir, ignore_errors=True)
     correct_dir.mkdir(parents=True, exist_ok=True)
@@ -147,12 +147,14 @@ def main():
                             matched_predictions.add(pred_idx)
                             matched_ground_truths.add(gt_idx)
 
+                            # Append IoU value to correct.txt or misclassified.txt
+                            correct_file.write(f"{image_path.name} (True Positive) - IoU: {iou:.4f}\n")
+
                 # True Positives
                 true_positive_count += len(matched_ground_truths)
                 for idx in matched_predictions:
                     annotated_image = draw_detections(image, results)
                     cv2.imwrite(str(correct_dir / image_path.name), annotated_image)
-                    correct_file.write(f"{image_path.name} (True Positive)\n")
 
                 # False Negatives: Ground truths not matched to any predictions
                 unmatched_ground_truths = set(range(len(ground_truths))) - matched_ground_truths
