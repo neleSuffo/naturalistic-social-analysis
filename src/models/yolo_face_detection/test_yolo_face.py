@@ -87,6 +87,7 @@ def handle_false_positives(predicted_boxes, matched_predictions, misclassified_f
             for gt_box in predicted_boxes:
                 iou = calculate_iou(predicted_box, gt_box)
                 max_iou = max(max_iou, iou)
+            cv2.imwrite(str(false_positives_dir / image_path.name), image)
             misclassified_file.write(f"{image_path.name} (False Positive) - IoU: {max_iou:.4f}\n")
 
 def main():
@@ -102,12 +103,19 @@ def main():
     output_dir = Path("/home/nele_pauline_suffo/outputs/yolo_face_detections")
     output_dir.mkdir(parents=True, exist_ok=True)
     correct_dir = output_dir / "correct"
-    misclassified_dir = output_dir / "misclassified"
+    true_positives_dir = output_dir / "true_positives"
+    true_negatives_dir = output_dir / "true_negatives"
+    false_positives_dir = output_dir / "false_positives"
+    false_negatives_dir = output_dir / "false_negatives"
     # delete correct_dir and misclassified_dir if they already exist
-    shutil.rmtree(correct_dir, ignore_errors=True)
-    shutil.rmtree(misclassified_dir, ignore_errors=True)
-    correct_dir.mkdir(parents=True, exist_ok=True)
-    misclassified_dir.mkdir(parents=True, exist_ok=True)
+    shutil.rmtree(true_positives_dir, ignore_errors=True)
+    shutil.rmtree(true_negatives_dir, ignore_errors=True)
+    shutil.rmtree(false_positives_dir, ignore_errors=True)
+    shutil.rmtree(false_negatives_dir, ignore_errors=True)
+    true_positives_dir.mkdir(parents=True, exist_ok=True)
+    true_negatives_dir.mkdir(parents=True, exist_ok=True)
+    false_positives_dir.mkdir(parents=True, exist_ok=True)
+    false_negatives_dir.mkdir(parents=True, exist_ok=True)
 
     correct_txt = output_dir / "correct.txt"
     misclassified_txt = output_dir / "misclassified.txt"
@@ -144,11 +152,11 @@ def main():
                 if num_faces_in_image == 0:  # Check if there are no ground truth faces
                     if num_predicted_faces > 0:  # False positive
                         false_positive_count += 1
-                        cv2.imwrite(str(misclassified_dir / image_path.name), image)
+                        cv2.imwrite(str(false_positives_dir / image_path.name), image)
                         misclassified_file.write(f"{image_path.name} (False Positive) - IoU: N/A\n")
                     else:  # True negative (no faces in both)
                         true_negative_count += 1
-                        cv2.imwrite(str(correct_dir / image_path.name), image)
+                        cv2.imwrite(str(true_negatives_dir / image_path.name), image)
                         correct_file.write(f"{image_path.name} (True Negative)\n")
                     continue
 
@@ -171,6 +179,7 @@ def main():
                 unmatched_ground_truths = set(range(num_faces_in_image)) - matched_ground_truths
                 false_negative_count += len(unmatched_ground_truths)
                 for _ in unmatched_ground_truths:
+                    cv2.imwrite(str(false_negatives_dir / image_path.name), image)
                     misclassified_file.write(f"{image_path.name} (False Negative)\n")
 
                 # Handle faces that were predicted but not matched to ground truths (False Positives)
@@ -182,7 +191,7 @@ def main():
                 true_positive_count += len(matched_ground_truths)
                 for idx in matched_predictions:
                     annotated_image = draw_detections(image, results)
-                    cv2.imwrite(str(correct_dir / image_path.name), annotated_image)
+                    cv2.imwrite(str(true_positives_dir / image_path.name), annotated_image)
 
                 logging.info(f"Processed {image_path.name}")
             except Exception as e:
