@@ -44,16 +44,23 @@ def draw_detections(image: np.ndarray, results: Detections) -> np.ndarray:
     return annotated_image
 
 
-def parse_annotations(label_path: Path) -> List[Tuple[int, float, float, float, float]]:
-    """Parse annotations from YOLO label file"""
-    annotations = []
+def load_ground_truth(label_path: str, img_width: int, img_height: int) -> np.ndarray:
+    """Load ground truth bounding boxes from label file"""
+    ground_truth_boxes = []
     with open(label_path, 'r') as f:
-        for line in f:
-            parts = line.strip().split()
-            if len(parts) == 5:  # Class, x_center, y_center, width, height
-                annotations.append(tuple(map(float, parts)))
-    return annotations
+        for line in f.readlines():
+            # Parse the label file: class x_center y_center width height
+            class_id, x_center, y_center, width, height = map(float, line.strip().split())
 
+            # Convert normalized coordinates to pixel values
+            x1 = int((x_center - width / 2) * img_width)
+            y1 = int((y_center - height / 2) * img_height)
+            x2 = int((x_center + width / 2) * img_width)
+            y2 = int((y_center + height / 2) * img_height)
+            
+            ground_truth_boxes.append(np.array([x1, y1, x2, y2]))
+    
+    return np.array(ground_truth_boxes)
 
 def calculate_iou(box1: np.ndarray, box2: np.ndarray) -> float:
     """Calculate Intersection over Union (IoU) between two boxes"""
@@ -62,11 +69,17 @@ def calculate_iou(box1: np.ndarray, box2: np.ndarray) -> float:
     x2 = min(box1[2], box2[2])
     y2 = min(box1[3], box2[3])
 
+    # Compute the area of the intersection rectangle
     intersection = max(0, x2 - x1) * max(0, y2 - y1)
+    
+    # Compute the area of both rectangles
     area1 = (box1[2] - box1[0]) * (box1[3] - box1[1])
     area2 = (box2[2] - box2[0]) * (box2[3] - box2[1])
+    
+    # Compute the area of the union
     union = area1 + area2 - intersection
-
+    
+    # Compute the IoU
     return intersection / union if union > 0 else 0
 
 
@@ -111,57 +124,62 @@ def main():
         for image_path in test_dir.glob("*.jpg"):
             try:
                 label_path = labels_dir / (image_path.stem + ".txt")
-                ground_truths = parse_annotations(label_path)  # Parse annotations
-
                 image, results = process_image(model, image_path)
                 predicted_boxes = results.xyxy
+                
+                # Get image dimensions for ground truth conversion
+                img_height, img_width = image.shape[:2]
+                ground_truth_boxes = load_ground_truth(str(label_path), img_width, img_height)
 
-                if not ground_truths:  # No ground truth annotations
-                    if len(predicted_boxes) > 0:  # False positive
+                num_faces_in_image = len(ground_truth_boxes)  # Number of ground truth faces
+                num_predicted_faces = len(predicted_boxes)  # Number of predicted faces
+
+                # No ground truth faces at all
+                if not ground_truth_boxes:  
+                    if num_predicted_faces > 0:  # False positive
                         false_positive_count += 1
                         cv2.imwrite(str(misclassified_dir / image_path.name), image)
                         misclassified_file.write(f"{image_path.name} (False Positive)\n")
-                    else:  # True negative
+                    else:  # True negative (no faces in both)
                         true_negative_count += 1
                         cv2.imwrite(str(correct_dir / image_path.name), image)
                         correct_file.write(f"{image_path.name} (True Negative)\n")
                     continue
 
-                # Evaluate predictions against ground truths
+                # For each face in the image, treat them as separate classification cases
                 matched_predictions = set()
                 matched_ground_truths = set()
 
-                for pred_idx, pred_box in enumerate(predicted_boxes):
-                    pred_box = pred_box[:4].astype(float)  # Extract bounding box
-                    pred_x1, pred_y1, pred_x2, pred_y2 = pred_box
+                for i, detected_bbox in enumerate(predicted_boxes):
+                    # pred_box = pred_box[:4].astype(float)  # Extract bounding box
+                    # pred_x1, pred_y1, pred_x2, pred_y2 = pred_box
 
-                    for gt_idx, gt in enumerate(ground_truths):
-                        _, x_center, y_center, width, height = gt
-                        gt_x1 = x_center - width / 2
-                        gt_y1 = y_center - height / 2
-                        gt_x2 = x_center + width / 2
-                        gt_y2 = y_center + height / 2
-
-                        iou = calculate_iou(pred_box, [gt_x1, gt_y1, gt_x2, gt_y2])
+                    for gt_idx, gt_bbox in enumerate(ground_truth_boxes):
+                        iou = calculate_iou(detected_bbox, gt_bbox)
                         if iou >= iou_threshold:
                             matched_predictions.add(pred_idx)
                             matched_ground_truths.add(gt_idx)
 
-                            # Append IoU value to correct.txt or misclassified.txt
+                            # Write the IoU value for matched detections
                             correct_file.write(f"{image_path.name} (True Positive) - IoU: {iou:.4f}\n")
 
-                # True Positives
+                # Handle ground truth faces that were not detected (False Negatives)
+                unmatched_ground_truths = set(range(num_faces_in_image)) - matched_ground_truths
+                false_negative_count += len(unmatched_ground_truths)
+                for _ in unmatched_ground_truths:
+                    misclassified_file.write(f"{image_path.name} (False Negative)\n")
+
+                # Handle faces that were predicted but not matched to ground truths (False Positives)
+                unmatched_predictions = set(range(num_predicted_faces)) - matched_predictions
+                false_positive_count += len(unmatched_predictions)
+                for _ in unmatched_predictions:
+                    misclassified_file.write(f"{image_path.name} (False Positive)\n")
+
+                # Handle True Positives
                 true_positive_count += len(matched_ground_truths)
                 for idx in matched_predictions:
                     annotated_image = draw_detections(image, results)
                     cv2.imwrite(str(correct_dir / image_path.name), annotated_image)
-
-                # False Negatives: Ground truths not matched to any predictions
-                unmatched_ground_truths = set(range(len(ground_truths))) - matched_ground_truths
-                false_negative_count += len(unmatched_ground_truths)
-                if unmatched_ground_truths:
-                    cv2.imwrite(str(misclassified_dir / image_path.name), image)
-                    misclassified_file.write(f"{image_path.name} (False Negative)\n")
 
                 logging.info(f"Processed {image_path.name}")
             except Exception as e:
