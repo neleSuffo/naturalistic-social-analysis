@@ -116,8 +116,7 @@ def main():
     
     try:
         # Load model and process image
-        image_folder = "_".join(args.image.split("_")[:-1])  # Remove the last segment before the extension
-        image_path = Path("/home/nele_pauline_suffo/ProcessedData/quantex_rawframes") / image_folder / args.image
+        image_path = Path("/home/nele_pauline_suffo/ProcessedData/quantex_rawframes") / args.image
         label_path = Path("/home/nele_pauline_suffo/ProcessedData/yolo_face_input/labels/test") / Path(args.image).with_suffix('.txt')
         
         model = load_model(YoloPaths.face_trained_weights_path)
