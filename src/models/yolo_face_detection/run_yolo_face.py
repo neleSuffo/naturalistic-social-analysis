@@ -36,15 +36,29 @@ def process_image(model: YOLO, image_path: Path) -> Tuple[np.ndarray, Detections
         logging.error(f"Error processing image: {e}")
         raise
 
-def draw_detections(image: np.ndarray, results: Detections) -> np.ndarray:
-    """Draw bounding boxes and labels on image"""
+def draw_detections_and_ground_truth(
+    image: np.ndarray, 
+    predictions: Detections, 
+    ground_truth_boxes: np.ndarray
+) -> np.ndarray:
+    """Draw both predictions and ground truth boxes on image"""
     annotated_image = image.copy()
-    for bbox, conf in zip(results.xyxy, results.confidence):
+    
+    # Draw ground truth boxes in blue
+    for i, gt_box in enumerate(ground_truth_boxes):
+        x1, y1, x2, y2 = map(int, gt_box)
+        cv2.rectangle(annotated_image, (x1, y1), (x2, y2), (255, 0, 0), 2)  # Blue
+        cv2.putText(annotated_image, f"GT-{i+1}", (x1, y1-10), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+    
+    # Draw prediction boxes in green
+    for i, (bbox, conf) in enumerate(zip(predictions.xyxy, predictions.confidence)):
         x1, y1, x2, y2 = map(int, bbox)
-        cv2.rectangle(annotated_image, (x1, y1), (x2, y2), (0, 255, 0), 2)
-        label = f"Face: {conf:.2f}"
-        cv2.putText(annotated_image, label, (x1, y1-10), 
+        cv2.rectangle(annotated_image, (x1, y1), (x2, y2), (0, 255, 0), 2)  # Green
+        label = f"Pred-{i+1}: {conf:.2f}"
+        cv2.putText(annotated_image, label, (x1, y2+20), 
                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+    
     return annotated_image
 
 def calculate_iou(boxA: np.ndarray, boxB: np.ndarray) -> float:
@@ -102,27 +116,42 @@ def main():
     
     try:
         # Load model and process image
+        image_folder = "_".join(args.image.split("_")[:-1])  # Remove the last segment before the extension
+        image_path = Path("/home/nele_pauline_suffo/ProcessedData/quantex_rawframes") / image_folder / args.image
+        label_path = Path("/home/nele_pauline_suffo/ProcessedData/yolo_face_input/labels/test") / Path(args.image).with_suffix('.txt')
+        
         model = load_model(YoloPaths.face_trained_weights_path)
-        image, results = process_image(model, Path(args.image))
+        image, results = process_image(model, image_path)
         
         # Get image dimensions for ground truth conversion
         img_height, img_width = image.shape[:2]
         
         # Load ground truth labels
-        label_path = args.image.replace("images", "labels").replace(".jpg", ".txt")
-        ground_truth_boxes = load_ground_truth(label_path, img_width, img_height)
+        ground_truth_boxes = load_ground_truth(str(label_path), img_width, img_height)
+        logging.info(f"Found {len(ground_truth_boxes)} ground truth boxes")
         
         # Loop through detections and calculate IoU
         for i, detected_bbox in enumerate(results.xyxy):
+            if len(ground_truth_boxes) == 0:
+                logging.warning(f"No ground truth boxes found for detection {i+1}")
+                continue
+                
             iou_scores = []
             for gt_bbox in ground_truth_boxes:
                 iou = calculate_iou(detected_bbox, gt_bbox)
                 iou_scores.append(iou)
-            max_iou = max(iou_scores)
-            logging.info(f"Detected face {i+1} - Maximum IoU: {max_iou:.4f}")
+                logging.info(f"Detection {i+1} - GT Box IoU: {iou:.4f}")
+            
+            if iou_scores:
+                max_iou = max(iou_scores)
+                logging.info(f"Detection {i+1} - Maximum IoU: {max_iou:.4f}")
         
         # Draw detections and save
-        annotated_image = draw_detections(image, results)
+        annotated_image = draw_detections_and_ground_truth(
+            image, 
+            results, 
+            ground_truth_boxes
+        )        
         output_path = output_dir / Path(args.image).name
         cv2.imwrite(str(output_path), annotated_image)
         logging.info(f"Annotated image saved to: {output_path}")
