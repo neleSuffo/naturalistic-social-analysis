@@ -196,20 +196,28 @@ def main():
                 logging.info(f"Processed {image_path.name}")
             except Exception as e:
                 logging.error(f"Error processing {image_path}: {e}")
-
+                
+    # Calculate FPR and FNR
+    fpr = false_positive_count / (false_positive_count + true_negative_count) if (false_positive_count + true_negative_count) > 0 else 0
+    fnr = false_negative_count / (false_negative_count + true_positive_count) if (false_negative_count + true_positive_count) > 0 else 0
+    
     # Log final results
     logging.info(f"True Positives: {true_positive_count}")
     logging.info(f"True Negatives: {true_negative_count}")
     logging.info(f"False Positives: {false_positive_count}")
     logging.info(f"False Negatives: {false_negative_count}")
-
+    logging.info(f"False Positive Rate (FPR): {fpr:.4f}")
+    logging.info(f"False Negative Rate (FNR): {fnr:.4f}")
+    
     # Save final counts to text files
     with open(output_dir / "summary.txt", "w") as summary_file:
         summary_file.write(f"True Positives: {true_positive_count}\n")
         summary_file.write(f"True Negatives: {true_negative_count}\n")
         summary_file.write(f"False Positives: {false_positive_count}\n")
         summary_file.write(f"False Negatives: {false_negative_count}\n")
-
+        summary_file.write(f"False Positive Rate (FPR): {fpr:.4f}\n")
+        summary_file.write(f"False Negative Rate (FNR): {fnr:.4f}\n")
+        
     logging.info("Evaluation complete. Results saved.")
     
 if __name__ == "__main__":
