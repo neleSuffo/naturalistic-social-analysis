@@ -57,6 +57,7 @@ pyannote-metrics = "^3.2.1"
 efficientnet-pytorch = "^0.7.1"
 supervision = "^0.25.1"
 huggingface-hub = "^0.27.1"
+albumentations = "1.4.14"
 
 
 [tool.poetry.group.dev.dependencies]

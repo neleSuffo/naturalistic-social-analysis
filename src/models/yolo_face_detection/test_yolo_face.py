@@ -135,7 +135,7 @@ def main():
                 num_predicted_faces = len(predicted_boxes)  # Number of predicted faces
 
                 # No ground truth faces at all
-                if not ground_truth_boxes:  
+                if num_faces_in_image == 0:  # Check if there are no ground truth faces
                     if num_predicted_faces > 0:  # False positive
                         false_positive_count += 1
                         cv2.imwrite(str(misclassified_dir / image_path.name), image)
@@ -156,6 +156,7 @@ def main():
 
                     for gt_idx, gt_bbox in enumerate(ground_truth_boxes):
                         iou = calculate_iou(detected_bbox, gt_bbox)
+                        logging.info(f"Detection IoU: {iou:.4f}")
                         if iou >= iou_threshold:
                             matched_predictions.add(pred_idx)
                             matched_ground_truths.add(gt_idx)
