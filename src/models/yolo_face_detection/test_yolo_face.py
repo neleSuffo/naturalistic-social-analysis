@@ -139,7 +139,7 @@ def main():
                     if num_predicted_faces > 0:  # False positive
                         false_positive_count += 1
                         cv2.imwrite(str(misclassified_dir / image_path.name), image)
-                        misclassified_file.write(f"{image_path.name} (False Positive)\n")
+                        misclassified_file.write(f"{image_path.name} (False Positive) - IoU: N/A\n")
                     else:  # True negative (no faces in both)
                         true_negative_count += 1
                         cv2.imwrite(str(correct_dir / image_path.name), image)
@@ -150,7 +150,7 @@ def main():
                 matched_predictions = set()
                 matched_ground_truths = set()
 
-                for i, detected_bbox in enumerate(predicted_boxes):
+                for pred_idx, detected_bbox in enumerate(predicted_boxes):
                     # pred_box = pred_box[:4].astype(float)  # Extract bounding box
                     # pred_x1, pred_y1, pred_x2, pred_y2 = pred_box
 
@@ -174,7 +174,7 @@ def main():
                 unmatched_predictions = set(range(num_predicted_faces)) - matched_predictions
                 false_positive_count += len(unmatched_predictions)
                 for _ in unmatched_predictions:
-                    misclassified_file.write(f"{image_path.name} (False Positive)\n")
+                    misclassified_file.write(f"{image_path.name} (False Positive) - IoU: {iou:.4f}\n")
 
                 # Handle True Positives
                 true_positive_count += len(matched_ground_truths)
