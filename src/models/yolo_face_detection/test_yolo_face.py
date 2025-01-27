@@ -9,7 +9,6 @@ from supervision import Detections  # Add this import
 import numpy as np
 from constants import YoloPaths
 
-
 def load_model(model_path: Path) -> YOLO:
     """Load YOLO model from path"""
     try:
@@ -19,7 +18,6 @@ def load_model(model_path: Path) -> YOLO:
     except Exception as e:
         logging.error(f"Failed to load model: {e}")
         raise
-
 
 def process_image(model: YOLO, image_path: Path) -> Tuple[np.ndarray, Detections]:
     """Process image with YOLO model"""
@@ -31,7 +29,6 @@ def process_image(model: YOLO, image_path: Path) -> Tuple[np.ndarray, Detections
     results = Detections.from_ultralytics(output[0])
     return image, results
 
-
 def draw_detections(image: np.ndarray, results: Detections) -> np.ndarray:
     """Draw bounding boxes and labels on image"""
     annotated_image = image.copy()
@@ -42,7 +39,6 @@ def draw_detections(image: np.ndarray, results: Detections) -> np.ndarray:
         cv2.putText(annotated_image, label, (x1, y1 - 10), 
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
     return annotated_image
-
 
 def load_ground_truth(label_path: str, img_width: int, img_height: int) -> np.ndarray:
     """Load ground truth bounding boxes from label file"""
@@ -82,6 +78,16 @@ def calculate_iou(box1: np.ndarray, box2: np.ndarray) -> float:
     # Compute the IoU
     return intersection / union if union > 0 else 0
 
+def handle_false_positives(predicted_boxes, matched_predictions, misclassified_file, image_path, iou_threshold):
+    """Handle false positive cases and write them to the misclassified file"""
+    for idx, predicted_box in enumerate(predicted_boxes):
+        if idx not in matched_predictions:
+            # Check IoU with all ground truth boxes
+            max_iou = 0
+            for gt_box in predicted_boxes:
+                iou = calculate_iou(predicted_box, gt_box)
+                max_iou = max(max_iou, iou)
+            misclassified_file.write(f"{image_path.name} (False Positive) - IoU: {max_iou:.4f}\n")
 
 def main():
     # Configure logging
@@ -106,8 +112,8 @@ def main():
     correct_txt = output_dir / "correct.txt"
     misclassified_txt = output_dir / "misclassified.txt"
     # delete correct.txt and misclassified.txt if they already exist
-    shutil.rmtree(correct_txt, ignore_errors=True)
-    shutil.rmtree(misclassified_txt, ignore_errors=True)
+    correct_txt.unlink(missing_ok=True)
+    misclassified_txt.unlink(missing_ok=True)
 
     model = load_model(YoloPaths.face_trained_weights_path)
 
@@ -151,9 +157,6 @@ def main():
                 matched_ground_truths = set()
 
                 for pred_idx, detected_bbox in enumerate(predicted_boxes):
-                    # pred_box = pred_box[:4].astype(float)  # Extract bounding box
-                    # pred_x1, pred_y1, pred_x2, pred_y2 = pred_box
-
                     for gt_idx, gt_bbox in enumerate(ground_truth_boxes):
                         iou = calculate_iou(detected_bbox, gt_bbox)
                         logging.info(f"Detection IoU: {iou:.4f}")
@@ -173,8 +176,7 @@ def main():
                 # Handle faces that were predicted but not matched to ground truths (False Positives)
                 unmatched_predictions = set(range(num_predicted_faces)) - matched_predictions
                 false_positive_count += len(unmatched_predictions)
-                for _ in unmatched_predictions:
-                    misclassified_file.write(f"{image_path.name} (False Positive) - IoU: {iou:.4f}\n")
+                handle_false_positives(predicted_boxes, matched_predictions, misclassified_file, image_path, iou_threshold)
 
                 # Handle True Positives
                 true_positive_count += len(matched_ground_truths)
@@ -200,7 +202,6 @@ def main():
         summary_file.write(f"False Negatives: {false_negative_count}\n")
 
     logging.info("Evaluation complete. Results saved.")
-    
     
 if __name__ == "__main__":
     main()
