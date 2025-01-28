@@ -292,42 +292,6 @@ def get_video_length(
         stderr=subprocess.STDOUT
     )
     return float(result.stdout)
-
-def prepare_dataset(
-    model_target: str, 
-    yolo_target: str = None,
-    destination_dir: Path = None,
-    train_files: list = None,
-    val_files: list = None,
-    test_files: list = None
-):
-    """
-    Prepares the dataset for the specified model (mtcnn or yolo).
-    
-    Parameters
-    ----------
-    model_target : str
-        the model to prepare the dataset for
-    yolo_target : str
-        the target for the YOLO model (person or face)
-    destination_dir : Path
-        the destination directory to store the training and validation sets
-    train_files : list
-        the list of training files
-    val_files : list
-        the list of validation files
-    test_files : list
-        the list of testing files
-    """
-    if mode == "yolo":
-        if target not in ["person", "face"]:
-            raise ValueError("YOLO target must be 'person' or 'face'")
-        target_dir = YoloPaths.person_data_input_dir if target == "person" else YoloPaths.face_data_input_dir
-        prepare_yolo_dataset(target_dir, train_files, val_files, test_files)
-    elif mode == "mtcnn":
-        prepare_mtcnn_dataset(MtcnnPaths.data_input, train_files, val_files, test_files)
-    else:
-        raise ValueError("Invalid mode. Use 'mtcnn' or 'yolo'")
     
 def get_video_lengths() -> list:
     """Returns list of (video_name, length) tuples for videos with annotations"""
@@ -416,46 +380,52 @@ def balanced_train_val_test_split(
     
     return train_videos, val_videos, test_videos
 
-def main(model: str, yolo_target: str) -> None:
-    """ 
-    This function prepares the training dataset for the specified model and target.
-    
+def main(model_target: str, yolo_target: str) -> None:
+    """
+    Main function to prepare the training dataset for the specified model and target.
+
     Parameters
     ----------
-    model : str
-        the model to prepare the dataset for
+    model_target : str
+        The model to prepare the dataset for ('yolo' or 'mtcnn').
     yolo_target : str
-        the target for the YOLO model (person or face)    
+        The target for the YOLO model ('person' or 'face').
     """
     # Environment setup
     os.environ['OMP_NUM_THREADS'] = '10'
-    if args.model_target == "yolo" and args.yolo_target == "person":
-        create_missing_annotation_files(DetectionPaths.images_input_dir, YoloPaths.person_labels_input_dir)   
-    elif args.model_target == "yolo" and args.yolo_target == "face":
-        create_missing_annotation_files(DetectionPaths.images_input_dir, YoloPaths.face_labels_input_dir)
-
+    
+    # Create missing annotation files for YOLO
+    if model_target == "yolo":
+        if yolo_target == "person":
+            create_missing_annotation_files(DetectionPaths.images_input_dir, YoloPaths.person_labels_input_dir)
+        elif yolo_target == "face":
+            create_missing_annotation_files(DetectionPaths.images_input_dir, YoloPaths.face_labels_input_dir)
+    
     # Split video files into training, validation, and testing sets
     train_videos, val_videos, test_videos = balanced_train_val_test_split(TrainingConfig.train_test_split_ratio)
     train_files, val_files, test_files = images_train_val_test_split(
-        DetectionPaths.images_input_dir, 
-        train_videos, 
-        val_videos,
-        test_videos,
+        DetectionPaths.images_input_dir, train_videos, val_videos, test_videos
     )
+    
+    # Prepare dataset based on the model target
+    if model_target == "yolo":
+        prepare_yolo_dataset(
+            YoloPaths.face_data_input_dir if yolo_target == "face" else YoloPaths.person_data_input_dir,
+            train_files, val_files, test_files
+        )
+    elif model_target == "mtcnn":
+        prepare_mtcnn_dataset(
+            MtcnnPaths.data_input, train_files, val_files, test_files
+        )
+    else:
+        raise ValueError(f"Unsupported model target: {model_target}")
 
-    # Prepare the dataset based on the mode and target
-    prepare_dataset(
-        mode=args.mode, 
-        target=args.yolo_target, 
-        train_files=train_files, 
-        val_files=val_files, 
-        test_files=test_files
-    )
+    logging.info("Dataset preparation complete.")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Prepare training datasets")
-    parser.add_argument("--model_target", required=True, choices=["mtcnn", "yolo"], help="Preparation model: mtcnn or yolo")
-    parser.add_argument("--yolo_target", choices=["person", "face"], help="Target for YOLO: person or face")
-    
+    parser = argparse.ArgumentParser(description="Prepare datasets for training.")
+    parser.add_argument("model_target", type=str, choices=["yolo", "mtcnn"], help="Target model for preparation.")
+    parser.add_argument("--yolo_target", type=str, choices=["person", "face"], help="YOLO target type (person or face).")
     args = parser.parse_args()
-    main(model=args.model_target, yolo_target=args.yolo_target)
+    
+    main(args.model_target, args.yolo_target)
