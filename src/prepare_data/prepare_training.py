@@ -1,13 +1,13 @@
 import shutil
 import random
 import logging
-import shutil
 import os
 import sqlite3
 import subprocess
 from pathlib import Path
 from constants import DetectionPaths, YoloPaths, MtcnnPaths
 from config import TrainingConfig
+import argparse
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -27,11 +27,9 @@ def create_missing_annotation_files(
     txt_dir : Path
         the directory with the .txt files
     """
-    # Get the list of all .jpg and .txt files
+    # Get the list of all .jpg and .txt files and extract the file names
     jpg_files = {f.stem for f in jpg_dir.rglob('*.jpg')}
     txt_files = {f.stem for f in txt_dir.glob('*.txt')}
-    
-    # Find the missing .txt files
     missing_txt_files = jpg_files - txt_files
     
     # Create empty .txt files for the missing .jpg files
@@ -270,10 +268,6 @@ def prepare_mtcnn_dataset(
                     val_labels_path,
                     test_labels_path,
     )
-    
-    # Delete the empty labels directory
-    #MtcnnPaths.data_dir.unlink(missing_ok=True)
-
 
 def get_video_length(
     file_path: Path
@@ -299,7 +293,42 @@ def get_video_length(
     )
     return float(result.stdout)
 
-
+def prepare_dataset(
+    model_target: str, 
+    yolo_target: str = None,
+    destination_dir: Path = None,
+    train_files: list = None,
+    val_files: list = None,
+    test_files: list = None
+):
+    """
+    Prepares the dataset for the specified model (mtcnn or yolo).
+    
+    Parameters
+    ----------
+    model_target : str
+        the model to prepare the dataset for
+    yolo_target : str
+        the target for the YOLO model (person or face)
+    destination_dir : Path
+        the destination directory to store the training and validation sets
+    train_files : list
+        the list of training files
+    val_files : list
+        the list of validation files
+    test_files : list
+        the list of testing files
+    """
+    if mode == "yolo":
+        if target not in ["person", "face"]:
+            raise ValueError("YOLO target must be 'person' or 'face'")
+        target_dir = YoloPaths.person_data_input_dir if target == "person" else YoloPaths.face_data_input_dir
+        prepare_yolo_dataset(target_dir, train_files, val_files, test_files)
+    elif mode == "mtcnn":
+        prepare_mtcnn_dataset(MtcnnPaths.data_input, train_files, val_files, test_files)
+    else:
+        raise ValueError("Invalid mode. Use 'mtcnn' or 'yolo'")
+    
 def get_video_lengths() -> list:
     """Returns list of (video_name, length) tuples for videos with annotations"""
     video_lengths = []
@@ -387,24 +416,46 @@ def balanced_train_val_test_split(
     
     return train_videos, val_videos, test_videos
 
-    prepare_yolo_dataset(YoloPaths.face_data_input_dir, train_files, val_files, test_files)
-def main():
+def main(model: str, yolo_target: str) -> None:
+    """ 
+    This function prepares the training dataset for the specified model and target.
+    
+    Parameters
+    ----------
+    model : str
+        the model to prepare the dataset for
+    yolo_target : str
+        the target for the YOLO model (person or face)    
+    """
+    # Environment setup
     os.environ['OMP_NUM_THREADS'] = '10'
-    create_missing_annotation_files(DetectionPaths.images_input_dir, YoloPaths.face_labels_input_dir)
-    # Split video files into training and validation sets
+    if args.model_target == "yolo" and args.yolo_target == "person":
+        create_missing_annotation_files(DetectionPaths.images_input_dir, YoloPaths.person_labels_input_dir)   
+    elif args.model_target == "yolo" and args.yolo_target == "face":
+        create_missing_annotation_files(DetectionPaths.images_input_dir, YoloPaths.face_labels_input_dir)
+
+    # Split video files into training, validation, and testing sets
     train_videos, val_videos, test_videos = balanced_train_val_test_split(TrainingConfig.train_test_split_ratio)
-    # Split corresponding image files into training and validation sets
     train_files, val_files, test_files = images_train_val_test_split(
         DetectionPaths.images_input_dir, 
         train_videos, 
         val_videos,
         test_videos,
     )
-    # Copy label files
-    #prepare_yolo_dataset(YoloPaths.person_data_input_dir, train_files, val_files, test_files)
-    prepare_yolo_dataset(YoloPaths.face_data_input_dir, train_files, val_files, test_files)
-    #prepare_mtcnn_dataset(Mtcnn.data_input, train_files, val_files, test_files)
 
+    # Prepare the dataset based on the mode and target
+    prepare_dataset(
+        mode=args.mode, 
+        target=args.yolo_target, 
+        train_files=train_files, 
+        val_files=val_files, 
+        test_files=test_files
+    )
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Prepare training datasets")
+    parser.add_argument("--model_target", required=True, choices=["mtcnn", "yolo"], help="Preparation model: mtcnn or yolo")
+    parser.add_argument("--yolo_target", choices=["person", "face"], help="Target for YOLO: person or face")
+    
+    args = parser.parse_args()
+    main(model=args.model_target, yolo_target=args.yolo_target)
