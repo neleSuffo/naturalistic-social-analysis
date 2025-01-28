@@ -11,10 +11,10 @@ from prepare_data.process_annotations.convert_to_yolo import main as convert_to_
 from prepare_data.process_annotations.convert_to_mtcnn import main as convert_to_mtcnn
 from constants import DetectionPaths
 
-def main(model: str,
-         yolo_target: str, 
-         setup_db: bool = False) -> None:
-    """ Main function to process annotations. The function creates a database and converts the annotations to YOLO and MTCNN format.
+def main(model: str, yolo_target: str, setup_db: bool = False) -> None:
+    """
+    Main function to process annotations. This function creates a database 
+    and converts annotations to YOLO and/or MTCNN format.
     
     Parameters
     ----------
@@ -24,33 +24,30 @@ def main(model: str,
         Target YOLO label (e.g., "face")
     setup_db : bool
         Whether to set up the database
-    
+
     Returns
     -------
     None
-    
     """
+    # Validate model argument
+    if model not in {"yolo", "mtcnn", "all"}:
+        raise ValueError(f"Invalid model '{model}'. Choose 'yolo', 'mtcnn', or 'all'.")
+    
     os.environ['OMP_NUM_THREADS'] = '10'
     if setup_db:
-        # Create a dictionary with the task name as key and a file id as value
+        # Database setup
         task_file_id_dict = create_file_name_id_dict(DetectionPaths.file_name_id_mapping_path)
-        # Create a database table for the video file names and ids
         create_db_table_video_name_id_mapping(task_file_id_dict)
-        # Convert the XML annotations to COCO format and store the results in a database
         write_xml_to_database()
-        # Delete the erroneous videos in the database and add the new data from the individual xml files
         correct_erronous_videos_in_db()
-        
-        # Exclude child body parts from the class "person" in the YOLO labels
-        # Create new class "child_body_parts" and update database
         create_child_class_in_db()
-    
-    # Convert the annotations to YOLO format and MTCNN format
-    if model == 'yolo':
+
+    # Annotation conversion
+    if model == "yolo":
         convert_to_yolo(yolo_target)
-    if model == 'mtcnn':
+    elif model == "mtcnn":
         convert_to_mtcnn()
-    if model == 'all':
+    elif model == "all":
         convert_to_yolo(yolo_target)
         convert_to_mtcnn()
 
