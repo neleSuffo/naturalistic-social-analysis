@@ -150,7 +150,7 @@ def save_annotations(
             logging.error(f"Failed to write to file {txt_file}: {e}")
     logging.info(f"Processed {processed_count} annotations, skipped {skipped_count} annotations")
     
-def main(target: str = "person") -> None:
+def main(target: str) -> None:
     logging.info(f"Starting the conversion process for Yolo {target} detection.")
     try:
         if target == "face":
