@@ -9,41 +9,58 @@ from prepare_data.process_videos import main as process_videos
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def run_process_annotations(model_target: str, yolo_target: str, setup_db=False):
+    """
+    Run the process_annotations script as a subprocess.
+    
+    Parameters
+    ----------
+    model_target : str
+        Model to convert to (e.g., "yolo", "mtcnn", "all")
+    yolo_target : str
+        Target YOLO label (e.g., "face", "person")
+    setup_db : bool
+        Whether to set up the database, defaults to False
+    """
     try:
         cmd = ['python', '-m', 'prepare_data.process_annotations.__main__', model_target, yolo_target]
         if setup_db:
             cmd.append('--setup_db')
         subprocess.run(cmd, check=True)
     except subprocess.CalledProcessError as e:
-        print(f"Error while running process_annotations: {e}")
+        logging.error(f"Error while running process_annotations: {e}")
+        raise
 
 def main():
-    parser = argparse.ArgumentParser(description='Data preparation pipeline')
-    parser.add_argument('--videos', action='store_true', help='Run video processing')
-    parser.add_argument('--annotations', action='store_true', help='Run annotation processing')
-    parser.add_argument('--model_target', type=str, help='Model to convert to (e.g., "yolo", "mtcnn", "all")')
-    parser.add_argument('--yolo_target', type=str, help='Target YOLO label (e.g., "face")')
-    parser.add_argument('--training', action='store_true', help='Prepare training data')
-    parser.add_argument('--all', action='store_true', help='Run all processes')
-    parser.add_argument('--threads', type=int, default=2, help='Number of threads to use')
     
-    args = parser.parse_args()
-    os.num_threads = args.threads
-    
+    os.environ['OMP_NUM_THREADS'] = str(args.threads)
+
     if args.all:
-        run_process_videos()
-        run_process_annotations(args.model_target, args.yolo_target)
+        process_videos()
+        run_process_annotations(args.model_target, args.yolo_target, setup_db=True)
         prepare_training()
     else:
         if args.videos:
             process_videos()
         if args.annotations:
-            run_process_annotations()
-        run_process_annotations(args.model_target, args.yolo_target)
+            if not args.model_target or not args.yolo_target:
+                parser.error("--annotations requires --model_target and --yolo_target.")
+            run_process_annotations(args.model_target, args.yolo_target, setup_db=args.setup_db)
         if args.training:
-            prepare_training()
-            
+            prepare_training(args.model_target, args.yolo_target)
+
     logging.info("Data preparation complete.")
-    
+
+
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Data preparation pipeline')
+    parser.add_argument('--videos', action='store_true', help='Run video processing')
+    parser.add_argument('--annotations', action='store_true', help='Run annotation processing')
+    parser.add_argument('--model_target', type=str, help='Model to convert to (e.g., "yolo", "mtcnn", "all")')
+    parser.add_argument('--yolo_target', type=str, help='Target YOLO label (e.g., "face")')
+    parser.add_argument('--setup_db', action='store_true', default=False, help='Whether to set up the database (default: False)')
+    parser.add_argument('--training', action='store_true', help='Prepare training data')
+    parser.add_argument('--all', action='store_true', help='Run all processes')
+    parser.add_argument('--threads', type=int, default=2, help='Number of threads to use')
+
+    args = parser.parse_args()
     main()
