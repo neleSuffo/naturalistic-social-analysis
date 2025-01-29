@@ -121,7 +121,7 @@ def save_annotations(
         bbox = json.loads(bbox)
         if target == "person":
         # Map the category_id to the YOLO format
-            category_id = {1: 0, 2: 1, 11: 2}.get(category_id, category_id)
+            category_id = {1: 0, 2: 1, 10: 2, 11:3}.get(category_id, category_id)
         if target == "face":
         # Map the category_id to the YOLO format
             category_id = {10: 0}.get(category_id, category_id)
