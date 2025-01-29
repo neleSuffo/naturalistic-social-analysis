@@ -16,9 +16,17 @@ torch.set_num_threads(4)  # PyTorch threads
 # Load the YOLO model
 model = YOLO("/home/nele_pauline_suffo/models/yolov11_face_detection_AdamCodd.pt")  # Use pretrained YOLOv8 model
 
-# Define experiment name
+# Define experiment name and output directory
 experiment_name = timestamp + "_yolo_face_finetune_with_augment_and_earlystop"
 output_dir = YoloPaths.face_output_dir / experiment_name
+
+# Ensure output directory exists before logging
+output_dir.mkdir(parents=True, exist_ok=True)
+
+# Set up logging before training starts
+log_file = output_dir / "output.log"
+sys.stdout = open(log_file, 'w', buffering=1)
+sys.stderr = sys.stdout
 
 # Train the model with a cosine annealing learning rate scheduler
 model.train(
@@ -37,9 +45,7 @@ model.train(
     plots=True,  # Plot training results
 )
 
-# Save script copy and setup logging after YOLO creates the directory
+# Copy the script to the output directory after training starts
 script_copy = output_dir / "train_yolo_face.py"
-shutil.copy(__file__, script_copy)
-log_file = output_dir / "output.log"
-sys.stdout = open(log_file, 'w', buffering=1)
-sys.stderr = sys.stdout
+if os.path.exists(__file__):  # Avoid errors in interactive environments
+    shutil.copy(__file__, script_copy)
