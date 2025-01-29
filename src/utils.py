@@ -60,7 +60,6 @@ def fetch_all_annotations(
 
     if category_ids:
         placeholders = ", ".join("?" for _ in category_ids)
-        additional_select = ", a.gaze_directed_at_child" if category_ids == [10] else ""
         query = f"""
         SELECT DISTINCT 
             a.image_id, 
@@ -68,8 +67,8 @@ def fetch_all_annotations(
             a.category_id, 
             a.bbox, 
             i.file_name, 
-            v.file_name as video_file_name
-            {additional_select}
+            v.file_name as video_file_name,
+            a.gaze_directed_at_child
         FROM annotations a
         JOIN images i ON a.image_id = i.frame_id AND a.video_id = i.video_id
         JOIN videos v ON a.video_id = v.id
