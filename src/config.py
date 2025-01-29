@@ -35,7 +35,7 @@ class YoloConfig:
     num_epochs = 100
     iou_threshold = 0.35 # the intersection over union threshold
     img_size = (320, 640) # multi scale training
-    person_target_class_ids = [1,2,10]
+    person_target_class_ids = [1,2,10,11]
     face_target_class_ids = [10]
     
 class VTCConfig:
