@@ -1,3 +1,4 @@
+import logging
 from ultralytics import YOLO
 from constants import YoloPaths
 from datetime import datetime
@@ -15,8 +16,15 @@ metrics = model.val(data=str(YoloPaths.face_data_config_path),
 # Extract precision and recall
 precision = metrics.results_dict['metrics/precision(B)']
 recall = metrics.results_dict['metrics/recall(B)']
+f1_score = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
+
+# Log results
+logging.info(f"Precision: {precision:.4f}")
+logging.info(f"Recall: {recall:.4f}")
+logging.info(f"F1 Score: {f1_score:.4f}")
 
 # save precision and recall to a file
 with open(YoloPaths.face_output_dir / folder_name / "precision_recall.txt", "w") as f:
     f.write(f"Precision: {precision}\n")
     f.write(f"Recall: {recall}\n")
+    f.write(f"F1 Score: {f1_score}\n")
