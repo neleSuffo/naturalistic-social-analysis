@@ -10,6 +10,6 @@ nc: 3
 # Class names
 names:
   0: "person"
-  1: "reflection"
-  2: "child_body_parts"
-  3: "face"
+  1: "person reflection"
+  2: "person face"
+  3: "child body parts"
