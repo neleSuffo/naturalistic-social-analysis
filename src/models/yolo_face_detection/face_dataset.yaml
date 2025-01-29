@@ -1,5 +1,5 @@
 train: /home/nele_pauline_suffo/ProcessedData/yolo_face_input/images/train
-val: /home/nele_pauline_suffo/ProcessedData/yolo_face_input/images/val
+val: /home/nele_pauline_suffo/ProcessedData/yolo_face_input/images/test
 test: /home/nele_pauline_suffo/ProcessedData/yolo_face_input/images/test
 
 # Number of classes
