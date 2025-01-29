@@ -194,11 +194,20 @@ quantex_youngest_month <- as.numeric(format(quantex_youngest_date, "%m"))
 
 # Calculate the interval between the two dates
 quantex_time_span_months <- (quantex_youngest_year - quantex_oldest_year) * 12 + (quantex_youngest_month - quantex_oldest_month)+1
+
+quantex_nr_annotated_videos <- 100
+quantex_nr_train_frames <- 72687
+quantex_nr_val_frames <- 7720
+quantex_nr_test_frames <- 9272
+quantex_nr_train_videos <- 51
+quantex_nr_val_videos <- 6
+quantex_nr_test_videos <- 7
+
 ```
 
 ## Dataset Description
 ### Statistics
-The Quantex dataset contains a total of `r quantex_sum_hours` hours of video footage from `r quantex_sum_videos`  video recordings, collected by `r quantex_nr_children` children aged 3 to 5 years (M=`r quantex_mean_age`, SD=`r quantex_sd_age`). The children were grouped into three age categories, with `r quantex_count_3_plus` videos being recorded of children age 3, `r quantex_count_4_plus` videos for children age 4, and `r quantex_count_5_plus` videos at age 5. Individual recording durations vary widely, ranging from `r quantex_min_minutes` to `r quantex_max_minutes` minutes per child (M=`r quantex_mean_minutes`, SD=`r quantex_sd_minutes`). Figure  \@ref(fig:quantex-minutes-per-child) illustrates the detailed distribution of recording lengths, reflecting the diversity in individual contributions to the dataset.
+The Quantex dataset contains a total of `r quantex_sum_hours` hours of video footage from `r quantex_sum_videos`  video recordings, collected by `r quantex_nr_children` children aged 3 to 5 years (M=`r quantex_mean_age`, SD=`r quantex_sd_age`). The children were grouped into three age categories, with `r quantex_count_3_plus` videos being recorded of children age 3, `r quantex_count_4_plus` videos for children age 4, and `r quantex_count_5_plus` videos at age 5. Individual recording durations vary widely, ranging from `r quantex_min_minutes` to `r quantex_max_minutes` minutes per child (M=`r quantex_mean_minutes`, SD=`r quantex_sd_minutes`). Figure  \@ref(fig:quantex-minutes-per-child) illustrates the detailed distribution of recording lengths, reflecting the diversity in individual contributions to the dataset. From the `r quantex_sum_videos`  video files, `r quantex_nr_annotated_videos` videos were annotated manually as training input for the automated analysis pipeline.
 
 ```{r quantex-minutes-per-child, echo=FALSE, message=FALSE, warning=FALSE, fig.align='center', fig.cap="Video recording duration (in minutes) per Child in the Quantex Dataset.", fig.height=2.5, fig.width=3.5}
 quantex_unique_data$ID <- as.factor(quantex_unique_data$ID)
@@ -237,9 +246,9 @@ quantex_1_plot <- ggplot(quantex_unique_data, aes(x = Minutes_per_ID)) +
 ```
 
 ### Annotation Strategy
-The dataset annotations cover four key elements: persons, faces, objects the child interacts with, and gaze direction. Gaze information identifies whether a detected person’s gaze is directed toward the child or not. For every detected person (or reflection of a person, such as in a mirror) and face, additional attributes like age and gender are collected. Objects are categorized into six distinct groups: book, screen, animal, food, toy, and kitchenware, with an additional category for other objects. The dataset focus is on detecting and labeling instances of (social) interaction and engagement through these key categories. The annotation strategy is displayed in Figure \@ref(fig:camera-cvat-activity-classes).
+The dataset annotations cover four key elements: persons, faces, gaze direction, objects the child interacts with. Gaze information identifies whether a detected person’s gaze is directed toward the child or not. For every detected person (or reflection of a person, such as in a mirror) and face, additional attributes like age and gender are collected. Objects are categorized into six distinct groups: book, screen, animal, food, toy, and kitchenware, with an additional category for other objects. The dataset focus is on detecting and labeling instances of (social) interaction and engagement through these key categories. The annotation strategy is displayed in Figure \@ref(fig:camera-cvat-activity-classes).
 
-```{r camera-cvat-activity-classes, echo=FALSE, dpi=600, fig.align='center', fig.cap="\\textbf{A} – Vest with the embedded camera worn by the children, \\textbf{B} – CVAT platform utilized for video annotation, \\textbf{C} – Annotation strategy in the Quantex dataset."}
+```{r camera-cvat-activity-classes, echo=FALSE, dpi=600, fig.align='center', fig.cap="\\textbf{A} – Vest with the embedded camera worn by the children, \\textbf{B} – CVAT platform utilized for video annotation, \\textbf{C} – Annotation Strategy in the Quantex dataset."}
 img1 <- ggdraw() + draw_image("images/camera_worn_close.png", scale = 0.8)
 img2 <- ggdraw() + draw_image("images/cvat.png", scale = 0.8)
 img3 <- ggdraw() + draw_image("images/quantex_annotation_strategy_narrow.png", scale = 0.9)
@@ -264,7 +273,7 @@ final_labeled_layout
 This study collected egocentric video recordings from `r quantex_nr_children` children, aged 3 to 5 years, over a span of `r quantex_time_span_months` months. Participating families lived in a mid-sized city in Germany. To capture the children’s everyday experiences, a wearable vest equipped with a camera was used, as shown in figure \@ref(fig:camera-cvat-activity-classes). The camera, a _PatrolEyes WiFi HD Infrared Police Body Camera_, provided high-definition video (1920x1080p at 30 fps) with a 140-degree wide-angle lens and also recorded audio. Children were free to move around and engage in their usual activities at home without any interference or instructions given to their parents.
 
 ## Data Preprocessing
-For the video data, the annotation strategy required persons, faces, and objects to be labeled even when only partially visible, as long as key features such as facial landmarks (e.g., nose, eye, or mouth) or parts of a person or object were clearly visible. Frames that were too blurry due to movement were marked as “noise” and excluded from further analysis. Additionally, frames where the child was not wearing the camera, as well as any scenes containing nudity, were also labeled as noise and removed from the dataset. To prepare the video data for analysis, one frame per second was annotated, corresponding to every 30th frame in the video. Similarly, every 30th raw frame was extracted from the annotated video files. No preprocessing was applied to the audio data, which was used in its raw form for analysis.
+For the video data, the annotation strategy required persons, faces, and objects to be labeled even when only partially visible, as long as key features such as facial landmarks (e.g., nose, eye, or mouth) or parts of a person or object were clearly visible. Frames that were too blurry due to movement were marked as “noise” and excluded from further analysis. Additionally, frames where the child was not wearing the camera, as well as any scenes containing nudity, were also labele d as noise and removed from the dataset. To prepare the video data for analysis, one frame per second was annotated, corresponding to every 30th frame in the video. Similarly, every 30th raw frame was extracted from the annotated video files. No preprocessing was applied to the audio data, which was used in its raw form for analysis.
 
 ## Automated Analysis Pipeline
 
@@ -273,16 +282,17 @@ For the video data, the annotation strategy required persons, faces, and objects
 
 
 ### Face Detection
-We employed a YOLOv11 model pretrained for face detection [@coddYOLOv11nfacedetection2024], which was fine-tuned on our dataset to adapt it to the unique characteristics of our egocentric dataset, captured using chest-mounted cameras. While we initially experimented with the MTCNN model, its performance on our dataset proved insufficient. Consequently, we chose YOLO due to its streamlined training process and fewer requirements for data preparation. The dataset was divided into 80% for training, 10% for validation, and 10% for testing, consisting of 64 videos in total. This split corresponded to 72,687 frames for training, 7,720 frames for validation, and 9,272 frames for testing.
+We employed a YOLOv11 model pretrained for face detection [@coddYOLOv11nfacedetection2024], which was fine-tuned on our dataset to adapt it to the unique characteristics of our egocentric dataset, captured using chest-mounted cameras. While we initially experimented with the MTCNN model, its performance on our dataset proved insufficient. Consequently, we chose YOLO due to its streamlined training process and fewer requirements for data preparation. The `r quantex_nr_annotated_videos` annotated videos were divided into 70% for training, 10% for validation, and 20% for testing. This split corresponded to `r quantex_nr_train_videos` with `r quantex_nr_train_frames` frames for training, `r quantex_nr_val_videos` videos with `r quantex_nr_val_frames` frames for validation, and `r quantex_nr_test_videos` videos with `r quantex_nr_test_frames` frames for testing.
 
-Model training was conducted using the Ultralytics framework [@jocherUltralyticsYOLO2023] on a Linux server equipped with 48 cores and 187 GB of RAM. The training process utilized YOLO’s built-in data augmentation, a batch size of 16, a cosine annealing learning rate scheduler, and early stopping after 10 epochs without improvement, with a maximum of 200 epochs. Training concluded after 86 epochs, achieving a mean average precision (mAP) of 0.89 on the validation set. The most relevant model evaluation metrics are summarized in Table \@ref(tab:face-detection-metrics).
+Model training was conducted using the Ultralytics framework [@jocherUltralyticsYOLO2023] on a Linux server equipped with 48 cores and 187 GB of RAM. The training process utilized YOLO’s built-in data augmentation, a batch size of 16, a cosine annealing learning rate scheduler, and early stopping after 10 epochs without improvement, with a maximum of 200 epochs. Training concluded after 86 epochs, achieving a precision of 0.90 and a recall of 0.83, resulting in an \( F_1 \)-score of 0.86 on the testing set. This indicates strong performance in correctly identifying most faces while minimizing errors, although some challenges remain. These performance metrics, summarized in Table \@ref(tab:face-detection-metrics), underscore the model’s ability to reliably detect faces, with further details and evaluation available in the supplementary materials.
 
-The model is an essential part of our automated analysis pipeline,detecting faces in each frame for subsequent gaze analysis. An examination of false negatives revealed that the model struggled in scenarios involving occlusions, such as rapid movements by the child, camera shake, parts of the child obscuring another person’s face, or the presence of small faces in the background. However, these instances are not central to our study, as they are unlikely to involve individuals actively interacting with the child.
+The model performed well in detecting faces, particularly when fully visible from the front, but few challenges remain in more dynamic scenarios. For example, faces that are partially visible, rotated, or seen from the side often resulted in detection errors. Furthermore, false negatives were more common when faces were occluded by the child’s body, blurred due to movement, or situated in the background. While background faces are less relevant, as they are unlikely to be part of an interaction with the child, missed detections due to occlusions or motion blur present a greater challenge. In these cases, we rely on adjacent frames to provide clearer views for more accurate classification. These difficulties underscore the challenges of working with egocentric video data, where dynamic movement and varying perspectives, typical of chest-mounted camera recordings, introduce additional complexity.
+
+Accurate face detection remains a crucial step in our automated analysis pipeline, as it serves as the foundation for subsequent gaze classification. Identifying the presence and position of faces ensures that gaze direction can be reliably analyzed, allowing us to determine when and how individuals engage with the child.
 
 ```{r face-detection-metrics, echo=FALSE, message=FALSE, warnings=FALSE, results='asis', eval=TRUE}
-my.data <- "Dataset | Precision | Recall | F1-Score | Accuracy | False Positive Rate | False Negative Rate
-            ChildLens | 77.43   | 69.21 | 73.07 | 85.00 | 0.03 | 0.26"
-
+my.data <- "Dataset | Precision | Recall | F1-Score
+            Quantex | 0.90   | 0.83 | 0.86"
 
 df <- read.delim(textConnection(my.data), header=FALSE, sep="|", strip.white=TRUE, stringsAsFactors=FALSE)
 
@@ -295,7 +305,7 @@ row.names(df) <- NULL
 # Print the updated table
 apa_table(
   df,
-  caption = "Evaluation metrics for the Yolov11 face detection model trained on the Quantex dataset.",
+  caption = "Evaluation metrics for the YOLOv11 face detection model trained on the Quantex dataset.",
   escape = TRUE
 )
 ```
@@ -336,6 +346,11 @@ apa_table(
 
 \newpage
 # References
+
+\newpage
+# Supplementary Material
+\newpage
+
 <!--e used `r cite_r("bibliography.bib")` for all our analyses.-->    
 ```{r create_r-references}
 r_refs(file = "bibliography.bib")
@@ -351,74 +366,7 @@ r_refs(file = "bibliography.bib")
 \newpage
 # Appendix
 
-## List of ChildLens Activity Classes
 
-The dataset contains the following list of activities.
 
-1. **playing with object**: The child is playing with an object, such as a toy or a ball.
-2. **playing without object**: The child is playing without an object, such as playing hide and seek or catch.
-3. **pretend play**: The child is engaged in imaginative play, such as pretending to be a doctor or a firefighter.
-4. **watching something**: The child is watching a movie, TV show, or video on either a screen or a device.
-5. **reading book**: The child is reading a book or looking at pictures in a book.
-6. **child talking**: The child is talking to themselves or to someone else.
-7. **other person talking**: Another person is talking to the child.
-8. **overheard speech**: Conversations that the child can hear but is not directly involved in.
-9. **drawing**: The child is drawing or coloring a picture.
-10. **crafting things**: The child is engaged in a craft activity, such as making a bracelet or decoration.
-11. **singing / humming**: The child is singing or humming a song or a melody.
-12. **making music**: The child is playing a musical instrument or making music in another way.
-13. **dancing**: The child is dancing to music or moving to a rhythm.
-14. **listening to music / audiobook**: The child is listening to music or an audiobook.
 
-## List of ChildLens Location Classes
-
-1. livingroom
-2. playroom
-3. bathroom
-4. hallawy
-5. other
-
-## Activity Class Statistics
-```{r activity-classes-statistics, echo=FALSE, dpi=600, fig.align='center'}
-# Define the table data as a string with "|" delimiters
-activity_data <- "Category | Activity Class | Instance Count | Total Duration (min)
-       Audio   | Child talking        | 7447             | 649.10
-               | Other person talking | 6113             | 455.29
-               | Overheard Speech     | 1898             | 299.44
-               | Singing/Humming      | 277             | 82.00
-               | Listening to music/audiobook | 68     | 222.14
-       Video   | Watching something   | 2             | 5.09
-               | Drawing              | 62             | 374.91
-               | Crafting things      | 26             | 109.14
-               | Dancing              | 2             | 0.57
-      Multimodal | Playing with object  | 317             | 1371.06
-                 | Playing without object | 25           | 28.87
-                 | Pretend play         | 59             | 158.84
-                 | Reading a book         | 81             | 328.70
-                 | Making music         | 3             | 2.13"
-# Read the table into a data frame
-activity_classes_table <- read.delim(
-  textConnection(activity_data), 
-  header = FALSE, 
-  sep = "|", 
-  strip.white = TRUE, 
-  stringsAsFactors = FALSE
-)
-
-# Assign column names from the first row
-names(activity_classes_table) <- unname(as.list(activity_classes_table[1, ]))
-
-# Remove the first row (header row) from the data frame
-activity_classes_table <- activity_classes_table[-1, ]
-
-# Reset row names to NULL
-row.names(activity_classes_table) <- NULL
-
-# Use apa_table to display the table with a caption
-apa_table(
-  activity_classes_table,
-  caption = "Number of video instances and the total duration (in minutes).",
-  escape = TRUE
-)
-```
 

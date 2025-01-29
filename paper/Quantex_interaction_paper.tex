@@ -233,7 +233,7 @@ The Quantex dataset includes
 
 \subsubsection{Statistics}\label{statistics}
 
-The Quantex dataset contains a total of 197.20 hours of video footage from 503 video recordings, collected by 76 children aged 3 to 5 years (M=4.53, SD=0.81). The children were grouped into three age categories, with 167 videos being recorded of children age 3, 180 videos for children age 4, and 156 videos at age 5. Individual recording durations vary widely, ranging from 10.43 to 391.18 minutes per child (M=155.68, SD=82.62). Figure \ref{fig:quantex-minutes-per-child} illustrates the detailed distribution of recording lengths, reflecting the diversity in individual contributions to the dataset.
+The Quantex dataset contains a total of 197.20 hours of video footage from 503 video recordings, collected by 76 children aged 3 to 5 years (M=4.53, SD=0.81). The children were grouped into three age categories, with 167 videos being recorded of children age 3, 180 videos for children age 4, and 156 videos at age 5. Individual recording durations vary widely, ranging from 10.43 to 391.18 minutes per child (M=155.68, SD=82.62). Figure \ref{fig:quantex-minutes-per-child} illustrates the detailed distribution of recording lengths, reflecting the diversity in individual contributions to the dataset. From the 503 video files, 100 videos were annotated manually as training input for the automated analysis pipeline.
 
 \begin{figure}
 
@@ -246,7 +246,7 @@ The Quantex dataset contains a total of 197.20 hours of video footage from 503 v
 
 \subsubsection{Annotation Strategy}\label{annotation-strategy}
 
-The dataset annotations cover four key elements: persons, faces, objects the child interacts with, and gaze direction. Gaze information identifies whether a detected person's gaze is directed toward the child or not. For every detected person (or reflection of a person, such as in a mirror) and face, additional attributes like age and gender are collected. Objects are categorized into six distinct groups: book, screen, animal, food, toy, and kitchenware, with an additional category for other objects. The dataset focus is on detecting and labeling instances of (social) interaction and engagement through these key categories. The annotation strategy is displayed in Figure \ref{fig:camera-cvat-activity-classes}.
+The dataset annotations cover four key elements: persons, faces, gaze direction, objects the child interacts with. Gaze information identifies whether a detected person's gaze is directed toward the child or not. For every detected person (or reflection of a person, such as in a mirror) and face, additional attributes like age and gender are collected. Objects are categorized into six distinct groups: book, screen, animal, food, toy, and kitchenware, with an additional category for other objects. The dataset focus is on detecting and labeling instances of (social) interaction and engagement through these key categories. The annotation strategy is displayed in Figure \ref{fig:camera-cvat-activity-classes}.
 
 \begin{figure}
 
@@ -254,7 +254,7 @@ The dataset annotations cover four key elements: persons, faces, objects the chi
 
 }
 
-\caption{\textbf{A} – Vest with the embedded camera worn by the children, \textbf{B} – CVAT platform utilized for video annotation, \textbf{C} – Annotation strategy in the Quantex dataset.}\label{fig:camera-cvat-activity-classes}
+\caption{\textbf{A} – Vest with the embedded camera worn by the children, \textbf{B} – CVAT platform utilized for video annotation, \textbf{C} – Annotation Strategy in the Quantex dataset.}\label{fig:camera-cvat-activity-classes}
 \end{figure}
 
 \subsection{Data Collection}\label{data-collection}
@@ -263,7 +263,7 @@ This study collected egocentric video recordings from 76 children, aged 3 to 5 y
 
 \subsection{Data Preprocessing}\label{data-preprocessing}
 
-For the video data, the annotation strategy required persons, faces, and objects to be labeled even when only partially visible, as long as key features such as facial landmarks (e.g., nose, eye, or mouth) or parts of a person or object were clearly visible. Frames that were too blurry due to movement were marked as ``noise'' and excluded from further analysis. Additionally, frames where the child was not wearing the camera, as well as any scenes containing nudity, were also labeled as noise and removed from the dataset. To prepare the video data for analysis, one frame per second was annotated, corresponding to every 30th frame in the video. Similarly, every 30th raw frame was extracted from the annotated video files. No preprocessing was applied to the audio data, which was used in its raw form for analysis.
+For the video data, the annotation strategy required persons, faces, and objects to be labeled even when only partially visible, as long as key features such as facial landmarks (e.g., nose, eye, or mouth) or parts of a person or object were clearly visible. Frames that were too blurry due to movement were marked as ``noise'' and excluded from further analysis. Additionally, frames where the child was not wearing the camera, as well as any scenes containing nudity, were also labele d as noise and removed from the dataset. To prepare the video data for analysis, one frame per second was annotated, corresponding to every 30th frame in the video. Similarly, every 30th raw frame was extracted from the annotated video files. No preprocessing was applied to the audio data, which was used in its raw form for analysis.
 
 \subsection{Automated Analysis Pipeline}\label{automated-analysis-pipeline}
 
@@ -271,24 +271,26 @@ For the video data, the annotation strategy required persons, faces, and objects
 
 \subsubsection{Face Detection}\label{face-detection}
 
-We employed a YOLOv11 model pretrained for face detection (Codd, 2024), which was fine-tuned on our dataset to adapt it to the unique characteristics of our egocentric dataset, captured using chest-mounted cameras. While we initially experimented with the MTCNN model, its performance on our dataset proved insufficient. Consequently, we chose YOLO due to its streamlined training process and fewer requirements for data preparation. The dataset was divided into 80\% for training, 10\% for validation, and 10\% for testing, consisting of 64 videos in total. This split corresponded to 72,687 frames for training, 7,720 frames for validation, and 9,272 frames for testing.
+We employed a YOLOv11 model pretrained for face detection (Codd, 2024), which was fine-tuned on our dataset to adapt it to the unique characteristics of our egocentric dataset, captured using chest-mounted cameras. While we initially experimented with the MTCNN model, its performance on our dataset proved insufficient. Consequently, we chose YOLO due to its streamlined training process and fewer requirements for data preparation. The 100 annotated videos were divided into 70\% for training, 10\% for validation, and 20\% for testing. This split corresponded to 51 with 72687 frames for training, 6 videos with 7720 frames for validation, and 7 videos with 9272 frames for testing.
 
-Model training was conducted using the Ultralytics framework (Jocher, Jing, \& Chaurasia, 2023) on a Linux server equipped with 48 cores and 187 GB of RAM. The training process utilized YOLO's built-in data augmentation, a batch size of 16, a cosine annealing learning rate scheduler, and early stopping after 10 epochs without improvement, with a maximum of 200 epochs. Training concluded after 86 epochs, achieving a mean average precision (mAP) of 0.89 on the validation set. The most relevant model evaluation metrics are summarized in Table \ref{tab:face-detection-metrics}.
+Model training was conducted using the Ultralytics framework (Jocher, Jing, \& Chaurasia, 2023) on a Linux server equipped with 48 cores and 187 GB of RAM. The training process utilized YOLO's built-in data augmentation, a batch size of 16, a cosine annealing learning rate scheduler, and early stopping after 10 epochs without improvement, with a maximum of 200 epochs. Training concluded after 86 epochs, achieving a precision of 0.90 and a recall of 0.83, resulting in an \(F_1\)-score of 0.86 on the testing set. This indicates strong performance in correctly identifying most faces while minimizing errors, although some challenges remain. These performance metrics, summarized in Table \ref{tab:face-detection-metrics}, underscore the model's ability to reliably detect faces, with further details and evaluation available in the supplementary materials.
 
-The model is an essential part of our automated analysis pipeline,detecting faces in each frame for subsequent gaze analysis. An examination of false negatives revealed that the model struggled in scenarios involving occlusions, such as rapid movements by the child, camera shake, parts of the child obscuring another person's face, or the presence of small faces in the background. However, these instances are not central to our study, as they are unlikely to involve individuals actively interacting with the child.
+The model performed well in detecting faces, particularly when fully visible from the front, but few challenges remain in more dynamic scenarios. For example, faces that are partially visible, rotated, or seen from the side often resulted in detection errors. Furthermore, false negatives were more common when faces were occluded by the child's body, blurred due to movement, or situated in the background. While background faces are less relevant, as they are unlikely to be part of an interaction with the child, missed detections due to occlusions or motion blur present a greater challenge. In these cases, we rely on adjacent frames to provide clearer views for more accurate classification. These difficulties underscore the challenges of working with egocentric video data, where dynamic movement and varying perspectives, typical of chest-mounted camera recordings, introduce additional complexity.
+
+Accurate face detection remains a crucial step in our automated analysis pipeline, as it serves as the foundation for subsequent gaze classification. Identifying the presence and position of faces ensures that gaze direction can be reliably analyzed, allowing us to determine when and how individuals engage with the child.
 
 \begin{table}[tbp]
 
 \begin{center}
 \begin{threeparttable}
 
-\caption{\label{tab:face-detection-metrics}Evaluation metrics for the Yolov11 face detection model trained on the Quantex dataset.}
+\caption{\label{tab:face-detection-metrics}Evaluation metrics for the YOLOv11 face detection model trained on the Quantex dataset.}
 
-\begin{tabular}{lllllll}
+\begin{tabular}{llll}
 \toprule
-Dataset & \multicolumn{1}{c}{Precision} & \multicolumn{1}{c}{Recall} & \multicolumn{1}{c}{F1-Score} & \multicolumn{1}{c}{Accuracy} & \multicolumn{1}{c}{False Positive Rate} & \multicolumn{1}{c}{False Negative Rate}\\
+Dataset & \multicolumn{1}{c}{Precision} & \multicolumn{1}{c}{Recall} & \multicolumn{1}{c}{F1-Score}\\
 \midrule
-ChildLens & 77.43 & 69.21 & 73.07 & 85.00 & 0.03 & 0.26\\
+Quantex & 0.90 & 0.83 & 0.86\\
 \bottomrule
 \end{tabular}
 
@@ -323,6 +325,12 @@ ChildLens & 77.43 & 69.21 & 73.07 & 85.00 & 0.03 & 0.26\\
 
 \section{References}\label{references}
 
+\newpage
+
+\section{Supplementary Material}\label{supplementary-material}
+
+\newpage
+
 \begingroup
 \setlength{\parindent}{-0.5in}
 \setlength{\leftskip}{0.5in}
@@ -342,95 +350,6 @@ Jocher, G., Jing, Q., \& Chaurasia, A. (2023). \emph{Ultralytics {YOLO}}. Retrie
 \newpage
 
 \section{Appendix}\label{appendix}
-
-\subsection{List of ChildLens Activity Classes}\label{list-of-childlens-activity-classes}
-
-The dataset contains the following list of activities.
-
-\begin{enumerate}
-\def\labelenumi{\arabic{enumi}.}
-\tightlist
-\item
-  \textbf{playing with object}: The child is playing with an object, such as a toy or a ball.
-\item
-  \textbf{playing without object}: The child is playing without an object, such as playing hide and seek or catch.
-\item
-  \textbf{pretend play}: The child is engaged in imaginative play, such as pretending to be a doctor or a firefighter.
-\item
-  \textbf{watching something}: The child is watching a movie, TV show, or video on either a screen or a device.
-\item
-  \textbf{reading book}: The child is reading a book or looking at pictures in a book.
-\item
-  \textbf{child talking}: The child is talking to themselves or to someone else.
-\item
-  \textbf{other person talking}: Another person is talking to the child.
-\item
-  \textbf{overheard speech}: Conversations that the child can hear but is not directly involved in.
-\item
-  \textbf{drawing}: The child is drawing or coloring a picture.
-\item
-  \textbf{crafting things}: The child is engaged in a craft activity, such as making a bracelet or decoration.
-\item
-  \textbf{singing / humming}: The child is singing or humming a song or a melody.
-\item
-  \textbf{making music}: The child is playing a musical instrument or making music in another way.
-\item
-  \textbf{dancing}: The child is dancing to music or moving to a rhythm.
-\item
-  \textbf{listening to music / audiobook}: The child is listening to music or an audiobook.
-\end{enumerate}
-
-\subsection{List of ChildLens Location Classes}\label{list-of-childlens-location-classes}
-
-\begin{enumerate}
-\def\labelenumi{\arabic{enumi}.}
-\tightlist
-\item
-  livingroom
-\item
-  playroom
-\item
-  bathroom
-\item
-  hallawy
-\item
-  other
-\end{enumerate}
-
-\subsection{Activity Class Statistics}\label{activity-class-statistics}
-
-\begin{table}[tbp]
-
-\begin{center}
-\begin{threeparttable}
-
-\caption{\label{tab:activity-classes-statistics}Number of video instances and the total duration (in minutes).}
-
-\begin{tabular}{llll}
-\toprule
-Category & \multicolumn{1}{c}{Activity Class} & \multicolumn{1}{c}{Instance Count} & \multicolumn{1}{c}{Total Duration (min)}\\
-\midrule
-Audio & Child talking & 7447 & 649.10\\
- & Other person talking & 6113 & 455.29\\
- & Overheard Speech & 1898 & 299.44\\
- & Singing/Humming & 277 & 82.00\\
- & Listening to music/audiobook & 68 & 222.14\\
-Video & Watching something & 2 & 5.09\\
- & Drawing & 62 & 374.91\\
- & Crafting things & 26 & 109.14\\
- & Dancing & 2 & 0.57\\
-Multimodal & Playing with object & 317 & 1371.06\\
- & Playing without object & 25 & 28.87\\
- & Pretend play & 59 & 158.84\\
- & Reading a book & 81 & 328.70\\
- & Making music & 3 & 2.13\\
-\bottomrule
-\end{tabular}
-
-\end{threeparttable}
-\end{center}
-
-\end{table}
 
 
 \end{document}
