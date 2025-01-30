@@ -162,6 +162,7 @@ def get_class_to_total_ratio(annotation_folder: Path, image_folder: Path) -> flo
             video_name = "_".join(parts[:8])
             video_names.add(video_name)
     logging.info(f"Found {len(video_names)} unique video names")
+    print(video_names)
     
     # Step 2: Count total images and images with faces
     for video_name in video_names:
