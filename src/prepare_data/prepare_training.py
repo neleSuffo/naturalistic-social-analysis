@@ -37,49 +37,6 @@ def create_missing_annotation_files(
         (txt_dir / f"{file}.txt").touch()
 
 
-def images_train_val_test_split(
-    images_dir: Path,
-    train_videos: list,
-    val_videos: list,
-    test_videos: list
-    ) -> tuple:
-    """
-    This function splits the dataset into training, validation and testing sets
-    and returns the list of training, validation and testing files.
-
-    Parameters
-    ----------
-    images_dir : str
-        the directory with the .jpg files
-    train_videos : list
-        the list of training videos
-    val_videos : list
-        the list of validation videos
-    test_videos : list
-        the list of testing videos
-    
-    Returns
-    -------
-    tuple
-        the list of training, validation  and testing images
-    """
-    # Initialize empty lists to store image names for train and validation sets
-    train_images, val_images, test_images = [], [], []
-
-    # Iterate through all images in the directory
-    for image_file in images_dir.rglob("*.jpg"):
-        video_name_part = "_".join(image_file.stem.split("_")[:-1])
-        
-        if video_name_part in train_videos:
-            train_images.append(image_file.name)
-        elif video_name_part in val_videos:
-            val_images.append(image_file.name)
-        elif video_name_part in test_videos:
-            test_images.append(image_file.name)
-    
-    logging.info(f"Split completed: Train: {len(train_images)}, Val: {len(val_images)}, Test: {len(test_images)}")
-    return train_images, val_images, test_images
-
 def copy_yolo_files(
     files_to_move_lst: list, 
     dest_dir_images: Path,
@@ -328,57 +285,105 @@ def get_video_lengths() -> list:
     logging.info(f"Found {len(video_lengths)} videos with annotations")
     return video_lengths
 
-
-def balanced_train_val_test_split(
-    train_ratio: float
-) -> tuple:
-    
+def get_class_to_total_ratio(annotation_folder: Path, image_folder: Path) -> float:
     """
-    This function splits the dataset into training, validation and testing sets
-    while balancing the cumulative length of the videos in each set.
+    This function calculates the ratio of images with classes to total images.
     
     Parameters
     ----------
-    train_ratio : float
-        the ratio to split the dataset
+    annotation_folder : str
+        the directory with the annotation files
+    image_folder : str
+        the directory with the image files
         
     Returns
     -------
-    tuple
-        the list of training, validation and testing videos
+    class_to_total_ratio: float
+        the ratio of images with classes to total images
+    total_images: int
+        the list of total images from annotated videos
+    
     """
-    video_files_with_length = get_video_lengths()
+    # Step 1: Extract unique video names from annotation files
+    video_names = set()
+    for annotation_file in os.listdir(annotation_folder):
+        if annotation_file.endswith('.txt'):
+            parts = annotation_file.split('_')
+            video_name = "_".join(parts[:8])
+            video_names.add(video_name)
+    logging.info(f"Found {len(video_names)} unique video names")
+    
+    # Step 2: Count total images and images with faces
+    total_images = []
+    total_images_count = 0
+    images_with_class_count = 0
+    for video_name in video_names:
+        video_path = image_folder / video_name
+        if os.path.isdir(video_path):
+            total_images_count += len(os.listdir(video_path))
+            total_images.extend(os.listdir(video_path))
+    images_with_class_count += len(os.listdir(annotation_folder))
+    
+    logging.info(f"Total images count: {total_images_count}, Images with class count: {images_with_class_count}")
 
-    # Set the random seed for reproducibility
+    # Step 3: Calculate the ratio
+    class_to_total_ratio = images_with_class_count / total_images_count if total_images_count > 0 else 0
+    logging.info(f"Class to total ratio: {class_to_total_ratio}")
+    return class_to_total_ratio, total_images
+
+def images_train_val_test_split(
+    image_folder: str,
+    images_list: list,
+    train_ratio: float,
+    class_to_total_ratio: float
+) -> tuple:
+    """
+    This function shuffles all images and splits them into training, validation, and testing sets.
+
+    Parameters
+    ----------
+    images_list : list
+        the list of images to split
+    train_ratio : float
+        the ratio of images to use for training
+    class_to_total_ratio : float
+        the ratio of images with classes to total images
+    
+    Returns
+    -------
+    tuple
+        the list of training, validation, and testing images
+    """
+    val_ratio = (1 - train_ratio) / 2
+    test_ratio = 1 - train_ratio - val_ratio
+
+    # Ensure the sum of the ratios equals 1
+    assert abs((train_ratio + val_ratio + test_ratio) - 1.0) < 1e-6, "The sum of ratios must be 1."
+    
+    train_images = []
+    val_images = []
+    test_images = []
+
+    # Shuffle the images
     random.seed(TrainingConfig.random_seed)
-    # Shuffle the list to randomize the selection
-    random.shuffle(video_files_with_length)
+    random.shuffle(images_list)
     
-    # Calculate split sizes
-    total_videos = len(video_files_with_length)
-    num_train_videos = int(train_ratio * total_videos)
-    num_val_videos = (total_videos - num_train_videos) // 2
-    num_test_videos = total_videos - num_train_videos - num_val_videos
+    # Split the images into training, validation, and testing sets
+    total_images = len(images_list)
+    train_size = int(total_images * train_ratio)
+    val_size = int(total_images * val_ratio)
+    test_size = total_images - (train_size + val_size)
     
-    train_videos, val_videos, test_videos = [], [], []
-    train_length, val_length, test_length = 0, 0, 0
-    
-    for video in video_files_with_length:
-        if len(train_videos) < num_train_videos:
-            train_videos.append(video[0])
-            train_length += video[1]
-        elif len(val_videos) < num_val_videos:
-            val_videos.append(video[0])
-            val_length += video[1]
-        else:
-            test_videos.append(video[0])
-            test_length += video[1]
-    
-    logging.info(f"Train set: {len(train_videos)} videos")
-    logging.info(f"Val set: {len(val_videos)} videos")
-    logging.info(f"Test set: {len(test_videos)} videos")
-    
-    return train_videos, val_videos, test_videos
+    # Split the images into training, validation, and testing sets
+    train_images = images_list[:train_size]
+    val_images = images_list[train_size:train_size + val_size]
+    test_images = images_list[train_size + val_size:]
+
+    logging.info(f"Train set: {len(train_images)} frames")
+    logging.info(f"Val set: {len(val_images)} frames")
+    logging.info(f"Test set: {len(test_images)} videos")
+
+    return train_images, val_images, test_images
 
 def main(model_target: str, yolo_target: str) -> None:
     """
@@ -397,25 +402,24 @@ def main(model_target: str, yolo_target: str) -> None:
     # Create missing annotation files for YOLO
     if model_target == "yolo":
         if yolo_target == "person":
+            class_to_total_ratio, total_images = get_class_to_total_ratio(YoloPaths.person_labels_input_dir, DetectionPaths.images_input_dir)
             create_missing_annotation_files(DetectionPaths.images_input_dir, YoloPaths.person_labels_input_dir)
         elif yolo_target == "face":
+            class_to_total_ratio, total_images = get_class_to_total_ratio(YoloPaths.face_labels_input_dir, DetectionPaths.images_input_dir)
             create_missing_annotation_files(DetectionPaths.images_input_dir, YoloPaths.face_labels_input_dir)
     
     # Split video files into training, validation, and testing sets
-    train_videos, val_videos, test_videos = balanced_train_val_test_split(TrainingConfig.train_test_split_ratio)
-    train_files, val_files, test_files = images_train_val_test_split(
-        DetectionPaths.images_input_dir, train_videos, val_videos, test_videos
-    )
+    train_images, val_images, test_images = images_train_val_test_split(DetectionPaths.images_input_dir, total_images, TrainingConfig.train_test_split_ratio, class_to_total_ratio)
     
     # Prepare dataset based on the model target
     if model_target == "yolo":
         prepare_yolo_dataset(
             YoloPaths.face_data_input_dir if yolo_target == "face" else YoloPaths.person_data_input_dir,
-            train_files, val_files, test_files
+            train_images, val_images, test_images
         )
     elif model_target == "mtcnn":
         prepare_mtcnn_dataset(
-            MtcnnPaths.data_input, train_files, val_files, test_files
+            MtcnnPaths.data_input, train_images, val_images, test_images
         )
     else:
         raise ValueError(f"Unsupported model target: {model_target}")
