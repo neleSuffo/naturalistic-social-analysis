@@ -11,101 +11,6 @@ import argparse
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-
-def create_missing_annotation_files(
-    jpg_dir: Path, 
-    txt_dir: Path
-) -> None:
-    """
-    This function checks if for every .jpg file there is a .txt file with the same name. 
-    If not, it creates an empty .txt file.
-
-    Parameters
-    ----------
-    jpg_dir : Path
-        the directory with the .jpg files
-    txt_dir : Path
-        the directory with the .txt files
-    """
-    # Get the list of all .jpg and .txt files and extract the file names
-    jpg_files = {f.stem for f in jpg_dir.rglob('*.jpg')}
-    txt_files = {f.stem for f in txt_dir.glob('*.txt')}
-    missing_txt_files = jpg_files - txt_files
-    
-    # Create empty .txt files for the missing .jpg files
-    for file in missing_txt_files:
-        (txt_dir / f"{file}.txt").touch()
-
-
-def copy_yolo_files(
-    files_to_move_lst: list, 
-    dest_dir_images: Path,
-    dest_dir_labels: Path,
-    ) -> None:
-    """
-    This function moves files from the source directory to the destination directory
-    and deletes the empty source directory.
-
-    Parameters
-    ----------
-    files_to_move_lst : list
-        the list of image files to move
-    dest_dir_images : Path
-        the destination directory for the image files
-    dest_dir_labels : Path
-        the destination directory for the label files
-    """        
-    logging.info(f"Copying YOLO files to {dest_dir_images} and {dest_dir_labels}")
-    # Move the files to the new directory
-    for file_path in files_to_move_lst:
-        file_path = Path(file_path)
-        folder_name = str(file_path)[:-11]
-        # Construct the full source paths for the image and label
-        src_image_path = DetectionPaths.images_input_dir / folder_name / file_path
-        src_label_path = YoloPaths.face_labels_input_dir / file_path.with_suffix('.txt')
-        # Copy the images and move the label to their new destinations
-        shutil.copy(src_image_path, dest_dir_images)
-        shutil.copy(src_label_path, dest_dir_labels)
-    logging.info("YOLO files copied successfully")
-
-
-def prepare_yolo_dataset(
-    destination_dir: Path,
-    train_files: list,
-    val_files: list,
-    test_files: list
-):
-    """
-    This function moves the training, validation and testing files to the new yolo directories.
-
-    Parameters
-    ----------
-    destination_dir : Path
-        the destination directory to store the training, validation and testing sets
-    train_files : list
-        the list of image training files
-    val_files : list
-        the list of image validation files
-    test_files : list
-        the list of image testing files
-    """
-    # Define source directory and new directories for training
-    train_dir_images = destination_dir / "images/train"
-    val_dir_images = destination_dir / "images/val"
-    test_dir_images = destination_dir / "images/test"
-    train_dir_labels = destination_dir / "labels/train"
-    val_dir_labels = destination_dir / "labels/val"
-    test_dir_labels = destination_dir / "labels/test"
-    
-    # Create necessary directories if they don't exist
-    for path in [train_dir_images, val_dir_images,  test_dir_images, train_dir_labels, val_dir_labels, test_dir_labels]:
-        path.mkdir(parents=True, exist_ok=True)
-    
-    # Move the files to the new directories
-    copy_yolo_files(train_files, train_dir_images, train_dir_labels)
-    copy_yolo_files(val_files, val_dir_images, val_dir_labels)  
-    copy_yolo_files(test_files, test_dir_images, test_dir_labels)
-
 def copy_mtcnn_files(
     train_files: list,
     val_files: list, 
@@ -226,65 +131,6 @@ def prepare_mtcnn_dataset(
                     test_labels_path,
     )
 
-def get_video_length(
-    file_path: Path
-) -> float:
-    """
-    This function returns the length of a video file in seconds.
-    
-    Parameters
-    ----------
-    file_path : Path
-        the path to the video file
-    
-    Returns
-    -------
-    float
-        the length of the video in seconds
-    """
-    result = subprocess.run(
-        ["ffprobe", "-v", "error", "-show_entries", "format=duration",
-         "-of", "default=noprint_wrappers=1:nokey=1", file_path],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT
-    )
-    return float(result.stdout)
-    
-def get_video_lengths() -> list:
-    """Returns list of (video_name, length) tuples for videos with annotations"""
-    video_lengths = []
-    
-    # Connect to annotations database
-    conn = sqlite3.connect(DetectionPaths.annotations_db_path)
-    cursor = conn.cursor()
-    
-    # Get unique video IDs from annotations and join with videos table
-    cursor.execute("""
-        SELECT DISTINCT v.file_name 
-        FROM annotations a
-        JOIN videos v ON a.video_id = v.id
-        WHERE v.file_name NOT LIKE '%id255237_2022_05_08_04%'
-    """)
-    video_files_list = [row[0] for row in cursor.fetchall()]
-    conn.close()
-    
-    # Get length for each video
-    for video in video_files_list:
-        video_name = os.path.splitext(video)[0]
-        possible_files = list(DetectionPaths.quantex_videos_input_dir.glob(f"{video_name}.mp4")) + \
-                        list(DetectionPaths.quantex_videos_input_dir.glob(f"{video_name}.MP4"))
-        
-        if not possible_files:
-            logging.warning(f"Video file not found: {video_name}")
-            continue
-            
-        video_path = possible_files[0]
-        length = get_video_length(video_path)
-        video_lengths.append((video_name, length))
-    
-    logging.info(f"Found {len(video_lengths)} videos with annotations")
-    return video_lengths
-
 def get_class_to_total_ratio(annotation_folder: Path, image_folder: Path) -> float:
     """
     This function calculates the ratio of images with classes to total images.
@@ -331,60 +177,77 @@ def get_class_to_total_ratio(annotation_folder: Path, image_folder: Path) -> flo
     logging.info(f"Class to total ratio: {class_to_total_ratio}")
     return class_to_total_ratio, total_images
 
-def images_train_val_test_split(
-    image_folder: str,
-    images_list: list,
-    train_ratio: float,
-    class_to_total_ratio: float
-) -> tuple:
+def split_yolo_data(image_folder: Path,
+                    total_images: list, 
+                    annotation_folder: Path, 
+                    output_folder: Path, 
+                    class_to_total_ratio: int, 
+                    train_test_split_ratio: int=TrainingConfig.train_test_split_ratio):
     """
-    This function shuffles all images and splits them into training, validation, and testing sets.
+    Splits data into train, validation, and test sets while ensuring that 
+    missing annotation files are created only in the target directory.
 
     Parameters
     ----------
-    images_list : list
-        the list of images to split
-    train_ratio : float
-        the ratio of images to use for training
-    class_to_total_ratio : float
+    image_folder : Path
+        the directory with the image files
+    total_images : list
+        the list of total images from annotated videos
+    annotation_folder : Path
+        the directory with the annotation files
+    output_folder : Path
+        the directory to store the training, validation and testing sets
+    class_to_total_ratio : int
         the ratio of images with classes to total images
-    
-    Returns
-    -------
-    tuple
-        the list of training, validation, and testing images
+    train_test_split_ratio : int
+        the ratio of images to use for training, default is 0.8
     """
-    val_ratio = (1 - train_ratio) / 2
-    test_ratio = 1 - train_ratio - val_ratio
+    # Compute split indices
+    val_ratio = (1 - train_test_split_ratio) / 2
+    total_files = len(image_files)
+    train_count = int(total_files * train_ratio)
+    val_count = int(total_files * val_ratio)
 
-    # Ensure the sum of the ratios equals 1
-    assert abs((train_ratio + val_ratio + test_ratio) - 1.0) < 1e-6, "The sum of ratios must be 1."
-    
-    train_images = []
-    val_images = []
-    test_images = []
+    # Split into train, val, and test sets
+    train_files = image_files[:train_count]
+    val_files = image_files[train_count:train_count + val_count]
+    test_files = image_files[train_count + val_count:]
 
-    # Shuffle the images
-    random.seed(TrainingConfig.random_seed)
-    random.shuffle(images_list)
-    
-    # Split the images into training, validation, and testing sets
-    total_images = len(images_list)
-    train_size = int(total_images * train_ratio)
-    val_size = int(total_images * val_ratio)
-    test_size = total_images - (train_size + val_size)
-    
-    # Split the images into training, validation, and testing sets
-    train_images = images_list[:train_size]
-    val_images = images_list[train_size:train_size + val_size]
-    test_images = images_list[train_size + val_size:]
+    # Define subsets
+    splits = {
+        "train": train_files,
+        "val": val_files,
+        "test": test_files
+    }
 
-    logging.info(f"Train set: {len(train_images)} frames")
-    logging.info(f"Val set: {len(val_images)} frames")
-    logging.info(f"Test set: {len(test_images)} videos")
+    # Ensure output directories exist
+    for split in splits.keys():
+        (output_folder / split / "images").mkdir(parents=True, exist_ok=True)
+        (output_folder / split / "annotations").mkdir(parents=True, exist_ok=True)
 
-    return train_images, val_images, test_images
+    for split, files in splits.items():
+        for image_file in files:
+            image_file_path = Path(image_file)
+            folder_name = str(image_file_path)[:-11]
 
+            # Source paths
+            src_image_path = DetectionPaths.images_input_dir / folder_name / image_file_path.name
+            src_label_path = YoloPaths.face_labels_input_dir / image_file_path.with_suffix('.txt').name
+
+            # Target paths
+            image_dst = output_folder/ split / "images" / image_file_path.name
+            annotation_dst = output_folder / split / "annotations" / image_file_path.with_suffix('.txt').name
+        
+            # Copy image
+            shutil.copy(src_image_path, image_dst)
+
+            # Check if annotation file exists; copy or create it
+            if os.path.exists(annotation_src):
+                shutil.copy(annotation_src, annotation_dst)
+            else:
+                open(annotation_dst, 'w').close()  
+        
+        
 def main(model_target: str, yolo_target: str) -> None:
     """
     Main function to prepare the training dataset for the specified model and target.
@@ -403,20 +266,22 @@ def main(model_target: str, yolo_target: str) -> None:
     if model_target == "yolo":
         if yolo_target == "person":
             class_to_total_ratio, total_images = get_class_to_total_ratio(YoloPaths.person_labels_input_dir, DetectionPaths.images_input_dir)
-            create_missing_annotation_files(DetectionPaths.images_input_dir, YoloPaths.person_labels_input_dir)
+            train_images, val_images, test_images = split_yolo_data(DetectionPaths.images_input_dir, 
+                                                                    total_images, 
+                                                                    YoloPaths.person_labels_input_dir, 
+                                                                    YoloPaths.person_data_input_dir,
+                                                                    class_to_total_ratio,
+                                                                    TrainingConfig.train_test_split_ratio)
+
         elif yolo_target == "face":
             class_to_total_ratio, total_images = get_class_to_total_ratio(YoloPaths.face_labels_input_dir, DetectionPaths.images_input_dir)
-            create_missing_annotation_files(DetectionPaths.images_input_dir, YoloPaths.face_labels_input_dir)
-    
-    # Split video files into training, validation, and testing sets
-    train_images, val_images, test_images = images_train_val_test_split(DetectionPaths.images_input_dir, total_images, TrainingConfig.train_test_split_ratio, class_to_total_ratio)
-    
-    # Prepare dataset based on the model target
-    if model_target == "yolo":
-        prepare_yolo_dataset(
-            YoloPaths.face_data_input_dir if yolo_target == "face" else YoloPaths.person_data_input_dir,
-            train_images, val_images, test_images
-        )
+            train_images, val_images, test_images = split_yolo_data(DetectionPaths.images_input_dir, 
+                                                                    total_images, 
+                                                                    YoloPaths.face_labels_input_dir, 
+                                                                    YoloPaths.face_data_input_dir,
+                                                                    class_to_total_ratio,
+                                                                    TrainingConfig.train_test_split_ratio)
+        
     elif model_target == "mtcnn":
         prepare_mtcnn_dataset(
             MtcnnPaths.data_input, train_images, val_images, test_images
