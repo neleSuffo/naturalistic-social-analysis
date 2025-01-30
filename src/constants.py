@@ -16,7 +16,7 @@ class DetectionPaths:
     #videos_input_dir = Path(BasePaths.data_dir//"videos_train/") 
     quantex_videos_input_dir = Path(BasePaths.data_dir/"quantex_videos/") 
     videos_input_dir = Path(BasePaths.data_dir/"videos_superannotate_all/") 
-    images_input_dir = Path(BasePaths.data_dir/"quantex_annotated_rawframes/")
+    images_input_dir = Path(BasePaths.data_dir/"quantex_videos_processed/")
     # Path variable to the annotation xml files
     annotations_dir = Path(BasePaths.data_dir/"quantex_annotations/")
     annotations_xml_path = Path(annotations_dir/"annotations.xml")
