@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Tuple
 from PIL import Image
 from huggingface_hub import hf_hub_download
-from constants import YoloPaths
+from constants import YoloPaths, DetectionPaths
 
 def load_model(model_path: Path = YoloPaths.face_trained_weights_path) -> YOLO:
     """Load YOLO model from path"""
@@ -116,7 +116,11 @@ def main():
     
     try:
         # Load model and process image
-        image_path = Path("/home/nele_pauline_suffo/ProcessedData/quantex_rawframes") / args.image
+        basename = os.path.basename(args.image)
+        name, ext = os.path.splitext(basename)
+        parts = name.split('_')
+        video_folder = '_'.join(parts[:-1])
+        image_path = DetectionPaths.images_input_dir/ video_folder / args.image
         label_path = Path("/home/nele_pauline_suffo/ProcessedData/yolo_face_input/labels/test") / Path(args.image).with_suffix('.txt')
         
         model = load_model(YoloPaths.face_trained_weights_path)
