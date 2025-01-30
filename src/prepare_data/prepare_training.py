@@ -177,41 +177,43 @@ def get_class_to_total_ratio(annotation_folder: Path, image_folder: Path) -> flo
     logging.info(f"Class to total ratio: {class_to_total_ratio}")
     return class_to_total_ratio, total_images
 
-def split_yolo_data(image_folder: Path,
-                    total_images: list, 
-                    annotation_folder: Path, 
+def split_yolo_data(total_images: list, 
                     output_folder: Path, 
-                    class_to_total_ratio: int, 
-                    train_test_split_ratio: int=TrainingConfig.train_test_split_ratio):
+                    class_to_total_ratio: float, 
+                    train_test_split_ratio: float=TrainingConfig.train_test_split_ratio):
     """
     Splits data into train, validation, and test sets while ensuring that 
     missing annotation files are created only in the target directory.
 
     Parameters
     ----------
-    image_folder : Path
-        the directory with the image files
     total_images : list
-        the list of total images from annotated videos
-    annotation_folder : Path
-        the directory with the annotation files
+        The list of total images from annotated videos.
     output_folder : Path
-        the directory to store the training, validation and testing sets
-    class_to_total_ratio : int
-        the ratio of images with classes to total images
-    train_test_split_ratio : int
-        the ratio of images to use for training, default is 0.8
+        The directory to store the training, validation, and testing sets.
+    class_to_total_ratio : float
+        The ratio of images with classes to total images.
+    train_test_split_ratio : float
+        The ratio of images to use for training, default is 0.8.
     """
+
+    # Define split ratios
+    train_ratio = train_test_split_ratio  # e.g., 0.8 for training
+    val_ratio = (1 - train_ratio) / 2  # Split remaining equally for val & test
+    test_ratio = (1 - train_ratio) / 2
+
+    # Shuffle data for randomness
+    random.shuffle(total_images)
+
     # Compute split indices
-    val_ratio = (1 - train_test_split_ratio) / 2
-    total_files = len(image_files)
+    total_files = len(total_images)
     train_count = int(total_files * train_ratio)
     val_count = int(total_files * val_ratio)
 
     # Split into train, val, and test sets
-    train_files = image_files[:train_count]
-    val_files = image_files[train_count:train_count + val_count]
-    test_files = image_files[train_count + val_count:]
+    train_files = total_images[:train_count]
+    val_files = total_images[train_count:train_count + val_count]
+    test_files = total_images[train_count + val_count:]
 
     # Define subsets
     splits = {
@@ -225,27 +227,30 @@ def split_yolo_data(image_folder: Path,
         (output_folder / split / "images").mkdir(parents=True, exist_ok=True)
         (output_folder / split / "annotations").mkdir(parents=True, exist_ok=True)
 
+    # Copy images & check annotation files
     for split, files in splits.items():
         for image_file in files:
             image_file_path = Path(image_file)
-            folder_name = str(image_file_path)[:-11]
+            folder_name = image_file_path.stem[:-11]  # Extract video folder
 
             # Source paths
             src_image_path = DetectionPaths.images_input_dir / folder_name / image_file_path.name
             src_label_path = YoloPaths.face_labels_input_dir / image_file_path.with_suffix('.txt').name
 
             # Target paths
-            image_dst = output_folder/ split / "images" / image_file_path.name
+            image_dst = output_folder / split / "images" / image_file_path.name
             annotation_dst = output_folder / split / "annotations" / image_file_path.with_suffix('.txt').name
-        
+
             # Copy image
             shutil.copy(src_image_path, image_dst)
 
             # Check if annotation file exists; copy or create it
-            if os.path.exists(annotation_src):
-                shutil.copy(annotation_src, annotation_dst)
+            if src_label_path.exists():
+                shutil.copy(src_label_path, annotation_dst)
             else:
-                open(annotation_dst, 'w').close()  
+                annotation_dst.touch()  # Create an empty annotation file
+
+    logging.info(f"Data successfully split into train ({train_ratio:.2f}), val ({val_ratio:.2f}), test ({test_ratio:.2f}).") 
         
         
 def main(model_target: str, yolo_target: str) -> None:
