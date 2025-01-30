@@ -4,8 +4,12 @@ import torch
 import shutil
 from datetime import datetime
 from pathlib import Path
+import ultralytics.data.build as build
 from ultralytics import YOLO
+from yolo_weighted_dataloader import YOLOWeightedDataset
 from constants import YoloPaths
+
+build.YOLODataset = YOLOWeightedDataset
 
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
