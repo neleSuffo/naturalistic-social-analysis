@@ -152,6 +152,10 @@ def get_class_to_total_ratio(annotation_folder: Path, image_folder: Path) -> flo
     """
     # Step 1: Extract unique video names from annotation files
     video_names = set()
+    total_images = []
+    total_images_count = 0
+    images_with_class_count = len([f for f in os.listdir(annotation_folder) if f.endswith('.txt')])
+
     for annotation_file in os.listdir(annotation_folder):
         if annotation_file.endswith('.txt'):
             parts = annotation_file.split('_')
@@ -160,16 +164,11 @@ def get_class_to_total_ratio(annotation_folder: Path, image_folder: Path) -> flo
     logging.info(f"Found {len(video_names)} unique video names")
     
     # Step 2: Count total images and images with faces
-    total_images = []
-    total_images_count = 0
-    images_with_class_count = 0
     for video_name in video_names:
         video_path = image_folder / video_name
         if os.path.isdir(video_path):
             total_images_count += len(os.listdir(video_path))
-            total_images.extend(os.listdir(video_path))
-    images_with_class_count += len(os.listdir(annotation_folder))
-    
+            total_images.extend(os.listdir(video_path)) 
     logging.info(f"Total images count: {total_images_count}, Images with class count: {images_with_class_count}")
 
     # Step 3: Calculate the ratio
@@ -203,7 +202,6 @@ def split_yolo_data(total_images: list,
     # Define split ratios
     train_ratio = train_test_split_ratio  # e.g., 0.8 for training
     val_ratio = (1 - train_ratio) / 2  # Split remaining equally for val & test
-    test_ratio = (1 - train_ratio) / 2
 
     # Shuffle data for randomness
     random.shuffle(total_images)
@@ -234,8 +232,7 @@ def split_yolo_data(total_images: list,
     for split, files in splits.items():
         for image_file in files:
             image_file_path = Path(image_file)
-            folder_name = image_file_path.stem[:-11]  # Extract video folder
-
+            folder_name = "_".join(image_file_path.stem.split("_")[:8])
             # Source paths
             src_image_path = DetectionPaths.images_input_dir / folder_name / image_file_path.name
             src_label_path = annotation_folder / image_file_path.with_suffix('.txt').name
@@ -253,7 +250,7 @@ def split_yolo_data(total_images: list,
             else:
                 annotation_dst.touch()  # Create an empty annotation file
 
-    logging.info(f"Data successfully split into train ({train_ratio:.2f}), val ({val_ratio:.2f}), test ({test_ratio:.2f}).") 
+    logging.info(f"Data successfully split into train ({train_ratio:.2f}), val ({val_ratio:.2f}), test ({val_ratio:.2f}).") 
         
         
 
