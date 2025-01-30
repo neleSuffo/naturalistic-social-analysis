@@ -178,6 +178,7 @@ def get_class_to_total_ratio(annotation_folder: Path, image_folder: Path) -> flo
     return class_to_total_ratio, total_images
 
 def split_yolo_data(total_images: list, 
+                    annotation_folder: Path,
                     output_folder: Path, 
                     class_to_total_ratio: float, 
                     train_test_split_ratio: float=TrainingConfig.train_test_split_ratio):
@@ -189,6 +190,8 @@ def split_yolo_data(total_images: list,
     ----------
     total_images : list
         The list of total images from annotated videos.
+    annotation_folder : Path
+        The directory with the annotation files.
     output_folder : Path
         The directory to store the training, validation, and testing sets.
     class_to_total_ratio : float
@@ -235,7 +238,7 @@ def split_yolo_data(total_images: list,
 
             # Source paths
             src_image_path = DetectionPaths.images_input_dir / folder_name / image_file_path.name
-            src_label_path = YoloPaths.face_labels_input_dir / image_file_path.with_suffix('.txt').name
+            src_label_path = annotation_folder / image_file_path.with_suffix('.txt').name
 
             # Target paths
             image_dst = output_folder / split / "images" / image_file_path.name
@@ -271,8 +274,7 @@ def main(model_target: str, yolo_target: str) -> None:
     if model_target == "yolo":
         if yolo_target == "person":
             class_to_total_ratio, total_images = get_class_to_total_ratio(YoloPaths.person_labels_input_dir, DetectionPaths.images_input_dir)
-            train_images, val_images, test_images = split_yolo_data(DetectionPaths.images_input_dir, 
-                                                                    total_images, 
+            train_images, val_images, test_images = split_yolo_data(total_images, 
                                                                     YoloPaths.person_labels_input_dir, 
                                                                     YoloPaths.person_data_input_dir,
                                                                     class_to_total_ratio,
@@ -280,8 +282,7 @@ def main(model_target: str, yolo_target: str) -> None:
 
         elif yolo_target == "face":
             class_to_total_ratio, total_images = get_class_to_total_ratio(YoloPaths.face_labels_input_dir, DetectionPaths.images_input_dir)
-            train_images, val_images, test_images = split_yolo_data(DetectionPaths.images_input_dir, 
-                                                                    total_images, 
+            train_images, val_images, test_images = split_yolo_data(total_images, 
                                                                     YoloPaths.face_labels_input_dir, 
                                                                     YoloPaths.face_data_input_dir,
                                                                     class_to_total_ratio,
