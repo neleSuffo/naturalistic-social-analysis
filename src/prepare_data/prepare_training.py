@@ -256,45 +256,39 @@ def split_yolo_data(total_images: list,
     logging.info(f"Data successfully split into train ({train_ratio:.2f}), val ({val_ratio:.2f}), test ({test_ratio:.2f}).") 
         
         
-def main(model_target: str, yolo_target: str) -> None:
-    """
-    Main function to prepare the training dataset for the specified model and target.
 
+def main(model_target: str, yolo_target: str):
+    """ 
+    This function prepares the dataset for training the model.
+    
     Parameters
     ----------
     model_target : str
-        The model to prepare the dataset for ('yolo' or 'mtcnn').
+        the target model for preparation
     yolo_target : str
-        The target for the YOLO model ('person' or 'face').
+        the target type for YOLO (person or face)
+
+    Returns
+    -------
+    None
+    
     """
-    # Environment setup
+    logging.info(f"Starting dataset preparation for {model_target}...")
     os.environ['OMP_NUM_THREADS'] = '10'
     
-    # Create missing annotation files for YOLO
     if model_target == "yolo":
-        if yolo_target == "person":
-            class_to_total_ratio, total_images = get_class_to_total_ratio(YoloPaths.person_labels_input_dir, DetectionPaths.images_input_dir)
-            train_images, val_images, test_images = split_yolo_data(total_images, 
-                                                                    YoloPaths.person_labels_input_dir, 
-                                                                    YoloPaths.person_data_input_dir,
-                                                                    class_to_total_ratio,
-                                                                    TrainingConfig.train_test_split_ratio)
-
-        elif yolo_target == "face":
-            class_to_total_ratio, total_images = get_class_to_total_ratio(YoloPaths.face_labels_input_dir, DetectionPaths.images_input_dir)
-            train_images, val_images, test_images = split_yolo_data(total_images, 
-                                                                    YoloPaths.face_labels_input_dir, 
-                                                                    YoloPaths.face_data_input_dir,
-                                                                    class_to_total_ratio,
-                                                                    TrainingConfig.train_test_split_ratio)
+        label_path = YoloPaths.person_labels_input_dir if yolo_target == "person" else YoloPaths.face_labels_input_dir
+        data_path = YoloPaths.person_data_input_dir if yolo_target == "person" else YoloPaths.face_data_input_dir
         
+        logging.info(f"Processing YOLO dataset for target: {yolo_target}")
+        class_to_total_ratio, total_images = get_class_to_total_ratio(label_path, DetectionPaths.images_input_dir)
+        train_images, val_images, test_images = split_yolo_data(total_images, label_path, data_path, class_to_total_ratio, TrainingConfig.train_test_split_ratio)
     elif model_target == "mtcnn":
-        prepare_mtcnn_dataset(
-            MtcnnPaths.data_input, train_images, val_images, test_images
-        )
+        prepare_mtcnn_dataset(MtcnnPaths.data_input, train_images, val_images, test_images)
     else:
+        logging.error(f"Unsupported model target: {model_target}")
         raise ValueError(f"Unsupported model target: {model_target}")
-
+    
     logging.info("Dataset preparation complete.")
 
 if __name__ == "__main__":
