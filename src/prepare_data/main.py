@@ -3,6 +3,7 @@ import argparse
 import logging
 import os
 from prepare_data.prepare_training import main as prepare_training
+from prepare_data.prepare_training import balance_dataset
 from prepare_data.process_videos import main as process_videos
 
 # Configure logging
@@ -37,7 +38,9 @@ def main():
     if args.all:
         process_videos()
         run_process_annotations(args.model_target, args.yolo_target, setup_db=True)
-        prepare_training()
+        prepare_training(args.model_target, args.yolo_target)
+        balance_dataset(args.model_target, args.yolo_target)
+
     else:
         if args.videos:
             process_videos()
@@ -47,6 +50,8 @@ def main():
             run_process_annotations(args.model_target, args.yolo_target, setup_db=args.setup_db)
         if args.training:
             prepare_training(args.model_target, args.yolo_target)
+        if args.balanced:
+            balance_dataset(args.model_target, args.yolo_target)
 
     logging.info("Data preparation complete.")
 
@@ -59,6 +64,7 @@ if __name__ == "__main__":
     parser.add_argument('--yolo_target', type=str, help='Target YOLO label (e.g., "face")')
     parser.add_argument('--setup_db', action='store_true', default=False, help='Whether to set up the database (default: False)')
     parser.add_argument('--training', action='store_true', help='Prepare training data')
+    parser.add_argument('--balanced', action='store_true', help='Balance the dataset into equal number of frames with and without class')
     parser.add_argument('--all', action='store_true', help='Run all processes')
     parser.add_argument('--threads', type=int, default=2, help='Number of threads to use')
 
