@@ -129,132 +129,201 @@ def prepare_mtcnn_dataset(
                     train_labels_path, 
                     val_labels_path,
                     test_labels_path,
-    )
-
-def get_class_to_total_ratio(annotation_folder: Path, image_folder: Path) -> float:
+    )    
+def get_total_number_of_annotated_frames(label_path: Path, image_folder: Path) -> list:
     """
-    This function calculates the ratio of images with classes to total images.
+    This function returns the total number of annotated frames in the dataset.
     
     Parameters
     ----------
-    annotation_folder : str
-        the directory with the annotation files
-    image_folder : str
-        the directory with the image files
+    label_path : Path
+        the path to the label files
+    image_folder : Path
+        the path to the image folder
         
     Returns
     -------
-    class_to_total_ratio: float
-        the ratio of images with classes to total images
-    total_images: int
-        the list of total images from annotated videos
+    list
+        the total number of annotated frames
     
     """
-    # Step 1: Extract unique video names from annotation files
     video_names = set()
     total_images = []
-    total_images_count = 0
-    images_with_class_count = len([f for f in os.listdir(annotation_folder) if f.endswith('.txt')])
-
-    for annotation_file in os.listdir(annotation_folder):
+    # Step 1: Get unique video names
+    for annotation_file in os.listdir(label_path):
         if annotation_file.endswith('.txt'):
             parts = annotation_file.split('_')
             video_name = "_".join(parts[:8])
             video_names.add(video_name)
     logging.info(f"Found {len(video_names)} unique video names")
-    print(video_names)
     
     # Step 2: Count total images and images with faces
     for video_name in video_names:
         video_path = image_folder / video_name
         if os.path.isdir(video_path):
-            total_images_count += len(os.listdir(video_path))
             total_images.extend(os.listdir(video_path)) 
-    logging.info(f"Total images count: {total_images_count}, Images with class count: {images_with_class_count}")
+    return total_images    
 
-    # Step 3: Calculate the ratio
-    class_to_total_ratio = images_with_class_count / total_images_count if total_images_count > 0 else 0
-    logging.info(f"Class to total ratio: {class_to_total_ratio}")
-    return class_to_total_ratio, total_images
-
-def split_yolo_data(total_images: list, 
-                    annotation_folder: Path,
-                    output_folder: Path, 
-                    class_to_total_ratio: float, 
-                    train_test_split_ratio: float=TrainingConfig.train_test_split_ratio):
+def get_class_distribution(total_images, annotation_folder):
     """
-    Splits data into train, validation, and test sets while ensuring that 
-    missing annotation files are created only in the target directory.
+    Separates images into 'with class' and 'without class' lists
+    and computes the class-to-total ratio.
 
     Parameters
     ----------
     total_images : list
-        The list of total images from annotated videos.
+        List of all image file paths.
     annotation_folder : Path
-        The directory with the annotation files.
+        Path to the directory containing annotation files.
+
+    Returns
+    -------
+    tuple : (list, list, float)
+        - List of images with class annotations.
+        - List of images without class annotations.
+        - Class-to-total ratio.
+    """
+    with_class, without_class = [], []
+
+    for image_file in total_images:
+        annotation_file = annotation_folder / Path(image_file).with_suffix('.txt').name
+
+        if annotation_file.exists() and annotation_file.stat().st_size > 0:
+            with_class.append(image_file)
+        else:
+            without_class.append(image_file)
+
+    class_to_total_ratio = len(with_class) / len(total_images) if total_images else 0
+    return with_class, without_class, class_to_total_ratio
+
+def stratified_split(data, train_ratio, val_ratio):
+    """
+    Splits data into train, validation, and test sets maintaining proportions.
+
+    Parameters
+    ----------
+    data : list
+        List of image file paths.
+    train_ratio : float
+        Proportion of data for training.
+    val_ratio : float
+        Proportion of data for validation.
+
+    Returns
+    -------
+    tuple : (list, list, list)
+        - Train split
+        - Validation split
+        - Test split
+    """
+    total = len(data)
+    train_count = int(total * train_ratio)
+    val_count = int(total * val_ratio)
+    return data[:train_count], data[train_count:train_count + val_count], data[train_count + val_count:]
+
+def copy_files_to_split(split_name, files, annotation_folder, output_folder):
+    """
+    Copies image and annotation files into their respective split directories.
+
+    Parameters
+    ----------
+    split_name : str
+        The split name ('train', 'val', 'test').
+    files : list
+        List of image file paths.
+    annotation_folder : Path
+        Path to the annotation directory.
     output_folder : Path
-        The directory to store the training, validation, and testing sets.
-    class_to_total_ratio : float
-        The ratio of images with classes to total images.
+        Path to the output directory.
+    """
+    for image_file in files:
+        image_file_path = Path(image_file)
+        folder_name = "_".join(image_file_path.stem.split("_")[:8])
+
+        # Define source paths
+        src_image_path = DetectionPaths.images_input_dir / folder_name / image_file_path.name
+        src_label_path = annotation_folder / image_file_path.with_suffix('.txt').name
+
+        # Define target paths
+        image_dst = output_folder / "images" / split_name / image_file_path.name
+        annotation_dst = output_folder / "labels" / split_name / image_file_path.with_suffix('.txt').name
+
+        # Copy image
+        shutil.copy(src_image_path, image_dst)
+
+        # Copy annotation if it exists, else create an empty file
+        if src_label_path.exists():
+            shutil.copy(src_label_path, annotation_dst)
+        else:
+            annotation_dst.touch()  # Create an empty annotation file
+
+    logging.info(f"Copied {len(files)} images to {split_name} split.")
+    
+def split_yolo_data(total_images: list, 
+                    annotation_folder: Path,
+                    output_folder: Path, 
+                    train_test_split_ratio: float = TrainingConfig.train_test_split_ratio):
+    """
+    Splits YOLO image dataset into train, validation, and test sets while ensuring
+    stratification based on the class-to-total ratio.
+
+    Parameters
+    ----------
+    total_images : list
+        List of image file paths.
+    annotation_folder : Path
+        Path to annotation files.
+    output_folder : Path
+        Path to store the output splits.
     train_test_split_ratio : float
-        The ratio of images to use for training, default is 0.8.
+        Ratio of images to use for training, default is 0.8.
     """
 
     # Define split ratios
     train_ratio = train_test_split_ratio  # e.g., 0.8 for training
     val_ratio = (1 - train_ratio) / 2  # Split remaining equally for val & test
 
-    # Shuffle data for randomness
-    random.shuffle(total_images)
+    # Ensure output directories exist
+    for split in ["train", "val", "test"]:
+        (output_folder / "images" / split).mkdir(parents=True, exist_ok=True)
+        (output_folder / "labels"/ split).mkdir(parents=True, exist_ok=True)
 
-    # Compute split indices
-    total_files = len(total_images)
-    train_count = int(total_files * train_ratio)
-    val_count = int(total_files * val_ratio)
+    # Get class distribution
+    with_class, without_class, class_to_total_ratio = get_class_distribution(total_images, annotation_folder)
 
-    # Split into train, val, and test sets
-    train_files = total_images[:train_count]
-    val_files = total_images[train_count:train_count + val_count]
-    test_files = total_images[train_count + val_count:]
+    logging.info(f"Class-to-Total Ratio: {class_to_total_ratio:.4f} ({len(with_class)}/{len(total_images)})")
 
-    # Define subsets
+    # Shuffle for randomness
+    random.shuffle(with_class)
+    random.shuffle(without_class)
+
+    # Perform stratified splitting
+    train_with, val_with, test_with = stratified_split(with_class, train_ratio, val_ratio)
+    train_without, val_without, test_without = stratified_split(without_class, train_ratio, val_ratio)
+
+    # Merge class and no-class images into final splits
     splits = {
-        "train": train_files,
-        "val": val_files,
-        "test": test_files
+        "train": train_with + train_without,
+        "val": val_with + val_without,
+        "test": test_with + test_without
     }
 
-    # Ensure output directories exist
-    for split in splits.keys():
-        (output_folder / split / "images").mkdir(parents=True, exist_ok=True)
-        (output_folder / split / "annotations").mkdir(parents=True, exist_ok=True)
+    logging.info(f"Train split: {len(splits['train'])} images ({len(train_with)} class, {len(train_without)} no-class).")
+    logging.info(f"Val split: {len(splits['val'])} images ({len(val_with)} class, {len(val_without)} no-class).")
+    logging.info(f"Test split: {len(splits['test'])} images ({len(test_with)} class, {len(test_without)} no-class).")
 
-    # Copy images & check annotation files
+    # Shuffle each split to mix class and no-class images
+    for split in splits:
+        random.shuffle(splits[split])
+
+    logging.info("Copying images and annotations to output folder...")
+    
+    # Copy files into respective split directories
     for split, files in splits.items():
-        for image_file in files:
-            image_file_path = Path(image_file)
-            folder_name = "_".join(image_file_path.stem.split("_")[:8])
-            # Source paths
-            src_image_path = DetectionPaths.images_input_dir / folder_name / image_file_path.name
-            src_label_path = annotation_folder / image_file_path.with_suffix('.txt').name
+        copy_files_to_split(split, files, annotation_folder, output_folder)
 
-            # Target paths
-            image_dst = output_folder / split / "images" / image_file_path.name
-            annotation_dst = output_folder / split / "annotations" / image_file_path.with_suffix('.txt').name
-
-            # Copy image
-            shutil.copy(src_image_path, image_dst)
-
-            # Check if annotation file exists; copy or create it
-            if src_label_path.exists():
-                shutil.copy(src_label_path, annotation_dst)
-            else:
-                annotation_dst.touch()  # Create an empty annotation file
-
-    logging.info(f"Data successfully split into train ({train_ratio:.2f}), val ({val_ratio:.2f}), test ({val_ratio:.2f}).") 
+    logging.info(f"Data successfully split into train ({train_ratio:.2f}), val ({val_ratio:.2f}), test ({val_ratio:.2f}).")
         
-        
-
 def main(model_target: str, yolo_target: str):
     """ 
     This function prepares the dataset for training the model.
@@ -279,8 +348,8 @@ def main(model_target: str, yolo_target: str):
         data_path = YoloPaths.person_data_input_dir if yolo_target == "person" else YoloPaths.face_data_input_dir
         
         logging.info(f"Processing YOLO dataset for target: {yolo_target}")
-        class_to_total_ratio, total_images = get_class_to_total_ratio(label_path, DetectionPaths.images_input_dir)
-        train_images, val_images, test_images = split_yolo_data(total_images, label_path, data_path, class_to_total_ratio, TrainingConfig.train_test_split_ratio)
+        total_images = get_total_number_of_annotated_frames(label_path, DetectionPaths.images_input_dir)
+        split_yolo_data(total_images, label_path, data_path, TrainingConfig.train_test_split_ratio)
     elif model_target == "mtcnn":
         prepare_mtcnn_dataset(MtcnnPaths.data_input, train_images, val_images, test_images)
     else:
