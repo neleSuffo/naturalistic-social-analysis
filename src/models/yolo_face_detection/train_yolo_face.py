@@ -6,7 +6,6 @@ from datetime import datetime
 from pathlib import Path
 from ultralytics import YOLO
 from constants import YoloPaths
-from yolo_face_utils import balance_dataset
 
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
@@ -20,14 +19,6 @@ model = YOLO("/home/nele_pauline_suffo/models/yolov11_face_detection_AdamCodd.pt
 # Define experiment name and output directory
 experiment_name = timestamp + "_yolo_face_finetune_with_augment_and_earlystop"
 output_dir = YoloPaths.face_output_dir / experiment_name
-
-# Ensure output directory exists before logging
-output_dir.mkdir(parents=True, exist_ok=True)
-
-# Set up logging before training starts
-log_file = output_dir / "output.log"
-sys.stdout = open(log_file, 'w', buffering=1)
-sys.stderr = sys.stdout
 
 # Train the model with a cosine annealing learning rate scheduler
 model.train(
