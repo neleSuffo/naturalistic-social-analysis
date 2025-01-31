@@ -59,7 +59,7 @@ class MtcnnConfig:
     class_ids = [1,2]
 
 class TrainingConfig:
-    train_test_split_ratio = 0.7
+    train_test_split_ratio = 0.8
     random_seed = 42
     
 class VideoConfig:
