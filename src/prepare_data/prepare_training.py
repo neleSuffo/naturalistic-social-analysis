@@ -11,6 +11,83 @@ import argparse
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+def balance_dataset(model_target: str, yolo_target: str):
+    """
+    Balances a dataset by randomly selecting an equal number of images with and without faces.
+
+    Parameters:
+    ----------
+    model_target : str
+        The target model for preparation (e.g., "yolo").
+    yolo_target : str
+        The target type for YOLO (e.g., "person" or "face").
+    """
+    # Define paths based on model and YOLO target
+    paths = {
+        ("yolo", "person"): YoloPaths.person_data_input_dir,
+        ("yolo", "face"): YoloPaths.face_data_input_dir
+    }
+    
+    data_input_dir = paths.get((model_target, yolo_target))
+    
+    if data_input_dir is None:
+        logging.error(f"Invalid combination of model_target='{model_target}' and yolo_target='{yolo_target}'.")
+        return
+    
+    annotation_dir = data_input_dir / "labels/train"
+    images_dir = data_input_dir / "images/train"
+    balanced_annotations_dir = data_input_dir / "labels/train_balanced"
+    balanced_images_dir = data_input_dir / "images/train_balanced"
+
+    logging.info(f"Balancing dataset in {images_dir} and {annotation_dir}...")
+
+    # Ensure directories exist
+    if not annotation_dir.exists() or not images_dir.exists():
+        logging.error(f"Missing input directories: {annotation_dir} or {images_dir}")
+        return
+    
+    images_with_faces = []
+    images_without_faces = []
+
+    # Iterate over annotation files to classify images
+    for annotation_path in annotation_dir.iterdir():
+        if annotation_path.suffix == ".txt":
+            image_path = images_dir / f"{annotation_path.stem}.jpg"
+            
+            # Check if the annotation file is not empty
+            if annotation_path.stat().st_size > 0:
+                images_with_faces.append((image_path, annotation_path))
+            else:
+                images_without_faces.append((image_path, annotation_path))
+
+    num_faces = len(images_with_faces)
+    
+    if num_faces == 0:
+        logging.warning("No images with faces found. Skipping dataset balancing.")
+        return
+
+    logging.info(f"Found {num_faces} images with faces.")
+
+    if len(images_without_faces) < num_faces:
+        logging.warning("Not enough images without faces to balance the dataset. Using all available.")
+
+    # Randomly select an equal number of images without faces
+    images_without_faces_sample = random.sample(images_without_faces, min(num_faces, len(images_without_faces)))
+
+    # Combine the lists to form the balanced dataset
+    balanced_dataset = images_with_faces + images_without_faces_sample
+
+    # Ensure balanced dataset directories exist
+    balanced_images_dir.mkdir(parents=True, exist_ok=True)
+    balanced_annotations_dir.mkdir(parents=True, exist_ok=True)
+
+    # Copy the selected files to the balanced dataset directories
+    for image_path, annotation_path in balanced_dataset:
+        shutil.copy(image_path, balanced_images_dir / image_path.name)
+        shutil.copy(annotation_path, balanced_annotations_dir / annotation_path.name)
+
+    logging.info(f"Balanced dataset created with {len(images_with_faces)} images with faces and {len(images_without_faces_sample)} images without faces.")
+    
 def copy_mtcnn_files(
     train_files: list,
     val_files: list, 
