@@ -46,8 +46,8 @@ def balance_dataset(model_target: str, yolo_target: str):
         logging.error(f"Missing input directories: {annotation_dir} or {images_dir}")
         return
     
-    images_with_faces = []
-    images_without_faces = []
+    images_with_class = []
+    images_without_class = []
 
     # Iterate over annotation files to classify images
     for annotation_path in annotation_dir.iterdir():
@@ -55,27 +55,37 @@ def balance_dataset(model_target: str, yolo_target: str):
             image_path = images_dir / f"{annotation_path.stem}.jpg"
             
             # Check if the annotation file is not empty
-            if annotation_path.stat().st_size > 0:
-                images_with_faces.append((image_path, annotation_path))
-            else:
-                images_without_faces.append((image_path, annotation_path))
+            if yolo_target == "face":
+                if annotation_path.stat().st_size > 0:
+                    images_with_class.append((image_path, annotation_path))
+                else:
+                    images_without_class.append((image_path, annotation_path))
+            elif yolo_target == "person":
+                with open(annotation_path, 'r') as file:
+                    lines = file.readlines()
+                    # Check if any annotation has class 0
+                    has_class_0 = any(line.strip().split()[0] == "0" for line in lines)
+                    if has_class_0:
+                        images_with_class.append((image_path, annotation_path))
+                    else:
+                        images_without_class.append((image_path, annotation_path))
 
-    num_faces = len(images_with_faces)
+    num_img_with_classes = len(images_with_class)
     
-    if num_faces == 0:
-        logging.warning("No images with faces found. Skipping dataset balancing.")
+    if num_img_with_classes == 0:
+        logging.warning(f"No images with {yolo_target}s found. Skipping dataset balancing.")
         return
 
-    logging.info(f"Found {num_faces} images with faces.")
+    logging.info(f"Found {num_img_with_classes} images with {yolo_target}.")
 
-    if len(images_without_faces) < num_faces:
-        logging.warning("Not enough images without faces to balance the dataset. Using all available.")
+    if len(images_without_class) < num_img_with_classes:
+        logging.warning(f"Not enough images without {yolo_target}s to balance the dataset. Using all available.")
 
-    # Randomly select an equal number of images without faces
-    images_without_faces_sample = random.sample(images_without_faces, min(num_faces, len(images_without_faces)))
+    # Randomly select an equal number of images without class (person or face)
+    images_without_class_sample = random.sample(images_without_class, min(num_img_with_classes, len(images_without_class)))
 
     # Combine the lists to form the balanced dataset
-    balanced_dataset = images_with_faces + images_without_faces_sample
+    balanced_dataset = images_with_class + images_without_class_sample
 
     # Ensure balanced dataset directories exist
     balanced_images_dir.mkdir(parents=True, exist_ok=True)
@@ -86,7 +96,7 @@ def balance_dataset(model_target: str, yolo_target: str):
         shutil.copy(image_path, balanced_images_dir / image_path.name)
         shutil.copy(annotation_path, balanced_annotations_dir / annotation_path.name)
 
-    logging.info(f"Balanced dataset created with {len(images_with_faces)} images with faces and {len(images_without_faces_sample)} images without faces.")
+    logging.info(f"Balanced dataset created with {len(images_with_class)} images with {yolo_target}s and {len(images_without_class_sample)} images without {yolo_target}s.")
     
 def copy_mtcnn_files(
     train_files: list,
@@ -221,7 +231,7 @@ def get_total_number_of_annotated_frames(label_path: Path, image_folder: Path) -
     Returns
     -------
     list
-        the total number of annotated frames
+        the total number of images
     
     """
     video_names = set()
@@ -234,7 +244,7 @@ def get_total_number_of_annotated_frames(label_path: Path, image_folder: Path) -
             video_names.add(video_name)
     logging.info(f"Found {len(video_names)} unique video names")
     
-    # Step 2: Count total images and images with faces
+    # Step 2: Count total images
     for video_name in video_names:
         video_path = image_folder / video_name
         if os.path.isdir(video_path):
