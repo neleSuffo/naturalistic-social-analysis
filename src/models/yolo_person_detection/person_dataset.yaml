@@ -1,15 +1,13 @@
 
-train: /home/nele_pauline_suffo/ProcessedData/yolo_person_input/images/train
+train: /home/nele_pauline_suffo/ProcessedData/yolo_person_input/images/train_balanced
 val: /home/nele_pauline_suffo/ProcessedData/yolo_person_input/images/val
 test: /home/nele_pauline_suffo/ProcessedData/yolo_person_input/images/test
 
 
 # Number of classes
-nc: 3 
+nc: 2 
 
 # Class names
 names:
   0: "person"
-  1: "person reflection"
-  2: "person face"
-  3: "child body parts"
+  1: "child body parts"
