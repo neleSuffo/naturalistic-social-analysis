@@ -251,7 +251,8 @@ def get_total_number_of_annotated_frames(label_path: Path, image_folder: Path) -
             total_images.extend(os.listdir(video_path)) 
     return total_images    
 
-def get_class_distribution(total_images, annotation_folder):
+def get_class_distribution(total_images: list,
+                           annotation_folder: Path):
     """
     Separates images into 'with class' and 'without class' lists
     and computes the class-to-total ratio.
@@ -276,7 +277,14 @@ def get_class_distribution(total_images, annotation_folder):
         annotation_file = annotation_folder / Path(image_file).with_suffix('.txt').name
 
         if annotation_file.exists() and annotation_file.stat().st_size > 0:
-            with_class.append(image_file)
+            with open(annotation_file, 'r') as f:
+                lines = f.readlines()
+                has_class_0 = any(line.strip().split()[0] == "0" for line in lines)
+            # Check if any annotation has class 0 (person or face)
+            if has_class_0:
+                with_class.append(image_file)
+            else:
+                without_class.append(image_file)
         else:
             without_class.append(image_file)
 
