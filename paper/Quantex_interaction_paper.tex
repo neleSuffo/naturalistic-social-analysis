@@ -192,13 +192,13 @@
 \urlstyle{same}
 \hypersetup{
   pdftitle={Exploring Aspects of Social Interaction using Machine Learning},
-  pdfauthor={Nele-Pauline Suffo1, Pierre-Etienne Martin2, Daniel Haun2, \& Manuel Bohn1, 2},
+  pdfauthor={Nele-Pauline Suffo1, Pierre-Etienne Martin2, Anam Zahra2, Daniel Haun2, \& Manuel Bohn1, 2},
   pdflang={en-EN},
   hidelinks,
   pdfcreator={LaTeX via pandoc}}
 
 \title{Exploring Aspects of Social Interaction using Machine Learning}
-\author{Nele-Pauline Suffo\textsuperscript{1}, Pierre-Etienne Martin\textsuperscript{2}, Daniel Haun\textsuperscript{2}, \& Manuel Bohn\textsuperscript{1, 2}}
+\author{Nele-Pauline Suffo\textsuperscript{1}, Pierre-Etienne Martin\textsuperscript{2}, Anam Zahra\textsuperscript{2}, Daniel Haun\textsuperscript{2}, \& Manuel Bohn\textsuperscript{1, 2}}
 \date{}
 
 
@@ -232,8 +232,6 @@ The Quantex dataset includes
 \subsection{Dataset Description}\label{dataset-description}
 
 \subsubsection{Statistics}\label{statistics}
-
-The Quantex dataset contains a total of 197.20 hours of video footage from 503 video recordings, collected by 76 children aged 3 to 5 years (M=4.53, SD=0.81). The children were grouped into three age categories, with 167 videos being recorded of children age 3, 180 videos for children age 4, and 156 videos at age 5. Individual recording durations vary widely, ranging from 10.43 to 391.18 minutes per child (M=155.68, SD=82.62). Figure \ref{fig:quantex-minutes-per-child} illustrates the detailed distribution of recording lengths, reflecting the diversity in individual contributions to the dataset. From the 503 video files, 100 videos were annotated manually as training input for the automated analysis pipeline.
 
 \begin{figure}
 
@@ -271,20 +269,12 @@ For the video data, the annotation strategy required persons, faces, and objects
 
 \subsubsection{Face Detection}\label{face-detection}
 
-We employed a YOLOv11 model pretrained for face detection (Codd, 2024), which was fine-tuned on our dataset to adapt it to the unique characteristics of our egocentric dataset, captured using chest-mounted cameras. While we initially experimented with the MTCNN model, its performance on our dataset proved insufficient. Consequently, we chose YOLO due to its streamlined training process and fewer requirements for data preparation. The 100 annotated videos were divided into 70\% for training, 10\% for validation, and 20\% for testing. This split corresponded to 51 with 72687 frames for training, 6 videos with 7720 frames for validation, and 7 videos with 9272 frames for testing.
-
-Model training was conducted using the Ultralytics framework (Jocher, Jing, \& Chaurasia, 2023) on a Linux server equipped with 48 cores and 187 GB of RAM. The training process utilized YOLO's built-in data augmentation, a batch size of 16, a cosine annealing learning rate scheduler, and early stopping after 10 epochs without improvement, with a maximum of 200 epochs. Training concluded after 86 epochs, achieving a precision of 0.90 and a recall of 0.83, resulting in an \(F_1\)-score of 0.86 on the testing set. This indicates strong performance in correctly identifying most faces while minimizing errors, although some challenges remain. These performance metrics, summarized in Table \ref{tab:face-detection-metrics}, underscore the model's ability to reliably detect faces, with further details and evaluation available in the supplementary materials.
-
-The model performed well in detecting faces, particularly when fully visible from the front, but few challenges remain in more dynamic scenarios. For example, faces that are partially visible, rotated, or seen from the side often resulted in detection errors. Furthermore, false negatives were more common when faces were occluded by the child's body, blurred due to movement, or situated in the background. While background faces are less relevant, as they are unlikely to be part of an interaction with the child, missed detections due to occlusions or motion blur present a greater challenge. In these cases, we rely on adjacent frames to provide clearer views for more accurate classification. These difficulties underscore the challenges of working with egocentric video data, where dynamic movement and varying perspectives, typical of chest-mounted camera recordings, introduce additional complexity.
-
-Accurate face detection remains a crucial step in our automated analysis pipeline, as it serves as the foundation for subsequent gaze classification. Identifying the presence and position of faces ensures that gaze direction can be reliably analyzed, allowing us to determine when and how individuals engage with the child.
-
 \begin{table}[tbp]
 
 \begin{center}
 \begin{threeparttable}
 
-\caption{\label{tab:face-detection-metrics}Evaluation metrics for the YOLOv11 face detection model trained on the Quantex dataset.}
+\caption{\label{tab:face-detection-metrics}Evaluation metrics for the YOLO11 face detection model trained on the Quantex dataset.}
 
 \begin{tabular}{llll}
 \toprule
@@ -329,7 +319,95 @@ Quantex & 0.90 & 0.83 & 0.86\\
 
 \section{Supplementary Material}\label{supplementary-material}
 
-\newpage
+\subsection{Yolo Face Detection Model Training Details}\label{yolo-face-detection-model-training-details}
+
+Face detection is perfored utilizing Ultralytics Yolo11 (Jocher \& Qiu, 2024)
+We employed a YOLO11 model pretrained for face detection (Codd, 2024), which was fine-tuned on our dataset to adapt it to the unique characteristics of our egocentric dataset, captured using chest-mounted cameras. While we initially experimented with the MTCNN model, its performance on our dataset proved insufficient. Consequently, we chose YOLO due to its streamlined training process and fewer requirements for data preparation. The 100 annotated videos were divided into 70\% for training, 10\% for validation, and 20\% for testing. This split corresponded to 51 with 72687 frames for training, 6 videos with 7720 frames for validation, and 7 videos with 9272 frames for testing.
+
+Model training was conducted using the Ultralytics framework (Jocher, Jing, \& Chaurasia, 2023) on a Linux server equipped with 48 cores and 187 GB of RAM. The training process utilized YOLO's built-in data augmentation, a batch size of 16, a cosine annealing learning rate scheduler, and early stopping after 10 epochs without improvement, with a maximum of 200 epochs. Training concluded after 86 epochs, achieving a precision of 0.90 and a recall of 0.83, resulting in an \(F_1\)-score of 0.86 on the testing set. This indicates strong performance in correctly identifying most faces while minimizing errors, although some challenges remain. These performance metrics, summarized in Table \ref{tab:face-detection-metrics}, underscore the model's ability to reliably detect faces, with further details and evaluation available in the supplementary materials.
+
+The model performed well in detecting faces, particularly when fully visible from the front, but few challenges remain in more dynamic scenarios. For example, faces that are partially visible, rotated, or seen from the side often resulted in detection errors. Furthermore, false negatives were more common when faces were occluded by the child's body, blurred due to movement, or situated in the background. While background faces are less relevant, as they are unlikely to be part of an interaction with the child, missed detections due to occlusions or motion blur present a greater challenge. In these cases, we rely on adjacent frames to provide clearer views for more accurate classification. These difficulties underscore the challenges of working with egocentric video data, where dynamic movement and varying perspectives, typical of chest-mounted camera recordings, introduce additional complexity.
+
+Accurate face detection remains a crucial step in our automated analysis pipeline, as it serves as the foundation for subsequent gaze classification. Identifying the presence and position of faces ensures that gaze direction can be reliably analyzed, allowing us to determine when and how individuals engage with the child.
+
+\subsubsection{Model Training Details}\label{model-training-details}
+
+\begin{figure}
+
+{\centering \includegraphics[width=300px]{images/yolo_face_loss_curves} 
+
+}
+
+\caption{Training and Validation Loss Curves for the YOLO11 face detection model.}\label{fig:face-loss-curves}
+\end{figure}
+
+\begin{itemize}
+\item
+  Yolo11 uses a loss function consisting of three components: box loss, class loss, and distribution focal loss (DFL) as displayed in \ref{fig:face-loss-curves} (Codd, 2024).
+\item
+  Box Loss: difference between expected bounding boxes and ground truth boxes.
+\item
+  Class Loss (Cls Loss): Measures the model's ability to accurately identify detected items which is less relevant in our case as we are only interested in one class: faces
+\item
+  Distribution Focal Loss (DFL) improves the model's ability to identify difficult-to-detect objects or classes
+\item
+  we can see that during training all three loss components decrease over time, indicating that the model is learning and improving its performance.
+\item
+  more precisely, decrease in box loss indicates that the model is becoming more precise at localizing items within images, classification loss converges quickly showing that the model is able to identify faces accurately, and the distribution focal loss decreases over time, indicating that the model is learning to focus on difficult-to-detect objects or classes, improving its overall performance.
+\end{itemize}
+
+\subsubsection{Model Evaluation Metrics}\label{model-evaluation-metrics}
+
+Jocher (2024)
+
+\begin{figure}
+
+{\centering \includegraphics{Quantex_interaction_paper_files/figure-latex/face-metrics-1} 
+
+}
+
+\caption{Evaluation metrics for the YOLO11 face detection model trained on the Quantex dataset.}\label{fig:face-metrics}
+\end{figure}
+
+\begin{itemize}
+\tightlist
+\item
+  when looking at confusion matrix: you can see that the majority of images are correctly identified as face. 0.86\% of all faces are correctly identified by the model, resulting in a total of 1000 faces detected, while r num\_faces\_missed` weren't detected.
+\item
+  looking into those false negative cases (meaning model predicts no face but label says face): we can see that the majority of those cases are due to three reasons: faces in the background, blurry faces or faces that are occluded by the child's body.
+\item
+  (\textbf{ref?})(fig:face-metrics) provides examples of correctly classified face images (true positives) and incorrectly classified face images (false negatives).
+  Regarding images in the background were less concerned as they are unlikely to be part of an interaction with the child. However, the other two cases are more critical as they are likely to be part of an interaction with the child.
+\item
+  here we have to rely on the surrounding frames that hopefully contain a clearer view of the face to make a more accurate classification.
+\item
+  a small amount of images are classified as faces while no face is present in the image (false positive). from the confusion matrix you can derive that the model only classifies 0.86 images, corresponding to
+\end{itemize}
+
+This is due to the model's tendency to detect faces in objects that resemble faces, such as toys or drawings.
+
+\begin{itemize}
+\tightlist
+\item
+  when looking at the precision-recall curve: we can see that the model performs well in terms of precision and recall, with a high precision and recall value, indicating that the model is able to detect faces accurately and with high confidence.
+\item
+  the curve stays close to the top left corner, indicating that the model is able to detect faces with high precision and recall, which is crucial for our analysis pipeline.
+\end{itemize}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{3}
+\item
+  Model Hyperparameter Settings and Tuning
+  • Hyperparameter Search Results: If you did any hyperparameter tuning (e.g., batch size, learning rate), you could include a plot showing how different values impacted performance.
+  • Plot type: A heatmap or line plot showing the effect of different hyperparameter combinations on a given metric (e.g., F1-score).
+\item
+  Training Time and Hardware Utilization
+  • Training Time Breakdown: Include the total time taken for training and the hardware specifications (e.g., time per epoch, total training time).
+  • Plot type: A bar graph showing training time per epoch or the total time required for training.
+  • Resource Utilization (optional): If you tracked resource usage during training (e.g., GPU/CPU utilization, memory usage), you can provide plots to show how efficiently the hardware was used.
+  \newpage
+\end{enumerate}
 
 \begingroup
 \setlength{\parindent}{-0.5in}
@@ -340,8 +418,14 @@ Quantex & 0.90 & 0.83 & 0.86\\
 \bibitem[\citeproctext]{ref-coddYOLOv11nfacedetection2024}
 Codd, A. (2024). \emph{{YOLOv11n-face-detection}}. Retrieved from \url{https://huggingface.co/AdamCodd/YOLOv11n-face-detection}
 
+\bibitem[\citeproctext]{ref-jocherUltralyticsYolo11Performance2024}
+Jocher, G. (2024). \emph{Ultralytics {Yolo11 Performance Metrics}}. Retrieved from \url{https://docs.ultralytics.com/guides/yolo-performance-metrics/?utm_source=chatgpt.com}
+
 \bibitem[\citeproctext]{ref-jocherUltralyticsYOLO2023}
 Jocher, G., Jing, Q., \& Chaurasia, A. (2023). \emph{Ultralytics {YOLO}}. Retrieved from \url{https://github.com/ultralytics/ultralytics}
+
+\bibitem[\citeproctext]{ref-jocherUltralyticsYOLO112024}
+Jocher, G., \& Qiu, J. (2024). \emph{Ultralytics {YOLO11}}. Retrieved from \url{https://github.com/ultralytics/ultralytics}
 
 \end{CSLReferences}
 

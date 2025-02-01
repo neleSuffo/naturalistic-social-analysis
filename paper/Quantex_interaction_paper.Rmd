@@ -16,6 +16,9 @@ author:
     corresponding: false
     address: "Deutscher Pl. 6, 04103 Leipzig"
     email: "pierre_etienne_martin@eva.mpg.de"
+  - name: "Anam Zahra"
+    affiliation: '2'
+    corresponding: false
   - name: "Daniel Haun"
     affiliation: '2'
     corresponding: false
@@ -207,7 +210,6 @@ quantex_nr_test_videos <- 7
 
 ## Dataset Description
 ### Statistics
-The Quantex dataset contains a total of `r quantex_sum_hours` hours of video footage from `r quantex_sum_videos`  video recordings, collected by `r quantex_nr_children` children aged 3 to 5 years (M=`r quantex_mean_age`, SD=`r quantex_sd_age`). The children were grouped into three age categories, with `r quantex_count_3_plus` videos being recorded of children age 3, `r quantex_count_4_plus` videos for children age 4, and `r quantex_count_5_plus` videos at age 5. Individual recording durations vary widely, ranging from `r quantex_min_minutes` to `r quantex_max_minutes` minutes per child (M=`r quantex_mean_minutes`, SD=`r quantex_sd_minutes`). Figure  \@ref(fig:quantex-minutes-per-child) illustrates the detailed distribution of recording lengths, reflecting the diversity in individual contributions to the dataset. From the `r quantex_sum_videos`  video files, `r quantex_nr_annotated_videos` videos were annotated manually as training input for the automated analysis pipeline.
 
 ```{r quantex-minutes-per-child, echo=FALSE, message=FALSE, warning=FALSE, fig.align='center', fig.cap="Video recording duration (in minutes) per Child in the Quantex Dataset.", fig.height=2.5, fig.width=3.5}
 quantex_unique_data$ID <- as.factor(quantex_unique_data$ID)
@@ -282,13 +284,7 @@ For the video data, the annotation strategy required persons, faces, and objects
 
 
 ### Face Detection
-We employed a YOLOv11 model pretrained for face detection [@coddYOLOv11nfacedetection2024], which was fine-tuned on our dataset to adapt it to the unique characteristics of our egocentric dataset, captured using chest-mounted cameras. While we initially experimented with the MTCNN model, its performance on our dataset proved insufficient. Consequently, we chose YOLO due to its streamlined training process and fewer requirements for data preparation. The `r quantex_nr_annotated_videos` annotated videos were divided into 70% for training, 10% for validation, and 20% for testing. This split corresponded to `r quantex_nr_train_videos` with `r quantex_nr_train_frames` frames for training, `r quantex_nr_val_videos` videos with `r quantex_nr_val_frames` frames for validation, and `r quantex_nr_test_videos` videos with `r quantex_nr_test_frames` frames for testing.
 
-Model training was conducted using the Ultralytics framework [@jocherUltralyticsYOLO2023] on a Linux server equipped with 48 cores and 187 GB of RAM. The training process utilized YOLO’s built-in data augmentation, a batch size of 16, a cosine annealing learning rate scheduler, and early stopping after 10 epochs without improvement, with a maximum of 200 epochs. Training concluded after 86 epochs, achieving a precision of 0.90 and a recall of 0.83, resulting in an \( F_1 \)-score of 0.86 on the testing set. This indicates strong performance in correctly identifying most faces while minimizing errors, although some challenges remain. These performance metrics, summarized in Table \@ref(tab:face-detection-metrics), underscore the model’s ability to reliably detect faces, with further details and evaluation available in the supplementary materials.
-
-The model performed well in detecting faces, particularly when fully visible from the front, but few challenges remain in more dynamic scenarios. For example, faces that are partially visible, rotated, or seen from the side often resulted in detection errors. Furthermore, false negatives were more common when faces were occluded by the child’s body, blurred due to movement, or situated in the background. While background faces are less relevant, as they are unlikely to be part of an interaction with the child, missed detections due to occlusions or motion blur present a greater challenge. In these cases, we rely on adjacent frames to provide clearer views for more accurate classification. These difficulties underscore the challenges of working with egocentric video data, where dynamic movement and varying perspectives, typical of chest-mounted camera recordings, introduce additional complexity.
-
-Accurate face detection remains a crucial step in our automated analysis pipeline, as it serves as the foundation for subsequent gaze classification. Identifying the presence and position of faces ensures that gaze direction can be reliably analyzed, allowing us to determine when and how individuals engage with the child.
 
 ```{r face-detection-metrics, echo=FALSE, message=FALSE, warnings=FALSE, results='asis', eval=TRUE}
 my.data <- "Dataset | Precision | Recall | F1-Score
@@ -305,7 +301,7 @@ row.names(df) <- NULL
 # Print the updated table
 apa_table(
   df,
-  caption = "Evaluation metrics for the YOLOv11 face detection model trained on the Quantex dataset.",
+  caption = "Evaluation metrics for the YOLO11 face detection model trained on the Quantex dataset.",
   escape = TRUE
 )
 ```
@@ -349,6 +345,91 @@ apa_table(
 
 \newpage
 # Supplementary Material
+
+
+## Yolo Face Detection Model Training Details
+Face detection is perfored utilizing Ultralytics Yolo11 [@jocherUltralyticsYOLO112024]
+We employed a YOLO11 model pretrained for face detection [@coddYOLOv11nfacedetection2024], which was fine-tuned on our dataset to adapt it to the unique characteristics of our egocentric dataset, captured using chest-mounted cameras. While we initially experimented with the MTCNN model, its performance on our dataset proved insufficient. Consequently, we chose YOLO due to its streamlined training process and fewer requirements for data preparation. The `r quantex_nr_annotated_videos` annotated videos were divided into 70% for training, 10% for validation, and 20% for testing. This split corresponded to `r quantex_nr_train_videos` with `r quantex_nr_train_frames` frames for training, `r quantex_nr_val_videos` videos with `r quantex_nr_val_frames` frames for validation, and `r quantex_nr_test_videos` videos with `r quantex_nr_test_frames` frames for testing.
+
+Model training was conducted using the Ultralytics framework [@jocherUltralyticsYOLO2023] on a Linux server equipped with 48 cores and 187 GB of RAM. The training process utilized YOLO’s built-in data augmentation, a batch size of 16, a cosine annealing learning rate scheduler, and early stopping after 10 epochs without improvement, with a maximum of 200 epochs. Training concluded after 86 epochs, achieving a precision of 0.90 and a recall of 0.83, resulting in an \( F_1 \)-score of 0.86 on the testing set. This indicates strong performance in correctly identifying most faces while minimizing errors, although some challenges remain. These performance metrics, summarized in Table \@ref(tab:face-detection-metrics), underscore the model’s ability to reliably detect faces, with further details and evaluation available in the supplementary materials.
+
+The model performed well in detecting faces, particularly when fully visible from the front, but few challenges remain in more dynamic scenarios. For example, faces that are partially visible, rotated, or seen from the side often resulted in detection errors. Furthermore, false negatives were more common when faces were occluded by the child’s body, blurred due to movement, or situated in the background. While background faces are less relevant, as they are unlikely to be part of an interaction with the child, missed detections due to occlusions or motion blur present a greater challenge. In these cases, we rely on adjacent frames to provide clearer views for more accurate classification. These difficulties underscore the challenges of working with egocentric video data, where dynamic movement and varying perspectives, typical of chest-mounted camera recordings, introduce additional complexity.
+
+Accurate face detection remains a crucial step in our automated analysis pipeline, as it serves as the foundation for subsequent gaze classification. Identifying the presence and position of faces ensures that gaze direction can be reliably analyzed, allowing us to determine when and how individuals engage with the child.
+
+
+### Model Training Details
+```{r face-loss-curves, fig.align='center', fig.cap="Training and Validation Loss Curves for the YOLO11 face detection model.", out.width="300px"}
+knitr::include_graphics("images/yolo_face_loss_curves.png")
+```
+
+- Yolo11 uses a loss function consisting of three components: box loss, class loss, and distribution focal loss (DFL) as displayed in \@ref(fig:face-loss-curves) [@coddYOLOv11nfacedetection2024]. 
+- Box Loss:  difference between expected bounding boxes and ground truth boxes. 
+- Class Loss (Cls Loss): Measures the model's ability to accurately identify detected items which is less relevant in our case as we are only interested in one class: faces
+- Distribution Focal Loss (DFL) improves the model's ability to identify difficult-to-detect objects or classes
+
+- we can see that during training all three loss components decrease over time, indicating that the model is learning and improving its performance.
+- more precisely, decrease in box loss indicates that the model is becoming more precise at localizing items within images, classification loss converges quickly showing that the model is able to identify faces accurately, and the distribution focal loss decreases over time, indicating that the model is learning to focus on difficult-to-detect objects or classes, improving its overall performance.
+
+### Model Evaluation Metrics
+```{r face-statistics, echo=FALSE, message=FALSE, warning=FALSE}
+face_recall <- 0.86
+num_faces_detected <- 2107
+num_faces_correct <- 2062
+num_faces_missed <- 402
+num_wrong_faces <- 45
+per_wrong_faces <- num_wrong_faces / num_faces_detected * 100
+num_faces <- num_faces_detected + num_faces_missed
+```
+@jocherUltralyticsYolo11Performance2024
+
+
+```{r face-metrics, fig.align='center', fig.cap="Evaluation metrics for the YOLO11 face detection model trained on the Quantex dataset."}
+# Load images
+img1 <- rasterGrob(as.raster(png::readPNG("images/yolo_face_confusion_matrix.png")), interpolate = TRUE)
+img2 <- rasterGrob(as.raster(png::readPNG("images/yolo_face_pr_curve.png")), interpolate = TRUE)
+
+# Create a blank plot and add images
+p1 <- ggplot() + annotation_custom(img1, xmin=-1, xmax=1, ymin=-1, ymax=1) + theme_void()
+p2 <- ggplot() + annotation_custom(img2, xmin=-1, xmax=1, ymin=-1, ymax=1) + theme_void()
+
+# Arrange both plots side by side
+grid.arrange(p1, p2, ncol=2)
+```
+- when looking at confusion matrix: you can see that the majority of images are correctly identified as face. `r face_recall`% of all faces are correctly identified by the model, resulting in a total of `r num_faces_detected` faces detected, while r num_faces_missed` weren't detected. 
+- looking into those false negative cases (meaning model predicts no face but label says face): we can see that the majority of those cases are due to three reasons: faces in the background, blurry faces or faces that are occluded by the child's body. 
+- \@ref(fig:face-metrics) provides examples of correctly classified face images (true positives) and incorrectly classified face images (false negatives).
+Regarding images in the background were less concerned as they are unlikely to be part of an interaction with the child. However, the other two cases are more critical as they are likely to be part of an interaction with the child.
+- here we have to rely on the surrounding frames that hopefully contain a clearer view of the face to make a more accurate classification. 
+- a small amount of images are classified as faces while no face is present in the image (false positive). from the confusion matrix you can derive that the model wrongly classified only `r num_wrong_faces` images as face while there was no face present in the image. This results in a false positive rate of `r per_wrong_faces`%. Those cases can be caused by objects or toys that are similar to faces, an example of such a case is shown in \@ref(fig:face-detection-examples).
+
+```{r face-detection-examples, fig.align='center', fig.cap="Examples of correctly classified face images (true positives) and incorrectly classified face images (false negatives) by the YOLO11 face detection model."}
+img1 <- rasterGrob(as.raster(readPNG("images/quantex_at_home_id255944_2022_03_07_01_002760.jpg")), width = unit(1, "npc"), height = unit(1, "npc"), interpolate = TRUE)
+img2 <- rasterGrob(as.raster(readPNG("images/quantex_at_home_id255944_2022_03_07_01_002760.jpg")), width = unit(1, "npc"), height = unit(1, "npc"), interpolate = TRUE)
+img3 <- rasterGrob(as.raster(readPNG("images/quantex_at_home_id255944_2022_03_07_01_002760.jpg")), width = unit(1, "npc"), height = unit(1, "npc"), interpolate = TRUE)
+img4 <- rasterGrob(as.raster(readPNG("images/quantex_at_home_id255944_2022_03_07_01_002760.jpg")), width = unit(1, "npc"), height = unit(1, "npc"), interpolate = TRUE)
+img5 <- rasterGrob(as.raster(readPNG("images/quantex_at_home_id255944_2022_03_07_01_002760.jpg")), width = unit(1, "npc"), height = unit(1, "npc"), interpolate = TRUE)
+img6 <- rasterGrob(as.raster(readPNG("images/quantex_at_home_id255944_2022_03_07_01_002760.jpg")), width = unit(1, "npc"), height = unit(1, "npc"), interpolate = TRUE)
+
+# Create blank plots to hold images
+p1 <- ggplot() + annotation_custom(img1) + theme_void()
+p2 <- ggplot() + annotation_custom(img2) + theme_void()
+p3 <- ggplot() + annotation_custom(img3) + theme_void()
+p4 <- ggplot() + annotation_custom(img4) + theme_void()
+p5 <- ggplot() + annotation_custom(img5) + theme_void()
+p6 <- ggplot() + annotation_custom(img6) + theme_void()
+
+# Arrange the images in a grid (2 rows, 3 columns)
+grid.arrange(p1, p2, p3, p4, p5, p6, ncol = 3, nrow = 2)
+```
+
+- when looking at the precision-recall curve: we can see that the model performs well in terms of precision and recall, with a high precision and recall value, indicating that the model is able to detect faces accurately and with high confidence. 
+- the curve stays close to the top left corner, indicating that the model is able to detect faces with high precision and recall, which is crucial for our analysis pipeline.
+
+### Model Training Time and Hardware Utilization
+- The model was trained on a Linux server equipped with 48 cores and 187 GB of RAM.
+- model was trained for a total of 86 epochs, after early stopping was applied after 10 epochs without improvement.
+
 \newpage
 
 <!--e used `r cite_r("bibliography.bib")` for all our analyses.-->    
