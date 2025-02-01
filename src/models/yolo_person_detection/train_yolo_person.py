@@ -17,16 +17,8 @@ torch.set_num_threads(4)  # PyTorch threads
 model = YOLO("yolo11n.pt")
 
 # Define experiment name and output directory
-experiment_name = timestamp + "_yolo_face_finetune_with_augment_and_earlystop"
-output_dir = YoloPaths.face_output_dir / experiment_name
-
-# Ensure output directory exists before logging
-output_dir.mkdir(parents=True, exist_ok=True)
-
-# Set up logging before training starts
-log_file = output_dir / "output.log"
-sys.stdout = open(log_file, 'w', buffering=1)
-sys.stderr = sys.stdout
+experiment_name = timestamp + "_yolo_person_finetune_with_augment_and_earlystop"
+output_dir = YoloPaths.person_output_dir / experiment_name
 
 # Train the model with a cosine annealing learning rate scheduler
 model.train(
@@ -34,13 +26,13 @@ model.train(
     epochs=200,  # Total number of epochs
     imgsz=1280,  # Image size
     batch=16,   # Batch size
-    project=str(YoloPaths.face_output_dir),  # Output directory
+    project=str(YoloPaths.person_output_dir),  # Output directory
     name=experiment_name,  # Experiment name
     augment=True,  # Enable YOLO's built-in augmentations
     lr0=0.01,  # Initial learning rate
     lrf=0.001,  # Final learning rate after scheduling
     cos_lr=True,  # Use cosine annealing for learning rate scheduling,
-    patience=10,  # Stop training if no improvement for 5 consecutive epochs
+    patience=5,  # Stop training if no improvement for 5 consecutive epochs
     device=0,  # GPU (use "cpu" for CPU training)
     plots=True,  # Plot training results
 )
