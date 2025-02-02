@@ -1,10 +1,13 @@
 import json
 import os
 import logging
+import torch
 from collections import defaultdict
 from pathlib import Path
 from tqdm import tqdm
 from ultralytics import YOLO
+
+logging.basicConfig(level=logging.INFO)
 
 def extract_video_names(annotation_dir):
     """
@@ -39,23 +42,34 @@ def process_images(root_dir, excluded_videos, model):
     total_images = 0
     num_videos = 0
 
-    # Iterate through each subdirectory (video folder) in the root directory
-    logging.info(f"Found {len(list(root_dir.iterdir()))} video folders")
-    for video_folder in root_dir.iterdir():
-        logging.info(f"Processing {video_folder.name}")
-        if video_folder.is_dir() and video_folder.name not in excluded_videos:
-            # Get a list of all image files in the current video folder
-            image_files = list(video_folder.glob("*.jpg"))  # Adjust the pattern if your images have a different extension
+    # List all video folders in the root directory
+    video_folders = [video_folder for video_folder in root_dir.iterdir() if video_folder.is_dir()]
 
-            # Process each image file
-            for image_file in tqdm(image_files, desc=f"Processing {video_folder.name}", unit="image"):
-                total_images += 1
-                results = model(image_file)
-                num_faces = len(results[0].boxes)
-                face_counts[num_faces] = face_counts.get(num_faces, 0) + 1
-            num_videos += 1
+    logging.info(f"Found {len(video_folders)} video folders")
+    # Initialize tqdm progress bar for video folders
+    with tqdm(total=len(video_folders), desc="Processing video folders", unit="folder") as pbar:
+        for video_folder in video_folders[:15]:
+            if video_folder.name in excluded_videos:
+                logging.info(f"Skipping video folder {video_folder.name}")
+                continue
+            if video_folder.name not in excluded_videos:
+                logging.info(f"Processing video folder {video_folder.name}")
+                # Get a list of all image files in the current video folder
+                image_files = list(video_folder.glob("*.jpg"))
 
-    # Calculate percentages
+                # Process each image file in the current video folder
+                for image_file in image_files:
+                    total_images += 1
+                    results = model(image_file)
+                    num_faces = len(results[0].boxes)
+                    face_counts[num_faces] = face_counts.get(num_faces, 0) + 1
+
+                num_videos += 1
+
+            # Update the progress bar after processing each video folder
+            pbar.update(1)
+
+    # Calculate percentages for the face distribution
     face_distribution = {count: {"num_images": num, "percentage": (num / total_images) * 100}
                          for count, num in face_counts.items()}
 
@@ -78,14 +92,19 @@ def save_statistics(statistics, output_json, output_txt):
         output_txt (Path): Path to the output text file.
     """
     # Save to JSON
+    logging.info(f"Saving statistics to {output_json}")
+    
+    # Ensure the output directory exists
+    output_json.parent.mkdir(parents=True, exist_ok=True)
+    
     with output_json.open('w') as json_file:
         json.dump(statistics, json_file, indent=4)
 
     # Save to text file
     with output_txt.open('w') as txt_file:
         txt_file.write(f"Total number of images: {statistics['total_images']}\n")
-        for count, num_images in statistics['face_counts'].items():
-            percentage = statistics['face_counts_percentage'][count]
+        for count, num_images in statistics['face_distribution'].items():
+            percentage = statistics['face_distribution_percentage'][count]
             txt_file.write(f"Images with {count} faces: {num_images} ({percentage:.2f}%)\n")
 
 if __name__ == "__main__":
