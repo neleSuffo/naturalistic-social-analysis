@@ -321,13 +321,13 @@ Quantex & 0.90 & 0.83 & 0.86\\
 
 \subsection{Face Detection: Model Selection, Data Preprocessing, and Performance Evaluation}\label{face-detection-model-selection-data-preprocessing-and-performance-evaluation}
 
-Face detection is performed utilizing Ultralytics' Yolo11 (Jocher \& Qiu, 2024), a state-of-the-art object detection model known for its efficiency and accuracy. We employed a YOLO11 model pretrained for face detection (Codd, 2024), which was fine-tuned on our dataset to adapt it to the unique characteristics of our egocentric dataset, captured using chest-mounted cameras. While we initially experimented with the MTCNN model, its performance on our dataset proved insufficient. Consequently, we chose YOLO11 due to its streamlined training process and fewer requirements for data preparation.
+In this study, we utilized Ultralytics' YOLO11 (Jocher \& Qiu, 2024), a state-of-the-art object detection model recognized for its efficiency and accuracy. Initially, we experimented with Multi-Task Cascaded Convolutional Networks (MTCNN) face detection algorithm (Zhang, Zhang, Li, \& Qiao, 2016); however, it achieved a recall of less than 50\% on our dataset. Furthermore, the MTCNN model demands very specific picture input for fine-tuning, which is time-consuming. In contrast, YOLO11, released in October 2024, introduces new features such as the C2PSA block, which enhances spatial attention within feature maps, allowing the model to focus more precisely on critical areas of an image. Additionally, YOLO11 incorporates the C3K2 block, designed to be faster and more efficient, enhancing the overall performance of the feature aggregation process (Khanam \& Hussain, 2024). Moreover, we already had a data preparation pipeline established for YOLO11 due to its application in person detection within our project. Consequently, we selected YOLO11 for face detection and fine-tuned it on our egocentric dataset, captured using chest-mounted cameras, to adapt it to the unique characteristics of our data.
 
 \subsubsection{Dataset Splitting and Balancing}\label{dataset-splitting-and-balancing}
 
 We started data preprocessing with a dataset comprising a total of 91706 images. Prior to partitioning this dataset into training, validation, and testing subsets, we analyzed the proportion of images containing annotated faces versus those without. Our analysis revealed that 19\% of the images included at least one annotated face. To maintain this inherent distribution across all subsets, we initially applied a stratified split, ensuring that each subset---training, validation, and testing---preserved the original 19\% to 81\% ratio of images with faces to images without faces.
 
-However, this stratified split resulted in a significant class imbalance within the training set, which could adversely affect the model's learning process because the model would be exposed to a disproportionate number of images without faces.
+However, this stratified split resulted in a significant class imbalance within the training set, which could adversely affect the model's learning process. In imbalanced datasets, models tend to be biased toward the majority class, often predicting it more frequently while misclassifying or overlooking minority class instances. This can lead to poor recall for the minority class (Hasanin, Khoshgoftaar, Leevy, \& Bauder, 2019). Additionally, Yolo11's gradient-based learning algorithm struggles to adjust decision boundaries effectively when trained on imbalanced data, potentially causing slow or unstable convergence and requiring extensive hyperparameter tuning (Kaur, Pannu, \& Malhi, 2020).
 
 To mitigate this issue, we employed an undersampling technique on the training data. Specifically, we identified the number of images containing faces in the training set (13708 frames) and randomly sampled an equal number of images from the non-face category. This approach balanced the training dataset to consist of 50\% images with faces and 50\% images without faces, thereby addressing the class imbalance and facilitating more effective model training.
 
@@ -370,6 +370,15 @@ Quantex & 0.90 & 0.83 & 0.86 & 2.1 & 14.0\\
 
 \end{table}
 
+\begin{figure}
+
+{\centering \includegraphics{Quantex_interaction_paper_files/figure-latex/face-metrics-1} 
+
+}
+
+\caption{\textbf{A} - Confusion Matrix for the YOLO11 face detection model trained on the Quantex dataset. \textbf{B} - Precision-Recall Curve for the YOLO11 face detection model.}\label{fig:face-metrics}
+\end{figure}
+
 \subsubsection{Model Evaluation Metrics}\label{model-evaluation-metrics}
 
 The YOLO11 model achieved a precision of 0.92 and a recall of 0.87 on the testing set, resulting in an F1-score of 0.90. These metrics, summarized in figure \ref{fig:face-detection-metrics-detailed} indicate the model's strong performance in accurately identifying faces while minimizing errors. The precision-recall curve, displayed in figure \ref{fig:face-metrics}, further illustrates this performance, with the curve remaining close to the top-left corner. This positioning signifies that the model maintains high precision and recall across various thresholds, underscoring its effectiveness in detecting faces with confidence.
@@ -382,15 +391,6 @@ Overall, the YOLO11 model demonstrates robust performance in face detection task
 
 \begin{figure}
 
-{\centering \includegraphics{Quantex_interaction_paper_files/figure-latex/face-metrics-1} 
-
-}
-
-\caption{\textbf{A} - Confusion Matrix for the YOLO11 face detection model trained on the Quantex dataset. \textbf{B} - Precision-Recall Curve for the YOLO11 face detection model.}\label{fig:face-metrics}
-\end{figure}
-
-\begin{figure}
-
 {\centering \includegraphics{Quantex_interaction_paper_files/figure-latex/face-detection-examples-1} 
 
 }
@@ -400,17 +400,28 @@ Overall, the YOLO11 model demonstrates robust performance in face detection task
 
 \newpage
 
+\section{References}\label{references-1}
+
 \begingroup
 \setlength{\parindent}{-0.5in}
 \setlength{\leftskip}{0.5in}
 
 \phantomsection\label{refs}
 \begin{CSLReferences}{1}{0}
-\bibitem[\citeproctext]{ref-coddYOLOv11nfacedetection2024}
-Codd, A. (2024). \emph{{YOLOv11n-face-detection}}. Retrieved from \url{https://huggingface.co/AdamCodd/YOLOv11n-face-detection}
+\bibitem[\citeproctext]{ref-hasaninSeverelyImbalancedBig2019}
+Hasanin, T., Khoshgoftaar, T. M., Leevy, J. L., \& Bauder, R. A. (2019). Severely imbalanced {Big Data} challenges: Investigating data sampling approaches. \emph{Journal of Big Data}, \emph{6}(1), 107. \url{https://doi.org/10.1186/s40537-019-0274-4}
 
 \bibitem[\citeproctext]{ref-jocherUltralyticsYOLO112024}
 Jocher, G., \& Qiu, J. (2024). \emph{Ultralytics {YOLO11}}. Retrieved from \url{https://github.com/ultralytics/ultralytics}
+
+\bibitem[\citeproctext]{ref-kaurSystematicReviewImbalanced2020}
+Kaur, H., Pannu, H. S., \& Malhi, A. K. (2020). A {Systematic Review} on {Imbalanced Data Challenges} in {Machine Learning}: {Applications} and {Solutions}. \emph{ACM Computing Surveys}, \emph{52}(4), 1--36. \url{https://doi.org/10.1145/3343440}
+
+\bibitem[\citeproctext]{ref-khanamYOLOv11OverviewKey2024}
+Khanam, R., \& Hussain, M. (2024, October 23). {YOLOv11}: {An Overview} of the {Key Architectural Enhancements}. \url{https://doi.org/10.48550/arXiv.2410.17725}
+
+\bibitem[\citeproctext]{ref-zhangJointFaceDetection2016}
+Zhang, K., Zhang, Z., Li, Z., \& Qiao, Y. (2016). Joint {Face Detection} and {Alignment} using {Multi-task Cascaded Convolutional Networks}. \emph{IEEE Signal Processing Letters}, \emph{23}(10), 1499--1503. \url{https://doi.org/10.1109/LSP.2016.2603342}
 
 \end{CSLReferences}
 
