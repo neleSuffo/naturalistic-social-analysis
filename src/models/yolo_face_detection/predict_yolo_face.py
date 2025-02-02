@@ -48,23 +48,22 @@ def process_images(root_dir, excluded_videos, model):
     logging.info(f"Found {len(video_folders)} video folders")
     # Initialize tqdm progress bar for video folders
     with tqdm(total=len(video_folders), desc="Processing video folders", unit="folder") as pbar:
-        for video_folder in video_folders[:15]:
+        for video_folder in video_folders:
             if video_folder.name in excluded_videos:
                 logging.info(f"Skipping video folder {video_folder.name}")
                 continue
-            if video_folder.name not in excluded_videos:
-                logging.info(f"Processing video folder {video_folder.name}")
-                # Get a list of all image files in the current video folder
-                image_files = list(video_folder.glob("*.jpg"))
+            logging.info(f"Processing video folder {video_folder.name}")
+            # Get a list of all image files in the current video folder
+            image_files = list(video_folder.glob("*.jpg"))
+        
+            # Process each image file in the current video folder
+            for image_file in image_files:
+                total_images += 1
+                results = model(image_file)
+                num_faces = len(results[0].boxes)
+                face_counts[num_faces] = face_counts.get(num_faces, 0) + 1
 
-                # Process each image file in the current video folder
-                for image_file in image_files:
-                    total_images += 1
-                    results = model(image_file)
-                    num_faces = len(results[0].boxes)
-                    face_counts[num_faces] = face_counts.get(num_faces, 0) + 1
-
-                num_videos += 1
+            num_videos += 1
 
             # Update the progress bar after processing each video folder
             pbar.update(1)
@@ -78,7 +77,7 @@ def process_images(root_dir, excluded_videos, model):
         "total_images": total_images,
         "num_videos": num_videos,
         "face_distribution": face_distribution,
-    }
+    }   
 
     return summary
 
@@ -104,7 +103,7 @@ def save_statistics(statistics, output_json, output_txt):
     with output_txt.open('w') as txt_file:
         txt_file.write(f"Total number of images: {statistics['total_images']}\n")
         for count, num_images in statistics['face_distribution'].items():
-            percentage = statistics['face_distribution_percentage'][count]
+            percentage = statistics['face_distribution'][count]["percentage"]
             txt_file.write(f"Images with {count} faces: {num_images} ({percentage:.2f}%)\n")
 
 if __name__ == "__main__":
