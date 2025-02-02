@@ -244,7 +244,7 @@ The Quantex dataset includes
 
 \subsubsection{Annotation Strategy}\label{annotation-strategy}
 
-The dataset annotations cover four key elements: persons, faces, gaze direction, objects the child interacts with. Gaze information identifies whether a detected person's gaze is directed toward the child or not. For every detected person (or reflection of a person, such as in a mirror) and face, additional attributes like age and gender are collected. Objects are categorized into six distinct groups: book, screen, animal, food, toy, and kitchenware, with an additional category for other objects. The dataset focus is on detecting and labeling instances of (social) interaction and engagement through these key categories. The annotation strategy is displayed in Figure \ref{fig:camera-cvat-activity-classes}.
+The dataset annotations cover four key elements: persons, faces, gaze direction, objects the child interacts with. Gaze information identifies whether a detected person's gaze is directed toward the child or not. For every detected person (or reflection of a person, such as in a mirror) and face, additional attributes like age and gender are collected. Faces are annotated even when occluded or blurry to ensure comprehensive coverage of interactions. Partially visible faces are also annotated if key facial features, such as the nose, eyes, or mouth, remain identifiable. Objects are categorized into six distinct groups: book, screen, animal, food, toy, and kitchenware, with an additional category for other objects. The dataset focus is on detecting and labeling instances of (social) interaction and engagement through these key categories. The annotation strategy is displayed in Figure \ref{fig:camera-cvat-activity-classes}.
 
 \begin{figure}
 
@@ -319,7 +319,7 @@ Quantex & 0.90 & 0.83 & 0.86\\
 
 \section{Supplementary Material}\label{supplementary-material}
 
-\subsection{Yolo Face Detection Model Training Details}\label{yolo-face-detection-model-training-details}
+\subsection{Face Detection: Model Selection, Data Preprocessing, and Performance Evaluation}\label{face-detection-model-selection-data-preprocessing-and-performance-evaluation}
 
 Face detection is performed utilizing Ultralytics' Yolo11 (Jocher \& Qiu, 2024), a state-of-the-art object detection model known for its efficiency and accuracy. We employed a YOLO11 model pretrained for face detection (Codd, 2024), which was fine-tuned on our dataset to adapt it to the unique characteristics of our egocentric dataset, captured using chest-mounted cameras. While we initially experimented with the MTCNN model, its performance on our dataset proved insufficient. Consequently, we chose YOLO11 due to its streamlined training process and fewer requirements for data preparation.
 
@@ -327,15 +327,15 @@ Face detection is performed utilizing Ultralytics' Yolo11 (Jocher \& Qiu, 2024),
 
 We started data preprocessing with a dataset comprising a total of 91706 images. Prior to partitioning this dataset into training, validation, and testing subsets, we analyzed the proportion of images containing annotated faces versus those without. Our analysis revealed that 19\% of the images included at least one annotated face. To maintain this inherent distribution across all subsets, we initially applied a stratified split, ensuring that each subset---training, validation, and testing---preserved the original 19\% to 81\% ratio of images with faces to images without faces.
 
-However, this stratified split resulted in a significant class imbalance within the training set, which could adversely affect the model's learning process. To mitigate this issue, we employed an undersampling technique on the training data. Specifically, we identified the number of images containing faces in the training set (13708 frames) and randomly sampled an equal number of images from the non-face category. This approach balanced the training dataset to consist of 50\% images with faces and 50\% images without faces, thereby addressing the class imbalance and facilitating more effective model training.
+However, this stratified split resulted in a significant class imbalance within the training set, which could adversely affect the model's learning process because the model would be exposed to a disproportionate number of images without faces.
+
+To mitigate this issue, we employed an undersampling technique on the training data. Specifically, we identified the number of images containing faces in the training set (13708 frames) and randomly sampled an equal number of images from the non-face category. This approach balanced the training dataset to consist of 50\% images with faces and 50\% images without faces, thereby addressing the class imbalance and facilitating more effective model training.
 
 Consequently, the final data distribution was as follows: the balanced training dataset comprised 27416 frames, while the validation and test datasets contained 9169 and 9173 frames, respectively. Notably, the validation and test sets retained the original 19\% face presence, ensuring that the model's performance evaluation remained representative of the real-world data distribution.
 
-\subsubsection{Model Training Details}\label{model-training-details}
+\subsubsection{Training and Convergence}\label{training-and-convergence}
 
 Model training was conducted on a Linux server equipped with an Intel(R) Xeon(R) Silver 4214Y CPU @ 2.20GHz with 48 cores, a Quadro RTX 8000 GPU and 188 GB of RAM. The model was trained for a total of 86 epochs. The training process utilized YOLO11's built-in data augmentation, a batch size of 16, a cosine annealing learning rate scheduler, and early stopping after 10 epochs without improvement, with a maximum of 200 epochs.
-
-\subsubsection{Model Training Loss Curves}\label{model-training-loss-curves}
 
 The loss function of the YOLOv11 model comprises three main components: Box Loss, Classification Loss, and Distribution Focal Loss (DFL). Box Loss estimates the difference between predicted bounding boxes and ground truth boxes to assess the model's localization accuracy. Classification Loss measures the model's ability to properly identify detected objects; however, in our study, this component is less relevant due to our focus on a single class---faces. DFL improves the model's ability to detect challenging objects by prioritizing difficult-to-detect instances.
 
@@ -350,21 +350,35 @@ During the training process, we observed that all three loss components decrease
 \caption{Training and Validation Loss Curves for the YOLO11 face detection model.}\label{fig:face-loss-curves}
 \end{figure}
 
+\begin{table}[tbp]
+
+\begin{center}
+\begin{threeparttable}
+
+\caption{\label{tab:face-detection-metrics-detailed}Evaluation metrics for the YOLO11 face detection model trained on the Quantex dataset. False Positive Rate and False Negative Rate are given in percentages.}
+
+\begin{tabular}{llllll}
+\toprule
+Dataset & \multicolumn{1}{c}{Precision} & \multicolumn{1}{c}{Recall} & \multicolumn{1}{c}{F1-Score} & \multicolumn{1}{c}{False Positive Rate} & \multicolumn{1}{c}{False Negative Rate}\\
+\midrule
+Quantex & 0.90 & 0.83 & 0.86 & 2.1 & 14.0\\
+\bottomrule
+\end{tabular}
+
+\end{threeparttable}
+\end{center}
+
+\end{table}
+
 \subsubsection{Model Evaluation Metrics}\label{model-evaluation-metrics}
 
-The YOLO11 model achieved a precision of 0.89 and a recall of 0.83 on the testing set, resulting in an F1-score of 0.86. These metrics indicate the model's strong performance in accurately identifying faces while minimizing errors.
+The YOLO11 model achieved a precision of 0.92 and a recall of 0.87 on the testing set, resulting in an F1-score of 0.90. These metrics, summarized in figure \ref{fig:face-detection-metrics-detailed} indicate the model's strong performance in accurately identifying faces while minimizing errors. The precision-recall curve, displayed in figure \ref{fig:face-metrics}, further illustrates this performance, with the curve remaining close to the top-left corner. This positioning signifies that the model maintains high precision and recall across various thresholds, underscoring its effectiveness in detecting faces with confidence.
 
-The precision-recall curve further illustrates this performance, with the curve remaining close to the top-left corner. This positioning signifies that the model maintains high precision and recall across various thresholds, underscoring its effectiveness in detecting faces with confidence.
+Analysis of the confusion matrix reveals that 86\% of all faces are correctly identified by the model, corresponding to 1905 true positives, while 234 faces were missed (false negatives). False negatives predominantly occurred in scenarios where faces were in the background, blurred due to motion, or occluded by the child's body. In such instances, adjacent frames often provided clearer views, aiding in more accurate classification. The model exhibited a false positive rate of approximately 3.57\%, with 251 images incorrectly classified as containing faces when none were present. These false positives were often attributed to objects or toys resembling facial features. Given the relatively low false positive rate, this small number should not raise significant concerns. In face detection systems, a balance between false positives and false negatives is often necessary, and a 2.1\% false positive rate is generally considered acceptable.
 
-Analysis of the confusion matrix reveals that 86\% of all faces are correctly identified by the model, corresponding to 2107 true positives, while 402 faces were missed (false negatives). False negatives predominantly occurred in scenarios where faces were in the background, blurred due to motion, or occluded by the child's body. In such instances, adjacent frames often provided clearer views, aiding in more accurate classification.
-
-The model exhibited a false positive rate of approximately 2.1\%, with 45 images incorrectly classified as containing faces when none were present. These false positives were often attributed to objects or toys resembling facial features. Given the relatively low false positive rate, this small number should not raise significant concerns. In face detection systems, a balance between false positives and false negatives is often necessary, and a 2.1\% false positive rate is generally considered acceptable.
-
-To provide a comprehensive understanding of the model's performance, we have included visual examples of true positives, false positives, and false negatives in figure xx. These illustrations highlight the model's strengths and areas where challenges persist, offering insights into specific scenarios that influence detection accuracy.
+To provide a comprehensive understanding of the model's performance, we have included visual examples of true positives, false positives, and false negatives in figure \ref{fig:face-detection-examples}. These images highlight the model's strengths and areas where challenges persist, offering insights into specific scenarios that influence detection accuracy.
 
 Overall, the YOLO11 model demonstrates robust performance in face detection tasks. However, challenges remain in dynamic scenarios, particularly with partially visible, rotated, or side-view faces. These findings underscore the complexities inherent in analyzing egocentric video data, where movement and varying perspectives introduce additional challenges.
-
-Accurate face detection remains a crucial step in our automated analysis pipeline, as it serves as the foundation for subsequent gaze classification. Identifying the presence and position of faces ensures that gaze direction can be reliably analyzed, allowing us to determine when and how individuals engage with the child.
 
 \begin{figure}
 
@@ -372,7 +386,7 @@ Accurate face detection remains a crucial step in our automated analysis pipelin
 
 }
 
-\caption{Evaluation metrics for the YOLO11 face detection model trained on the Quantex dataset.}\label{fig:face-metrics}
+\caption{\textbf{A} - Confusion Matrix for the YOLO11 face detection model trained on the Quantex dataset. \textbf{B} - Precision-Recall Curve for the YOLO11 face detection model.}\label{fig:face-metrics}
 \end{figure}
 
 \begin{figure}
