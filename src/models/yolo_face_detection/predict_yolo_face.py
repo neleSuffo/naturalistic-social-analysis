@@ -1,4 +1,6 @@
 import json
+import os
+import logging
 from collections import defaultdict
 from pathlib import Path
 from tqdm import tqdm
@@ -21,42 +23,50 @@ def extract_video_names(annotation_dir):
         video_names.add(video_id)
     return video_names
 
-def process_images(image_dir, excluded_videos, model):
+def process_images(root_dir, excluded_videos, model):
     """
-    Process images to detect faces and compile statistics.
+    Processes images in the specified root directory, applying YOLO11 to detect faces and compiling statistics.
 
     Args:
-        image_dir (Path): Directory containing images.
-        excluded_videos (set): Set of video identifiers to exclude from processing.
-        model (YOLO): Preloaded YOLO model for face detection.
+        root_dir (str or Path): Root directory containing subdirectories of images.
+        excluded_videos (set): Set of video names to be excluded from processing.
+        model (YOLO): YOLO11 model instance.
 
     Returns:
-        dict: A dictionary with counts of detected faces.
+        dict: A dictionary containing statistics on face detections.
     """
-    face_counts = defaultdict(int)
+    face_counts = {}
     total_images = 0
+    num_videos = 0
 
-    # Iterate through all image files in the directory and subdirectories
-    image_files = list(image_dir.rglob('*.jpg')) + list(image_dir.rglob('*.png'))
-    for image_path in tqdm(image_files, desc="Processing images"):
-        # Check if the image belongs to an excluded video
-        if any(video_id in image_path.stem for video_id in excluded_videos):
-            continue
+    # Iterate through each subdirectory (video folder) in the root directory
+    logging.info(f"Found {len(list(root_dir.iterdir()))} video folders")
+    for video_folder in root_dir.iterdir():
+        logging.info(f"Processing {video_folder.name}")
+        if video_folder.is_dir() and video_folder.name not in excluded_videos:
+            # Get a list of all image files in the current video folder
+            image_files = list(video_folder.glob("*.jpg"))  # Adjust the pattern if your images have a different extension
 
-        # Load and process the image with YOLO
-        results = model(image_path)
-        num_faces = len(results[0].boxes)
-        face_counts[num_faces] += 1
-        total_images += 1
+            # Process each image file
+            for image_file in tqdm(image_files, desc=f"Processing {video_folder.name}", unit="image"):
+                total_images += 1
+                results = model(image_file)
+                num_faces = len(results[0].boxes)
+                face_counts[num_faces] = face_counts.get(num_faces, 0) + 1
+            num_videos += 1
 
     # Calculate percentages
-    face_counts_percentage = {k: (v / total_images) * 100 for k, v in face_counts.items()}
+    face_distribution = {count: {"num_images": num, "percentage": (num / total_images) * 100}
+                         for count, num in face_counts.items()}
 
-    return {
-        'total_images': total_images,
-        'face_counts': dict(face_counts),
-        'face_counts_percentage': face_counts_percentage
+    # Compile summary statistics
+    summary = {
+        "total_images": total_images,
+        "num_videos": num_videos,
+        "face_distribution": face_distribution,
     }
+
+    return summary
 
 def save_statistics(statistics, output_json, output_txt):
     """
@@ -79,6 +89,9 @@ def save_statistics(statistics, output_json, output_txt):
             txt_file.write(f"Images with {count} faces: {num_images} ({percentage:.2f}%)\n")
 
 if __name__ == "__main__":
+    # Set thread limits
+    os.environ['OMP_NUM_THREADS'] = '4'  # OpenMP threads
+    torch.set_num_threads(4)  # PyTorch threads
     # Define paths
     annotation_directory = Path('/home/nele_pauline_suffo/ProcessedData/yolo_face_labels')
     image_directory = Path('/home/nele_pauline_suffo/ProcessedData/quantex_videos_processed')
