@@ -14,7 +14,7 @@ os.environ['OMP_NUM_THREADS'] = '4'  # OpenMP threads
 torch.set_num_threads(4)  # PyTorch threads
 
 # Load a pretrained model
-model = YOLO("yolo11n.pt")
+model = YOLO("yolo11m.pt")
 
 # Define experiment name and output directory
 experiment_name = timestamp + "_yolo_person_finetune_with_augment_and_earlystop"
