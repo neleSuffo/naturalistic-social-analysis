@@ -321,16 +321,15 @@ Quantex & 0.90 & 0.83 & 0.86\\
 
 \subsection{Person Detection: Model Selection, Data Preprocessing, and Performance Evaluation}\label{person-detection-model-selection-data-preprocessing-and-performance-evaluation}
 
-In this research, we employed Ultralytics' YOLO11, the ``latest iteration in the Ultralytics YOLO series of real-time object detectors'' (Jocher \& Qiu, 2024). YOLO11, which was released in October 2024, has faster processing, increased efficiency, and improved spatial attention techniques to focus on critical parts of a picture compared to prior Yolo versions (Khanam \& Hussain, 2024). These improvements make YOLO11 suited for training on our egocentric dataset to detect people, which includes dynamic motions captured from camera perspectives at chest level.
+In this research, we employed Ultralytics' YOLO11, the ``latest iteration in the Ultralytics YOLO series of real-time object detectors'' (Jocher \& Qiu, 2024). Released in October 2024, YOLO11 features faster processing, improved efficiency, and enhanced spatial attention mechanisms, allowing it to focus more effectively on critical regions of an image compared to previous YOLO versions (Khanam \& Hussain, 2024). These advancements make YOLO11 well-suited for training on our egocentric dataset, which captures dynamic movements from a chest-mounted camera perspective.
+
+However, our dataset presents unique challenges due to the egocentric viewpoint, as body parts of the child wearing the camera frequently appear in the footage. To prevent misclassification, we distinguish between the child's own body parts and other people in the scene by using a dedicated annotation scheme. Specifically, we label all visible body parts of the key child separately, while the ``person'' category applies exclusively to individuals other than the key child. Since standard YOLO models are not designed to make this distinction, we fine-tune YOLO11 to differentiate between the key child's body parts and other people. This adaptation is essential to ensure accurate person detection while minimizing false positives from the child's own body, ultimately allowing for more precise analyses of social interactions.
 
 \subsubsection{Dataset Splitting and Balancing}\label{dataset-splitting-and-balancing}
 
-Data preprocessing initiated with annotation from 80 videos and a total number of 113799 frames. Before splitting the data into training, validation and testing subsets, our interest was in the proportion of frames containing annotated persons versus those without. Our analysis showed that 45.25\% of the frames included at least one annotated person.
+Data preprocessing initiated with annotation from 80 videos and a total number of 113799 frames. Before splitting the dataset into training, validation and testing datasets, our interest was in the proportion of frames containing annotated persons versus those without. Our analysis showed that at least one person was present in 45.25\% of the frames. We applied a stratified split to ensure that each of the training, validation, and testing dataset preserved the original 45.25\% to 54.75\% ratio of frames with persons to frames without persons.
 
-To maintain this inherent distribution across all subsets, we initially applied a stratified split, ensuring that each subset---training, validation, and testing---preserved the original
-45.25\% to 54.75\% ratio of frames with persons to frames without persons.
-
-As a result, the final data distribution was as follows: the training dataset contained 82384 frames, the validation dataset included 11379 frames and the test dataset consisted of 11382 frames. Notably, all three datasets maintained the original 45.25\% person presence, guaranteeing that the model's performance evaluation remained accurate to the real-world data distribution.
+As a result, the final data distribution consisted of 91038 frames in the training dataset, 11379 in the validation and 11382 frames in the testing dataset contained frames, respectively, guaranteeing that the model's performance evaluation remained accurate to the real-world data distribution.
 
 \subsubsection{Training and Convergence}\label{training-and-convergence}
 
@@ -338,7 +337,7 @@ Model training was conducted on a Linux server equipped with an Intel(R) Xeon(R)
 
 The loss function of the YOLOv11 model comprises three main components: Box Loss, Classification Loss, and Distribution Focal Loss (DFL) (Li et al., 2020; Terven, Cordova-Esparza, Ramirez-Pedraza, Chavez-Urbiola, \& Romero-Gonzalez, 2024). Box Loss estimates the difference between predicted bounding boxes and ground truth boxes to assess the model's localization accuracy. Classification Loss measures the model's ability to properly identify detected objects; however, in our study, this component is less relevant due to our focus on a single class---faces. DFL improves the model's ability to detect challenging objects by prioritizing difficult-to-detect instances.
 
-During the training process, we observed that all three loss components decreased over time, indicating effective learning and improved performance, as visible in figure \ref{fig:face-loss-curves}. A steady decrease in Box Loss indicates that the model is becoming increasingly accurate in localizing faces within frames. This is consistent with the rapid convergence of Classification Loss, revealing the model's ability to reliably recognize faces. The decrease in DFL over time indicates that the model is getting better at focusing on and correctly identifying difficult-to-detect faces, which improves its overall detection capabilities. These data collectively represent the model's gradual improvement in both localization and identification tasks during the training period.
+\ref{fig:person-loss-curves}.
 
 \begin{figure}
 
@@ -380,14 +379,6 @@ Quantex & 0.90 & 0.83 & 0.86 & 2.1 & 14.0\\
 
 \subsubsection{Model Evaluation Metrics}\label{model-evaluation-metrics}
 
-The YOLO11 model achieved a precision of 0.92 and a recall of 0.87 on the testing set, resulting in an F1-score of 0.90. These metrics, summarized in figure \ref{tab:face-detection-metrics-detailed} indicate the model's strong performance in accurately identifying faces while minimizing errors. The precision-recall curve, displayed in table \ref{fig:person-metrics}, further illustrates this performance, with the curve remaining close to the top-left corner. This positioning signifies that the model maintains high precision and recall across various thresholds, underscoring its effectiveness in detecting faces with confidence.
-
-Analysis of the confusion matrix reveals that 86\% of all faces are correctly identified by the model, corresponding to 1905 true positives, while 234 faces were missed (false negatives). False negatives predominantly occurred in scenarios where faces were in the background, blurred due to motion, or occluded by the child's body. In such instances, adjacent frames often provided clearer views, aiding in more accurate classification. The model exhibited a false positive rate of approximately 2.72\%, with 251 frames incorrectly classified as containing faces when none were present. These false positives were often attributed to objects or toys resembling facial features. Given the relatively low false positive rate, this small number should not raise significant concerns. In face detection systems, a balance between false positives and false negatives is often necessary, and a 2.1\% false positive rate is generally considered acceptable.
-
-To provide a comprehensive understanding of the model's performance, we have included visual examples of true positives, false positives, and false negatives in figure \ref{fig:person-detection-examples}. These images highlight the model's strengths and areas where challenges persist, offering insights into specific scenarios that influence detection accuracy.
-
-Overall, the YOLO11 model demonstrates robust performance in face detection tasks. However, challenges remain in dynamic scenarios, particularly with partially visible, rotated, or side-view faces. These findings underscore the complexities inherent in analyzing egocentric video data, where movement and varying perspectives introduce additional challenges.
-
 \begin{figure}
 
 {\centering \includegraphics{Quantex_interaction_paper_files/figure-latex/person-detection-examples-1} 
@@ -416,9 +407,7 @@ Consequently, the final data distribution was as follows: the balanced training 
 
 \subsubsection{Training and Convergence}\label{training-and-convergence-1}
 
-Model training was conducted on a Linux server equipped with an Intel(R) Xeon(R) Silver 4214Y CPU @ 2.20GHz with 48 cores, a Quadro RTX 8000 GPU and 188 GB of RAM. Model training concluded after 165 epochs, taking 63.79 hours. Early stopping was triggered following 10 consecutive epochs without improvement. The training process utilized YOLO11's built-in data augmentation, a batch size of 16, a cosine annealing learning rate scheduler (Loshchilov \& Hutter, 2017), and early stopping after 10 epochs without improvement, with a maximum of 200 epochs.
-
-The loss function of the YOLOv11 model comprises three main components: Box Loss, Classification Loss, and Distribution Focal Loss (DFL) (Li et al., 2020; Terven et al., 2024). Box Loss estimates the difference between predicted bounding boxes and ground truth boxes to assess the model's localization accuracy. Classification Loss measures the model's ability to properly identify detected objects; however, in our study, this component is less relevant due to our focus on a single class---faces. DFL improves the model's ability to detect challenging objects by prioritizing difficult-to-detect instances.
+Model training was performed on the same Linux server used for person detection, with the same hardware specifications. The training process concluded after 165 epochs, taking 63.79 hours. Early stopping was triggered following 10 consecutive epochs without improvement. The training process utilized YOLO11's built-in data augmentation, a batch size of 16, a cosine annealing learning rate scheduler (Loshchilov \& Hutter, 2017), and early stopping after 10 epochs without improvement, with a maximum of 200 epochs.
 
 During the training process, we observed that all three loss components decreased over time, indicating effective learning and improved performance, as visible in in figure \ref{fig:face-loss-curves}. A steady decrease in Box Loss indicates that the model is becoming increasingly accurate in localizing faces within frames. This is consistent with the steady convergence of Classification Loss, revealing the model's ability to reliably recognize faces. The decrease in DFL over time indicates that the model is getting better at focusing on and correctly identifying difficult-to-detect faces, which improves its overall detection capabilities. Conclusively, the loss curves show that the model effectively learned to localize and identify faces during the training period.
 
