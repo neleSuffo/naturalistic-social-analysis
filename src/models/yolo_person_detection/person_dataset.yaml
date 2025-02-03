@@ -1,5 +1,5 @@
 
-train: /home/nele_pauline_suffo/ProcessedData/yolo_person_input/images/train_balanced
+train: /home/nele_pauline_suffo/ProcessedData/yolo_person_input/images/train
 val: /home/nele_pauline_suffo/ProcessedData/yolo_person_input/images/val
 test: /home/nele_pauline_suffo/ProcessedData/yolo_person_input/images/test
 
