@@ -5,6 +5,7 @@ import torch
 from collections import defaultdict
 from pathlib import Path
 from tqdm import tqdm
+from datetime import datetime
 from ultralytics import YOLO
 
 logging.basicConfig(level=logging.INFO)
@@ -113,7 +114,7 @@ if __name__ == "__main__":
     # Define paths
     annotation_directory = Path('/home/nele_pauline_suffo/ProcessedData/yolo_face_labels')
     image_directory = Path('/home/nele_pauline_suffo/ProcessedData/quantex_videos_processed')
-    output_json_path = Path('/home/nele_pauline_suffo/outputs/yolo_face_detections/quantex_full_video_run/statistics.json')
+    output_json_path = Path('/home/nele_pauline_suffo/outputs/yolo_face_detections/quantex_full_video_run/statistics_' + datetime.now().strftime("%Y%m%d_%H%M%S") + '.json')
     output_txt_path = Path('/home/nele_pauline_suffo/outputs/yolo_face_detections/quantex_full_video_run/statistics.txt')
 
     # Load YOLO11 model
