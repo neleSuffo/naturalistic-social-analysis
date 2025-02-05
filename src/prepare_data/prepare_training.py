@@ -271,22 +271,34 @@ def get_class_distribution(total_images: list,
         - List of images without class annotations.
         - Class-to-total ratio.
     """
+    # initiate lists and counts
     with_class, without_class = [], []
-
+    with_class_count, without_class_count = 0
+    
     for image_file in total_images:
         annotation_file = annotation_folder / Path(image_file).with_suffix('.txt').name
 
         if annotation_file.exists() and annotation_file.stat().st_size > 0:
             with open(annotation_file, 'r') as f:
                 lines = f.readlines()
-                has_class_0 = any(line.strip().split()[0] == "0" for line in lines)
-            # Check if any annotation has class 0 (person or face)
-            if has_class_0:
-                with_class.append(image_file)
-            else:
-                without_class.append(image_file)
-        else:
-            without_class.append(image_file)
+                if yolo_target == "gaze":
+                    # check every line in the annotation file
+                    for i, line in enumerate(lines):
+                        class_id = line.strip().split()[0]
+                        if class_id == "0": # 0=no gaze'
+                            without_class_count += 1
+                            without_class.append(f"{image_file}_{i}")
+                        elif class_id == "1": # 1=gaze
+                            with_class_count += 1   
+                            with_class.append(f"{image_file}_{i}")                     
+                        
+                else:    
+                    has_class_0 = any(line.strip().split()[0] == "0" for line in lines)
+                    # Check if any annotation has class 0 (0=person for person detection, 0=face for face detection, 0=no gaze for gaze detection)
+                    if has_class_0:
+                        with_class.append(image_file)
+                    else:
+                        without_class.append(image_file)
 
     class_to_total_ratio = len(with_class) / len(total_images) if total_images else 0
     return with_class, without_class, class_to_total_ratio
@@ -439,8 +451,8 @@ def main(model_target: str, yolo_target: str):
     os.environ['OMP_NUM_THREADS'] = '10'
     
     if model_target == "yolo":
-        label_path = YoloPaths.person_labels_input_dir if yolo_target == "person" else YoloPaths.face_labels_input_dir
-        data_path = YoloPaths.person_data_input_dir if yolo_target == "person" else YoloPaths.face_data_input_dir
+        label_path = YoloPaths.person_labels_input_dir if yolo_target == "person" else YoloPaths.face_labels_input_dir if yolo_target == "face" else YoloPaths.gaze_labels_input_dir
+        data_path = YoloPaths.person_data_input_dir if yolo_target == "person" else YoloPaths.face_data_input_dir if yolo_target == "face" else YoloPaths.gaze_data_input_dir        
         
         logging.info(f"Processing YOLO dataset for target: {yolo_target}")
         total_images = get_total_number_of_annotated_frames(label_path, DetectionPaths.images_input_dir)
@@ -456,7 +468,7 @@ def main(model_target: str, yolo_target: str):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Prepare datasets for training.")
     parser.add_argument("model_target", type=str, choices=["yolo", "mtcnn"], help="Target model for preparation.")
-    parser.add_argument("--yolo_target", type=str, choices=["person", "face"], help="YOLO target type (person or face).")
+    parser.add_argument("--yolo_target", type=str, choices=["person", "face", "gaze"], help="YOLO target type (person or face).")
     args = parser.parse_args()
     
     main(args.model_target, args.yolo_target)
