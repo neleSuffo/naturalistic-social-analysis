@@ -5,6 +5,7 @@ import os
 from prepare_data.prepare_training import main as prepare_training
 from prepare_data.prepare_training import balance_dataset
 from prepare_data.process_videos import main as process_videos
+from prepare_data.extract_faces import main as extract_faces
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -37,17 +38,23 @@ def main():
 
     if args.all:
         process_videos()
+        if args.model_target == "yolo" or args.model_target == "gaze":
+            extract_faces()
         run_process_annotations(args.model_target, args.yolo_target, setup_db=True)
         prepare_training(args.model_target, args.yolo_target)
         balance_dataset(args.model_target, args.yolo_target)
 
     else:
         if args.videos:
+            # Extract rawframes from videos
             process_videos()
         if args.annotations:
             if not args.model_target or not args.yolo_target:
                 parser.error("--annotations requires --model_target and --yolo_target.")
             run_process_annotations(args.model_target, args.yolo_target, setup_db=args.setup_db)
+        if args.face_rawframes:
+            # Extract faces from rawframes
+            extract_faces()
         if args.training:
             prepare_training(args.model_target, args.yolo_target)
         if args.balanced:
@@ -59,9 +66,10 @@ def main():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Data preparation pipeline')
     parser.add_argument('--videos', action='store_true', help='Run video processing')
+    parser.add_argument('--face_rawframes', action='store_true', help='Run face rawframes extraction')
     parser.add_argument('--annotations', action='store_true', help='Run annotation processing')
     parser.add_argument('--model_target', type=str, help='Model to convert to (e.g., "yolo", "mtcnn", "all")')
-    parser.add_argument('--yolo_target', type=str, help='Target YOLO label (e.g., "face")')
+    parser.add_argument('--yolo_target', type=str, help='Target YOLO label ("person", "face" or "gaze")')
     parser.add_argument('--setup_db', action='store_true', default=False, help='Whether to set up the database (default: False)')
     parser.add_argument('--training', action='store_true', help='Prepare training data')
     parser.add_argument('--balanced', action='store_true', help='Balance the dataset into equal number of frames with and without class')
