@@ -3,6 +3,7 @@ import cv2
 import logging
 from pathlib import Path
 from tqdm import tqdm
+from constants import DetectionPaths, YoloPaths
 
 def crop_faces_from_labels(
     labels_input_dir: Path,
@@ -57,7 +58,8 @@ def crop_faces_from_labels(
             continue
 
         # Construct image path
-        image_path = rawframe_dir / image_name
+        video_folder = '_'.join(image_name.split('_')[:8])
+        image_path = rawframe_dir / video_folder / image_name
 
         if not image_path.exists():
             logging.warning(f"Image {image_path} not found")
@@ -77,7 +79,9 @@ def crop_faces_from_labels(
 
         # Read annotations
         with open(ann_file, 'r') as f:
-            for line in f.readlines():
+            lines = f.readlines()
+            # Process each line in the annotation file
+            for idx, line in enumerate(lines):
                 try:
                     # Parse YOLO format: class x_center y_center width height
                     class_id, x_center, y_center, width, height = map(float, line.strip().split())
@@ -101,7 +105,7 @@ def crop_faces_from_labels(
                         continue
 
                     # Save cropped face with same name as original
-                    face_output_path = output_dir / f"{ann_file.stem}.jpg"
+                    face_output_path = output_dir / f"{ann_file.stem}_face_{idx}.jpg"
                     cv2.imwrite(str(face_output_path), cropped_face)
 
                 except Exception as e:
@@ -117,12 +121,12 @@ def crop_faces_from_labels(
 def main():
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     crop_faces_from_labels(
-        labels_input_dir=YoloPaths.face_labels_input_dir,
+        labels_input_dir=YoloPaths.gaze_labels_input_dir,
         rawframe_dir=DetectionPaths.images_input_dir,
-        output_dir=DetectionPaths.face_images_input_dir,
-        progress_file=YoloPaths.face_extraction_progress_file_path,
-        missing_frames_file=YoloPaths.face_missing_frames_file_path
+        output_dir=DetectionPaths.gaze_images_input_dir,
+        progress_file=YoloPaths.gaze_extraction_progress_file_path,
+        missing_frames_file=YoloPaths.gaze_missing_frames_file_path
     )
 
-if __name__ == "__main__":
+if __name__ == "__main__":    
     main()
