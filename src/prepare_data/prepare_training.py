@@ -5,7 +5,7 @@ import os
 import sqlite3
 import subprocess
 from pathlib import Path
-from constants import DetectionPaths, YoloPaths, MtcnnPaths
+from constants import DetectionPaths, YoloPaths
 from config import TrainingConfig
 import argparse
 # Configure logging
@@ -251,11 +251,9 @@ def get_total_number_of_annotated_frames(label_path: Path, image_folder: Path) -
             total_images.extend(os.listdir(video_path)) 
     return total_images    
 
-def get_class_distribution(total_images: list,
-                           annotation_folder: Path):
+def get_class_distribution(total_images: list, annotation_folder: Path, yolo_target: str):
     """
-    Separates images into 'with class' and 'without class' lists
-    and computes the class-to-total ratio.
+    Categorizes images based on the presence of specific class annotations and computes the class-to-total ratio.
 
     Parameters
     ----------
@@ -263,6 +261,8 @@ def get_class_distribution(total_images: list,
         List of all image file paths.
     annotation_folder : Path
         Path to the directory containing annotation files.
+    yolo_target : str
+        Target type ("gaze", "face", or "person") to determine counting logic.
 
     Returns
     -------
@@ -271,10 +271,8 @@ def get_class_distribution(total_images: list,
         - List of images without class annotations.
         - Class-to-total ratio.
     """
-    # initiate lists and counts
     with_class, without_class = [], []
-    with_class_count, without_class_count = 0
-    
+
     for image_file in total_images:
         annotation_file = annotation_folder / Path(image_file).with_suffix('.txt').name
 
@@ -282,25 +280,28 @@ def get_class_distribution(total_images: list,
             with open(annotation_file, 'r') as f:
                 lines = f.readlines()
                 if yolo_target == "gaze":
-                    # check every line in the annotation file
+                    # Check every line in the annotation file
                     for i, line in enumerate(lines):
                         class_id = line.strip().split()[0]
-                        if class_id == "0": # 0=no gaze'
-                            without_class_count += 1
+                        if class_id == "0":  # 0 = no gaze
                             without_class.append(f"{image_file}_{i}")
-                        elif class_id == "1": # 1=gaze
-                            with_class_count += 1   
-                            with_class.append(f"{image_file}_{i}")                     
-                        
-                else:    
+                        elif class_id == "1":  # 1 = gaze
+                            with_class.append(f"{image_file}_{i}")
+                else:
                     has_class_0 = any(line.strip().split()[0] == "0" for line in lines)
-                    # Check if any annotation has class 0 (0=person for person detection, 0=face for face detection, 0=no gaze for gaze detection)
                     if has_class_0:
                         with_class.append(image_file)
                     else:
                         without_class.append(image_file)
-
+    if yolo_target == "gaze":
+        # Calculate class-to-no-class ratio (number of images with gaze directed at child vs. not)
+        total_gaze = len(with_class) + len(without_class)
+        class_to_no_class_ratio = len(with_class) / len(total_gaze) if without_class else 0
+        logging.info(f"Class-to-No-Class Ratio: {class_to_no_class_ratio:.4f} ({len(with_class)}/{len(without_class)})")
+        return with_class, without_class, class_to_no_class_ratio
+    
     class_to_total_ratio = len(with_class) / len(total_images) if total_images else 0
+    logging.info(f"Class-to-Total Ratio: {class_to_total_ratio:.4f} ({len(with_class)}/{len(total_images)})")
     return with_class, without_class, class_to_total_ratio
 
 def stratified_split(data, train_ratio, val_ratio):
@@ -397,8 +398,6 @@ def split_yolo_data(total_images: list,
 
     # Get class distribution
     with_class, without_class, class_to_total_ratio = get_class_distribution(total_images, annotation_folder)
-
-    logging.info(f"Class-to-Total Ratio: {class_to_total_ratio:.4f} ({len(with_class)}/{len(total_images)})")
 
     # Shuffle for randomness
     random.shuffle(with_class)
