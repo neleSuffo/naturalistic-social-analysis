@@ -25,7 +25,8 @@ def balance_dataset(model_target: str, yolo_target: str):
     # Define paths based on model and YOLO target
     paths = {
         ("yolo", "person"): YoloPaths.person_data_input_dir,
-        ("yolo", "face"): YoloPaths.face_data_input_dir
+        ("yolo", "face"): YoloPaths.face_data_input_dir,
+        ("yolo", "gaze"): YoloPaths.gaze_data_input_dir
     }
     
     data_input_dir = paths.get((model_target, yolo_target))
@@ -284,9 +285,9 @@ def get_class_distribution(total_images: list, annotation_folder: Path, yolo_tar
                     for i, line in enumerate(lines):
                         class_id = line.strip().split()[0]
                         if class_id == "0":  # 0 = no gaze
-                            without_class.append(f"{image_file}_{i}")
+                            without_class.append(f"{Path(image_file).stem}_face_{i}.jpg")
                         elif class_id == "1":  # 1 = gaze
-                            with_class.append(f"{image_file}_{i}")
+                            with_class.append(f"{Path(image_file).stem}_face_{i}.jpg")
                 else:
                     has_class_0 = any(line.strip().split()[0] == "0" for line in lines)
                     if has_class_0:
@@ -296,7 +297,7 @@ def get_class_distribution(total_images: list, annotation_folder: Path, yolo_tar
     if yolo_target == "gaze":
         # Calculate class-to-no-class ratio (number of images with gaze directed at child vs. not)
         total_gaze = len(with_class) + len(without_class)
-        class_to_no_class_ratio = len(with_class) / len(total_gaze) if without_class else 0
+        class_to_no_class_ratio = len(with_class) / total_gaze if total_gaze > 0 else 0
         logging.info(f"Class-to-No-Class Ratio: {class_to_no_class_ratio:.4f} ({len(with_class)}/{len(without_class)})")
         return with_class, without_class, class_to_no_class_ratio
     
@@ -329,7 +330,7 @@ def stratified_split(data, train_ratio, val_ratio):
     val_count = int(total * val_ratio)
     return data[:train_count], data[train_count:train_count + val_count], data[train_count + val_count:]
 
-def copy_files_to_split(split_name, files, annotation_folder, output_folder):
+def copy_files_to_split(split_name, files, annotation_folder, output_folder, yolo_target):
     """
     Copies image and annotation files into their respective split directories.
 
@@ -343,33 +344,64 @@ def copy_files_to_split(split_name, files, annotation_folder, output_folder):
         Path to the annotation directory.
     output_folder : Path
         Path to the output directory.
+    yolo_target : str
+        Target type ("face" or "gaze")
     """
     for image_file in files:
         image_file_path = Path(image_file)
         folder_name = "_".join(image_file_path.stem.split("_")[:8])
 
         # Define source paths
-        src_image_path = DetectionPaths.images_input_dir / folder_name / image_file_path.name
-        src_label_path = annotation_folder / image_file_path.with_suffix('.txt').name
-
+        if yolo_target == "gaze":
+            src_image_path = DetectionPaths.gaze_images_input_dir / image_file_path.name
+        else:
+            src_image_path = DetectionPaths.images_input_dir / folder_name / image_file_path.name
+        
         # Define target paths
         image_dst = output_folder / "images" / split_name / image_file_path.name
         annotation_dst = output_folder / "labels" / split_name / image_file_path.with_suffix('.txt').name
 
         # Copy image
-        shutil.copy(src_image_path, image_dst)
-
-        # Copy annotation if it exists, else create an empty file
-        if src_label_path.exists():
-            shutil.copy(src_label_path, annotation_dst)
+        if src_image_path.exists():
+            shutil.copy(src_image_path, image_dst)
         else:
-            annotation_dst.touch()  # Create an empty annotation file
+            logging.warning(f"Skipping {src_image_path} - source file not found")
+            continue
+        
+        if yolo_target == "gaze":
+            # Extract base name and face index from filename (e.g., video_name_face_1)
+            base_name = "_".join(image_file_path.stem.split("_")[:9])  # Remove '_face_X'
+            face_idx = int(image_file_path.stem.split("_")[-1])  # Get X from '_face_X'
+            
+            # Source annotation file contains all faces
+            src_label_path = annotation_folder / f"{base_name}.txt"
+            
+            if src_label_path.exists():
+                with open(src_label_path, 'r') as f:
+                    lines = f.readlines()
+                    if face_idx < len(lines):
+                        # Create annotation file with only the relevant line
+                        with open(annotation_dst, 'w') as out_f:
+                            out_f.write(lines[face_idx])
+                    else:
+                        logging.warning(f"Face index {face_idx} not found in {src_label_path}")
+                        annotation_dst.touch()
+            else:
+                annotation_dst.touch()  # Create empty file if source doesn't exist
+        else:
+            # Original behavior for face detection
+            src_label_path = annotation_folder / image_file_path.with_suffix('.txt').name
+            if src_label_path.exists():
+                shutil.copy(src_label_path, annotation_dst)
+            else:
+                annotation_dst.touch()
 
     logging.info(f"Copied {len(files)} images to {split_name} split.")
     
 def split_yolo_data(total_images: list, 
                     annotation_folder: Path,
                     output_folder: Path, 
+                    yolo_target: str,
                     train_test_split_ratio: float = TrainingConfig.train_test_split_ratio):
     """
     Splits YOLO image dataset into train, validation, and test sets while ensuring
@@ -383,6 +415,8 @@ def split_yolo_data(total_images: list,
         Path to annotation files.
     output_folder : Path
         Path to store the output splits.
+    yolo_target : str
+        Target type ("face", "person", or "gaze").
     train_test_split_ratio : float
         Ratio of images to use for training, default is 0.8.
     """
@@ -397,7 +431,7 @@ def split_yolo_data(total_images: list,
         (output_folder / "labels"/ split).mkdir(parents=True, exist_ok=True)
 
     # Get class distribution
-    with_class, without_class, class_to_total_ratio = get_class_distribution(total_images, annotation_folder)
+    with_class, without_class, class_to_total_ratio = get_class_distribution(total_images, annotation_folder, yolo_target)
 
     # Shuffle for randomness
     random.shuffle(with_class)
@@ -426,7 +460,7 @@ def split_yolo_data(total_images: list,
     
     # Copy files into respective split directories
     for split, files in splits.items():
-        copy_files_to_split(split, files, annotation_folder, output_folder)
+        copy_files_to_split(split, files, annotation_folder, output_folder, yolo_target)
 
     logging.info(f"Data successfully split into train ({train_ratio:.2f}), val ({val_ratio:.2f}), test ({val_ratio:.2f}).")
         
@@ -455,7 +489,7 @@ def main(model_target: str, yolo_target: str):
         
         logging.info(f"Processing YOLO dataset for target: {yolo_target}")
         total_images = get_total_number_of_annotated_frames(label_path, DetectionPaths.images_input_dir)
-        split_yolo_data(total_images, label_path, data_path, TrainingConfig.train_test_split_ratio)
+        split_yolo_data(total_images, label_path, data_path, yolo_target, TrainingConfig.train_test_split_ratio)
     elif model_target == "mtcnn":
         prepare_mtcnn_dataset(MtcnnPaths.data_input, train_images, val_images, test_images)
     else:
