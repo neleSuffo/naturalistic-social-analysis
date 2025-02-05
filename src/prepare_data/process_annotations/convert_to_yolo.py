@@ -99,7 +99,7 @@ def save_annotations(
         the target detection type
     """
     logging.info("Saving annotations in YOLO format.")
-    output_dir = YoloPaths.face_labels_input_dir if target == "face" else YoloPaths.person_labels_input_dir
+    output_dir = YoloPaths.face_labels_input_dir if target == "face" else YoloPaths.person_labels_input_dir if target == "person" else YoloPaths.gaze_labels_input_dir      
     output_dir.mkdir(parents=True, exist_ok=True)
     
     file_contents = {}
@@ -107,8 +107,8 @@ def save_annotations(
     processed_count = 0
     #(image_id, video_id, category_id, bbox, image_file_name, video_file_name)
 
-    for annotation in annotations:
-        _, _, category_id, bbox, image_file_name, _, _ = annotation
+    for annotation in annotations:           
+        _, _, category_id, bbox, image_file_name, _, gaze_directed_at_child = annotation
         video_name = image_file_name[:-11]
         image_file_path = DetectionPaths.images_input_dir / video_name / image_file_name
 
@@ -119,12 +119,20 @@ def save_annotations(
             continue
         
         bbox = json.loads(bbox)
+        
+        # define mapping for the category_id
+        person_mapping: {1: 0, 2: 0, 10: 0, 11:1}
+        face_mapping: {10: 0}
+        gaze_mapping = {'No': 0, 'Yes': 1}
         if target == "person":
         # Map the category_id to the YOLO format (treat person, reflection, face all as category "person")
-            category_id = {1: 0, 2: 0, 10: 0, 11:1}.get(category_id, category_id)
+            category_id = person_mapping.get(category_id, category_id)
         if target == "face":
         # Map the category_id to the YOLO format
-            category_id = {10: 0}.get(category_id, category_id)
+            category_id = face_mapping.get(category_id, category_id)
+        if target == "gaze":
+            # category id is replaced with gaze_directed_at_child (No: 0, Yes: 1)
+            category_id = gaze_mapping.get(gaze_directed_at_child, gaze_directed_at_child)
         # YOLO format: category_id x_center y_center width height
         try:
             yolo_bbox = convert_to_yolo_format(image_file_path, bbox)               
@@ -153,17 +161,20 @@ def save_annotations(
 def main(target: str) -> None:
     logging.info(f"Starting the conversion process for Yolo {target} detection.")
     try:
-        if target == "face":
-            annotations = fetch_all_annotations(category_ids = YoloConfig.face_target_class_ids)
-            logging.info(f"Fetched {len(annotations)} {target} annotations.")
-            save_annotations(annotations, target)
-            logging.info(f"Successfully saved all {target} annotations.")
+        category_ids = {
+            "face": YoloConfig.face_target_class_ids,
+            "gaze": YoloConfig.face_target_class_ids,
+            "person": YoloConfig.person_target_class_ids
+        }.get(target)
 
-        elif target == "person":
-            annotations = fetch_all_annotations(category_ids = YoloConfig.person_target_class_ids)
-            logging.info(f"Fetched {len(annotations)} {target} annotations.")
-            save_annotations(annotations, target)
-            logging.info(f"Successfully saved all {target} annotations.")
+        if category_ids is None:
+            logging.error(f"Invalid target: {target}. Expected 'face' or 'person'.")
+            return
+
+        annotations = fetch_all_annotations(category_ids=category_ids)
+        logging.info(f"Fetched {len(annotations)} {target} annotations.")
+        save_annotations(annotations, target)
+        logging.info(f"Successfully saved all {target} annotations.")
     except Exception as e:
         print(f"Failed to fetch annotations or save them: {e}")
 
