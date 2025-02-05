@@ -1,0 +1,11 @@
+train: /home/nele_pauline_suffo/ProcessedData/yolo_gaze_input/images/train
+val: /home/nele_pauline_suffo/ProcessedData/yolo_gaze_input/images/val
+test: /home/nele_pauline_suffo/ProcessedData/yolo_gaze_input/images/test
+
+# Number of classes
+nc: 2
+
+# Class names
+names: 
+ 0: "no gaze"
+ 1 : "gaze"
