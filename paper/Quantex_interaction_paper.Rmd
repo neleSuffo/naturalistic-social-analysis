@@ -354,15 +354,14 @@ person_total_num_videos <- 80
 person_num_frames_train <- 91038
 person_class_to_total_ratio <- 45.25
 
-num_person_frames_train <- 82384
+num_person_frames_train <- 91038
 num_person_frames_val <- 11379
 num_person_frames_test <- 11382
 
-person_cm_num_images <- 11382
 person_tp <- 1905
 person_fp <- 251
 person_fn <- 234
-person_tn <- person_cm_num_images - person_tp - person_fp - person_fn
+person_tn <- num_person_frames_test - person_tp - person_fp - person_fn
 person_fpr <- person_fp / (person_fp + person_tn) * 100
 num_person <- person_fp + person_fn
 per_wrong_person <- person_fp / person_tp * 100
@@ -372,31 +371,29 @@ person_f1_score <- 0.90
 
 person_num_epochs <- 86
 ```
+In this research, we employed Ultralytics' YOLO11, the "latest iteration in the Ultralytics YOLO series of real-time object detectors" [@jocherUltralyticsYOLO112024]. Released in October 2024, YOLO11 features faster processing, improved efficiency, and enhanced spatial attention mechanisms, allowing the model to focus more effectively on critical regions of an image compared to previous YOLO versions [@khanamYOLOv11OverviewKey2024]. These advancements make YOLO11 well-suited for training on our egocentric dataset, which captures dynamic movements from a camera perspective on chest height.
 
-In this research, we employed Ultralytics' YOLO11, the "latest iteration in the Ultralytics YOLO series of real-time object detectors" [@jocherUltralyticsYOLO112024]. YOLO11, which was released in October 2024, has faster processing, increased efficiency, and improved spatial attention techniques to focus on critical parts of a picture compared to prior Yolo versions [@khanamYOLOv11OverviewKey2024]. These improvements make YOLO11 suited for training on our egocentric dataset to detect people, which includes dynamic motions captured from camera perspectives at chest level. 
+However, our dataset presents unique challenges due to the egocentric viewpoint, as body parts of the child wearing the camera frequently appear in the footage. To prevent misclassification, we distinguish between the child’s own body parts and other people in the scene by using a dedicated annotation scheme. Specifically, we label all visible body parts of the key child separately, while the “person” category applies exclusively to individuals other than the key child. Since standard YOLO models are not designed to make this distinction, we fine-tune YOLO11 to differentiate between the key child’s body parts and other people. This adaptation is essential to ensure accurate person detection while minimizing false positives from the child’s own body, ultimately allowing for more precise analyses of social interactions.
 
 ### Dataset Splitting and Balancing
-Data preprocessing initiated with annotation from `r person_total_num_videos` videos and a total number of `r person_total_num_frames` frames. Before splitting the data into training, validation and testing subsets, our interest was in the proportion of frames containing annotated persons versus those without. Our analysis showed that `r person_class_to_total_ratio`% of the frames included at least one annotated person.
+Data preprocessing initiated with annotations from `r person_total_num_videos` videos and a total number of `r person_total_num_frames` frames. Before splitting the dataset into training, validation and testing, our interest was in the proportion of frames containing annotated persons versus those without. Our analysis showed that at least one person was present in `r person_class_to_total_ratio`% of the frames. We applied a stratified split to ensure that each of the training, validation, and testing dataset preserved the original `r person_class_to_total_ratio`% to `r 100-person_class_to_total_ratio`% ratio of frames with persons to frames without persons.
 
- To maintain this inherent distribution across all subsets, we initially applied a stratified split, ensuring that each subset—training, validation, and testing—preserved the original 
-`r person_class_to_total_ratio`% to `r 100-person_class_to_total_ratio`% ratio of frames with persons to frames without persons.
-
-As a result, the final data distribution was as follows: the training dataset contained `r num_person_frames_train` frames, the validation dataset included `r num_person_frames_val` frames and the test dataset consisted of `r num_person_frames_test` frames. Notably, all three datasets maintained the original `r person_class_to_total_ratio`% person presence, guaranteeing that the model's performance evaluation remained accurate to the real-world data distribution.
+As a result, the final data distribution consisted of `r num_person_frames_train` frames in the training dataset, `r num_person_frames_val` frames in the validation and `r num_person_frames_test` frames in the testing dataset, guaranteeing that the model's performance evaluation remained accurate to the real-world data distribution.
 
 ### Training and Convergence
 Model training was conducted on a Linux server equipped with an Intel(R) Xeon(R) Silver 4214Y CPU @ 2.20GHz with 48 cores, a Quadro RTX 8000 GPU and 188 GB of RAM. The model was trained for a total of `r person_num_epochs` epochs. The training process utilized YOLO11’s built-in data augmentation, a batch size of 16, a cosine annealing learning rate scheduler [@loshchilovSGDRStochasticGradient2017], and early stopping after 10 epochs without improvement, with a maximum of 200 epochs. 
 
-The loss function of the YOLOv11 model comprises three main components: Box Loss, Classification Loss, and Distribution Focal Loss (DFL) [@tervenLossFunctionsMetrics2024; @liGeneralizedFocalLoss2020]. Box Loss estimates the difference between predicted bounding boxes and ground truth boxes to assess the model's localization accuracy. Classification Loss measures the model's ability to properly identify detected objects; however, in our study, this component is less relevant due to our focus on a single class—faces. DFL improves the model's ability to detect challenging objects by prioritizing difficult-to-detect instances.
-
-During the training process, we observed that all three loss components decreased over time, indicating effective learning and improved performance, as visible in figure \@ref(fig:face-loss-curves). A steady decrease in Box Loss indicates that the model is becoming increasingly accurate in localizing faces within frames. This is consistent with the rapid convergence of Classification Loss, revealing the model's ability to reliably recognize faces. The decrease in DFL over time indicates that the model is getting better at focusing on and correctly identifying difficult-to-detect faces, which improves its overall detection capabilities. These data collectively represent the model's gradual improvement in both localization and identification tasks during the training period.
-
-```{r person-loss-curves, fig.align='center', fig.cap="Training and Validation Loss Curves for the YOLO11 face detection model.", out.width="450px"}
+```{r person-loss-curves, fig.align='center', fig.cap="Training and Validation Loss Curves for the YOLO11 person detection model.", out.width="450px"}
 knitr::include_graphics("images/yolo_face_loss_curves.png")
 ```
 
+The loss function of the YOLOv11 model comprises three main components: Box Loss, Classification Loss, and Distribution Focal Loss (DFL) [@tervenLossFunctionsMetrics2024; @liGeneralizedFocalLoss2020]. Box Loss estimates the difference between predicted bounding boxes and ground truth boxes to assess the model's localization accuracy. Classification Loss measures the model's ability to properly attribute detected objects to the correct class. DFL improves the model's ability to detect challenging objects by prioritizing difficult-to-detect instances.
+
+Figure \@ref(fig:person-loss-curves) shows the training and validation loss curves for Yolo11 person detection training.
+
 ```{r person-detection-metrics-detailed, echo=FALSE, message=FALSE, warnings=FALSE, results='asis', eval=TRUE}
 my.data <- "Dataset | Precision | Recall | F1-Score | False Positive Rate | False Negative Rate
-            Quantex | 0.90   | 0.83 | 0.86 | 2.1 | 14.0"
+            Quantex | 0  | 0 | 0| 0 | 0"
 
 df <- read.delim(textConnection(my.data), header=FALSE, sep="|", strip.white=TRUE, stringsAsFactors=FALSE)
 
@@ -409,12 +406,13 @@ row.names(df) <- NULL
 # Print the updated table
 apa_table(
   df,
-  caption = "Evaluation metrics for the YOLO11 face detection model trained on the Quantex dataset. False Positive Rate and False Negative Rate are given in percentages.",
+  caption = "Evaluation metrics for the YOLO11 person detection model trained on the Quantex dataset. False Positive Rate and False Negative Rate are given in percentages.",
   escape = TRUE
 )
 ```
 
-```{r person-metrics, fig.align='center', fig.cap="\\textbf{A} - Confusion Matrix for the YOLO11 face detection model trained on the Quantex dataset. \\textbf{B} - Precision-Recall Curve for the YOLO11 face detection model."}
+### Model Evaluation Metrics
+```{r person-metrics, fig.align='center', fig.cap="\\textbf{A} - Confusion Matrix for the YOLO11 person detection model trained on the Quantex dataset. \\textbf{B} - Precision-Recall Curve for the YOLO11 person detection model."}
 # Load images
 img1 <- ggdraw() + draw_image("images/yolo_face_confusion_matrix.png", scale = 1)
 img2 <- ggdraw() + draw_image("images/yolo_face_pr_curve.png", scale = 1.2)
@@ -434,16 +432,8 @@ final_labeled_layout <- final_layout +
 final_labeled_layout
 ```
 
-### Model Evaluation Metrics
-The YOLO11 model achieved a precision of `r person_precision` and a recall of `r person_recall` on the testing set, resulting in an F1-score of `r person_f1_score`. These metrics, summarized in figure \@ref(tab:face-detection-metrics-detailed) indicate the model’s strong performance in accurately identifying faces while minimizing errors. The precision-recall curve, displayed in table \@ref(fig:person-metrics), further illustrates this performance, with the curve remaining close to the top-left corner. This positioning signifies that the model maintains high precision and recall across various thresholds, underscoring its effectiveness in detecting faces with confidence.
 
-Analysis of the confusion matrix reveals that 86% of all faces are correctly identified by the model, corresponding to `r person_tp` true positives, while `r person_fn` faces were missed (false negatives). False negatives predominantly occurred in scenarios where faces were in the background, blurred due to motion, or occluded by the child’s body. In such instances, adjacent frames often provided clearer views, aiding in more accurate classification. The model exhibited a false positive rate of approximately `r person_fpr`%, with `r person_fp` frames incorrectly classified as containing faces when none were present. These false positives were often attributed to objects or toys resembling facial features. Given the relatively low false positive rate, this small number should not raise significant concerns. In face detection systems, a balance between false positives and false negatives is often necessary, and a 2.1% false positive rate is generally considered acceptable. 
-
-To provide a comprehensive understanding of the model’s performance, we have included visual examples of true positives, false positives, and false negatives in figure \@ref(fig:person-detection-examples). These images highlight the model’s strengths and areas where challenges persist, offering insights into specific scenarios that influence detection accuracy.
-
-Overall, the YOLO11 model demonstrates robust performance in face detection tasks. However, challenges remain in dynamic scenarios, particularly with partially visible, rotated, or side-view faces. These findings underscore the complexities inherent in analyzing egocentric video data, where movement and varying perspectives introduce additional challenges.
-
-```{r person-detection-examples, echo=FALSE, dpi=600, fig.align='center', fig.cap="\\textbf{A}, \\textbf{B} - Examples of True Positives, \\textbf{C}, \\textbf{D} – Examples of False Negatives, \\textbf{E}, \\textbf{F} – Examples of False Positives in the YOLO11 face detection model."}
+```{r person-detection-examples, echo=FALSE, dpi=600, fig.align='center', fig.cap="\\textbf{A}, \\textbf{B} - Examples of True Positives, \\textbf{C}, \\textbf{D} – Examples of False Negatives, \\textbf{E}, \\textbf{F} – Examples of False Positives in the YOLO11 person detection model."}
 img1 <- ggdraw() + draw_image("images/quantex_at_home_id255944_2022_03_07_01_002760.jpg", scale = 0.95)
 img2 <- ggdraw() + draw_image("images/quantex_at_home_id255944_2022_03_07_01_002760.jpg", scale = 0.95)
 img3 <- ggdraw() + draw_image("images/quantex_at_home_id255944_2022_03_07_01_002760.jpg", scale = 0.95)
@@ -487,11 +477,10 @@ num_face_frames_train_balanced <- 27416
 num_face_frames_val <- 9169
 num_face_frames_test <- 9173
 
-face_cm_num_images <- 9173
 face_tp <- 1905
 face_fp <- 251
 face_fn <- 234
-face_tn <- face_cm_num_images - face_tp - face_fp - face_fn
+face_tn <- num_face_frames_test - face_tp - face_fp - face_fn
 face_fpr <- face_fp / (face_fp + face_tn) * 100
 num_faces <- face_fp + face_fn
 per_wrong_faces <- face_fp / face_tp * 100
@@ -502,33 +491,30 @@ face_f1_score <- 0.90
 face_num_epochs <- 165
 ```
 
-In our study, we utilized Ultralytics’ YOLO11 [@jocherUltralyticsYOLO112024], a state-of-the-art object detection model recognized for its efficiency and accuracy. Initially, we experimented with Multi-Task Cascaded Convolutional Networks (MTCNN) face detection algorithm [@zhangJointFaceDetection2016]; however, it achieved a recall of less than 50% on our dataset. Furthermore, the MTCNN model demands very specific picture input for fine-tuning, which is time-consuming. In contrast, YOLO11, released in October 2024, introduces architectural improvements such as the C2PSA block (Convolutional Block with Parallel Spatial Attention), which enhances spatial attention within feature maps, allowing the model to focus more precisely on critical areas of an image compared to previous Yolo versions. Additionally, YOLO11 incorporates the C3K2 block, designed to be faster and more efficient, enhancing the overall performance of the feature aggregation process [@khanamYOLOv11OverviewKey2024]. Moreover, we already had a data preparation pipeline established for YOLO11 due to its application in person detection within our project. Consequently, we selected YOLO11 for face detection and fine-tuned it on our egocentric dataset, captured using chest-mounted cameras, to adapt it to the unique characteristics of our data. 
+In our study, we utilized Ultralytics’ YOLO11 [@jocherUltralyticsYOLO112024] architecture, which was also used for person detection. Initially, we experimented with Multi-Task Cascaded Convolutional Networks (MTCNN) face detection algorithm [@zhangJointFaceDetection2016]; however, it achieved a recall of less than 50% on our dataset. Furthermore, the MTCNN model demands very specific picture input for fine-tuning, which is time-consuming. In contrast, YOLO11, released in October 2024, introduces architectural improvements such as the C2PSA block (Convolutional Block with Parallel Spatial Attention), which enhances spatial attention within feature maps, allowing the model to focus more precisely on critical areas of an image compared to previous Yolo versions. Additionally, YOLO11 incorporates the C3K2 block, designed to be faster and more efficient, enhancing the overall performance of the feature aggregation process [@khanamYOLOv11OverviewKey2024]. Moreover, we already had a data preparation pipeline established for YOLO11 due to its application in person detection within our project. Consequently, we selected YOLO11 for face detection and fine-tuned it on our egocentric dataset, captured using chest-mounted cameras, to adapt it to the unique characteristics of our data. 
 
-It's important to note that YOLO11 does not include a predefined "face" class in its standard configuration. To address this, we utilized a version of YOLO11 pretrained on face detection tasks [@coddYOLOv11nfacedetection2024]. When applied to our dataset, this pretrained model achieved an F1-Score of `r face_pretrained_f1_score`. While this performance was promising, we believed there was room for improvement. Therefore, we fine-tuned the model further on our dataset to enhance its accuracy and better adapt it to our specific data characteristics.
+It's important to note that YOLO11 does not include a predefined "face" class in its standard configuration. To address this, we utilized a version of YOLO11 pretrained on face detection tasks [@coddYOLOv11nfacedetection2024]. When applied to our dataset, this pretrained model achieved an F1-Score of `r face_pretrained_f1_score`. While this performance was promising, we believed that the model could be further optimized to better suit our specific data characteristics. Therefore, we fine-tuned the model on our dataset to enhance its performance in detecting faces in egocentric videos.
 
 ### Dataset Splitting and Balancing
-We started data preprocessing with a dataset comprising a total of `r total_num_face_frames` frames from `r face_total_num_videos` annotated videos. Prior to splitting this dataset into training, validation, and testing datasets, we analyzed the proportion of frames containing annotated faces versus those without. Our analysis revealed that 19% of the frames included at least one annotated face. To maintain this inherent distribution across all subsets, we initially applied a stratified split, ensuring that each subset—training, validation, and testing—preserved the original 
-`r face_class_to_total_ratio` to `r 100- face_class_to_total_ratio`% ratio of frames with faces to frames without faces.
+We started data preprocessing with a dataset comprising a total of `r total_num_face_frames` frames from `r face_total_num_videos` annotated videos. Prior to splitting this dataset into training, validation, and testing datasets, we analyzed the proportion of frames containing annotated faces versus those without. Our analysis revealed that `r face_class_to_total_ratio`% of the frames included at least one annotated face. To maintain this inherent distribution across all datasets, we initially applied a stratified split, ensuring that each dataset—training, validation, and testing—preserved the original 
+`r face_class_to_total_ratio`% to `r 100- face_class_to_total_ratio`% ratio of frames with faces to frames without faces.
 
 However, this stratified split resulted in a significant class imbalance within the training set, which could adversely affect the model’s learning process. In imbalanced datasets, models tend to be biased toward the majority class, often predicting it more frequently while misclassifying or overlooking minority class instances. This can lead to poor recall for the minority class [@hasaninSeverelyImbalancedBig2019]. Additionally, Yolo11's gradient-based learning algorithm struggles to adjust decision boundaries effectively when trained on imbalanced data, potentially causing slow or unstable convergence and requiring extensive hyperparameter tuning [@kaurSystematicReviewImbalanced2020].
 
 To mitigate this issue, we employed an undersampling technique on the training data. Specifically, we identified the number of frames containing faces in the training set (`r num_face_frames_train_with_faces` frames) and randomly sampled an equal number of frames from the non-face category. This approach balanced the training dataset to consist of 50% frames with faces and 50% frames without faces, thereby addressing the class imbalance and facilitating more effective model training.
 
-Consequently, the final data distribution was as follows: the balanced training dataset comprised `r num_face_frames_train_balanced` frames, while the validation and test datasets contained `r num_face_frames_val` and `r num_face_frames_test` frames, respectively. Notably, the validation and test sets retained the original 19% face presence, ensuring that the model’s performance evaluation remained representative of the real-world data distribution.
+Consequently, the final data distribution was as follows: the balanced training dataset comprised `r num_face_frames_train_balanced` frames, while the validation and test datasets contained `r num_face_frames_val` and `r num_face_frames_test` frames, respectively. Notably, the validation and test sets retained the original `r face_class_to_total_ratio`% face presence, ensuring that the model’s performance evaluation remained representative of the real-world data distribution.
 
 ### Training and Convergence
-Model training was conducted on a Linux server equipped with an Intel(R) Xeon(R) Silver 4214Y CPU @ 2.20GHz with 48 cores, a Quadro RTX 8000 GPU and 188 GB of RAM. Model training concluded after `r face_num_epochs` epochs, taking 63.79 hours. Early stopping was triggered following 10 consecutive epochs without improvement. The training process utilized YOLO11’s built-in data augmentation, a batch size of 16, a cosine annealing learning rate scheduler [@loshchilovSGDRStochasticGradient2017], and early stopping after 10 epochs without improvement, with a maximum of 200 epochs. 
-
-The loss function of the YOLOv11 model comprises three main components: Box Loss, Classification Loss, and Distribution Focal Loss (DFL)  [@tervenLossFunctionsMetrics2024; @liGeneralizedFocalLoss2020]. Box Loss estimates the difference between predicted bounding boxes and ground truth boxes to assess the model's localization accuracy. Classification Loss measures the model's ability to properly identify detected objects; however, in our study, this component is less relevant due to our focus on a single class—faces. DFL improves the model's ability to detect challenging objects by prioritizing difficult-to-detect instances.
-
-During the training process, we observed that all three loss components decreased over time, indicating effective learning and improved performance, as visible in in figure \@ref(fig:face-loss-curves). A steady decrease in Box Loss indicates that the model is becoming increasingly accurate in localizing faces within frames. This is consistent with the steady convergence of Classification Loss, revealing the model's ability to reliably recognize faces. The decrease in DFL over time indicates that the model is getting better at focusing on and correctly identifying difficult-to-detect faces, which improves its overall detection capabilities. Conclusively, the loss curves show that the model effectively learned to localize and identify faces during the training period.
-
 ```{r face-loss-curves, fig.align='center', fig.cap="Training and Validation Loss Curves for the YOLO11 face detection model.", out.width="450px"}
 knitr::include_graphics("images/yolo_face_loss_curves.png")
 ```
+Model training was conducted on the same Linux server used for person detection, with identical hardware specifications. The process was set to run for a maximum of 200 epochs but concluded after `r face_num_epochs`, taking 63.79 hours, taking 63.79 hours. Early stopping was triggered after 10 consecutive epochs without improvement. The training setup incorporated YOLO11’s built-in data augmentation, a batch size of 16, and a cosine annealing learning rate scheduler [@loshchilovSGDRStochasticGradient2017].
+
+During the training process, we observed that all three loss components decreased over time, indicating effective learning and improved performance, as visible in in figure \@ref(fig:face-loss-curves). A steady decrease in Box Loss indicates that the model is becoming increasingly accurate in localizing faces within frames. This is consistent with the steady convergence of Classification Loss, revealing the model's ability to reliably recognize faces. The decrease in DFL over time indicates that the model is getting better at focusing on and correctly identifying difficult-to-detect faces, which improves its overall detection capabilities. Conclusively, the loss curves show that the model effectively learned to localize and identify faces during the training period.
 
 ```{r face-detection-metrics-detailed, echo=FALSE, message=FALSE, warnings=FALSE, results='asis', eval=TRUE}
-my.data <- "Dataset | Precision | Recall | F1-Score | False Positive Rate | False Negative Rate
+my.data <- "Dataset | Precision | Recall | F1-Score | FPR | FNR
             Quantex | 0.90   | 0.83 | 0.86 | 2.1 | 14.0"
 
 df <- read.delim(textConnection(my.data), header=FALSE, sep="|", strip.white=TRUE, stringsAsFactors=FALSE)
@@ -542,10 +528,19 @@ row.names(df) <- NULL
 # Print the updated table
 apa_table(
   df,
-  caption = "Evaluation metrics for the YOLO11 face detection model trained on the Quantex dataset. False Positive Rate and False Negative Rate are given in percentages.",
+  caption = "Evaluation metrics for the YOLO11 face detection model trained on the Quantex dataset. False Positive Rate (FPR) and False Negative Rate (FNR) are given in percentages.",
   escape = TRUE
 )
 ```
+
+### Model Evaluation Metrics
+The YOLO11 model achieved a precision of `r face_precision` and a recall of `r face_recall` on the testing set, resulting in an F1-score of `r face_f1_score`. These metrics, summarized in table \@ref(tab:face-detection-metrics-detailed) indicate the model’s strong performance in accurately identifying faces while minimizing the number of missed detections and false positives. The precision-recall curve, displayed in figure \@ref(fig:face-metrics), further illustrates this performance, with the curve remaining close to the top-left corner. This positioning signifies that the model maintains high precision and recall across various thresholds, underscoring its effectiveness in detecting faces with confidence.
+
+Analysis of the confusion matrix reveals that 86% of all faces are correctly identified by the model, corresponding to `r face_tp` true positives, while `r face_fn` faces were missed (false negatives). False negatives predominantly occurred in scenarios where faces were in the background, blurred due to motion, or occluded by the child’s body. In such instances, adjacent frames often provided clearer views, aiding in more accurate classification. The model exhibited a false positive rate of approximately `r face_fpr`%, with `r face_fp` frames incorrectly classified as containing faces when none were present. These false positives were often attributed to objects or toys resembling facial features. In face detection systems, achieving a balance between false positives and false negatives is crucial. Given this context, a 2.1% false positive rate is generally considered acceptable.
+
+To provide a comprehensive understanding of the model’s performance, we have included visual examples of true positives, false positives, and false negatives in figure \@ref(fig:face-detection-examples). These images highlight the model’s strengths and areas where challenges persist, offering insights into specific scenarios that influence detection accuracy.
+
+Overall, the YOLO11 model demonstrates robust performance in face detection tasks. However, challenges remain in dynamic scenarios, particularly with partially visible, rotated, or side-view faces. These findings underscore the complexities inherent in analyzing egocentric video data, where movement and varying perspectives introduce additional challenges.
 
 ```{r face-metrics, fig.align='center', fig.cap="\\textbf{A} - Confusion Matrix for the YOLO11 face detection model trained on the Quantex dataset. \\textbf{B} - Precision-Recall Curve for the YOLO11 face detection model."}
 # Load images
@@ -567,22 +562,13 @@ final_labeled_layout <- final_layout +
 final_labeled_layout
 ```
 
-### Model Evaluation Metrics
-The YOLO11 model achieved a precision of `r face_precision` and a recall of `r face_recall` on the testing set, resulting in an F1-score of `r face_f1_score`. These metrics, summarized in table \@ref(tab:face-detection-metrics-detailed) indicate the model’s strong performance in accurately identifying faces while minimizing the number of missed detections and false positives. The precision-recall curve, displayed in figure \@ref(fig:face-metrics), further illustrates this performance, with the curve remaining close to the top-left corner. This positioning signifies that the model maintains high precision and recall across various thresholds, underscoring its effectiveness in detecting faces with confidence.
-
-Analysis of the confusion matrix reveals that 86% of all faces are correctly identified by the model, corresponding to `r face_tp` true positives, while `r face_fn` faces were missed (false negatives). False negatives predominantly occurred in scenarios where faces were in the background, blurred due to motion, or occluded by the child’s body. In such instances, adjacent frames often provided clearer views, aiding in more accurate classification. The model exhibited a false positive rate of approximately `r face_fpr`%, with `r face_fp` frames incorrectly classified as containing faces when none were present. These false positives were often attributed to objects or toys resembling facial features. In face detection systems, achieving a balance between false positives and false negatives is crucial. Given this context, a 2.1% false positive rate is generally considered acceptable.
-
-To provide a comprehensive understanding of the model’s performance, we have included visual examples of true positives, false positives, and false negatives in figure \@ref(fig:face-detection-examples). These images highlight the model’s strengths and areas where challenges persist, offering insights into specific scenarios that influence detection accuracy.
-
-Overall, the YOLO11 model demonstrates robust performance in face detection tasks. However, challenges remain in dynamic scenarios, particularly with partially visible, rotated, or side-view faces. These findings underscore the complexities inherent in analyzing egocentric video data, where movement and varying perspectives introduce additional challenges.
-
-```{r face-detection-examples, echo=FALSE, dpi=600, fig.align='center', fig.cap="\\textbf{A}, \\textbf{B} - Examples of True Positives, \\textbf{C}, \\textbf{D} – Examples of False Negatives, \\textbf{E}, \\textbf{F} – Examples of False Positives in the YOLO11 face detection model."}
-img1 <- ggdraw() + draw_image("images/quantex_at_home_id255944_2022_03_07_01_002760.jpg", scale = 0.95)
-img2 <- ggdraw() + draw_image("images/quantex_at_home_id255944_2022_03_07_01_002760.jpg", scale = 0.95)
-img3 <- ggdraw() + draw_image("images/quantex_at_home_id255944_2022_03_07_01_002760.jpg", scale = 0.95)
-img4 <- ggdraw() + draw_image("images/quantex_at_home_id255944_2022_03_07_01_002760.jpg", scale = 0.95)
-img5 <- ggdraw() + draw_image("images/quantex_at_home_id255944_2022_03_07_01_002760.jpg", scale = 0.95)
-img6 <- ggdraw() + draw_image("images/quantex_at_home_id255944_2022_03_07_01_002760.jpg", scale = 0.95)
+```{r face-detection-examples, echo=FALSE, dpi=600, fig.align='center', fig.cap="\\textbf{A}, \\textbf{B} - Examples of True Positives, \\textbf{C}, \\textbf{D} – Examples of False Negatives, \\textbf{E}, \\textbf{F} – Examples of False Positives in the YOLO11 face detection model. The blue bounding boxes indicate the ground truth, while the green bounding boxes represent the model's predictions."}
+img1 <- ggdraw() + draw_image("images/face_tp_1.jpg", scale = 0.98)
+img2 <- ggdraw() + draw_image("images/face_tp_2.jpg", scale = 0.98)
+img3 <- ggdraw() + draw_image("images/face_fn_1.jpg", scale = 0.98)
+img4 <- ggdraw() + draw_image("images/face_fn_2.jpg", scale = 0.98)
+img5 <- ggdraw() + draw_image("images/face_fp_1.jpg", scale = 0.98)
+img6 <- ggdraw() + draw_image("images/face_fp_2.jpg", scale = 0.98)
 
 # Combine img1 and img2 into the first row with equal heights
 top_row <- (img1 + img2) + 
