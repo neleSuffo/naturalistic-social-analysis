@@ -17,6 +17,7 @@ class DetectionPaths:
     quantex_videos_input_dir = Path(BasePaths.data_dir/"quantex_videos/") 
     videos_input_dir = Path(BasePaths.data_dir/"videos_superannotate_all/") 
     images_input_dir = Path(BasePaths.data_dir/"quantex_videos_processed/")
+    face_images_input_dir = Path(BasePaths.data_dir/"quantex_rawframes_face/")
     # Path variable to the annotation xml files
     annotations_dir = Path(BasePaths.data_dir/"quantex_annotations/")
     annotations_xml_path = Path(annotations_dir/"annotations.xml")
@@ -29,16 +30,23 @@ class DetectionPaths:
 
 class YoloPaths:
     person_trained_weights_path = Path(BasePaths.models_dir/'yolov8_person_detection.pt')
-    face_trained_weights_path = Path(BasePaths.models_dir/'yolo11_face_detection.pt')
     person_data_config_path = Path(BasePaths.leuphana_ipe_dir/"src/models/yolo_person_detection/person_dataset.yaml")
-    face_data_config_path = Path(BasePaths.leuphana_ipe_dir/"src/models/yolo_face_detection/face_dataset.yaml")
     person_labels_input_dir = Path(BasePaths.data_dir/"yolo_person_labels")
-    face_labels_input_dir = Path(BasePaths.data_dir/"yolo_face_labels")
-    # the path to the input folder for the yolo model
     person_data_input_dir = Path(BasePaths.data_dir/"yolo_person_input")
-    face_data_input_dir = Path(BasePaths.data_dir/"yolo_face_input")
     person_output_dir = Path(BasePaths.output_dir/"yolo_person_detections/")
+
+    face_trained_weights_path = Path(BasePaths.models_dir/'yolo11_face_detection.pt')
+    face_data_config_path = Path(BasePaths.leuphana_ipe_dir/"src/models/yolo_face_detection/face_dataset.yaml")
+    face_labels_input_dir = Path(BasePaths.data_dir/"yolo_face_labels")
+    face_data_input_dir = Path(BasePaths.data_dir/"yolo_face_input")
     face_output_dir = Path(BasePaths.output_dir/"yolo_face_detections/")
+
+    gaze_extraction_progress_file_path = Path(BasePaths.data_dir/"gaze_extraction_progress.txt")
+    gaze_missing_frames_file_path = Path(BasePaths.data_dir/"gaze_missing_frames.txt")
+    gaze_data_config_path = Path(BasePaths.leuphana_ipe_dir/"src/models/yolo_gaze_classification/gaze_dataset.yaml")
+    gaze_labels_input_dir = Path(BasePaths.data_dir/"yolo_gaze_labels")
+    gaze_data_input_dir = Path(BasePaths.data_dir/"yolo_gaze_input")
+    gaze_output_dir = Path(BasePaths.output_dir/"yolo_gaze_detections/")
 
 class VTCPaths:
     audio_dir = Path(BasePaths.data_dir/"audio")
@@ -75,18 +83,14 @@ class FastReIDPaths:
 
 class EfficientNetPaths:
     output_dir = Path(BasePaths.output_dir/"efficientnet/")
-    
-    
+
 class MtcnnPaths:
     data_dir = Path(BasePaths.data_dir/"mtcnn/")
     labels_file_path = Path(data_dir/"face_labels.txt")
     faces_dir = Path(BasePaths.data_dir/"quantex_faces/")
     face_detection_results_file_path = Path(BasePaths.output_dir/"mtcnn/face_detection_results.txt")
-    gaze_labels_file_path = Path(faces_dir/"gaze_labels.txt")
-    progress_file_path = Path(data_dir/"progress.txt")
-    missing_frames_file_path = Path(data_dir/"missing_frames.txt")
     output_dir = Path(BasePaths.output_dir/"mtcnn/")
-
+    
 class VideoParameters:
     success_log_path = Path("src/projects/shared/process_data/output/success.log")
     rawframes_extraction_error_log = Path(BasePaths.output_dir/"rawframes_extraction_error.log")
