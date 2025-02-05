@@ -21,7 +21,7 @@ def main(model: str, yolo_target: str, setup_db: bool = False) -> None:
     model : str
         Model to convert to (e.g., "yolo", "mtcnn", "all")
     yolo_target : str
-        Target YOLO label (e.g., "face")
+        Target YOLO label ("person", "face" or "gaze")
     setup_db : bool
         Whether to set up the database
 
@@ -55,7 +55,7 @@ def main(model: str, yolo_target: str, setup_db: bool = False) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process annotations")
     parser.add_argument('model_target', type=str, help='Model to convert to (e.g., "yolo", "mtcnn", "all")')
-    parser.add_argument('yolo_target', type=str, help='Target YOLO label (e.g., "face", person")')
+    parser.add_argument('yolo_target', type=str, help='Target YOLO label ("person", "face" or "gaze")')
     parser.add_argument('--setup_db', action='store_true', help='Whether to set up the database')
 
     args = parser.parse_args()
