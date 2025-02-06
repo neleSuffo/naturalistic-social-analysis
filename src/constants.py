@@ -46,7 +46,7 @@ class YoloPaths:
     gaze_data_config_path = Path(BasePaths.leuphana_ipe_dir/"src/models/yolo_gaze_classification/gaze_dataset.yaml")
     gaze_labels_input_dir = Path(BasePaths.data_dir/"yolo_gaze_labels")
     gaze_data_input_dir = Path(BasePaths.data_dir/"yolo_gaze_input")
-    gaze_output_dir = Path(BasePaths.output_dir/"yolo_gaze_detections/")
+    gaze_output_dir = Path(BasePaths.output_dir/"yolo_gaze_classification/")
 
 class VTCPaths:
     audio_dir = Path(BasePaths.data_dir/"audio")
