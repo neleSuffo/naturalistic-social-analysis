@@ -24,7 +24,7 @@ output_dir = YoloPaths.person_output_dir / experiment_name
 model.train(
     data=str(YoloPaths.person_data_config_path),
     epochs=200,  # Total number of epochs
-    imgsz=1280,  # Image size
+    imgsz=649,  # Image size
     batch=16,   # Batch size
     project=str(YoloPaths.person_output_dir),  # Output directory
     name=experiment_name,  # Experiment name
@@ -32,7 +32,7 @@ model.train(
     lr0=0.01,  # Initial learning rate
     lrf=0.001,  # Final learning rate after scheduling
     cos_lr=True,  # Use cosine annealing for learning rate scheduling,
-    patience=5,  # Stop training if no improvement for 5 consecutive epochs
+    patience=10,  # Stop training if no improvement for 5 consecutive epochs
     device=0,  # GPU (use "cpu" for CPU training)
     plots=True,  # Plot training results
 )
