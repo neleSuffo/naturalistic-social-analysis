@@ -19,11 +19,12 @@ class DetectionPaths:
     images_input_dir = Path(BasePaths.data_dir/"quantex_videos_processed/")
     gaze_images_input_dir = Path(BasePaths.data_dir/"quantex_rawframes_gaze/")
     # Path variable to the annotation xml files
-    annotations_dir = Path(BasePaths.data_dir/"quantex_annotations/")
-    annotations_xml_path = Path(annotations_dir/"annotations.xml")
+    quantex_annotations_dir = Path(BasePaths.data_dir/"quantex_annotations/")
+    childlens_annotations_dir = Path(BasePaths.data_dir/"childlens_annotations/")
+    annotations_xml_path = Path(quantex_annotations_dir/"annotations.xml")
     annotations_individual_dir = Path(BasePaths.data_dir/"quantex_annotations_individual/")
-    annotations_json_path = Path(annotations_dir/"annotations.json")
-    annotations_db_path = Path(annotations_dir/"annotations.db")
+    annotations_json_path = Path(quantex_annotations_dir/"annotations.json")
+    annotations_db_path = Path(quantex_annotations_dir/"annotations.db")
     combined_json_output_path = Path(BasePaths.output_dir/"combined_detections.json")
     # The file that is used to map the file names to the file ids
     file_name_id_mapping_path = Path(BasePaths.data_dir/"quantex_file_name_to_id_dict/annotations.xml")
@@ -50,12 +51,13 @@ class YoloPaths:
 
 class VTCPaths:
     audio_dir = Path(BasePaths.data_dir/"audio")
-    python_env_path = Path(BasePaths.home_dir/".conda/envs/pyannote/bin/python")
-    script_path = Path("src/projects/social_interactions/scripts/language/run_vtc.py")
-    command_script_path = Path(BasePaths.vtc_dir/"apply.sh")
-    output_rttm_path = Path(BasePaths.output_dir/"vtc/audio/all.rttm")
     output_dir = Path(BasePaths.output_dir/"vtc")
-    df_output_pickle = Path(BasePaths.output_dir/"vtc/audio_data.pkl")
+    childlens_output_folder = Path(output_dir/"childlens_audio")
+    childlens_df_file_path = Path(output_dir/"childlens_df.pkl")
+    childlens_gt_df_file_path = Path(DetectionPaths.childlens_annotations_dir/"childlens_annotations.pkl")
+
+    quantex_output_folder = Path(output_dir/"quantex_audio")
+    quantex_df_file_path = Path(output_dir/"quantex_df.pkl")
 
 class StrongSortPaths:
     base_dir = Path(BasePaths.data_dir/"strong_sort/")
