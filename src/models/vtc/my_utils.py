@@ -2,11 +2,11 @@ import pandas as pd
 import subprocess
 import tempfile
 import logging
+import json
 from src.constants import VTCPaths
-from src.config import VTCConfig, LabelToCategoryMapping, DetectionParameters
+from src.config import VTCConfig, LabelToCategoryMapping, DetectionParameters, VideoConfig
 from moviepy.editor import VideoFileClip
 from pathlib import Path
-from config import LabelToCategoryMapping, VideoConfig
 from typing import Dict
 from pyannote.core import Annotation, Segment
 
@@ -311,7 +311,7 @@ def process_superannotate_annotations_to_dataframe(folder_path: Path, fps: float
     all_dataframes = []
     
     # Iterate over all files in the specified folder
-    for filename in folder_path.glob("*.json"):
+    for filename in folder_path.rglob("*.json"):
         logging.info(f"Processing file: {filename}")
         
         # Read the JSON file
