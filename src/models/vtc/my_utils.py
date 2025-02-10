@@ -9,6 +9,7 @@ from moviepy.editor import VideoFileClip
 from pathlib import Path
 from typing import Dict
 from pyannote.core import Annotation, Segment
+from pyannote.metrics.detection import DetectionPrecisionRecallFMeasure, DetectionErrorRate
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -311,9 +312,7 @@ def process_superannotate_annotations_to_dataframe(folder_path: Path, fps: float
     all_dataframes = []
     
     # Iterate over all files in the specified folder
-    for filename in folder_path.rglob("*.json"):
-        logging.info(f"Processing file: {filename}")
-        
+    for filename in folder_path.rglob("*.json"):        
         # Read the JSON file
         data = read_json(filename)
         
@@ -391,4 +390,98 @@ def dataframe_to_annotation(df: pd.DataFrame, label_column: str = "Voice_type") 
         label = row[label_column]
         annotation[Segment(start, end)] = label
     return annotation
+
+
+def compute_metrics(hypothesis_file_name: str,
+                    reference_df_path: Path= VTCPaths.childlens_gt_df_file_path,
+    ):
+    """
+    This function computes the detection metrics for the VTC output.
+    """
+    hypothesis_path = VTCPaths.output_dir / hypothesis_file_name
+    # Load reference and hypothesis DataFrames
+    reference_df = pd.read_pickle(reference_df_path)
+    hypothesis_df = pd.read_pickle(hypothesis_path)
+
+    # Strip the audio_file_name by removing the '_16kHz' extension and everything afterwards
+    hypothesis_df['audio_file_name'] = hypothesis_df['audio_file_name'].str.split('_').str[0]
+    
+    # Get the list of audio files that have annotations
+    annotated_files = reference_df['audio_file_name'].unique()
+    # Filter the hypothesis DataFrame to only include these files
+    predictions = hypothesis_df[hypothesis_df['audio_file_name'].isin(annotated_files)]
+    
+    voice_types = ['KCHI', 'OCH', 'FEM', 'MAL', 'SPEECH']
+    class_metrics = {voice_type: {'precision': [], 'recall': [], 'f1_score': [], 'error_rate': []} for voice_type in voice_types}
+
+    # Loop over each video
+    for video in annotated_files:
+        # Filter DataFrames for the current video
+        reference_filtered = reference_df[reference_df['audio_file_name'] == video]
+        predictions_filtered = predictions[predictions['audio_file_name'] == video]
+
+        # Skip if there are no annotations for this video
+        if reference_filtered.empty:
+            print(f"No annotations available for video: {video}. Skipping.")
+            continue
+
+        # Now, compute metrics per class within this video
+        for voice_type in voice_types:
+            # Filter annotations for the current voice type
+            ref_class_filtered = reference_filtered[reference_filtered['Voice_type'] == voice_type]
+            hyp_class_filtered = predictions_filtered[predictions_filtered['Voice_type'] == voice_type]
+
+            # Convert to pyannote Annotations
+            reference_class_annotation = dataframe_to_annotation(ref_class_filtered)
+            hypothesis_class_annotation = dataframe_to_annotation(hyp_class_filtered)
+
+            # Initialize class-specific metrics
+            detection_f1_class = DetectionPrecisionRecallFMeasure(collar=0, skip_overlap=False)
+            error_rate_metric_class = DetectionErrorRate(collar=0, skip_overlap=False)
+
+            # Compute the detection metrics for this class
+            detection_f1_class(reference_class_annotation, hypothesis_class_annotation)
+            error_rate_class = error_rate_metric_class(reference_class_annotation, hypothesis_class_annotation)
+
+            # Retrieve precision, recall, and F1 score
+            precision_class, recall_class, f1_score_class = detection_f1_class.compute_metrics()
+
+            # Store the per-class results
+            class_metrics[voice_type]['precision'].append(precision_class)
+            class_metrics[voice_type]['recall'].append(recall_class)
+            class_metrics[voice_type]['f1_score'].append(f1_score_class)
+            class_metrics[voice_type]['error_rate'].append(error_rate_class)
+
+    logging.info("\nAveraged Metrics Per Class Over All Videos:")
+    avg_f1_scores_per_class = []  # List to store avg F1 scores per class
+
+    for voice_type in voice_types:
+        precisions = class_metrics[voice_type]['precision']
+        recalls = class_metrics[voice_type]['recall']
+        f1_scores = class_metrics[voice_type]['f1_score']
+        error_rates = class_metrics[voice_type]['error_rate']
+
+        if precisions:
+            avg_precision = sum(precisions) / len(precisions)
+            avg_recall = sum(recalls) / len(recalls)
+            avg_f1 = sum(f1_scores) / len(f1_scores)
+            avg_error_rate = sum(error_rates) / len(error_rates)
+        else:
+            avg_precision = avg_recall = avg_f1 = avg_error_rate = 0
+
+        avg_f1_scores_per_class.append(avg_f1)
+
+        logging.info(f"Class '{voice_type.upper()}':")
+        logging.info(f"Precision: {avg_precision:.3f}")
+        logging.info(f"Recall: {avg_recall:.3f}")
+        logging.info(f"F1 Score: {avg_f1:.3f}")
+        logging.info(f"Error Rate: {avg_error_rate:.3f}\n")
+        
+    # Calculate the final F1 score over all classes
+    if avg_f1_scores_per_class:
+        final_f1_score = sum(avg_f1_scores_per_class) / len(avg_f1_scores_per_class)
+    else:
+        final_f1_score = 0
+
+    logging.info(f"Final F1 Score over all classes: {final_f1_score:.3f}")
 
