@@ -5,9 +5,8 @@ from pathlib import Path
 from typing import Dict
 import pandas as pd
 import logging
-from my_utils import rttm_to_dataframe, process_superannotate_annotations_to_dataframe, dataframe_to_annotation
+from my_utils import rttm_to_dataframe, process_superannotate_annotations_to_dataframe, dataframe_to_annotation, compute_metrics
 from constants import VTCPaths, DetectionPaths
-from pyannote.metrics.detection import DetectionPrecisionRecallFMeasure
 from pyannote.core import Annotation, Segment
 
 logging.basicConfig(level=logging.INFO)
@@ -38,9 +37,8 @@ def main(dataset_type: str) -> None:
         base_input_dir = DetectionPaths.childlens_annotations_dir
         # convert ground truth annotations to df
         for subfolder in base_input_dir.glob("annotations_*"):
+            logging.info(f"Processing {len(list(subfolder.rglob('*.json')))} JSON files in {subfolder}")
             if subfolder.is_dir():
-                logging.info(f"Processing subfolder: {subfolder}")
-                
                 # Process all JSON files and convert to DataFrame
                 combined_df = process_superannotate_annotations_to_dataframe(subfolder)
                 
@@ -51,23 +49,8 @@ def main(dataset_type: str) -> None:
             gt_df.to_pickle(VTCPaths.childlens_gt_df_file_path)
             logging.info(f"DataFrame saved to: {VTCPaths.childlens_gt_df_file_path}")
             
-
         # Evaluate the performance of the VTC output
-        reference_df = pd.read_pickle(VTCPaths.childlens_gt_df_file_path)
-        hypothesis_df = pd.read_pickle(VTCPaths.childlens_df_file_path)
-        reference = dataframe_to_annotation(reference_df)
-        hypothesis = dataframe_to_annotation(hypothesis_df)
-
-        # Initialize metric
-        detection_metric = DetectionPrecisionRecallFMeasure(collar=0, skip_overlap=False)
-
-        # Compute precision, recall, and F1 score
-        precision, recall, f1 = detection_metric(reference, hypothesis)
-
-        # Print results
-        logging.info(f"Precision: {precision:.2f}")
-        logging.info(f"Recall: {recall:.2f}")
-        logging.info(f"F1 Score: {f1:.2f}")
+        compute_metrics(VTCPaths.childlens_df_file_path)
         
             
 if __name__ == "__main__":
