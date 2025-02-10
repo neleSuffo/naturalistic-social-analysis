@@ -6,7 +6,9 @@ from src.constants import VTCPaths
 from src.config import VTCConfig, LabelToCategoryMapping, DetectionParameters
 from moviepy.editor import VideoFileClip
 from pathlib import Path
-from config import childlens_activities_to_include
+from config import LabelToCategoryMapping, VideoConfig
+from typing import Dict
+from pyannote.core import Annotation, Segment
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -204,30 +206,23 @@ def rttm_to_dataframe(rttm_file: Path, output_path: Path) -> None:
     except Exception as e:
         logging.error(f"Failed to save DataFrame to file: {e}")
         raise
-
-
-# Function to process all JSON files in a folder and convert to DataFrame
-def process_all_json_files_to_dataframe(folder_path: Path, fps: float = 30.0) -> pd.DataFrame:
-    all_dataframes = []
     
-    # Iterate over all files in the specified folder
-    for filename in folder_path.glob("*.json"):
-        logging.info(f"Processing file: {filename}")
-        
-        # Read the JSON file
-        data = read_json(filename)
-        
-        # Convert annotations to DataFrame
-        df = convert_annotations_to_dataframe(data, fps)
-        all_dataframes.append(df)
+def convert_childlens_annotations_to_dataframe(data: Dict, fps: float) -> pd.DataFrame:
+    """ 
+    This function converts the annotations in a JSON file to a DataFrame.
     
-    # Concatenate all DataFrames
-    combined_df = pd.concat(all_dataframes, ignore_index=True)
-    logging.info("All files processed and combined into a single DataFrame")
-    return combined_df
-
-# Conversion function
-def convert_annotations_to_dataframe(data: Dict, fps: float = 30.0) -> pd.DataFrame:
+    Parameters
+    ----------
+    data : Dict
+        the data from the JSON file
+    fps : float
+        the frames per second of the video
+    
+    Returns
+    -------
+    pd.DataFrame
+        the DataFrame containing the annotations
+    """
     rows = []
     
     # Extract video ID, duration in seconds, and duration in frames
@@ -256,7 +251,7 @@ def convert_annotations_to_dataframe(data: Dict, fps: float = 30.0) -> pd.DataFr
                 
                 # Extract label, gender, and age
                 for name in names:
-                    if name in childlens_activities_to_include:
+                    if name in LabelToCategoryMapping.childlens_activities_to_include:
                         label = name
                     elif name in ["Male", "Female"]:
                         gender = name
@@ -295,9 +290,64 @@ def convert_annotations_to_dataframe(data: Dict, fps: float = 30.0) -> pd.DataFr
     df = pd.DataFrame(rows)
     return df
 
+# Function to process all JSON files in a folder and convert to DataFrame
+def process_superannotate_annotations_to_dataframe(folder_path: Path, fps: float = VideoConfig.fps) -> pd.DataFrame:
+    """ 
+    This function processes all JSON files in a folder and converts them to a single DataFrame.
+    
+    Parameters
+    ----------
+    folder_path : Path
+        the path to the folder containing the JSON files
+    fps : float
+        the frames per second of the video
+    
+    Returns
+    -------
+    pd.DataFrame
+        the combined DataFrame
+    """
+    
+    all_dataframes = []
+    
+    # Iterate over all files in the specified folder
+    for filename in folder_path.glob("*.json"):
+        logging.info(f"Processing file: {filename}")
+        
+        # Read the JSON file
+        data = read_json(filename)
+        
+        # Convert annotations to DataFrame
+        df = convert_childlens_annotations_to_dataframe(data, fps)
+        all_dataframes.append(df)
+    
+    # Concatenate all DataFrames
+    combined_df = pd.concat(all_dataframes, ignore_index=True)
+    logging.info("All files processed and combined into a single DataFrame")
+    return combined_df
+
 
 # Function to determine the new label based on the strategy
 def determine_new_label(label: str, age: str, gender: str) -> str:
+    """
+    This function maps the original superannotate labels to the new labels.
+    
+    Parameters
+    ----------
+    label : str
+        the original label
+    age : str
+        the age of the person
+    gender : str
+        the gender of the person
+    
+    Returns
+    -------
+    str
+        the new label
+    
+    """
+    # Map the original labels to the new labels
     if label in ["Child Talking", "Singing/Humming"]:
         return "KCHI"
     elif label == "Other Person Talking":
