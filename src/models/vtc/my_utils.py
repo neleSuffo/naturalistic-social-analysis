@@ -1,11 +1,12 @@
-from src.constants import VTCPaths
-from src.config import VTCConfig, LabelToCategoryMapping, DetectionParameters
-from moviepy.editor import VideoFileClip
-from pathlib import Path
 import pandas as pd
 import subprocess
 import tempfile
 import logging
+from src.constants import VTCPaths
+from src.config import VTCConfig, LabelToCategoryMapping, DetectionParameters
+from moviepy.editor import VideoFileClip
+from pathlib import Path
+from config import childlens_activities_to_include
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -154,7 +155,7 @@ def get_total_seconds_of_voice(df: pd.DataFrame, file_name_short: str) -> float:
         return total
 
 
-def rttm_to_dataframe(rttm_file: Path) -> pd.DataFrame:
+def rttm_to_dataframe(rttm_file: Path, output_path: Path) -> None:
     """
     This function reads the voice_type_classifier
     output rttm file and returns its content as a pandas DataFrame.
@@ -163,7 +164,8 @@ def rttm_to_dataframe(rttm_file: Path) -> pd.DataFrame:
     ----------
     rttm_file : path
         the path to the RTTM file
-
+    output_path : path
+        the path to save the DataFrame
     """
     logging.info(f"Reading RTTM file from: {rttm_file}")
     
@@ -197,30 +199,146 @@ def rttm_to_dataframe(rttm_file: Path) -> pd.DataFrame:
     logging.info("Data processing complete. Returning DataFrame.")
 
     try:
-        df.to_pickle(VTCPaths.df_output_pickle)
-        logging.info(f"DataFrame successfully saved to: {VTCPaths.df_output_pickle}")
+        df.to_pickle(output_path)
+        logging.info(f"DataFrame successfully saved to: {output_path}")
     except Exception as e:
         logging.error(f"Failed to save DataFrame to file: {e}")
         raise
 
 
-def delete_directory_and_contents(
-    dir_path: Path
-) -> None:
+# Function to process all JSON files in a folder and convert to DataFrame
+def process_all_json_files_to_dataframe(folder_path: Path, fps: float = 30.0) -> pd.DataFrame:
+    all_dataframes = []
+    
+    # Iterate over all files in the specified folder
+    for filename in folder_path.glob("*.json"):
+        logging.info(f"Processing file: {filename}")
+        
+        # Read the JSON file
+        data = read_json(filename)
+        
+        # Convert annotations to DataFrame
+        df = convert_annotations_to_dataframe(data, fps)
+        all_dataframes.append(df)
+    
+    # Concatenate all DataFrames
+    combined_df = pd.concat(all_dataframes, ignore_index=True)
+    logging.info("All files processed and combined into a single DataFrame")
+    return combined_df
+
+# Conversion function
+def convert_annotations_to_dataframe(data: Dict, fps: float = 30.0) -> pd.DataFrame:
+    rows = []
+    
+    # Extract video ID, duration in seconds, and duration in frames
+    video_id = data['metadata']['name']
+    short_video_id = video_id.replace(".MP4", "")
+    
+    # Loop through each annotation instance
+    for item in data['instances']:
+        # Extract start and end time
+        start_time = item["meta"]["start"]
+        end_time = item["meta"]["end"]
+        
+        # Process each parameter and add its first annotation to the list
+        for parameter in item.get("parameters", []):
+            timestamps = parameter.get("timestamps", [])
+            
+            # Check if there is at least one timestamp
+            if timestamps and "attributes" in timestamps[0] and timestamps[0]["attributes"]:
+                # Collect all "name" entries in a list
+                names = [attr["name"] for timestamp in timestamps for attr in timestamp.get("attributes", [])]
+
+                # Initialize variables
+                label = None
+                gender = None
+                age = None
+                
+                # Extract label, gender, and age
+                for name in names:
+                    if name in childlens_activities_to_include:
+                        label = name
+                    elif name in ["Male", "Female"]:
+                        gender = name
+                    elif name in ["Adult", "Child"]:
+                        age = name
+                        
+                # Determine the new label based on the strategy
+                new_label = determine_new_label(label, age, gender)
+                
+                # Add the annotation if a label was found
+                if new_label is not None:
+                    start_seconds = round(start_time / 1_000_000.0, 3)
+                    end_seconds = round(end_time / 1_000_000.0, 3)
+                    duration = round(end_seconds - start_seconds, 3)
+                    
+                    # Duplicate the row with "SPEECH" as the new label if applicable
+                    if new_label in ["KCHI", "OCH", "MAL", "FEM"]:
+                        rows.append({
+                            "audio_file_name": short_video_id,
+                            "Utterance_Start": start_seconds,
+                            "Utterance_Duration": duration,
+                            "Voice_type": "SPEECH",
+                            "Utterance_End": end_seconds,
+                        })
+                    
+                    # Append the row for this annotation
+                    rows.append({
+                        "audio_file_name": short_video_id,
+                        "Utterance_Start": start_seconds,
+                        "Utterance_Duration": duration,
+                        "Voice_type": new_label,
+                        "Utterance_End": end_seconds,
+                    })
+                    
+    # Create a DataFrame from the rows
+    df = pd.DataFrame(rows)
+    return df
+
+
+# Function to determine the new label based on the strategy
+def determine_new_label(label: str, age: str, gender: str) -> str:
+    if label in ["Child Talking", "Singing/Humming"]:
+        return "KCHI"
+    elif label == "Other Person Talking":
+        if age == "Adult":
+            if gender == "Female":
+                return "FEM"
+            elif gender == "Male":
+                return "MAL"
+        elif age == "Child":
+            return "OCH"
+    elif label == "Overheard Speech":
+        return "SPEECH"
+    return None
+
+# Function to read JSON from a file
+def read_json(file_path: str) -> Dict:
+    with open(file_path, 'r') as file:
+        data = json.load(file)
+    return data
+
+def dataframe_to_annotation(df: pd.DataFrame, label_column: str = "Voice_type") -> Annotation:
     """
-    This function deletes a directory and all its contents.
+    Converts a DataFrame to a pyannote.core.Annotation object.
 
     Parameters
     ----------
-    dir_path : Path
-        the path to the directory to delete
+    df (pd.DataFrame)
+        label_column (str): The column in the DataFrame that contains the labels.
+    label_column (str): 
+        The column in the DataFrame that contains the labels, default is "Voice_type".
+    
+    Returns
+    -------
+    Annotation
+        the annotation object
     """
-    for item in dir_path.iterdir():
-        if item.is_dir():
-            # Recursively delete subdirectories
-            delete_directory_and_contents(item)  
-        else:
-            # Delete the files
-            item.unlink()  
-    # Delete the directory
-    dir_path.rmdir()  
+    annotation = Annotation()
+    for _, row in df.iterrows():
+        start = float(row["Utterance_Start"])
+        end = float(row["Utterance_End"])
+        label = row[label_column]
+        annotation[Segment(start, end)] = label
+    return annotation
+
