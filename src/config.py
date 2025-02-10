@@ -110,6 +110,11 @@ class LabelToCategoryMapping:
             99: "unknown",
         },
     )
-
+    # List of labels to include in the ActivityNet format
+    childlens_activities_to_include = ['Child Talking',
+                                      'Other Person Talking',
+                                      'Overheard Speech',
+                                      'Singing/Humming',
+                                      ]
     unknown_label_id = -1
     unknown_supercategory = "unknown"
