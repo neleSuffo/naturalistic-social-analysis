@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Dict
 import pandas as pd
 import logging
-from my_utils import rttm_to_dataframe, process_superannotate_annotations_to_dataframe
+from my_utils import rttm_to_dataframe, process_superannotate_annotations_to_dataframe, dataframe_to_annotation
 from constants import VTCPaths, DetectionPaths
 from pyannote.metrics.detection import DetectionPrecisionRecallFMeasure
 from pyannote.core import Annotation, Segment
