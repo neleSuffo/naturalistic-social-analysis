@@ -63,6 +63,7 @@ class TrainingConfig:
     random_seed = 42
     
 class VideoConfig:
+    fps = 30
     frame_width = 2304
     frame_height = 1296
     video_batch_size = 16
