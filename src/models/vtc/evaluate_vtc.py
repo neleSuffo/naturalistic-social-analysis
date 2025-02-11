@@ -25,7 +25,7 @@ def main(dataset_type: str) -> None:
         output_path = VTCPaths.quantex_df_file_path
         folder_path = VTCPaths.quantex_output_folder
     elif dataset_type == "childlens":
-        output_path  = VTCPaths.childlens_df_file_path
+        output_path  = VTCPaths.childlens_df_file_path_01
         folder_path = VTCPaths.childlens_output_folder
         
     # convert vtc output to df
@@ -50,7 +50,7 @@ def main(dataset_type: str) -> None:
             logging.info(f"DataFrame saved to: {VTCPaths.childlens_gt_df_file_path}")
             
         # Evaluate the performance of the VTC output
-        compute_metrics(VTCPaths.childlens_df_file_path)
+        compute_metrics(VTCPaths.childlens_df_file_path_01)
         
             
 if __name__ == "__main__":
