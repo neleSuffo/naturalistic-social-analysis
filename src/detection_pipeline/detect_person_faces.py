@@ -10,6 +10,15 @@ def classify_gaze(face_image):
     Placeholder for gaze classification.
     Return 0 if gaze is not directed at the camera, 1 if it is.
     """
+    gaze_model = YOLO(YoloPaths.gaze_trained_weights_path)
+    result = gaze_model(face_image)
+    
+    results = result[0].boxes
+    # Extract detection results
+    conf = results.conf  # Confidence scores
+    object_cls = results.cls  # Class labels
+    
+    #return conf[0], object_cls[0]
     return 0
 
 def insert_video_record(video_path, cursor) -> int:
@@ -93,7 +102,7 @@ def process_frame(frame, frame_idx, video_id, model, cursor) -> tuple:
         elif object_class == 1:  # child body parts
             num_faces += 1
             face_image = frame[y_min:y_max, x_min:x_max]
-            gaze_direction = 0  # Placeholder for gaze classification
+            gaze_direction = classify_gaze(face_image)
         else:
             continue  # Skip if the object is neither 'person' nor 'face'
 
