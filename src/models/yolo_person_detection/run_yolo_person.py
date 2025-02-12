@@ -1,243 +1,176 @@
+import os
 import cv2
-import torch
 import logging
+import argparse
+import numpy as np
 from ultralytics import YOLO
+from supervision import Detections
 from pathlib import Path
-from tqdm import tqdm
-from typing import Optional
-from constants import DetectionPaths
-from utils import create_video_writer
-from config import generate_detection_output_video, DetectionParameters, YoloConfig
+from typing import Tuple
+from PIL import Image
+from constants import YoloPaths, DetectionPaths
 
+def load_model(model_path: Path = YoloPaths.person_trained_weights_path) -> YOLO:
+    """Load YOLO model from path"""
+    try:
+        model = YOLO(str(model_path))
+        logging.info(f"Model loaded successfully from {model_path}")
+        return model
+    except Exception as e:
+        logging.error(f"Failed to load model: {e}")
+        raise
 
-def run_yolo(
-    video_file: Path,
-    model: torch.nn.Module,
-) -> Optional[dict]:
-    """
-    This function performs frame-wise person detection on a video file using a YOLO model.
-    If generate_detection_output_video is True, it creates a VideoWriter object to write the output video.
-    Otherwise, it returns the detections in COCO format.
-
-    Parameters
-    ----------
-    video_file : Path
-        The path to the video file.
-    model : torch.nn.Module
-        The YOLOv5 model.
-
-    Returns
-    -------
-    dict
-        The detection results in COCO format if no output video is generated, otherwise None.
-    """
-    # Validate inputs
-    validate_inputs(video_file, model)
-    
-    video_file_name = video_file.stem
-
-    # Load video file
-    cap = cv2.VideoCapture(str(video_file))
-    
-    # If a detection output video should be generated
-    if generate_detection_output_video:
-        video_output_path = DetectionPaths.person_detections_dir / f"{video_file_name}_yolo_detections.mp4"
-        process_and_save_video(
-            cap, 
-            video_output_path, 
-            model)
-        logging.info(f"Detection output video generated at {video_output_path}.")
-        return None
-    else:
-        detection_results = detection_json_output(
-            cap, 
-            model, 
-            video_file_name, 
-        )
-        logging.info("Detection results generated.")
-        return detection_results
-
-
-def validate_inputs(video_file: Path, model: torch.nn.Module):
-    """
-    Validates the video input path and YOLO model.
-
-    Parameters
-    ----------
-    video_file : Path
-        Path to the input video file.
-    model : torch.nn.Module
-        The YOLO model instance.
-
-    Raises
-    ------
-    FileNotFoundError
-        If the video file does not exist or is not accessible.
-    ValueError
-        If the provided model is not an instance of torch.nn.Module.
-    """
-    if not video_file.exists():
-        raise FileNotFoundError(f"The video file {video_file} does not exist or is not accessible.")
-
-    if not isinstance(model, torch.nn.Module):
-        raise ValueError("The model is not a valid YOLO model.")
-
-
-def process_and_save_video(
-    cap: cv2.VideoCapture, 
-    video_output_path: Path, 
-    model: torch.nn.Module):
-    """
-    Processes the video frame-by-frame, applies person detection, and saves the output video.
-
-    Parameters
-    ----------
-    cap : cv2.VideoCapture
-        The video capture object.
-    video_output_path : Path
-        The path where the output video should be saved.
-    model : torch.nn.Module
-        The YOLO model instance.
-    """
-    # Extract video properties
-    frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    frames_per_second = int(cap.get(cv2.CAP_PROP_FPS))
-
-    # Create a VideoWriter object to write the output video
-    out = create_video_writer(
-        video_output_path, frames_per_second, frame_width, frame_height
-    )
-    
-    # Perform detection and write output video
-    detection_video_output(
-        cap,
-        out,
-        model,
-    )
-
-def detection_json_output(
-    cap: cv2.VideoCapture,
-    model: YOLO,
-    video_file_name: str,
-) -> dict:
-    """
-    This function performs detection on a video file 
-    It returns the detection results in JSON format.
-
-    Parameters
-    ----------
-    cap : cv2.VideoCapture
-        The video capture object.
-    model : YOLO
-        The YOLO model used for person detection.
-    video_file_name : str
-        The name of the video file.
-
-    Returns
-    -------
-    list
-        The detection results in JSON format.
-    """
-    # Get the total number of frames in the video
-    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    
-    # Initialize the detection output for the video
-    detection_output = {
-        DetectionParameters.output_key_images: [],
-        DetectionParameters.output_key_categories: []
-    }    
-    
-    # Process each frame
-    with tqdm(total=total_frames, desc="Processing frames", ncols=70) as pbar:
-        for frame_count in range(total_frames):
-            ret, frame = cap.read()
-            if not ret:
-                logging.warning(f"Frame {frame_count} could not be read. Skipping.")
-                break
+def process_image(model: YOLO, image_path: Path) -> Tuple[np.ndarray, Detections]:
+    """Process image with YOLO model"""
+    try:
+        image = cv2.imread(str(image_path))
+        if image is None:
+            raise ValueError(f"Failed to load image from {image_path}")
             
-            # Update progress bar
-            pbar.update()
-            
-            if frame_count % DetectionParameters.frame_step_interval == 0:
-                # Perform detection on the current frame
-                results = model(frame, iou=YoloConfig.iou_threshold)
-                
-                # Create the file name for the current image
-                file_name = f"{video_file_name}_{frame_count:06}.jpg"
-                
-                # Initialize the dictionary for the current image
-                image_detections = {
-                    "image_id": file_name,
-                    DetectionParameters.output_key_annotations: []
-                }
-                
-                # Add the annotations for the detected objects
-                for boxes in results[0].boxes:
-                    # Get the bounding box coordinates (x center, y center, width, height) normalized to the image size
-                    x_center, y_center, width, height = boxes.xywhn[0]
-                    conf = boxes.conf[0]
-                    cls = boxes.cls[0]
-                    # Get the category ID and name
-                    category_id = int(cls.item())
-                    category_name = model.names[category_id]
-                    
-                    # Append the detection data to the list for this image
-                    image_detections[DetectionParameters.output_key_annotations].append({
-                        "class": category_name,
-                        "bbox": [x_center.item(), y_center.item(), width.item(), height.item()],
-                        "confidence": conf.item()
-                    })
-                # Add the image's detection data to the video-level output
-                detection_output[DetectionParameters.output_key_images].append(image_detections)      
+        output = model(Image.open(image_path))
+        results = Detections.from_ultralytics(output[0])
+        logging.info(f"{len(results.xyxy)} Yolo11 detection(s)")
+        return image, results
+    except Exception as e:
+        logging.error(f"Error processing image: {e}")
+        raise
 
-    return detection_output
-
-
-def detection_video_output(
-    cap: cv2.VideoCapture,
-    out: cv2.VideoWriter,
-    model: torch.nn.Module,
-) -> None:
-    """
-    This function performs frame-wise person detection on a video file and writes the output video with bounding boxes.
-
-    Parameters
-    ----------
-    cap : cv2.VideoCapture
-        The video capture object.
-    out : cv2.VideoWriter
-        The video writer object.
-    model : torch.nn.Module
-        The YOLO model used for person detection.
-    """
-    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-
-    class_index_det = next(
-        key for key, value in model.names.items()
-        if value == DetectionParameters.yolo_detection_target
-    )
+def draw_detections_and_ground_truth(
+    image: np.ndarray, 
+    predictions: Detections, 
+    ground_truth_boxes: np.ndarray
+) -> np.ndarray:
+    """Draw both predictions and ground truth boxes on image"""
+    annotated_image = image.copy()
     
-    # Process each frame
-    with tqdm(total=total_frames, desc="Processing frames", ncols=70) as pbar:
-        for frame_count in range(total_frames):
-            ret, frame = cap.read()
-            if not ret:
-                break
+    # Draw ground truth boxes in blue
+    for i, gt_box in enumerate(ground_truth_boxes):
+        x1, y1, x2, y2 = map(int, gt_box)
+        cv2.rectangle(annotated_image, (x1, y1), (x2, y2), (255, 0, 0), 2)  # Blue
+        cv2.putText(annotated_image, f"GT-{i+1}", (x1+10, y1+20), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+    
+    # Draw prediction boxes in green
+    for i, (bbox, conf, class_id) in enumerate(zip(predictions.xyxy, predictions.confidence, predictions.class_id)):
+        x1, y1, x2, y2 = map(int, bbox)
+        cv2.rectangle(annotated_image, (x1, y1), (x2, y2), (0, 255, 0), 2)  # Green
+        # If class id is 1, display KCHI; otherwise, display default detection label with confidence
+        if int(class_id) == 1:
+            label = f"Pred-:KCHI {conf:.2f}"
+        else:
+            label = f"Pred-:Person {conf:.2f}"
+        cv2.putText(annotated_image, label, (x1+10, y2-10), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+    
+    return annotated_image
 
-            pbar.update()
+def calculate_iou(boxA: np.ndarray, boxB: np.ndarray) -> float:
+    """Calculate Intersection over Union (IoU) between two bounding boxes"""
+    xA = max(boxA[0], boxB[0])
+    yA = max(boxA[1], boxB[1])
+    xB = min(boxA[2], boxB[2])
+    yB = min(boxA[3], boxB[3])
 
-            results = model(frame)
+    # Compute the area of the intersection rectangle
+    interArea = max(0, xB - xA) * max(0, yB - yA)
 
-            if results[0].boxes is not None:
-                for boxes in results[0].boxes:
-                    x1, y1, x2, y2 = boxes.xyxy[0]
-                    confidence = boxes.conf[0]
-                    # Draw bounding box
-                    cv2.rectangle(frame, (int(x1), int(y1)), (int(x2), int(y2)), (146, 123, 45), 2)
-                    cv2.putText(frame, f"person {confidence:.2f}", (int(x1), int(y1) - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (146, 123, 45), 2)
+    # Compute the area of both rectangles
+    boxAArea = (boxA[2] - boxA[0]) * (boxA[3] - boxA[1])
+    boxBArea = (boxB[2] - boxB[0]) * (boxB[3] - boxB[1])
 
-            out.write(frame)
+    # Compute the area of the union
+    unionArea = boxAArea + boxBArea - interArea
 
-        cap.release()
-        out.release()
+    # Compute the IoU
+    return interArea / unionArea if unionArea > 0 else 0
+
+def load_ground_truth(label_path: str, img_width: int, img_height: int) -> np.ndarray:
+    """Load ground truth bounding boxes from label file"""
+    ground_truth_boxes = []
+    with open(label_path, 'r') as f:
+        for line in f.readlines():
+            # Parse the label file: class x_center y_center width height
+            class_id, x_center, y_center, width, height = map(float, line.strip().split())
+            
+            # Convert normalized coordinates to pixel values
+            x1 = int((x_center - width / 2) * img_width)
+            y1 = int((y_center - height / 2) * img_height)
+            x2 = int((x_center + width / 2) * img_width)
+            y2 = int((y_center + height / 2) * img_height)
+            
+            ground_truth_boxes.append(np.array([x1, y1, x2, y2]))
+    
+    return np.array(ground_truth_boxes)
+
+def main():
+    parser = argparse.ArgumentParser(description='YOLO Person Detection')
+    parser.add_argument('--image', type=str, required=True, help='Path to input image')
+    args = parser.parse_args()  
+    
+    # Configure logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+    # Initialize paths
+    output_dir = YoloPaths.person_output_dir
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    try:
+        # Load model and process image
+        basename = os.path.basename(args.image)
+        name, ext = os.path.splitext(basename)
+        parts = name.split('_')
+        video_folder = '_'.join(parts[:-1])
+        image_path = DetectionPaths.images_input_dir/ video_folder / args.image
+        label_path = Path("/home/nele_pauline_suffo/ProcessedData/yolo_person_input/labels/test") / Path(args.image).with_suffix('.txt')
+        
+        model = load_model()
+        image, results = process_image(model, image_path)
+        
+        # Retrieve class names from the model
+        names = model.model.names if hasattr(model, 'model') and hasattr(model.model, 'names') else {}
+        
+        # Get image dimensions for ground truth conversion
+        img_height, img_width = image.shape[:2]
+        
+        # Load ground truth labels
+        ground_truth_boxes = load_ground_truth(str(label_path), img_width, img_height)
+        logging.info(f"Found {len(ground_truth_boxes)} ground truth boxes")
+        
+        # Loop through detections and calculate IoU
+        for i, (detected_bbox, conf, class_id) in enumerate(zip(results.xyxy, results.confidence, results.class_id)):
+            class_name = names.get(class_id, str(class_id)) if names else str(class_id)
+            if len(ground_truth_boxes) == 0:
+                logging.warning(f"No ground truth boxes found for detection {i+1}")
+                continue
+                
+            iou_scores = []
+            for gt_bbox in ground_truth_boxes:
+                iou = calculate_iou(detected_bbox, gt_bbox)
+                iou_scores.append(iou)
+                logging.info(f"Detection {i+1} - Class: {class_name} - GT Box IoU: {iou:.4f}")
+            
+            if iou_scores:
+                max_iou = max(iou_scores)
+                logging.info(f"Detection {i+1} - Class: {class_name} - Maximum IoU: {max_iou:.4f}")
+        
+        # Draw detections and save
+        annotated_image = draw_detections_and_ground_truth(
+            image, 
+            results, 
+            ground_truth_boxes
+        )        
+        output_path = output_dir / Path(args.image).name
+        cv2.imwrite(str(output_path), annotated_image)
+        logging.info(f"Annotated image saved to: {output_path}")
+        
+    except Exception as e:
+        logging.error(f"Processing failed: {e}")
+        return 1
+    
+    return 0
+
+if __name__ == "__main__":
+    exit(main())
