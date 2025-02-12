@@ -6,7 +6,7 @@ import subprocess
 from typing import Tuple
 from pathlib import Path
 from ultralytics import YOLO
-from constants import YoloPaths, DetectionPaths
+from constants import YoloPaths, DetectionPaths, VTCPaths
 
 def classify_gaze(gaze_model: YOLO, face_image: np.ndarray) -> Tuple[int, int]:
     """
@@ -220,7 +220,16 @@ def store_voice_detections(video_file_name: str, results_file: Path, fps: int = 
             except ValueError:
                 continue
             end_time = start_time + duration
-            object_class = parts[7]  # e.g. KCHI, FEM, etc.
+            object_class_str = parts[7]  # e.g., "KCHI", "FEM", etc.
+            
+            # Map object class to integer and store into classes if not already present.
+            cursor.execute("SELECT class_id FROM Classes WHERE class_name = ?", (object_class_str,))
+            result_class = cursor.fetchone()
+            if result_class is None:
+                cursor.execute("INSERT INTO Classes (class_name) VALUES (?)", (object_class_str,))
+                class_id = cursor.lastrowid
+            else:
+                class_id = result_class[0]            
             
             # For example, if detection starts at frame 8:
             start_frame = int(start_time * fps)
@@ -298,7 +307,7 @@ def main():
     yolo_classes = person_model.model.names
     for class_id, class_name in yolo_classes.items():
         cursor.execute('''
-            INSERT OR IGNORE INTO YOLOClasses (class_id, class_name)
+            INSERT OR IGNORE INTO Classes (class_id, class_name)
             VALUES (?, ?)
         ''', (class_id, class_name))
     
