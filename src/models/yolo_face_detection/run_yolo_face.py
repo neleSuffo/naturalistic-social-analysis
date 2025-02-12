@@ -123,7 +123,7 @@ def main():
         image_path = DetectionPaths.images_input_dir/ video_folder / args.image
         label_path = Path("/home/nele_pauline_suffo/ProcessedData/yolo_face_input/labels/test") / Path(args.image).with_suffix('.txt')
         
-        model = load_model(YoloPaths.face_trained_weights_path)
+        model = load_model()
         image, results = process_image(model, image_path)
         
         # Get image dimensions for ground truth conversion
