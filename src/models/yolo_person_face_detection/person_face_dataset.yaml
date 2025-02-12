@@ -1,0 +1,14 @@
+
+train: /home/nele_pauline_suffo/ProcessedData/yolo_person_face_input/images/train
+val: /home/nele_pauline_suffo/ProcessedData/yolo_person_face_input/images/val
+test: /home/nele_pauline_suffo/ProcessedData/yolo_person_face_input/images/test
+
+
+# Number of classes
+nc: 2 
+
+# Class names
+names:
+  0: "person"
+  1: "face"
+  2: "child body parts"
