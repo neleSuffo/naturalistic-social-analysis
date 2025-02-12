@@ -31,7 +31,7 @@ def insert_video_record(video_path, cursor) -> int:
     cursor.execute('SELECT video_id FROM Videos WHERE video_path = ?', (str(video_path),))
     existing_video = cursor.fetchone()
     if existing_video:
-        logging.info(f"Video {video_path.name} already processed. Skipping.")
+        logging.info(f"Video {Path(video_path).name} already processed. Skipping.")
         return None
     else:
         cursor.execute('INSERT INTO Videos (video_path) VALUES (?)', (str(video_path),))
@@ -68,39 +68,41 @@ def process_frame(frame, frame_idx, video_id, model, cursor) -> tuple:
     cursor.execute('INSERT INTO Frames (video_id, frame_number) VALUES (?, ?)', (video_id, frame_idx))
     frame_id = cursor.lastrowid
 
-    results = model(frame)
+    result = model(frame)
     num_persons = 0
     num_faces   = 0
 
-    # Iterate over detected objects
-    for result in results:
-        # Assuming 'result' is a dictionary with keys: 'name', 'class', 'confidence', 'box'
-        if isinstance(result, dict) and 'name' in result and 'class' in result and 'confidence' in result and 'box' in result:
-            object_class = result['name']
-            confidence = result['confidence']
-            x_min, y_min, x_max, y_max = result['box']
+    results = result[0].boxes
+    # Extract detection results
+    conf = results.conf  # Confidence scores
+    object_cls = results.cls  # Class labels
+    xyxy = results.xyxy  # Bounding boxes in xyxy format (x_min, y_min, x_max, y_max)
 
-            # Convert coordinates to integers
-            x_min, y_min, x_max, y_max = map(int, [x_min, y_min, x_max, y_max])
+    # Iterate over each detection
+    for i in range(len(conf)):
+        # Extract bounding box and class label
+        x_min, y_min, x_max, y_max = map(int, xyxy[i])  # Bounding box coordinates
+        confidence_score = conf[i].item()  # Confidence score
+        object_class = object_cls[i].item()  # Class label
 
-            if object_class == 'face':
-                num_faces += 1
-                # Extract face region and classify gaze if necessary
-                face_image = frame[y_min:y_max, x_min:x_max]
-                #gaze_direction = classify_gaze(face_image)
-                gaze_direction = 0
-            elif object_class == 'person':
-                num_persons += 1
-                gaze_direction = None
-            else:
-                continue  # Skip if the object is neither 'person' nor 'face'
+        # Determine if the detected object is a person or a face
+        if object_class == 0: # person
+            num_persons += 1
+            gaze_direction = None
+        # TODO: needs adjustment for three classes
+        elif object_class == 1:  # child body parts
+            num_faces += 1
+            face_image = frame[y_min:y_max, x_min:x_max]
+            gaze_direction = 0  # Placeholder for gaze classification
+        else:
+            continue  # Skip if the object is neither 'person' nor 'face'
 
-            # Insert detection record into the database
-            cursor.execute('''
-                INSERT INTO Detections 
-                (frame_id, object_class, confidence_score, x_min, y_min, x_max, y_max, gaze_direction)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (frame_id, object_class, confidence, x_min, y_min, x_max, y_max, gaze_direction))
+        # Insert detection record into the database
+        cursor.execute('''
+            INSERT INTO Detections 
+            (frame_id, object_class, confidence_score, x_min, y_min, x_max, y_max, gaze_direction)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (frame_id, object_class, confidence_score, x_min, y_min, x_max, y_max, gaze_direction))
 
     return num_persons, num_faces
 
