@@ -159,15 +159,23 @@ def process_video(video_path, model, cursor, conn):
 def main():
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s - %(levelname)s - %(message)s')
-
-    model = YOLO(YoloPaths.person_trained_weights_path)
+    
     videos_input_dir = DetectionPaths.quantex_videos_input_dir
-
     conn = sqlite3.connect(DetectionPaths.detection_db_path)
     cursor = conn.cursor()
+    
+    yolo_model = YOLO(YoloPaths.person_trained_weights_path)
 
+    # get model class names as dictionary with id and name
+    yolo_classes = yolo_model.model.names
+    for class_id, class_name in yolo_classes.items():
+        cursor.execute('''
+            INSERT OR IGNORE INTO YOLOClasses (class_id, class_name)
+            VALUES (?, ?)
+        ''', (class_id, class_name))
+    
     for video_path in videos_input_dir.glob("*.MP4"):
-        process_video(video_path, model, cursor, conn)
+        process_video(video_path, yolo_model, cursor, conn)
         return
     conn.close()
 
