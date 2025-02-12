@@ -2,8 +2,7 @@ import subprocess
 import argparse
 import logging
 import os
-from prepare_data.prepare_training import main as prepare_training
-from prepare_data.prepare_training import balance_dataset
+from prepare_data.prepare_training import main as prepare_training, balance_dataset
 from prepare_data.process_videos import main as process_videos
 from prepare_data.extract_faces import main as extract_faces
 
