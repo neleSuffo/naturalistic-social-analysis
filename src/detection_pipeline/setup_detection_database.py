@@ -35,6 +35,14 @@ def setup_detection_database(db_path: Path = DetectionPaths.detection_db_path):
         )
     ''')
 
+    # Create YOLOClasses table to map class numbers to class names
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS YOLOClasses (
+            class_id INTEGER PRIMARY KEY,
+            class_name TEXT UNIQUE
+        )
+    ''')
+    
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS Detections (
             detection_id INTEGER PRIMARY KEY AUTOINCREMENT,
