@@ -99,7 +99,7 @@ def save_annotations(
         the target detection type
     """
     logging.info("Saving annotations in YOLO format.")
-    output_dir = YoloPaths.face_labels_input_dir if target == "face" else YoloPaths.person_labels_input_dir if target == "person" else YoloPaths.gaze_labels_input_dir      
+    output_dir = YoloPaths.face_labels_input_dir if target == "face" else YoloPaths.person_labels_input_dir if target == "person" else YoloPaths.person_face_labels_input_dir if target == "person+face" else YoloPaths.gaze_labels_input_dir      
     output_dir.mkdir(parents=True, exist_ok=True)
     
     file_contents = {}
@@ -124,6 +124,7 @@ def save_annotations(
         person_mapping: {1: 0, 2: 0, 10: 0, 11:1}
         face_mapping: {10: 0}
         gaze_mapping = {'No': 0, 'Yes': 1}
+        person_face_mapping = {1: 0, 2: 0, 10: 1, 11:2}
         if target == "person":
         # Map the category_id to the YOLO format (treat person, reflection, face all as category "person")
             category_id = person_mapping.get(category_id, category_id)
@@ -133,6 +134,9 @@ def save_annotations(
         if target == "gaze":
             # category id is replaced with gaze_directed_at_child (No: 0, Yes: 1)
             category_id = gaze_mapping.get(gaze_directed_at_child, gaze_directed_at_child)
+        if target == "person+face":
+            # Map the category_id to the YOLO format (treat person, reflection, face all as category "person")
+            category_id = person_face_mapping.get(category_id, category_id)
         # YOLO format: category_id x_center y_center width height
         try:
             yolo_bbox = convert_to_yolo_format(image_file_path, bbox)               
@@ -164,11 +168,12 @@ def main(target: str) -> None:
         category_ids = {
             "face": YoloConfig.face_target_class_ids,
             "gaze": YoloConfig.face_target_class_ids,
-            "person": YoloConfig.person_target_class_ids
+            "person": YoloConfig.person_target_class_ids,
+            "person+face": YoloConfig.person_target_class_ids
         }.get(target)
 
         if category_ids is None:
-            logging.error(f"Invalid target: {target}. Expected 'face' or 'person'.")
+            logging.error(f"Invalid target: {target}. Expected 'face', 'person', 'person+face' or 'gaze'.")
             return
 
         annotations = fetch_all_annotations(category_ids=category_ids)
