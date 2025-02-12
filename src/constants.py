@@ -42,6 +42,7 @@ class YoloPaths:
     face_data_input_dir = Path(BasePaths.data_dir/"yolo_face_input")
     face_output_dir = Path(BasePaths.output_dir/"yolo_face_detections/")
 
+    gaze_trained_weights_path = Path(BasePaths.models_dir/'yolo11_gaze_classification.pt')
     gaze_extraction_progress_file_path = Path(BasePaths.data_dir/"gaze_extraction_progress.txt")
     gaze_missing_frames_file_path = Path(BasePaths.data_dir/"gaze_missing_frames.txt")
     gaze_data_config_path = Path(BasePaths.leuphana_ipe_dir/"src/models/yolo_gaze_classification/gaze_dataset.yaml")
@@ -49,6 +50,12 @@ class YoloPaths:
     gaze_data_input_dir = Path(BasePaths.data_dir/"yolo_gaze_input")
     gaze_output_dir = Path(BasePaths.output_dir/"yolo_gaze_classification/")
 
+    person_face_trained_weights_path = Path(BasePaths.models_dir/'yolo11_person_face_detection.pt')
+    person_face_data_config_path = Path(BasePaths.leuphana_ipe_dir/"src/models/yolo_person_face_detection/person_face_dataset.yaml")
+    person_face_labels_input_dir = Path(BasePaths.data_dir/"yolo_person_face_labels")
+    person_face_data_input_dir = Path(BasePaths.data_dir/"yolo_person_face_input")
+    person_face_output_dir = Path(BasePaths.output_dir/"yolo_person_face_classification/")
+    
 class VTCPaths:
     audio_dir = Path(BasePaths.data_dir/"audio")
     output_dir = Path(BasePaths.output_dir/"vtc")
