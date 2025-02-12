@@ -269,7 +269,7 @@ def convert_childlens_annotations_to_dataframe(data: Dict, fps: float) -> pd.Dat
                     duration = round(end_seconds - start_seconds, 3)
                     
                     # Duplicate the row with "SPEECH" as the new label if applicable
-                    if new_label in ["KCHI", "OCH", "MAL", "FEM"]:
+                    if new_label in ["KCHI", "CHI", "MAL", "FEM"]:
                         rows.append({
                             "audio_file_name": short_video_id,
                             "Utterance_Start": start_seconds,
@@ -322,7 +322,6 @@ def process_superannotate_annotations_to_dataframe(folder_path: Path, fps: float
     
     # Concatenate all DataFrames
     combined_df = pd.concat(all_dataframes, ignore_index=True)
-    logging.info("All files processed and combined into a single DataFrame")
     return combined_df
 
 
@@ -356,7 +355,7 @@ def determine_new_label(label: str, age: str, gender: str) -> str:
             elif gender == "Male":
                 return "MAL"
         elif age == "Child":
-            return "OCH"
+            return "CHI"
     elif label == "Overheard Speech":
         return "SPEECH"
     return None
@@ -411,7 +410,7 @@ def compute_metrics(hypothesis_file_name: str,
     # Filter the hypothesis DataFrame to only include these files
     predictions = hypothesis_df[hypothesis_df['audio_file_name'].isin(annotated_files)]
     
-    voice_types = ['KCHI', 'OCH', 'FEM', 'MAL', 'SPEECH']
+    voice_types = ['KCHI', 'CHI', 'FEM', 'MAL', 'SPEECH']
     class_metrics = {voice_type: {'precision': [], 'recall': [], 'f1_score': [], 'error_rate': []} for voice_type in voice_types}
 
     # Loop over each video
