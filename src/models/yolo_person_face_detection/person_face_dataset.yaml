@@ -5,7 +5,7 @@ test: /home/nele_pauline_suffo/ProcessedData/yolo_person_face_input/images/test
 
 
 # Number of classes
-nc: 2 
+nc: 3
 
 # Class names
 names:
