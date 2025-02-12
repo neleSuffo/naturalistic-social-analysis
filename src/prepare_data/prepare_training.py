@@ -272,38 +272,87 @@ def get_class_distribution(total_images: list, annotation_folder: Path, yolo_tar
         - List of images without class annotations.
         - Class-to-total ratio.
     """
-    with_class, without_class = [], []
+    if yolo_target == "person+face":
+        with_class = []
+        without_class = []
+        person_count = 0
+        face_count = 0
+        child_count = 0
 
-    for image_file in total_images:
-        annotation_file = annotation_folder / Path(image_file).with_suffix('.txt').name
+        for image_file in total_images:
+            annotation_file = annotation_folder / Path(image_file).with_suffix('.txt').name
+            if annotation_file.exists() and annotation_file.stat().st_size > 0:
+                with open(annotation_file, 'r') as f:
+                    lines = f.readlines()
+                    if len(lines) == 0:
+                        without_class.append(image_file)
+                    else:
+                        with_class.append(image_file)
+                        for line in lines:
+                            parts = line.strip().split()
+                            if parts:
+                                class_id = parts[0]
+                                if class_id == "0":  # 0 = person
+                                    person_count += 1
+                                elif class_id == "1":  # 1 = face
+                                    face_count += 1
+                                elif class_id == "2":  # 2 = child body parts
+                                    child_count += 1
+            else:
+                without_class.append(image_file)
+        total_images_count = len(total_images)
+        person_ratio = person_count / total_images_count if total_images_count else 0
+        face_ratio = face_count / total_images_count if total_images_count else 0
+        child_ratio = child_count / total_images_count if total_images_count else 0
+        overall_class_ratio = len(with_class) / total_images_count if total_images_count else 0
 
-        if annotation_file.exists() and annotation_file.stat().st_size > 0:
-            with open(annotation_file, 'r') as f:
-                lines = f.readlines()
-                if yolo_target == "gaze":
-                    # Check every line in the annotation file
+        logging.info(f"Person Class Ratio: {person_ratio:.4f} ({person_count}/{total_images_count})")
+        logging.info(f"Face Class Ratio: {face_ratio:.4f} ({face_count}/{total_images_count})")
+        logging.info(f"Child Body Part Ratio: {child_ratio:.4f} ({child_count}/{total_images_count})")
+        logging.info(f"Overall Class-to-Total Ratio: {overall_class_ratio:.4f} ({len(with_class)}/{total_images_count})")
+        
+        return with_class, without_class, overall_class_ratio
+                                
+    elif yolo_target == "gaze":
+        with_class = []
+        without_class = []
+        for image_file in total_images:
+            annotation_file = annotation_folder / Path(image_file).with_suffix('.txt').name
+            if annotation_file.exists() and annotation_file.stat().st_size > 0:
+                with open(annotation_file, 'r') as f:
+                    lines = f.readlines()
                     for i, line in enumerate(lines):
                         class_id = line.strip().split()[0]
                         if class_id == "0":  # 0 = no gaze
                             without_class.append(f"{Path(image_file).stem}_face_{i}.jpg")
                         elif class_id == "1":  # 1 = gaze
                             with_class.append(f"{Path(image_file).stem}_face_{i}.jpg")
-                else:
-                    has_class_0 = any(line.strip().split()[0] == "0" for line in lines)
-                    if has_class_0:
+            else:
+                without_class.append(image_file)
+        total_gaze = len(with_class) + len(without_class)
+        ratio = len(with_class) / total_gaze if total_gaze > 0 else 0
+        logging.info(f"Class-to-No-Class Ratio: {ratio:.4f} ({len(with_class)}/{len(without_class)})")
+        return with_class, without_class, ratio
+    
+    else:
+        # Default logic for targets like "person" or "face"
+        with_class = []
+        without_class = []
+        for image_file in total_images:
+            annotation_file = annotation_folder / Path(image_file).with_suffix('.txt').name
+            if annotation_file.exists() and annotation_file.stat().st_size > 0:
+                with open(annotation_file, 'r') as f:
+                    lines = f.readlines()
+                    if any(line.strip().split()[0] == "0" for line in lines):
                         with_class.append(image_file)
                     else:
                         without_class.append(image_file)
-    if yolo_target == "gaze":
-        # Calculate class-to-no-class ratio (number of images with gaze directed at child vs. not)
-        total_gaze = len(with_class) + len(without_class)
-        class_to_no_class_ratio = len(with_class) / total_gaze if total_gaze > 0 else 0
-        logging.info(f"Class-to-No-Class Ratio: {class_to_no_class_ratio:.4f} ({len(with_class)}/{len(without_class)})")
-        return with_class, without_class, class_to_no_class_ratio
-    
-    class_to_total_ratio = len(with_class) / len(total_images) if total_images else 0
-    logging.info(f"Class-to-Total Ratio: {class_to_total_ratio:.4f} ({len(with_class)}/{len(total_images)})")
-    return with_class, without_class, class_to_total_ratio
+            else:
+                without_class.append(image_file)
+        total_images_count = len(total_images)
+        overall_ratio = len(with_class) / total_images_count if total_images_count else 0
+        logging.info(f"Class-to-Total Ratio: {overall_ratio:.4f} ({len(with_class)}/{total_images_count})")
+        return with_class, without_class, overall_ratio
 
 def stratified_split(data, train_ratio, val_ratio):
     """
@@ -329,6 +378,97 @@ def stratified_split(data, train_ratio, val_ratio):
     train_count = int(total * train_ratio)
     val_count = int(total * val_ratio)
     return data[:train_count], data[train_count:train_count + val_count], data[train_count + val_count:]
+
+def get_labels_for_image(image_file: str, annotation_folder: Path) -> tuple:
+    """
+    Determines the presence (1) or absence (0) of person and face in an image based on its annotation file.
+    
+    Parameters:
+    ----------
+    image_file : str
+        The image file name (or path) as a string.
+    annotation_folder : Path
+        Directory where annotation files are stored.
+
+    Returns:
+    -------
+    tuple
+        A tuple (person_flag, face_flag) where each flag is 1 if present, else 0.
+    """
+    annotation_file = annotation_folder / (Path(image_file).with_suffix('.txt').name)
+    person_flag = 0
+    face_flag = 0
+
+    if annotation_file.exists() and annotation_file.stat().st_size > 0:
+        with annotation_file.open('r') as f:
+            for line in f:
+                parts = line.strip().split()
+                if not parts:
+                    continue
+                # Assuming class "0" indicates person and class "1" indicates face
+                if parts[0] == "0":
+                    person_flag = 1
+                if parts[0] == "1":
+                    face_flag = 1
+    return (person_flag, face_flag)
+
+def stratified_split_person_face(images: list, annotation_folder: Path, train_ratio: float, val_ratio: float):
+    """
+    Splits the dataset into train, validation, and test sets while preserving the distribution
+    of 'person' and 'face' labels. Each image is placed in a group based on its label tuple
+    (person_flag, face_flag), and each group is then split according to the specified ratios.
+    
+    Parameters:
+    ----------
+    images : list
+        List of image file names or paths.
+    annotation_folder : Path
+        Path to the directory containing annotation files.
+    train_ratio : float
+        Proportion of each group to be allocated to the training set.
+    val_ratio : float
+        Proportion of each group to be allocated to the validation set.
+        The remainder goes to the test set.
+    
+    Returns:
+    -------
+    tuple
+        Three lists: (train_split, val_split, test_split)
+    """
+    # Group images based on their (person, face) labels
+    groups = {}
+    for img in images:
+        label = get_labels_for_image(img, annotation_folder)
+        groups.setdefault(label, []).append(img)
+    
+    train_split = []
+    val_split = []
+    test_split = []
+    
+    for label, group_imgs in groups.items():
+        random.shuffle(group_imgs)
+        total = len(group_imgs)
+        train_count = int(total * train_ratio)
+        val_count = int(total * val_ratio)
+        
+        train_split.extend(group_imgs[:train_count])
+        val_split.extend(group_imgs[train_count:train_count + val_count])
+        test_split.extend(group_imgs[train_count + val_count:])
+    
+    # Logging the distribution per split
+    def log_split_stats(split, split_name):
+        person_total = face_total = 0
+        for img in split:
+            p, f = get_labels_for_image(img, annotation_folder)
+            person_total += p
+            face_total += f
+        logging.info(f"{split_name} split: {len(split)} images, Person sum: {person_total}, Face sum: {face_total}")
+
+    log_split_stats(train_split, "Train")
+    log_split_stats(val_split, "Validation")
+    log_split_stats(test_split, "Test")
+    
+    return train_split, val_split, test_split
 
 def copy_files_to_split(split_name, files, annotation_folder, output_folder, yolo_target):
     """
@@ -447,14 +587,31 @@ def split_yolo_data(total_images: list,
         "val": val_with + val_without,
         "test": test_with + test_without
     }
-
-    logging.info(f"Train split: {len(splits['train'])} images ({len(train_with)} class, {len(train_without)} no-class).")
-    logging.info(f"Val split: {len(splits['val'])} images ({len(val_with)} class, {len(val_without)} no-class).")
-    logging.info(f"Test split: {len(splits['test'])} images ({len(test_with)} class, {len(test_without)} no-class).")
-
-    # Shuffle each split to mix class and no-class images
-    for split in splits:
-        random.shuffle(splits[split])
+    if yolo_target == "person+face":
+        # Use stratified_split_person_face to preserve both person and face ratios.
+        train_split, val_split, test_split = stratified_split_person_face(total_images, annotation_folder, train_ratio, val_ratio)
+        splits = {
+            "train": train_split,
+            "val": val_split,
+            "test": test_split
+        }
+        logging.info(f"Person+Face split: Train {len(splits['train'])} images, Val {len(splits['val'])} images, Test {len(splits['test'])} images.")
+        
+    else:
+        # Existing logic for other yolo_targets
+        with_class, without_class = get_class_distribution(total_images, annotation_folder, yolo_target)[:2]
+        random.shuffle(with_class)
+        random.shuffle(without_class)
+        train_with, val_with, test_with = stratified_split(with_class, train_ratio, val_ratio)
+        train_without, val_without, test_without = stratified_split(without_class, train_ratio, val_ratio)
+        splits = {
+        "train": train_with + train_without,
+        "val": val_with + val_without,
+        "test": test_with + test_without
+        }
+        logging.info(f"Train split: {len(splits['train'])} images ({len(train_with)} class, {len(train_without)} no-class).")
+        logging.info(f"Val split: {len(splits['val'])} images ({len(val_with)} class, {len(val_without)} no-class).")
+        logging.info(f"Test split: {len(splits['test'])} images ({len(test_with)} class, {len(test_without)} no-class).")
 
     logging.info("Copying images and annotations to output folder...")
     
@@ -480,12 +637,12 @@ def main(model_target: str, yolo_target: str):
     None
     
     """
-    logging.info(f"Starting dataset preparation for {model_target}...")
+    logging.info(f"Starting dataset preparation for {model_target} {yolo_target}...")
     os.environ['OMP_NUM_THREADS'] = '10'
     
     if model_target == "yolo":
-        label_path = YoloPaths.person_labels_input_dir if yolo_target == "person" else YoloPaths.face_labels_input_dir if yolo_target == "face" else YoloPaths.gaze_labels_input_dir
-        data_path = YoloPaths.person_data_input_dir if yolo_target == "person" else YoloPaths.face_data_input_dir if yolo_target == "face" else YoloPaths.gaze_data_input_dir        
+        label_path = YoloPaths.person_labels_input_dir if yolo_target == "person" else YoloPaths.face_labels_input_dir if yolo_target == "face" else YoloPaths.person_face_labels_input_dir if yolo_target == "person+face" else YoloPaths.gaze_labels_input_dir
+        data_path = YoloPaths.person_data_input_dir if yolo_target == "person" else YoloPaths.face_data_input_dir if yolo_target == "face" else YoloPaths.person_face_data_input_dir if yolo_target == "person+face" else YoloPaths.gaze_data_input_dir        
         
         logging.info(f"Processing YOLO dataset for target: {yolo_target}")
         total_images = get_total_number_of_annotated_frames(label_path, DetectionPaths.images_input_dir)
@@ -501,7 +658,7 @@ def main(model_target: str, yolo_target: str):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Prepare datasets for training.")
     parser.add_argument("model_target", type=str, choices=["yolo", "mtcnn"], help="Target model for preparation.")
-    parser.add_argument("--yolo_target", type=str, choices=["person", "face", "gaze"], help="YOLO target type (person or face).")
+    parser.add_argument("--yolo_target", type=str, choices=["person", "face", "gaze", "person+face"], help="YOLO target type (person or face).")
     args = parser.parse_args()
     
     main(args.model_target, args.yolo_target)
