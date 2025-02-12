@@ -1,16 +1,31 @@
 import cv2
 import logging
 import sqlite3
+import numpy as np
+import subprocess
+from typing import Tuple
 from pathlib import Path
 from ultralytics import YOLO
 from constants import YoloPaths, DetectionPaths
 
-def classify_gaze(face_image):
+def classify_gaze(gaze_model: YOLO, face_image: np.ndarray) -> Tuple[int, int]:
     """
-    Placeholder for gaze classification.
-    Return 0 if gaze is not directed at the camera, 1 if it is.
+    This function classifies the gaze direction of a face image.
+    
+    Parameters:
+    ----------
+    gaze_model : YOLO
+        YOLO model for gaze classification
+    face_image : np.ndarray
+        Face image to be classified
+        
+    Returns:
+    -------
+    gaze_direction : int
+        Gaze direction class label
+    gaze_confidence : int
+        Confidence score of the gaze classification
     """
-    gaze_model = YOLO(YoloPaths.gaze_trained_weights_path)
     result = gaze_model(face_image)
     
     results = result[0].boxes
@@ -47,7 +62,7 @@ def insert_video_record(video_path, cursor) -> int:
         cursor.execute('SELECT video_id FROM Videos WHERE video_path = ?', (str(video_path),))
         return cursor.fetchone()[0]
 
-def process_frame(frame, frame_idx, video_id, model, cursor) -> tuple:
+def process_frame(frame: np.ndarray, frame_idx: int, video_id: int, person_model: YOLO, gaze_model: YOLO, cursor: sqlite3.Cursor) -> Tuple[int, int]:
     """
     This function processes a frame. It inserts the frame record and processes each object detected in the frame.
     The steps are as follows:
@@ -62,8 +77,10 @@ def process_frame(frame, frame_idx, video_id, model, cursor) -> tuple:
         Frame index
     video_id : int
         Video ID
-    model : YOLO
-        YOLO model for object detection
+    person_model : YOLO
+        YOLO model for person detection
+    gaze_model : YOLO
+        YOLO model for gaze classification
     cursor : sqlite3.Cursor
         SQLite cursor object
     
@@ -77,7 +94,7 @@ def process_frame(frame, frame_idx, video_id, model, cursor) -> tuple:
     cursor.execute('INSERT INTO Frames (video_id, frame_number) VALUES (?, ?)', (video_id, frame_idx))
     frame_id = cursor.lastrowid
 
-    result = model(frame)
+    result = person_model(frame)
     num_persons = 0
     num_faces   = 0
 
@@ -98,24 +115,25 @@ def process_frame(frame, frame_idx, video_id, model, cursor) -> tuple:
         if object_class == 0: # person
             num_persons += 1
             gaze_direction = None
+            gaze_confidence = None
         # TODO: needs adjustment for three classes
         elif object_class == 1:  # child body parts
             num_faces += 1
             face_image = frame[y_min:y_max, x_min:x_max]
-            gaze_direction, gaze_confidence = classify_gaze(face_image)
+            gaze_direction, gaze_confidence = classify_gaze(gaze_model, face_image)
         else:
             continue  # Skip if the object is neither 'person' nor 'face'
 
         # Insert detection record into the database
         cursor.execute('''
             INSERT INTO Detections 
-            (frame_id, object_class, confidence_score, x_min, y_min, x_max, y_max, gaze_direction, gaze_confidence)
+            (frame_number, object_class, confidence_score, x_min, y_min, x_max, y_max, gaze_direction, gaze_confidence)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (frame_id, object_class, confidence_score, x_min, y_min, x_max, y_max, gaze_direction, gaze_confidence))
+        ''', (frame_idx, object_class, confidence_score, x_min, y_min, x_max, y_max, gaze_direction, gaze_confidence))
 
     return num_persons, num_faces
 
-def process_video(video_path, model, cursor, conn):
+def process_video(video_path: Path, person_model: YOLO, gaze_model: YOLO, cursor: sqlite3.Cursor, conn: sqlite3.Connection):
     """
     This function processes a video frame by frame. It inserts the video record, processes each frame, and commits the changes.
     The steps are as follows:
@@ -129,8 +147,10 @@ def process_video(video_path, model, cursor, conn):
     ----------
     video_path : Path
         Path to the video file
-    model : YOLO
-        YOLO model for object detection
+    person_model : YOLO
+        YOLO model for person detection
+    gaze_model : YOLO
+        YOLO model for gaze classification
     cursor : sqlite3.Cursor
         SQLite cursor object
     conn : sqlite3.Connection
@@ -154,7 +174,7 @@ def process_video(video_path, model, cursor, conn):
             break
 
         if frame_idx % 10 == 0:
-            num_persons, num_faces = process_frame(frame, frame_idx, video_id, model, cursor)
+            num_persons, num_faces = process_frame(frame, frame_idx, video_id, person_model, gaze_model, cursor)
             total_persons += num_persons
             total_faces += num_faces
             conn.commit()  # Commit changes after processing each frame
@@ -254,7 +274,7 @@ def run_voice_type_classifier(video_file_name):
     
     # Assume the classifier writes its output to an 'all.rttm' file in the designated results directory.
     vtc_results_dir = VTCPaths.vtc_results_dir
-    rttm_file = vtc_results_dir / "all.rttm"
+    rttm_file = vtc_results_dir / video_file_name / "all.rttm"
     
     if rttm_file.exists():
         store_voice_detections(video_file_name, rttm_file)
@@ -269,10 +289,13 @@ def main():
     conn = sqlite3.connect(DetectionPaths.detection_db_path)
     cursor = conn.cursor()
     
-    yolo_model = YOLO(YoloPaths.person_trained_weights_path)
-
+    # Initialize models once
+    person_model = YOLO(YoloPaths.person_trained_weights_path)
+    #TODO: change to gaze model
+    gaze_model = YOLO(YoloPaths.person_trained_weights_path)   
+    
     # get model class names as dictionary with id and name
-    yolo_classes = yolo_model.model.names
+    yolo_classes = person_model.model.names
     for class_id, class_name in yolo_classes.items():
         cursor.execute('''
             INSERT OR IGNORE INTO YOLOClasses (class_id, class_name)
@@ -280,7 +303,7 @@ def main():
         ''', (class_id, class_name))
     
     for video_path in videos_input_dir.glob("*.MP4"):
-        process_video(video_path, yolo_model, cursor, conn)
+        process_video(video_path, person_model, gaze_model, cursor, conn)
         run_voice_type_classifier(video_path.name)
         return
     conn.close()
