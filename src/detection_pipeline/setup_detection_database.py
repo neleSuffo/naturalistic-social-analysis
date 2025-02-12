@@ -46,7 +46,7 @@ def setup_detection_database(db_path: Path = DetectionPaths.detection_db_path):
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS Detections (
             detection_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            frame_id INTEGER,
+            frame_number INTEGER,
             object_class TEXT,
             confidence_score REAL,
             x_min INTEGER,
@@ -54,7 +54,8 @@ def setup_detection_database(db_path: Path = DetectionPaths.detection_db_path):
             x_max INTEGER,
             y_max INTEGER,
             gaze_direction INTEGER,
-            FOREIGN KEY (frame_id) REFERENCES Frames(frame_id)
+            gaze_confidence REAL,
+            FOREIGN KEY (frame_number) REFERENCES Frames(frame_number)
         )
     ''')
 
