@@ -14,7 +14,7 @@ def classify_gaze(face_image):
 
 def insert_video_record(video_path, cursor) -> int:
     """
-    This function inserts a video record into the database.
+    This function inserts a video record into the database if it doesn't already exist.
     
     Parameters:
     ----------
@@ -28,9 +28,15 @@ def insert_video_record(video_path, cursor) -> int:
     video_id : int
         Video ID
     """
-    cursor.execute('INSERT OR IGNORE INTO Videos (video_path) VALUES (?)', (str(video_path),))
     cursor.execute('SELECT video_id FROM Videos WHERE video_path = ?', (str(video_path),))
-    return cursor.fetchone()[0]
+    existing_video = cursor.fetchone()
+    if existing_video:
+        logging.info(f"Video {video_path.name} already processed. Skipping.")
+        return None
+    else:
+        cursor.execute('INSERT INTO Videos (video_path) VALUES (?)', (str(video_path),))
+        cursor.execute('SELECT video_id FROM Videos WHERE video_path = ?', (str(video_path),))
+        return cursor.fetchone()[0]
 
 def process_frame(frame, frame_idx, video_id, model, cursor) -> tuple:
     """
@@ -120,11 +126,16 @@ def process_video(video_path, model, cursor, conn):
         SQLite connection object
     """
     logging.info(f"Processing video: {video_path.name}")
-    video_id = insert_video_record(video_path, cursor)
+    video_id = insert_video_record(video_path.name, cursor)
+    
+    # Skip if video already processed
+    if video_id is None:
+        return
+        
     cap = cv2.VideoCapture(str(video_path))
     frame_idx = 0
     total_persons = 0
-    total_faces   = 0
+    total_faces = 0
 
     while cap.isOpened():
         ret, frame = cap.read()
@@ -134,13 +145,14 @@ def process_video(video_path, model, cursor, conn):
         if frame_idx % 10 == 0:
             num_persons, num_faces = process_frame(frame, frame_idx, video_id, model, cursor)
             total_persons += num_persons
-            total_faces   += num_faces
-            conn.commit()
+            total_faces += num_faces
+            conn.commit()  # Commit changes after processing each frame
 
         frame_idx += 1
 
     cap.release()
     logging.info(f"Finished video: {video_path} | Persons: {total_persons} | Faces: {total_faces}")
+    conn.commit()  # Commit changes after processing the entire video
 
 def main():
     logging.basicConfig(level=logging.INFO,
