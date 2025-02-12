@@ -58,7 +58,8 @@ class YoloPaths:
     person_face_output_dir = Path(BasePaths.output_dir/"yolo_person_face_classification/")
     
 class VTCPaths:
-    audio_dir = Path(BasePaths.data_dir/"audio")
+    childlens_audio_dir = Path(BasePaths.data_dir/"childlens_audio")
+    vtc_results_dir = Path("/home/nele_pauline_suffo/projects/voice_type_classifier/output_voice_type_classifier/")
     output_dir = Path(BasePaths.output_dir/"vtc")
     childlens_output_folder = Path(output_dir/"childlens_audio_duration_off_01")
     childlens_df_file_path_01 = Path(output_dir/"childlens_df_duration_off_01.pkl")
