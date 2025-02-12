@@ -25,7 +25,8 @@ class DetectionPaths:
     annotations_individual_dir = Path(BasePaths.data_dir/"quantex_annotations_individual/")
     annotations_json_path = Path(quantex_annotations_dir/"annotations.json")
     annotations_db_path = Path(quantex_annotations_dir/"annotations.db")
-    combined_json_output_path = Path(BasePaths.output_dir/"combined_detections.json")
+    detection_results_dir = Path(BasePaths.output_dir/"detection_pipeline_results/")
+    detection_db_path = Path(detection_results_dir/'detection_results.db')
     # The file that is used to map the file names to the file ids
     file_name_id_mapping_path = Path(BasePaths.data_dir/"quantex_file_name_to_id_dict/annotations.xml")
 
