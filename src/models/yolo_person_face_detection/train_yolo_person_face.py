@@ -17,8 +17,8 @@ torch.set_num_threads(4)  # PyTorch threads
 model = YOLO("yolo11m.pt")
 
 # Define experiment name and output directory
-experiment_name = timestamp + "_yolo_gaze_finetune_with_augment_and_earlystop"
-output_dir = YoloPaths.gaze_output_dir / experiment_name
+experiment_name = timestamp + "_yolo_person_face_finetune_with_augment_and_earlystop"
+output_dir = YoloPaths.person_face_output_dir / experiment_name
 
 # Train the model with a cosine annealing learning rate scheduler
 model.train(
@@ -32,7 +32,7 @@ model.train(
     lr0=0.01,  # Initial learning rate
     lrf=0.001,  # Final learning rate after scheduling
     cos_lr=True,  # Use cosine annealing for learning rate scheduling,
-    patience=5,  # Stop training if no improvement for 5 consecutive epochs
+    patience=10,  # Stop training if no improvement for 5 consecutive epochs
     device=0,  # GPU (use "cpu" for CPU training)
     plots=True,  # Plot training results
 )
