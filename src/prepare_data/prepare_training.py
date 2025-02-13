@@ -262,10 +262,11 @@ def move_images(image_names: list, split_type: str, label_path: Path):
         label_dst = label_dst_dir / f"{image_name}.txt"
         
         # check if label file exists and create it if not
-        if not label_dst.exists():
-            label_dst.touch()
-        shutil.copy(image_src, image_dst)
+    if not label_src.exists():
+        label_dst.touch()  # Create an empty destination label file if the source does not exist
+    else:
         shutil.copy(label_src, label_dst)
+    shutil.copy(image_src, image_dst)
 
 def split_yolo_data(label_path: Path, yolo_target: str):
     """
