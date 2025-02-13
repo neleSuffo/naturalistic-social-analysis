@@ -99,125 +99,6 @@ def balance_dataset(model_target: str, yolo_target: str):
 
     logging.info(f"Balanced dataset created with {len(images_with_class)} images with {yolo_target}s and {len(images_without_class_sample)} images without {yolo_target}s.")
     
-def copy_mtcnn_files(
-    train_files: list,
-    val_files: list, 
-    test_files: list,
-    train_dir_images: Path,
-    val_dir_images: Path,
-    test_dir_images: Path,
-    train_labels_path: Path,
-    val_labels_path: Path,
-    test_labels_path: Path
-    )-> None:
-    """
-    This function moves the training, validation and testing files to the new mtcnn directories.
-
-    Parameters
-    ----------
-    train_files : list
-        the list of training files
-    val_files : list
-        the list of validation files
-    test_files : list
-        the list of testing files
-    train_dir_images: Path
-        the directory to store the training images
-    val_dir_images: Path
-        the directory to store the validation images
-    test_dir_images: Path
-        the directory to store the testing images
-    train_labels_path: Path
-        the path to store the training labels
-    val_labels_path: Path
-        the path to store the validation labels
-    test_labels_path: Path
-        the path to store the testing labels
-    """
-    logging.info(f"Moving MTCNN files to {train_dir_images}, {val_dir_images}, {test_dir_images}, {train_labels_path}, {val_labels_path} and {test_labels_path}")
-    # Move the images to the training and validation directories
-    # Convert all elements in train_files and val_files to Path objects
-    train_files = [Path(file_path) for file_path in train_files]
-    val_files = [Path(file_path) for file_path in val_files]
-    test_files = [Path(file_path) for file_path in test_files]
-    
-    for file_path_train in train_files:
-        src_image_path = DetectionPaths.images_input / file_path_train.name
-        dest_image_path = train_dir_images / file_path_train.name
-        shutil.copy(src_image_path, dest_image_path)
-    for file_path_val in val_files:
-        src_image_path = DetectionPaths.images_input / file_path_val.name
-        dest_image_path = val_dir_images / file_path_val.name
-        shutil.copy(src_image_path, dest_image_path)
-    for file_path_test in test_files:
-        src_image_path = DetectionPaths.images_input / file_path_test.name
-        dest_image_path = test_dir_images / file_path_test.name
-        shutil.copy(src_image_path, dest_image_path)
-    
-    # Convert lists to sets and extract the file names
-    train_set = set(train_files)
-    val_set = set(val_files)
-    test_set = set(test_files)
-    file_names_in_train_set = {path.name.rsplit('.', 1)[0] for path in train_set}
-    file_names_in_val_set = {path.name.rsplit('.', 1)[0] for path in val_set}
-    file_names_in_test_set = {path.name.rsplit('.', 1)[0] for path in test_set}
-
-    # Move the labels to the training and validation directories
-    with MtcnnPaths.labels_file_path.open('r') as original_file, train_labels_path.open('w') as train_file, val_labels_path.open('w') as validation_file, test_labels_path.open('w') as test_file:
-        for line in original_file:
-            image_file_name = line.split()[0]  # Assuming the file name is the first element
-            if image_file_name in file_names_in_train_set:
-                train_file.write(line)
-            elif image_file_name in file_names_in_val_set:
-                validation_file.write(line)
-            elif image_file_name in file_names_in_test_set:
-                test_file.write(line)
-    logging.info("MTCNN files copied successfully")
-
-
-def prepare_mtcnn_dataset(
-    destination_dir: Path,
-    train_files: list,
-    val_files: list,
-    test_files: list
-):
-    """
-    This function moves the training, validation and testing files to the new yolo directories.
-
-    Parameters
-    ----------
-    destination_dir : Path
-        the destination directory to store the training and validation sets
-    train_files : list
-        the list of training files
-    val_files : list
-        the list of validation files
-    test_files : list
-
-    """
-    # Define source directory and new directories for training
-    train_dir_images = destination_dir / "train/images"
-    train_labels_path = destination_dir / "train/train.txt"
-    val_dir_images = destination_dir / "val/images"
-    val_labels_path = destination_dir / "val/val.txt"
-    test_dir_images = destination_dir / "test/images"
-    test_labels_path = destination_dir / "test/test.txt"
-
-    # Create necessary directories if they don't exist
-    for path in [train_dir_images, val_dir_images, train_labels_path.parent, val_labels_path.parent, test_dir_images, test_labels_path.parent]:
-        path.mkdir(parents=True, exist_ok=True)
-    
-    # Move the files to the new directories
-    copy_mtcnn_files(train_files, 
-                    val_files, 
-                    test_files,
-                    train_dir_images, 
-                    val_dir_images,
-                    test_dir_images,
-                    train_labels_path, 
-                    val_labels_path,
-                    test_labels_path,
-    )    
 def get_total_number_of_annotated_frames(label_path: Path, image_folder: Path) -> list:
     """
     This function returns the total number of annotated frames in the dataset.
@@ -273,11 +154,11 @@ def get_class_distribution(total_images: list, annotation_folder: Path, yolo_tar
         - Class-to-total ratio.
     """
     if yolo_target == "person+face":
-        with_class = []
-        without_class = []
-        person_count = 0
-        face_count = 0
-        child_count = 0
+        with_class = set()
+        without_class = set()
+        person_images = set()
+        face_images = set()
+        child_images = set()
 
         for image_file in total_images:
             annotation_file = annotation_folder / Path(image_file).with_suffix('.txt').name
@@ -285,22 +166,26 @@ def get_class_distribution(total_images: list, annotation_folder: Path, yolo_tar
                 with open(annotation_file, 'r') as f:
                     lines = f.readlines()
                     if len(lines) == 0:
-                        without_class.append(image_file)
+                        without_class.add(image_file)
                     else:
-                        with_class.append(image_file)
+                        with_class.add(image_file)
                         for line in lines:
                             parts = line.strip().split()
                             if parts:
                                 class_id = parts[0]
                                 if class_id == "0":  # 0 = person
-                                    person_count += 1
+                                    person_images.add(image_file)
                                 elif class_id == "1":  # 1 = face
-                                    face_count += 1
+                                    face_images.add(image_file)
                                 elif class_id == "2":  # 2 = child body parts
-                                    child_count += 1
+                                    child_images.add(image_file)
             else:
                 without_class.append(image_file)
         total_images_count = len(total_images)
+        person_count = len(person_images)
+        face_count = len(face_images)
+        child_count = len(child_images)
+        
         person_ratio = person_count / total_images_count if total_images_count else 0
         face_ratio = face_count / total_images_count if total_images_count else 0
         child_ratio = child_count / total_images_count if total_images_count else 0
@@ -414,60 +299,53 @@ def get_labels_for_image(image_file: str, annotation_folder: Path) -> tuple:
 
 def stratified_split_person_face(images: list, annotation_folder: Path, train_ratio: float, val_ratio: float):
     """
-    Splits the dataset into train, validation, and test sets while preserving the distribution
-    of 'person' and 'face' labels. Each image is placed in a group based on its label tuple
-    (person_flag, face_flag), and each group is then split according to the specified ratios.
-    
-    Parameters:
-    ----------
-    images : list
-        List of image file names or paths.
-    annotation_folder : Path
-        Path to the directory containing annotation files.
-    train_ratio : float
-        Proportion of each group to be allocated to the training set.
-    val_ratio : float
-        Proportion of each group to be allocated to the validation set.
-        The remainder goes to the test set.
-    
-    Returns:
-    -------
-    tuple
-        Three lists: (train_split, val_split, test_split)
+    Ensures that the ratio of person to total and face to total is approximately preserved
+    in training, validation, and test sets, counting each image only once per class.
     """
-    # Group images based on their (person, face) labels
-    groups = {}
+    # Assign each image a (person_flag, face_flag) label
+    label_groups = defaultdict(list)
     for img in images:
         label = get_labels_for_image(img, annotation_folder)
-        groups.setdefault(label, []).append(img)
+        label_groups[label].append(img)
+
+    # Split each group while maintaining overall ratios
+    train_split, val_split, test_split = [], [], []
     
-    train_split = []
-    val_split = []
-    test_split = []
-    
-    for label, group_imgs in groups.items():
-        random.shuffle(group_imgs)
-        total = len(group_imgs)
+    for label, imgs in label_groups.items():
+        random.shuffle(imgs)
+        total = len(imgs)
         train_count = int(total * train_ratio)
         val_count = int(total * val_ratio)
-        
-        train_split.extend(group_imgs[:train_count])
-        val_split.extend(group_imgs[train_count:train_count + val_count])
-        test_split.extend(group_imgs[train_count + val_count:])
-    
-    # Logging the distribution per split
-    def log_split_stats(split, split_name):
-        person_total = face_total = 0
-        for img in split:
-            p, f = get_labels_for_image(img, annotation_folder)
-            person_total += p
-            face_total += f
-        logging.info(f"{split_name} split: {len(split)} images, Person sum: {person_total}, Face sum: {face_total}")
 
-    log_split_stats(train_split, "Train")
-    log_split_stats(val_split, "Validation")
-    log_split_stats(test_split, "Test")
-    
+        train_split.extend(imgs[:train_count])
+        val_split.extend(imgs[train_count:train_count + val_count])
+        test_split.extend(imgs[train_count + val_count:])
+
+    # Function to compute person/face ratios while counting each image only once per category
+    def compute_ratios(split):
+        person_images = set()
+        face_images = set()
+
+        for img in split:
+            person_flag, face_flag = get_labels_for_image(img, annotation_folder)
+            if person_flag:
+                person_images.add(img)  # Count each image only once
+            if face_flag:
+                face_images.add(img)
+
+        person_ratio = len(person_images) / len(split) if split else 0
+        face_ratio = len(face_images) / len(split) if split else 0
+        return person_ratio, face_ratio
+
+    # Compute per-split person/face ratios
+    train_ratios = compute_ratios(train_split)
+    val_ratios = compute_ratios(val_split)
+    test_ratios = compute_ratios(test_split)
+
+    logging.info(f"Train: {len(train_split)} images, Person ratio: {train_ratios[0]:.2f}, Face ratio: {train_ratios[1]:.2f}")
+    logging.info(f"Validation: {len(val_split)} images, Person ratio: {val_ratios[0]:.2f}, Face ratio: {val_ratios[1]:.2f}")
+    logging.info(f"Test: {len(test_split)} images, Person ratio: {test_ratios[0]:.2f}, Face ratio: {test_ratios[1]:.2f}")
+
     return train_split, val_split, test_split
 
 def copy_files_to_split(split_name, files, annotation_folder, output_folder, yolo_target):
@@ -577,16 +455,6 @@ def split_yolo_data(total_images: list,
     random.shuffle(with_class)
     random.shuffle(without_class)
 
-    # Perform stratified splitting
-    train_with, val_with, test_with = stratified_split(with_class, train_ratio, val_ratio)
-    train_without, val_without, test_without = stratified_split(without_class, train_ratio, val_ratio)
-
-    # Merge class and no-class images into final splits
-    splits = {
-        "train": train_with + train_without,
-        "val": val_with + val_without,
-        "test": test_with + test_without
-    }
     if yolo_target == "person+face":
         # Use stratified_split_person_face to preserve both person and face ratios.
         train_split, val_split, test_split = stratified_split_person_face(total_images, annotation_folder, train_ratio, val_ratio)
@@ -596,12 +464,8 @@ def split_yolo_data(total_images: list,
             "test": test_split
         }
         logging.info(f"Person+Face split: Train {len(splits['train'])} images, Val {len(splits['val'])} images, Test {len(splits['test'])} images.")
-        
     else:
         # Existing logic for other yolo_targets
-        with_class, without_class = get_class_distribution(total_images, annotation_folder, yolo_target)[:2]
-        random.shuffle(with_class)
-        random.shuffle(without_class)
         train_with, val_with, test_with = stratified_split(with_class, train_ratio, val_ratio)
         train_without, val_without, test_without = stratified_split(without_class, train_ratio, val_ratio)
         splits = {
