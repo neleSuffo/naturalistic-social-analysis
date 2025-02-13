@@ -134,7 +134,7 @@ def save_annotations(
         if target == "gaze":
             # category id is replaced with gaze_directed_at_child (No: 0, Yes: 1)
             category_id = gaze_mapping.get(gaze_directed_at_child, gaze_directed_at_child)
-        if target == "person+face":
+        if target == "person_face":
             # Map the category_id to the YOLO format (treat person, reflection, face all as category "person")
             category_id = person_face_mapping.get(category_id, category_id)
         # YOLO format: category_id x_center y_center width height
@@ -169,11 +169,11 @@ def main(target: str) -> None:
             "face": YoloConfig.face_target_class_ids,
             "gaze": YoloConfig.face_target_class_ids,
             "person": YoloConfig.person_target_class_ids,
-            "person+face": YoloConfig.person_target_class_ids
+            "person_face": YoloConfig.person_target_class_ids
         }.get(target)
 
         if category_ids is None:
-            logging.error(f"Invalid target: {target}. Expected 'face', 'person', 'person+face' or 'gaze'.")
+            logging.error(f"Invalid target: {target}. Expected 'face', 'person', 'person_face' or 'gaze'.")
             return
 
         annotations = fetch_all_annotations(category_ids=category_ids)
