@@ -99,7 +99,7 @@ def save_annotations(
         the target detection type
     """
     logging.info("Saving annotations in YOLO format.")
-    output_dir = YoloPaths.face_labels_input_dir if target == "face" else YoloPaths.person_labels_input_dir if target == "person" else YoloPaths.person_face_labels_input_dir if target == "person+face" else YoloPaths.gaze_labels_input_dir      
+    output_dir = YoloPaths.face_labels_input_dir if target == "face" else YoloPaths.person_labels_input_dir if target == "person" else YoloPaths.person_face_labels_input_dir if target == "person_face" else YoloPaths.gaze_labels_input_dir      
     output_dir.mkdir(parents=True, exist_ok=True)
     
     file_contents = {}
