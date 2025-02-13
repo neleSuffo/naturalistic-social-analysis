@@ -21,7 +21,7 @@ def main(model: str, yolo_target: str, setup_db: bool = False) -> None:
     model : str
         Model to convert to (e.g., "yolo", "mtcnn", "all")
     yolo_target : str
-        Target YOLO label ("person", "face", "person+face" or "gaze")
+        Target YOLO label ("person", "face", "person_face" or "gaze")
     setup_db : bool
         Whether to set up the database
 
