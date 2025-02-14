@@ -3,8 +3,7 @@ from ultralytics import YOLO
 from constants import YoloPaths
 from datetime import datetime
 # Load a model
-#model = YOLO(YoloPaths.face_trained_weights_path)
-model = YOLO("yolo11m.pt")
+model = YOLO(YoloPaths.person_trained_weights_path)
 
 folder_name = "person_validation_" + datetime.now().strftime("%Y%m%d_%H%M%S")
 # Validate the model
