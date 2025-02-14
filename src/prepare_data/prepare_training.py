@@ -125,10 +125,10 @@ def get_total_number_of_annotated_frames(label_path: Path, image_folder: Path = 
     for video_name in video_names:
         video_path = image_folder / video_name
         if video_path.exists() and video_path.is_dir():
-            total_images.extend(os.listdir(video_path))
+            total_images.extend([str(p.resolve()) for p in video_path.iterdir() if p.is_file()])
     return total_images   
 
-def get_class_distribution(label_path: Path):
+def get_pf_class_distribution(total_images: list, annotation_folder: Path) -> tuple:
     """
     This function reads the label files and groups images based on their class distribution.
     
@@ -141,7 +141,9 @@ def get_class_distribution(label_path: Path):
       
     Parameters:
     ----------
-    label_path: Path
+    total_images: list
+        List of image names.
+    annotation_folder: Path
         Path to the directory containing label files.
     
     Returns:
@@ -160,30 +162,30 @@ def get_class_distribution(label_path: Path):
     images_multiple = set()
     images_neither = set()
     
-    for label_file in label_path.glob('*.txt'):
-        with label_file.open('r') as f:
-            labels = f.readlines()
+    for image_file in total_images:
+        image_file = Path(image_file)
+        annotation_file = annotation_folder / image_file.with_suffix('.txt').name
+        if annotation_file.exists() and annotation_file.stat().st_size > 0:
+            with open(annotation_file, 'r') as f:
+                labels = f.readlines()    
         
-        # If the file is empty, classify as neither.
-        if not labels:
-            images_neither.add(label_file.stem)
-            continue
-        
-        # Get all class_ids from the file.
-        class_ids = {int(line.split()[0]) for line in labels if line.split()}
-        # Ignore class 2
-        reduced_ids = class_ids - {2}
-        
-        if reduced_ids == {0}:
-            images_only_person.add(label_file.stem)
-        elif reduced_ids == {1}:
-            images_only_face.add(label_file.stem)
-        elif reduced_ids == {0, 1}:
-            images_multiple.add(label_file.stem)
+            # Get all class_ids from the file.
+            class_ids = {int(line.split()[0]) for line in labels if line.split()}
+            # Ignore class 2
+            reduced_ids = class_ids - {2}
+            
+            if reduced_ids == {0}:
+                images_only_person.add(image_file.stem)
+            elif reduced_ids == {1}:
+                images_only_face.add(image_file.stem)
+            elif reduced_ids == {0, 1}:
+                images_multiple.add(image_file.stem)
+            else:
+                images_neither.add(image_file.stem)
         else:
-            images_neither.add(label_file.stem)
-    
-    total_num_images = len(get_total_number_of_annotated_frames(label_path))
+            images_neither.add(image_file.stem)
+        
+    total_num_images = len(total_images)
     only_person_ratio = len(images_only_person) / total_num_images
     only_face_ratio = len(images_only_face) / total_num_images
     multiple_ratio = len(images_multiple) / total_num_images
@@ -191,6 +193,57 @@ def get_class_distribution(label_path: Path):
     logging.info(f"Total number of annotated frames: {total_num_images}")
     logging.info(f"Class distribution: {len(images_only_person)} only person {only_person_ratio:.2f}, {len(images_only_face)} only face {only_face_ratio:.2f}, {len(images_multiple)} multiple {multiple_ratio:.2f}, {len(images_neither)} neither {neither_ratio:.2f}")
     return images_only_person, images_only_face, images_multiple, images_neither
+
+def get_gaze_class_distribution(total_images: list, annotation_folder: Path) -> tuple:
+    """
+    This function reads the label files and groups images based on their class distribution.
+    
+    For each label file, all class_ids in the file are examined at once.
+    Class 2 is ignored in the grouping so that:
+      - Images with only 0s (or 0s and 2s) are considered as "only persons".
+      - Images with only 1s (or 1s and 2s) are considered as "only faces".
+      - Images with both 0 and 1 (with or without 2) are "multiple classes".
+      - Otherwise, if the file is empty or contains no 0 or 1, it's "neither".
+      
+    Parameters:
+    ----------
+    total_images: list
+        List of image names.
+    annotation_folder: Path
+        Path to the directory containing label files.
+    
+    Returns:
+    -------
+    images_only_person: set
+        Set of image names with only class 0.
+    images_only_face: set
+        Set of image names with only class 1.
+    images_multiple: set
+        Set of image names with both classes 0 and 1.
+    images_neither: set
+        Set of image names with no classes or only class 2.
+    """
+    images_no_gaze= set()
+    images_gaze = set()
+    
+    for image_file in total_images:
+        image_file = Path(image_file)
+        annotation_file = annotation_folder / image_file.with_suffix('.txt').name
+        if annotation_file.exists() and annotation_file.stat().st_size > 0:
+            with open(annotation_file, 'r') as f:
+                lines = f.readlines()
+                for i, line in enumerate(lines):
+                    class_id = line.strip().split()[0]
+                    if class_id == "0":  # 0 = no gaze
+                        images_no_gaze.add(f"{image_file.stem}_face_{i}.jpg")
+                    elif class_id == "1":  # 1 = gaze
+                        images_gaze.add(f"{image_file.stem}_face_{i}.jpg")
+    
+    total_gaze = len(images_gaze) + len(images_no_gaze)
+    ratio = len(images_gaze) / total_gaze if total_gaze > 0 else 0
+    logging.info(f"Gaze-to-No-Gaze Ratio: {ratio:.4f} ({len(images_gaze)}/{len(images_no_gaze)})")
+    
+    return images_no_gaze, images_gaze
 
 def stratified_split(image_sets: list, train_ratio: float = TrainingConfig.train_test_split_ratio):
     """
@@ -215,9 +268,9 @@ def stratified_split(image_sets: list, train_ratio: float = TrainingConfig.train
     val_ratio = (1 - train_ratio) / 2
     train, val, test = [], [], []
     
-    logging.info(f"Splitting {len(image_list)} images from category {image_set}.")
     for image_set in image_sets:
         image_list = list(image_set)
+        logging.info(f"Splitting {len(image_list)} images...")
         random.shuffle(image_list)
         total = len(image_list)
         
@@ -248,25 +301,28 @@ def move_images(image_names: list, split_type: str, label_path: Path):
         Path to the directory containing
     """
     logging.info(f"Moving {len(image_names)} images to {split_type} split...")
-    image_dst_dir = Path(YoloPaths.person_face_output_dir) / "images" / split_type
-    label_dst_dir = Path(YoloPaths.person_face_output_dir) / "labels" / split_type
+    image_dst_dir = Path(YoloPaths.person_face_data_input_dir) / "images" / split_type
+    label_dst_dir = Path(YoloPaths.person_face_data_input_dir) / "labels" / split_type
     
     # Create directories if they don't exist
     image_dst_dir.mkdir(parents=True, exist_ok=True)
     label_dst_dir.mkdir(parents=True, exist_ok=True)
     
     for image_name in image_names:
-        image_src = Path(DetectionPaths.images_input_dir) / f"{image_name}.jpg"
+        # construct full image path
+        image_parts = image_name.split("_")[:8]
+        image_folder = "_".join(image_parts)
+        image_src = DetectionPaths.images_input_dir / image_folder / f"{image_name}.jpg"
         label_src = label_path / f"{image_name}.txt"
         image_dst = image_dst_dir / f"{image_name}.jpg"
         label_dst = label_dst_dir / f"{image_name}.txt"
         
         # check if label file exists and create it if not
-    if not label_src.exists():
-        label_dst.touch()  # Create an empty destination label file if the source does not exist
-    else:
-        shutil.copy(label_src, label_dst)
-    shutil.copy(image_src, image_dst)
+        if not label_src.exists():
+            label_dst.touch()  # Create an empty destination label file if the source does not exist
+        else:
+            shutil.copy(label_src, label_dst)
+        shutil.copy(image_src, image_dst)
 
 def split_yolo_data(label_path: Path, yolo_target: str):
     """
@@ -279,20 +335,36 @@ def split_yolo_data(label_path: Path, yolo_target: str):
     yolo_target: str
         The target object for YOLO detection.
     """
-    if yolo_target == "person_face":
-        image_sets = get_class_distribution(label_path)
-        train, val, test = stratified_split(image_sets)
-        
-        move_images(train, "train", label_path)
-        move_images(val, "val", label_path)
-        move_images(test, "test", label_path)
-    elif yolo_target == "gaze":
-        # Implement stratified split for gaze if needed
-        pass
+    total_images = get_total_number_of_annotated_frames(label_path)
+    
+     # Mapping of target type to corresponding distribution function.
+    distribution_funcs = {
+        "person_face": get_pf_class_distribution,
+        "gaze": get_gaze_class_distribution,
+    }
+    try:
+        image_sets = distribution_funcs[yolo_target](total_images, label_path)
+    except KeyError:
+        raise ValueError(f"Invalid yolo_target: {yolo_target}")
+    
+    train, val, test = stratified_split(image_sets)
 
-def main(model_target, yolo_target):
+    for split_name, split_set in (("train", train), ("val", val), ("test", test)):
+        move_images(split_set, split_name, label_path)
+
+def main(model_target: str, yolo_target: str):
+    """
+    Main function to prepare the dataset for model training.
+    
+    Parameters:
+    ----------
+    model_target : str
+        The target model for preparation (e.g., "yolo").
+    yolo_target : str
+        The target type for YOLO (e.g., "person" or "face").
+    """
     if model_target == "yolo":
-        label_path = Path(YoloPaths.person_face_labels_input_dir) if yolo_target == "person_face" else Path(YoloPaths.gaze_labels_input_dir)
+        label_path = YoloPaths.person_face_labels_input_dir if yolo_target == "person_face" else YoloPaths.gaze_labels_input_dir
         split_yolo_data(label_path, yolo_target)
         logging.info("Dataset preparation for YOLO completed.")
     elif model_target == "other_model":
