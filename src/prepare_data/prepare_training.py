@@ -341,21 +341,24 @@ def move_images(yolo_target: str, image_names: list, split_type: str, label_path
             image_parts = image_name.split("_")[:8]
             image_folder = "_".join(image_parts)
             image_src = DetectionPaths.images_input_dir / image_folder / f"{image_name}.jpg"
-        elif yolo_target == "gaze" or yolo_target == "no_gaze":
-            image_src = YoloPaths.gaze_extracted_faces_dir  / image_name
-        if not image_src.exists():
-            logging.warning(f"Image {image_src} does not exist. Skipping...")
-            continue
-        label_src = label_path / f"{image_name}.txt"
-        image_dst = image_dst_dir / f"{image_name}.jpg"
-        label_dst = label_dst_dir / f"{image_name}.txt"
+            label_src = label_path / f"{image_name}.txt"
+            image_dst = image_dst_dir / f"{image_name}.jpg"
+            label_dst = label_dst_dir / f"{image_name}.txt"
+            # check if label file exists and create it if not
+            if not label_src.exists():
+                label_dst.touch()  # Create an empty destination label file if the source does not exist
+            else:
+                shutil.copy(label_src, label_dst)
+            shutil.copy(image_src, image_dst)
         
-        # check if label file exists and create it if not
-        if not label_src.exists():
-            label_dst.touch()  # Create an empty destination label file if the source does not exist
-        else:
-            shutil.copy(label_src, label_dst)
-        shutil.copy(image_src, image_dst)
+        elif yolo_target == "gaze" or yolo_target == "no_gaze":
+            image_src = DetectionPaths.gaze_images_input_dir  / image_name
+            image_dst = image_dst_dir / image_name
+
+            if not image_src.exists():
+                logging.warning(f"Image {image_src} does not exist. Skipping...")
+                continue
+            shutil.copy(image_src, image_dst)
 
 def split_yolo_data(label_path: Path, yolo_target: str):
     """
