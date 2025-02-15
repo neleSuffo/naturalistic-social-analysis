@@ -245,7 +245,7 @@ def get_gaze_class_distribution(total_images: list, annotation_folder: Path) -> 
     
     return images_no_gaze, images_gaze
 
-def stratified_split(image_sets: list, train_ratio: float = TrainingConfig.train_test_split_ratio):
+def stratified_split(image_sets: list, yolo_target: str, train_ratio: float = TrainingConfig.train_test_split_ratio):
     """
     This function splits the images into train, val, and test sets based on the class distribution.
     
@@ -253,46 +253,69 @@ def stratified_split(image_sets: list, train_ratio: float = TrainingConfig.train
     ----------
     image_sets: list
         List of sets containing image names grouped by class distribution.
+    yolo_target: str
+        The target type for YOLO (e.g., "person_face" or "gaze").
     train_ratio: float
         The ratio of images to be used for training, default is 0.8.
     
     Returns:
     -------
-    train: list
-        List of image names for training.
-    val: list
-        List of image names for validation.
-    test: list  
-        List of image names for testing.
+    If yolo_target == "gaze":
+        dict: {
+            "no_gaze": (list of train, list of val, list of test),
+            "gaze": (list of train, list of val, list of test)
+        }
+    Otherwise:
+        tuple: (list of train, list of val, list of test) combining all image sets.
     """
     val_ratio = (1 - train_ratio) / 2
-    train, val, test = [], [], []
     
+    # For gaze target, split each set separately
+    if yolo_target == "gaze":
+        if len(image_sets) != 2:
+            raise ValueError("For yolo_target 'gaze', image_sets must contain exactly two sets (no_gaze and gaze).")
+        result = {}
+        class_labels = ["no_gaze", "gaze"]
+        for idx, label in enumerate(class_labels):
+            image_list = list(image_sets[idx])
+            logging.info(f"Splitting {len(image_list)} images for class '{label}'.")
+            random.shuffle(image_list)
+            total = len(image_list)
+            train_split = int(total * train_ratio)
+            val_split = int(total * val_ratio)
+            train = image_list[:train_split]
+            val = image_list[train_split:train_split + val_split]
+            test = image_list[train_split + val_split:]
+            logging.info(f"Class '{label}': {len(train)} train, {len(val)} val, {len(test)} test images.")
+            result[label] = (train, val, test)
+        return result
+    
+    # For non-gaze targets, combine splits from each set.
+    train, val, test = [], [], []
     for image_set in image_sets:
         image_list = list(image_set)
         logging.info(f"Splitting {len(image_list)} images...")
         random.shuffle(image_list)
         total = len(image_list)
-        
         train_split = int(total * train_ratio)
         val_split = int(total * val_ratio)
-        
-        train_split = int(total * train_ratio)
-        val_split = int(total * val_ratio)
-        
-        logging.info(f"Added {len(image_list[:train_split])} to train, {len(image_list[train_split:train_split + val_split])} to val, {len(image_list[train_split + val_split:])} to test.")
+        logging.info(f"Added {len(image_list[:train_split])} to train, "
+                     f"{len(image_list[train_split:train_split + val_split])} to val, "
+                     f"{len(image_list[train_split + val_split:])} to test.")
         train.extend(image_list[:train_split])
         val.extend(image_list[train_split:train_split + val_split])
         test.extend(image_list[train_split + val_split:])
     
     return train, val, test
 
-def move_images(image_names: list, split_type: str, label_path: Path):
+def move_images(yolo_target: str, image_names: list, split_type: str, label_path: Path):
     """
     This function moves the images to the specified split directory.
     
     Parameters:
     ----------
+    yolo_target: str
+        The target type for YOLO (e.g., "person_face", "gaze" or "no_gaze").
     image_names: list
         List of image names to be moved.
     split_type: str
@@ -301,18 +324,28 @@ def move_images(image_names: list, split_type: str, label_path: Path):
         Path to the directory containing
     """
     logging.info(f"Moving {len(image_names)} images to {split_type} split...")
-    image_dst_dir = Path(YoloPaths.person_face_data_input_dir) / "images" / split_type
-    label_dst_dir = Path(YoloPaths.person_face_data_input_dir) / "labels" / split_type
+    if yolo_target == "person_face":
+        image_dst_dir = YoloPaths.person_face_data_input_dir / "images" / split_type
+        label_dst_dir = YoloPaths.person_face_data_input_dir / "labels" / split_type
+    elif yolo_target == "gaze" or yolo_target == "no_gaze":
+        image_dst_dir = YoloPaths.gaze_data_input_dir / split_type / yolo_target
+        label_dst_dir = YoloPaths.gaze_data_input_dir /  split_type / yolo_target
     
     # Create directories if they don't exist
     image_dst_dir.mkdir(parents=True, exist_ok=True)
     label_dst_dir.mkdir(parents=True, exist_ok=True)
     
     for image_name in image_names:
-        # construct full image path
-        image_parts = image_name.split("_")[:8]
-        image_folder = "_".join(image_parts)
-        image_src = DetectionPaths.images_input_dir / image_folder / f"{image_name}.jpg"
+        if yolo_target == "person_face":
+            # construct full image path
+            image_parts = image_name.split("_")[:8]
+            image_folder = "_".join(image_parts)
+            image_src = DetectionPaths.images_input_dir / image_folder / f"{image_name}.jpg"
+        elif yolo_target == "gaze" or yolo_target == "no_gaze":
+            image_src = YoloPaths.gaze_extracted_faces_dir  / image_name
+        if not image_src.exists():
+            logging.warning(f"Image {image_src} does not exist. Skipping...")
+            continue
         label_src = label_path / f"{image_name}.txt"
         image_dst = image_dst_dir / f"{image_name}.jpg"
         label_dst = label_dst_dir / f"{image_name}.txt"
@@ -347,10 +380,17 @@ def split_yolo_data(label_path: Path, yolo_target: str):
     except KeyError:
         raise ValueError(f"Invalid yolo_target: {yolo_target}")
     
-    train, val, test = stratified_split(image_sets)
-
-    for split_name, split_set in (("train", train), ("val", val), ("test", test)):
-        move_images(split_set, split_name, label_path)
+    if yolo_target == "gaze":
+        splits_dict = stratified_split(image_sets, yolo_target="gaze")
+        for gaze_class in ["no_gaze", "gaze"]:
+            train, val, test = splits_dict[gaze_class]
+            for split_name, split_set in (("train", train), ("val", val), ("test", test)):
+                move_images(gaze_class, split_set, split_name, label_path)
+    else:
+        train, val, test = stratified_split(image_sets, yolo_target="person_face")
+        for split_name, split_set in (("train", train), ("val", val), ("test", test)):
+            move_images(yolo_target, split_set, split_name, label_path)
+        
 
 def main(model_target: str, yolo_target: str):
     """
