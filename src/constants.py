@@ -43,6 +43,7 @@ class YoloPaths:
     face_data_input_dir = Path(BasePaths.data_dir/"yolo_face_input")
     face_output_dir = Path(BasePaths.output_dir/"yolo_face_detections/")
 
+    gaze_extracted_faces_dir = Path(BasePaths.data_dir/"quantex_gaze_input")
     gaze_trained_weights_path = Path(BasePaths.models_dir/'yolo11_gaze_classification.pt')
     gaze_extraction_progress_file_path = Path(BasePaths.data_dir/"gaze_extraction_progress.txt")
     gaze_missing_frames_file_path = Path(BasePaths.data_dir/"gaze_missing_frames.txt")
