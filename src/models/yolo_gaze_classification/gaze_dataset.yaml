@@ -1,7 +1,7 @@
-path: /home/nele_pauline_suffo/ProcessedData/yolo_gaze_input
-train: /home/nele_pauline_suffo/ProcessedData/yolo_gaze_input/train
-val: /home/nele_pauline_suffo/ProcessedData/yolo_gaze_input/val
-test: /home/nele_pauline_suffo/ProcessedData/yolo_gaze_input/test
+path: /home/nele_pauline_suffo/ProcessedData/yolo_gaze_input_balanced
+train: /home/nele_pauline_suffo/ProcessedData/yolo_gaze_input_balanced/train
+val: /home/nele_pauline_suffo/ProcessedData/yolo_gaze_input_balanced/val
+test: /home/nele_pauline_suffo/ProcessedData/yolo_gaze_input_balanced/test
 
 # Number of classes
 nc: 2
