@@ -1,6 +1,9 @@
 import sqlite3
+import logging
 from pathlib import Path
 from constants import DetectionPaths
+
+logging.basicConfig(level=logging.INFO)
 
 def setup_detection_database(db_path: Path = DetectionPaths.detection_db_path):
     """
@@ -35,11 +38,21 @@ def setup_detection_database(db_path: Path = DetectionPaths.detection_db_path):
         )
     ''')
 
-    # Create YOLOClasses table to map class numbers to class names
+
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS Classes (
-            class_id INTEGER PRIMARY KEY,
-            class_name TEXT UNIQUE
+        CREATE TABLE Models (
+            model_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            model_name TEXT UNIQUE
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE Classes (
+            class_id INTEGER,
+            model_id INTEGER,
+            class_name TEXT,
+            PRIMARY KEY (model_id, class_name),
+            FOREIGN KEY (model_id) REFERENCES Models(model_id)
         )
     ''')
     
@@ -60,3 +73,4 @@ def setup_detection_database(db_path: Path = DetectionPaths.detection_db_path):
     ''')
 
     conn.commit()
+    logging.info(f"Detection database created at {db_path}")
