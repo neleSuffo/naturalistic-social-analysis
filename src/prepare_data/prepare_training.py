@@ -17,12 +17,11 @@ def balance_dataset(model_target: str, yolo_target: str):
     model_target : str
         The target model for preparation (e.g., "yolo").
     yolo_target : str
-        The target type for YOLO (e.g., "person" or "face").
+        The target type for YOLO (e.g., "person_face" or "gaze").
     """
     # Define paths based on model and YOLO target
     paths = {
-        ("yolo", "person"): YoloPaths.person_data_input_dir,
-        ("yolo", "face"): YoloPaths.face_data_input_dir,
+        ("yolo", "person_face"): YoloPaths.person_face_data_input_dir,
         ("yolo", "gaze"): YoloPaths.gaze_data_input_dir
     }
 
@@ -214,14 +213,10 @@ def get_gaze_class_distribution(total_images: list, annotation_folder: Path) -> 
     
     Returns:
     -------
-    images_only_person: set
-        Set of image names with only class 0.
-    images_only_face: set
-        Set of image names with only class 1.
-    images_multiple: set
-        Set of image names with both classes 0 and 1.
-    images_neither: set
-        Set of image names with no classes or only class 2.
+    images_no_gaze: set
+        Set of image names with class 0.
+    images_gaze: set
+        Set of image names with class 1.    
     """
     images_no_gaze= set()
     images_gaze = set()
@@ -243,7 +238,7 @@ def get_gaze_class_distribution(total_images: list, annotation_folder: Path) -> 
     ratio = len(images_gaze) / total_gaze if total_gaze > 0 else 0
     logging.info(f"Gaze-to-No-Gaze Ratio: {ratio:.4f} ({len(images_gaze)}/{len(images_no_gaze)})")
     
-    return images_no_gaze, images_gaze
+    return images_gaze, images_no_gaze
 
 def stratified_split(image_sets: list, yolo_target: str, train_ratio: float = TrainingConfig.train_test_split_ratio):
     """
@@ -262,8 +257,8 @@ def stratified_split(image_sets: list, yolo_target: str, train_ratio: float = Tr
     -------
     If yolo_target == "gaze":
         dict: {
-            "no_gaze": (list of train, list of val, list of test),
-            "gaze": (list of train, list of val, list of test)
+            "gaze": (list of train, list of val, list of test),
+            "no_gaze": (list of train, list of val, list of test)
         }
     Otherwise:
         tuple: (list of train, list of val, list of test) combining all image sets.
@@ -275,9 +270,21 @@ def stratified_split(image_sets: list, yolo_target: str, train_ratio: float = Tr
         if len(image_sets) != 2:
             raise ValueError("For yolo_target 'gaze', image_sets must contain exactly two sets (no_gaze and gaze).")
         result = {}
-        class_labels = ["no_gaze", "gaze"]
+        class_labels = ["gaze", "no_gaze"]
+        
+        # Convert tuple elements to lists and undersample 'no_gaze' to match the number of 'gaze' images
+        gaze_images = list(image_sets[0])
+        no_gaze_images = list(image_sets[1])
+        total_gaze = len(gaze_images)
+        if len(no_gaze_images) >= total_gaze:
+            no_gaze_images_new = random.sample(no_gaze_images, total_gaze)
+        else:
+            logging.warning("Not enough 'no_gaze' images; using all available.")
+            
+        new_image_sets = [gaze_images, no_gaze_images_new]
+
         for idx, label in enumerate(class_labels):
-            image_list = list(image_sets[idx])
+            image_list = list(new_image_sets[idx])
             logging.info(f"Splitting {len(image_list)} images for class '{label}'.")
             random.shuffle(image_list)
             total = len(image_list)
@@ -385,7 +392,7 @@ def split_yolo_data(label_path: Path, yolo_target: str):
     
     if yolo_target == "gaze":
         splits_dict = stratified_split(image_sets, yolo_target="gaze")
-        for gaze_class in ["no_gaze", "gaze"]:
+        for gaze_class in ["gaze", "no_gaze"]:
             train, val, test = splits_dict[gaze_class]
             for split_name, split_set in (("train", train), ("val", val), ("test", test)):
                 move_images(gaze_class, split_set, split_name, label_path)
