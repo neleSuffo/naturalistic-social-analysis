@@ -49,7 +49,7 @@ class YoloPaths:
     gaze_missing_frames_file_path = Path(BasePaths.data_dir/"gaze_missing_frames.txt")
     gaze_data_config_path = Path(BasePaths.leuphana_ipe_dir/"src/models/yolo_gaze_classification/gaze_dataset.yaml")
     gaze_labels_input_dir = Path(BasePaths.data_dir/"yolo_gaze_labels")
-    gaze_data_input_dir = Path(BasePaths.data_dir/"yolo_gaze_input")
+    gaze_data_input_dir = Path(BasePaths.data_dir/"yolo_gaze_input_balanced")
     gaze_output_dir = Path(BasePaths.output_dir/"yolo_gaze_classification/")
 
     person_face_trained_weights_path = Path(BasePaths.models_dir/'yolo11_person_face_detection.pt')
