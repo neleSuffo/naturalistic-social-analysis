@@ -26,15 +26,13 @@ def classify_gaze(gaze_model: YOLO, face_image: np.ndarray) -> Tuple[int, int]:
     gaze_confidence : int
         Confidence score of the gaze classification
     """
-    result = gaze_model(face_image)
+    results = gaze_model(face_image)
     
-    results = result[0].boxes
+    result = results[0].probs
     # Extract detection results
-    conf = results.conf  # Confidence scores
-    object_cls = results.cls  # Class labels
-    
-    #return conf[0], object_cls[0]
-    return 0, 0
+    object_cls = result.top1  # Class labels (0 = no_gaze, 1 = gaze)
+    conf = result.top1conf.item()  # Confidence scores
+    return object_cls, conf
 
 def insert_video_record(video_path, cursor) -> int:
     """
@@ -62,7 +60,7 @@ def insert_video_record(video_path, cursor) -> int:
         cursor.execute('SELECT video_id FROM Videos WHERE video_path = ?', (str(video_path),))
         return cursor.fetchone()[0]
 
-def process_frame(frame: np.ndarray, frame_idx: int, video_id: int, person_model: YOLO, gaze_model: YOLO, cursor: sqlite3.Cursor) -> Tuple[int, int]:
+def process_frame(frame: np.ndarray, frame_idx: int, video_id: int, person_face_model: YOLO, gaze_model: YOLO, cursor: sqlite3.Cursor) -> Tuple[int, int]:
     """
     This function processes a frame. It inserts the frame record and processes each object detected in the frame.
     The steps are as follows:
@@ -77,8 +75,8 @@ def process_frame(frame: np.ndarray, frame_idx: int, video_id: int, person_model
         Frame index
     video_id : int
         Video ID
-    person_model : YOLO
-        YOLO model for person detection
+    person_face_model : YOLO
+        YOLO model for person and face detection
     gaze_model : YOLO
         YOLO model for gaze classification
     cursor : sqlite3.Cursor
@@ -94,7 +92,7 @@ def process_frame(frame: np.ndarray, frame_idx: int, video_id: int, person_model
     cursor.execute('INSERT INTO Frames (video_id, frame_number) VALUES (?, ?)', (video_id, frame_idx))
     frame_id = cursor.lastrowid
 
-    result = person_model(frame)
+    result = person_face_model(frame)
     num_persons = 0
     num_faces   = 0
 
@@ -116,8 +114,7 @@ def process_frame(frame: np.ndarray, frame_idx: int, video_id: int, person_model
             num_persons += 1
             gaze_direction = None
             gaze_confidence = None
-        # TODO: needs adjustment for three classes
-        elif object_class == 1:  # child body parts
+        elif object_class == 1:  # face
             num_faces += 1
             face_image = frame[y_min:y_max, x_min:x_max]
             gaze_direction, gaze_confidence = classify_gaze(gaze_model, face_image)
@@ -133,7 +130,7 @@ def process_frame(frame: np.ndarray, frame_idx: int, video_id: int, person_model
 
     return num_persons, num_faces
 
-def process_video(video_path: Path, person_model: YOLO, gaze_model: YOLO, cursor: sqlite3.Cursor, conn: sqlite3.Connection):
+def process_video(video_path: Path, person_face_model: YOLO, gaze_model: YOLO, cursor: sqlite3.Cursor, conn: sqlite3.Connection):
     """
     This function processes a video frame by frame. It inserts the video record, processes each frame, and commits the changes.
     The steps are as follows:
@@ -147,8 +144,8 @@ def process_video(video_path: Path, person_model: YOLO, gaze_model: YOLO, cursor
     ----------
     video_path : Path
         Path to the video file
-    person_model : YOLO
-        YOLO model for person detection
+    person_face_model : YOLO
+        YOLO model for person and face detection
     gaze_model : YOLO
         YOLO model for gaze classification
     cursor : sqlite3.Cursor
@@ -174,7 +171,7 @@ def process_video(video_path: Path, person_model: YOLO, gaze_model: YOLO, cursor
             break
 
         if frame_idx % 10 == 0:
-            num_persons, num_faces = process_frame(frame, frame_idx, video_id, person_model, gaze_model, cursor)
+            num_persons, num_faces = process_frame(frame, frame_idx, video_id, person_face_model, gaze_model, cursor)
             total_persons += num_persons
             total_faces += num_faces
             conn.commit()  # Commit changes after processing each frame
@@ -289,7 +286,39 @@ def run_voice_type_classifier(video_file_name):
         store_voice_detections(video_file_name, rttm_file)
     else:
         logging.error(f"RTTM results file not found: {rttm_file}")
+ 
+def register_model(cursor: sqlite3.Cursor, model_name: str, model: YOLO) -> int:
+    """
+    Registers a YOLO model and its classes in the database.
+    
+    Parameters:
+    ----------
+    cursor : sqlite3.Cursor
+        The SQLite database cursor.
+    model_name : str
+        The name of the model.
+    model : YOLO
+        The YOLO model instance which contains a `model.names` mapping.
         
+    Returns:
+    -------
+    model_id : int
+        The model_id assigned in the database.
+    """
+    # Insert model into Models table if not exists and retrieve its model_id
+    cursor.execute("INSERT OR IGNORE INTO Models (model_name) VALUES (?)", (model_name,))
+    cursor.execute("SELECT model_id FROM Models WHERE model_name = ?", (model_name,))
+    model_id = cursor.fetchone()[0]
+    
+    # Insert associated classes into the Classes table
+    for class_id, class_name in model.model.names.items():
+        cursor.execute('''
+            INSERT OR IGNORE INTO Classes (class_id, model_id, class_name)
+            VALUES (?, ?, ?)
+        ''', (class_id, model_id, class_name))
+        
+    return model_id
+       
 def main():
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s - %(levelname)s - %(message)s')
@@ -299,20 +328,17 @@ def main():
     cursor = conn.cursor()
     
     # Initialize models once
-    person_model = YOLO(YoloPaths.person_trained_weights_path)
-    #TODO: change to gaze model
-    gaze_model = YOLO(YoloPaths.person_trained_weights_path)   
+    person_face_model = YOLO(YoloPaths.person_face_trained_weights_path)
+    gaze_model = YOLO(YoloPaths.gaze_trained_weights_path)   
     
-    # get model class names as dictionary with id and name
-    yolo_classes = person_model.model.names
-    for class_id, class_name in yolo_classes.items():
-        cursor.execute('''
-            INSERT OR IGNORE INTO Classes (class_id, class_name)
-            VALUES (?, ?)
-        ''', (class_id, class_name))
-    
+    person_face_model_id = register_model(cursor, "person_face", person_face_model)
+    gaze_model_id = register_model(cursor, "gaze", gaze_model)
+
+    # For additional models (e.g., voice type classifier), register them similarly if needed
+    cursor.execute("INSERT OR IGNORE INTO Models (model_name) VALUES (?)", ("voice_type_classifier",))
+        
     for video_path in videos_input_dir.glob("*.MP4"):
-        process_video(video_path, person_model, gaze_model, cursor, conn)
+        process_video(video_path, person_face_model, gaze_model, cursor, conn)
         run_voice_type_classifier(video_path.name)
         return
     conn.close()
