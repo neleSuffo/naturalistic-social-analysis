@@ -22,7 +22,7 @@ output_dir = YoloPaths.gaze_output_dir / experiment_name
 
 # Train the model with a cosine annealing learning rate scheduler
 model.train(
-    data="/home/nele_pauline_suffo/ProcessedData/yolo_gaze_input",
+    data="/home/nele_pauline_suffo/ProcessedData/yolo_gaze_input_balanced",
     epochs=200,  # Total number of epochs
     imgsz=1280,  # Image size
     batch=16,   # Batch size
