@@ -45,6 +45,8 @@ def main():
     logging.info(f"F1 Score: {f1_score:.4f}")
 
     # Save precision and recall to a file
+    output_path = YoloPaths.person_output_dir / folder_name
+    output_path.mkdir(parents=True, exist_ok=True)
     with open(YoloPaths.person_output_dir / folder_name / "precision_recall.txt", "w") as f:
         f.write(f"Precision: {precision}\n")
         f.write(f"Recall: {recall}\n")
