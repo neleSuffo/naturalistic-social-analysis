@@ -183,6 +183,7 @@
   }
 {}{\PatchFailed}
 \makeatother
+\keywords{child development, egocentric video, audio dataset, multimodal learning, computer vision, developmental psychology}
 \usepackage{csquotes}
 \ifLuaTeX
   \usepackage{selnolig}  % disable illegal ligatures
@@ -194,6 +195,7 @@
   pdftitle={ChildLens: An Egocentric Video Dataset for Activity Analysis in Children},
   pdfauthor={Nele-Pauline Suffo1, Pierre-Etienne Martin2, Daniel Haun2, \& Manuel Bohn1, 2},
   pdflang={en-EN},
+  pdfkeywords={child development, egocentric video, audio dataset, multimodal learning, computer vision, developmental psychology},
   hidelinks,
   pdfcreator={LaTeX via pandoc}}
 
@@ -239,7 +241,7 @@ To address this gap, we introduce the publicly available ChildLens dataset, whic
 
 \paragraph{Activity Classes}\label{activity-classes}
 
-``The ChildLens dataset includes 14 activity classes and 5 location classes. The activity classes are categorized based on the child's interactions within the video and can be divided into \emph{person-only} activities (e.g.~''child talking'', ``other person talking''), and \emph{person-object} activities (e.g.~``drawing'', ``playing with object''). A brief description of each class can be found in the appendix. These activities are further categorized into \emph{audio-based}, \emph{visual-based}, and \emph{multimodal} activities, as presented in Figure \ref{fig:camera-superannotate-activity-classes}. Below is an overview of the different activity types:
+The ChildLens dataset includes 14 activity classes and 5 location classes. The activity classes are categorized based on the child's interactions within the video and can be divided into \emph{person-only} activities (e.g.~``child talking'', ``other person talking''), and \emph{person-object} activities (e.g.~``drawing'', ``playing with object''). A brief description of each class can be found in the appendix. These activities are further categorized into \emph{audio-based}, \emph{visual-based}, and \emph{multimodal} activities, as presented in Figure \ref{fig:camera-superannotate-activity-classes}. Below is an overview of the different activity types:
 
 \begin{itemize}
 \tightlist
@@ -410,18 +412,22 @@ Before applying the VTC to the ChildLens dataset, we mapped our audio-based acti
 
 The activity class ``Listening to music/audiobook'' was not mapped to any VTC class, as it is not covered by the VTC model. The mapping process resulted in new numbers for the total durations for each VTC class, as shown in Table \ref{tab:vtc-classes-statistics}.
 
+\subsubsection{Implementation Details}\label{implementation-details-1}
+
+In our study, we utilized the Voice Type Classifier without additional training, as its existing training data closely resembled the ChildLens dataset. However, to align with our specific annotation strategy, we adjusted a key parameter. Specifically, we modified the \texttt{min\_duration\_off} parameter, which defines the minimum duration for which an active class must be inactive to be recognized as deactivated by the VTC. The default setting of 0.1 seconds often resulted in numerous short utterance segments. To adhere to the ``2-second rule''---where utterances are combined if the pause between them is 2 seconds or less---we increased this parameter to 2.0 seconds. This adjustment ensured consistency with our annotation methodology and reduced the fragmentation of detected utterances.
+
 \begin{table}[tbp]
 
 \begin{center}
 \begin{threeparttable}
 
-\caption{\label{tab:vtc-classes-statistics}Total Duration (in minutes) of all Instances for each VTC Class}
+\caption{\label{tab:vtc-classes-statistics}Cumulative Duration (in minutes) of Utterances Categorized by Voice Type Class}
 
 \begin{tabular}{llllll}
 \toprule
  & \multicolumn{1}{c}{KCHI} & \multicolumn{1}{c}{CHI} & \multicolumn{1}{c}{MAL} & \multicolumn{1}{c}{FEM} & \multicolumn{1}{c}{SPEECH}\\
 \midrule
-Total Duration (min) & 100 & 100 & 100 & 100 & 100\\
+Total Duration & 731.16 & 40.29 & 114.18 & 280.53 & 1465.55\\
 \bottomrule
 \end{tabular}
 
@@ -432,7 +438,7 @@ Total Duration (min) & 100 & 100 & 100 & 100 & 100\\
 
 \subsubsection{Evaluation}\label{evaluation-1}
 
-Table \ref{tab:vtc-results} presents the performance of the Voice Type Classifier (VTC) on the ChildLens dataset compared to the benchmark dataset from the original study. The VTC model achieves an average \(F_1\) score of \textbf{xx} on the ChildLens dataset, performing comparably to the benchmark dataset. It performs best on the \texttt{CHI} class with an \(F_1\) score of \textbf{xx} and worst on the \texttt{MAL} class with an \(F_1\) score of \textbf{xx} Compared to the benchmark dataset, the model performs significantly better on the \texttt{CHI} class but slightly worse on the \texttt{MAL} and \texttt{FEM} classes. Analysis of False Positives and False Negatives reveals that the most common confusion occurs between the \texttt{MAL} and \texttt{FEM} classes. This may be attributed to the deeper pitch of some female voices in the German language. Additionally, the model was trained on a dataset with a different language distribution and younger children, where adults, particularly females, may use a higher pitch when interacting with infants, unlike with older children.
+Table \ref{tab:vtc-results} presents the performance of the Voice Type Classifier (VTC) on the ChildLens dataset compared to the benchmark dataset from the original study. The VTC model achieves an average \(F_1\) score of \texttt{vtc\_f1} on the ChildLens dataset, performing comparably to the benchmark dataset. It performs best on the \texttt{CHI} class with an \(F_1\) score of \textbf{xx} and worst on the \texttt{MAL} class with an \(F_1\) score of \textbf{xx} Compared to the benchmark dataset, the model performs significantly better on the \texttt{CHI} class but slightly worse on the \texttt{MAL} and \texttt{FEM} classes. Analysis of False Positives and False Negatives reveals that the most common confusion occurs between the \texttt{MAL} and \texttt{FEM} classes. This may be attributed to the deeper pitch of some female voices in the German language. Additionally, the model was trained on a dataset with a different language distribution and younger children, where adults, particularly females, may use a higher pitch when interacting with infants, unlike with older children.
 Figure \ref{fig:vtc-evaluations} provides a visual representation of the VTC predictions compared to the ground truth annotations.
 
 \begin{table}[tbp]
@@ -447,7 +453,7 @@ Figure \ref{fig:vtc-evaluations} provides a visual representation of the VTC pre
 Dataset & \multicolumn{1}{c}{KCHI} & \multicolumn{1}{c}{CHI} & \multicolumn{1}{c}{MAL} & \multicolumn{1}{c}{FEM} & \multicolumn{1}{c}{SPEECH} & \multicolumn{1}{c}{AVG}\\
 \midrule
 ACLEW-Random & 68.7 & 33.2 & 42.9 & 63.4 & 78.4 & 57.3\\
-ChildLens & 59.1 & 79.2 & 17.8 & 33.4 & 68.3 & 51.5\\
+ChildLens & 67.3 & 78.4 & 23.3 & 40.8 & 80.5 & 58.1\\
 \bottomrule
 \end{tabular}
 
