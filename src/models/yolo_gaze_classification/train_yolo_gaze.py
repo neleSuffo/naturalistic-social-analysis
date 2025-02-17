@@ -14,7 +14,7 @@ os.environ['OMP_NUM_THREADS'] = '4'  # OpenMP threads
 torch.set_num_threads(4)  # PyTorch threads
 
 # Load the YOLO model
-model = YOLO("yolo11m-cls.pt")
+model = YOLO("yolo11x-cls.pt")
 
 # Define experiment name and output directory
 experiment_name = timestamp + "_yolo_gaze_finetune_with_augment_and_earlystop"
@@ -22,7 +22,7 @@ output_dir = YoloPaths.gaze_output_dir / experiment_name
 
 # Train the model with a cosine annealing learning rate scheduler
 model.train(
-    data="/home/nele_pauline_suffo/ProcessedData/yolo_gaze_input_balanced",
+    data="/home/nele_pauline_suffo/ProcessedData/yolo_gaze_input",
     epochs=200,  # Total number of epochs
     imgsz=1280,  # Image size
     batch=16,   # Batch size
