@@ -15,10 +15,10 @@ def main():
 
     # Load the YOLO model with the supplied target weights
     if args.yolo_target == "person_face":
-        model = YOLO(YoloPaths.person_trained_weights_path)
+        model = YOLO(YoloPaths.person_face_trained_weights_path)
         folder_name = "person_validation_" + datetime.now().strftime("%Y%m%d_%H%M%S")
-        data_config = str(YoloPaths.person_data_config_path)
-        project_folder = str(YoloPaths.person_output_dir)
+        data_config = str(YoloPaths.person_face_data_config_path)
+        project_folder = str(YoloPaths.person_face_output_dir)
     elif args.yolo_target == "gaze":
         model = YOLO(YoloPaths.gaze_trained_weights_path)
         folder_name = "gaze_validation_" + datetime.now().strftime("%Y%m%d_%H%M%S")
