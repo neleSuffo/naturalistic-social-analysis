@@ -19,11 +19,13 @@ def main():
         folder_name = "person_validation_" + datetime.now().strftime("%Y%m%d_%H%M%S")
         data_config = str(YoloPaths.person_face_data_config_path)
         project_folder = str(YoloPaths.person_face_output_dir)
+        output_path = YoloPaths.person_face_output_dir / folder_name
     elif args.yolo_target == "gaze":
         model = YOLO(YoloPaths.gaze_trained_weights_path)
         folder_name = "gaze_validation_" + datetime.now().strftime("%Y%m%d_%H%M%S")
         data_config = str(YoloPaths.gaze_data_config_path)
         project_folder = str(YoloPaths.gaze_output_dir)
+        output_path = YoloPaths.gaze_output_dir / folder_name
     # Validate the model
     metrics = model.val(
         data=data_config,
@@ -45,9 +47,7 @@ def main():
     logging.info(f"F1 Score: {f1_score:.4f}")
 
     # Save precision and recall to a file
-    output_path = YoloPaths.person_output_dir / folder_name
-    output_path.mkdir(parents=True, exist_ok=True)
-    with open(YoloPaths.person_output_dir / folder_name / "precision_recall.txt", "w") as f:
+    with open(output_path / "precision_recall.txt", "w") as f:
         f.write(f"Precision: {precision}\n")
         f.write(f"Recall: {recall}\n")
         f.write(f"F1 Score: {f1_score}\n")
