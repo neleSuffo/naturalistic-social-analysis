@@ -31,17 +31,17 @@ class DetectionPaths:
     file_name_id_mapping_path = Path(BasePaths.data_dir/"quantex_file_name_to_id_dict/annotations.xml")
 
 class YoloPaths:
-    person_trained_weights_path = Path(BasePaths.models_dir/'yolo11_person_detection.pt')
-    person_data_config_path = Path(BasePaths.leuphana_ipe_dir/"src/models/yolo_person_detection/person_dataset.yaml")
-    person_labels_input_dir = Path(BasePaths.data_dir/"yolo_person_labels")
-    person_data_input_dir = Path(BasePaths.data_dir/"yolo_person_input")
-    person_output_dir = Path(BasePaths.output_dir/"yolo_person_detections/")
-
-    face_trained_weights_path = Path(BasePaths.models_dir/'yolo11_face_detection.pt')
-    face_data_config_path = Path(BasePaths.leuphana_ipe_dir/"src/models/yolo_face_detection/face_dataset.yaml")
-    face_labels_input_dir = Path(BasePaths.data_dir/"yolo_face_labels")
-    face_data_input_dir = Path(BasePaths.data_dir/"yolo_face_input")
-    face_output_dir = Path(BasePaths.output_dir/"yolo_face_detections/")
+    person_face_trained_weights_path = Path(BasePaths.models_dir/'yolo11_person_face_detection.pt')
+    person_face_data_config_path = Path(BasePaths.leuphana_ipe_dir/"src/models/yolo_person_face_detection/person_face_dataset.yaml")
+    person_face_labels_input_dir = Path(BasePaths.data_dir/"yolo_person_face_labels")
+    person_face_data_input_dir = Path(BasePaths.data_dir/"yolo_person_face_input")
+    person_face_output_dir = Path(BasePaths.output_dir/"yolo_person_face_classification/")
+    
+    person_face_object_ trained_weights_path = Path(BasePaths.models_dir/'yolo11_person_face_object_detection.pt')
+    person_face_object_data_config_path = Path(BasePaths.leuphana_ipe_dir/"src/models/yolo_person_face_object_detection/person_face_object_dataset.yaml")
+    person_face_object_labels_input_dir = Path(BasePaths.data_dir/"yolo_person_face_object_labels")
+    person_face_object_data_input_dir = Path(BasePaths.data_dir/"yolo_person_face_object_input")
+    person_face_object_output_dir = Path(BasePaths.output_dir/"yolo_person_face_object_detections/")
 
     gaze_extracted_faces_dir = Path(BasePaths.data_dir/"quantex_gaze_input")
     gaze_trained_weights_path = Path(BasePaths.models_dir/'yolo11_gaze_classification.pt')
@@ -52,11 +52,6 @@ class YoloPaths:
     gaze_data_input_dir = Path(BasePaths.data_dir/"yolo_gaze_input_balanced")
     gaze_output_dir = Path(BasePaths.output_dir/"yolo_gaze_classification/")
 
-    person_face_trained_weights_path = Path(BasePaths.models_dir/'yolo11_person_face_detection.pt')
-    person_face_data_config_path = Path(BasePaths.leuphana_ipe_dir/"src/models/yolo_person_face_detection/person_face_dataset.yaml")
-    person_face_labels_input_dir = Path(BasePaths.data_dir/"yolo_person_face_labels")
-    person_face_data_input_dir = Path(BasePaths.data_dir/"yolo_person_face_input")
-    person_face_output_dir = Path(BasePaths.output_dir/"yolo_person_face_classification/")
     
 class VTCPaths:
     childlens_audio_dir = Path(BasePaths.data_dir/"childlens_audio")
