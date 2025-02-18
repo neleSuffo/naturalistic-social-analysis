@@ -121,22 +121,18 @@ def save_annotations(
         bbox = json.loads(bbox)
         
         # define mapping for the category_id
-        person_mapping: {1: 0, 2: 0, 10: 0, 11:1}
-        face_mapping: {10: 0}
         gaze_mapping = {'No': 0, 'Yes': 1}
         person_face_mapping = {1: 0, 2: 0, 10: 1, 11:2}
-        if target == "person":
-        # Map the category_id to the YOLO format (treat person, reflection, face all as category "person")
-            category_id = person_mapping.get(category_id, category_id)
-        if target == "face":
-        # Map the category_id to the YOLO format
-            category_id = face_mapping.get(category_id, category_id)
+        person_face_object_mapping = {1: 0, 2: 0, 10: 1, 11:2, 3:3, 4:4, 5:5, 6:6, 7:7, 8:8, 12:9}
         if target == "gaze":
             # category id is replaced with gaze_directed_at_child (No: 0, Yes: 1)
             category_id = gaze_mapping.get(gaze_directed_at_child, gaze_directed_at_child)
-        if target == "person_face":
+        elif target == "person_face":
             # Map the category_id to the YOLO format (treat person, reflection, face all as category "person")
             category_id = person_face_mapping.get(category_id, category_id)
+        elif target == "person_face_object":
+            # Map the category_id to the YOLO format (treat person, reflection, face all as category "person")
+            category_id = person_face_object_mapping.get(category_id, category_id)
         # YOLO format: category_id x_center y_center width height
         try:
             yolo_bbox = convert_to_yolo_format(image_file_path, bbox)               
@@ -167,7 +163,7 @@ def main(target: str) -> None:
     try:
         category_ids = {
             "person_face": YoloConfig.person_target_class_ids,
-            "person_face_object" YoloConfig.person_object_target_class_ids,
+            "person_face_object": YoloConfig.person_object_target_class_ids,
             "gaze": YoloConfig.face_target_class_ids,
         }.get(target)
 
@@ -176,7 +172,7 @@ def main(target: str) -> None:
             return
 
         if target == "person_face_object":
-            annotations = fetch_all_annotations(category_ids=category_ids, True)
+            annotations = fetch_all_annotations(category_ids=category_ids, objects=True)
         else:
             annotations = fetch_all_annotations(category_ids=category_ids)
         logging.info(f"Fetched {len(annotations)} {target} annotations.")
