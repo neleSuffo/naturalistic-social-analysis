@@ -127,7 +127,7 @@ def get_total_number_of_annotated_frames(label_path: Path, image_folder: Path = 
             total_images.extend([str(p.resolve()) for p in video_path.iterdir() if p.is_file()])
     return total_images   
 
-def get_pf_class_distribution(total_images: list, annotation_folder: Path) -> tuple:
+def get_pf_class_distribution(total_images: list, annotation_folder: Path, yolo_target: str) -> tuple:
     """
     This function reads the label files and groups images based on their class distribution.
     
@@ -144,7 +144,8 @@ def get_pf_class_distribution(total_images: list, annotation_folder: Path) -> tu
         List of image names.
     annotation_folder: Path
         Path to the directory containing label files.
-    
+    yolo_target: str
+        The target type for YOLO (e.g., "person_face" or "person_face_object").
     Returns:
     -------
     images_only_person: set
@@ -156,6 +157,16 @@ def get_pf_class_distribution(total_images: list, annotation_folder: Path) -> tu
     images_neither: set
         Set of image names with no classes or only class 2.
     """
+    object_counts = {
+        3: ["book", 0],
+        4: ["animal", 0],
+        5: ["toy", 0], 
+        6: ["kitchenware", 0],
+        7: ["screen", 0],
+        8: ["food", 0],
+        9: ["other_object", 0]
+    }
+        
     images_only_person = set()
     images_only_face = set()
     images_multiple = set()
@@ -170,6 +181,11 @@ def get_pf_class_distribution(total_images: list, annotation_folder: Path) -> tu
         
             # Get all class_ids from the file.
             class_ids = {int(line.split()[0]) for line in labels if line.split()}
+            
+            # get object counts
+            for class_id in class_ids:
+                if class_id in object_counts:
+                    object_counts[class_id][1] += 1
             # Ignore class 2
             reduced_ids = class_ids - {2}
             
@@ -191,6 +207,10 @@ def get_pf_class_distribution(total_images: list, annotation_folder: Path) -> tu
     neither_ratio = len(images_neither) / total_num_images
     logging.info(f"Total number of annotated frames: {total_num_images}")
     logging.info(f"Class distribution: {len(images_only_person)} only person {only_person_ratio:.2f}, {len(images_only_face)} only face {only_face_ratio:.2f}, {len(images_multiple)} multiple {multiple_ratio:.2f}, {len(images_neither)} neither {neither_ratio:.2f}")
+    # Log object counts
+    logging.info("\nObject category counts:")
+    for cat_id, (name, count) in object_counts.items():
+        logging.info(f"{name}: {count}")
     return images_only_person, images_only_face, images_multiple, images_neither
 
 def get_gaze_class_distribution(total_images: list, annotation_folder: Path) -> tuple:
@@ -387,7 +407,7 @@ def split_yolo_data(label_path: Path, yolo_target: str):
         "gaze": get_gaze_class_distribution,
     }
     try:
-        image_sets = distribution_funcs[yolo_target](total_images, label_path)
+        image_sets = distribution_funcs[yolo_target](total_images, label_path, yolo_target)
     except KeyError:
         raise ValueError(f"Invalid yolo_target: {yolo_target}")
     
