@@ -37,7 +37,7 @@ class YoloPaths:
     person_face_data_input_dir = Path(BasePaths.data_dir/"yolo_person_face_input")
     person_face_output_dir = Path(BasePaths.output_dir/"yolo_person_face_classification/")
     
-    person_face_object_ trained_weights_path = Path(BasePaths.models_dir/'yolo11_person_face_object_detection.pt')
+    person_face_object_trained_weights_path = Path(BasePaths.models_dir/'yolo11_person_face_object_detection.pt')
     person_face_object_data_config_path = Path(BasePaths.leuphana_ipe_dir/"src/models/yolo_person_face_object_detection/person_face_object_dataset.yaml")
     person_face_object_labels_input_dir = Path(BasePaths.data_dir/"yolo_person_face_object_labels")
     person_face_object_data_input_dir = Path(BasePaths.data_dir/"yolo_person_face_object_input")
