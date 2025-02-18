@@ -37,6 +37,7 @@ logging.basicConfig(
 
 def fetch_all_annotations(
     category_ids: Optional[List[int]] = None,
+    objects: bool = False,
 ) -> List[tuple]:
     """
     This function fetches all annotations from the database (excluding the -1 category id)
@@ -47,6 +48,9 @@ def fetch_all_annotations(
     category_ids : list, optional
         the list of category ids to filter the annotations,
         by default None
+    objects : bool, optional
+        whether to include object interactions, by default False
+    
 
 
     Returns
@@ -75,9 +79,18 @@ def fetch_all_annotations(
         WHERE a.category_id IN ({placeholders}) 
             AND a.outside = 0 
             AND v.file_name NOT LIKE '%id255237_2022_05_08_04%'
-        ORDER BY a.video_id, a.image_id
         """
-        cursor.execute(query, category_ids)
+        
+        if objects:
+            base_query += """
+            AND (
+                (a.category_id IN (3,4,5,6,7,8,12) AND a.object_interaction = 'Yes')
+                OR a.category_id NOT IN (3,4,5,6,7,8,12)
+            )
+            """
+            
+        base_query += " ORDER BY a.video_id, a.image_id"
+        cursor.execute(base_query, category_ids)
     else:
         query = f"""
         SELECT DISTINCT 
