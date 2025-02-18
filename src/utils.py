@@ -51,8 +51,6 @@ def fetch_all_annotations(
     objects : bool, optional
         whether to include object interactions, by default False
     
-
-
     Returns
     -------
     list of tuple
@@ -82,15 +80,15 @@ def fetch_all_annotations(
         """
         
         if objects:
-            base_query += """
+            query += """
             AND (
                 (a.category_id IN (3,4,5,6,7,8,12) AND a.object_interaction = 'Yes')
                 OR a.category_id NOT IN (3,4,5,6,7,8,12)
             )
             """
             
-        base_query += " ORDER BY a.video_id, a.image_id"
-        cursor.execute(base_query, category_ids)
+        query += " ORDER BY a.video_id, a.image_id"
+        cursor.execute(query, category_ids)
     else:
         query = f"""
         SELECT DISTINCT 
