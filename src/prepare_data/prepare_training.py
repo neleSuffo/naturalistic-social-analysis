@@ -383,6 +383,7 @@ def split_yolo_data(label_path: Path, yolo_target: str):
      # Mapping of target type to corresponding distribution function.
     distribution_funcs = {
         "person_face": get_pf_class_distribution,
+        "person_face_object": get_pf_class_distribution,
         "gaze": get_gaze_class_distribution,
     }
     try:
@@ -414,7 +415,7 @@ def main(model_target: str, yolo_target: str):
         The target type for YOLO (e.g., "person" or "face").
     """
     if model_target == "yolo":
-        label_path = YoloPaths.person_face_labels_input_dir if yolo_target == "person_face" else YoloPaths.gaze_labels_input_dir
+        label_path = YoloPaths.person_face_labels_input_dir if yolo_target == "person_face" else YoloPaths.person_face_object_labels_input_dir if yolo_target == "person_face_object" else YoloPaths.gaze_labels_input_dir
         split_yolo_data(label_path, yolo_target)
         logging.info("Dataset preparation for YOLO completed.")
     elif model_target == "other_model":
@@ -425,7 +426,7 @@ def main(model_target: str, yolo_target: str):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Prepare dataset for model training.")
     parser.add_argument("--model_target", choices=["yolo", "other_model"], required=True, help="Specify the model type")
-    parser.add_argument("--yolo_target", choices=["person_face", "gaze"], required=True, help="Specify the YOLO target type")
+    parser.add_argument("--yolo_target", choices=["person_face", "person_face_object", "gaze"], required=True, help="Specify the YOLO target type")
     
     args = parser.parse_args()
     main(args.model_target, args.yolo_target)
