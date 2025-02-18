@@ -20,32 +20,35 @@ def main(model: str, yolo_target: str, setup_db: bool = False) -> None:
     model : str
         Model to convert to (e.g., "yolo")
     yolo_target : str
-        Target YOLO label ("person", "face", "person_face" or "gaze")
+        Target YOLO label ("person_face", "person_face_object" or "gaze")
     setup_db : bool
         Whether to set up the database
-
-    Returns
-    -------
-    None
     """
-    # Validate model argument
-    if model not in {"yolo", "all"}:
-        raise ValueError(f"Invalid model '{model}'. Choose 'yolo'")
+    # Validate arguments
+    valid_models = {"yolo", "all"}
+    valid_targets = {"person_face", "person_face_object", "gaze"}
     
-    os.environ['OMP_NUM_THREADS'] = '10'
-    if setup_db:
-        # Database setup
-        task_file_id_dict = create_file_name_id_dict(DetectionPaths.file_name_id_mapping_path)
-        create_db_table_video_name_id_mapping(task_file_id_dict)
-        write_xml_to_database()
-        correct_erronous_videos_in_db()
-        create_child_class_in_db()
+    if model not in valid_models:
+        raise ValueError(f"Invalid model '{model}'. Must be one of: {valid_models}")
+    
+    if yolo_target not in valid_targets:
+        raise ValueError(f"Invalid yolo_target '{yolo_target}'. Must be one of: {valid_targets}")
+    
+    try:
+        os.environ['OMP_NUM_THREADS'] = '10'
+        if setup_db:
+            task_file_id_dict = create_file_name_id_dict(DetectionPaths.file_name_id_mapping_path)
+            create_db_table_video_name_id_mapping(task_file_id_dict)
+            write_xml_to_database()
+            correct_erronous_videos_in_db()
+            create_child_class_in_db()
 
-    # Annotation conversion
-    if model == "yolo":
-        convert_to_yolo(yolo_target)
-    elif model == "all":
-        convert_to_yolo(yolo_target)
+        if model in ["yolo", "all"]:
+            convert_to_yolo(yolo_target)
+            
+    except Exception as e:
+        print(f"Error processing annotations: {str(e)}")
+        raise
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process annotations")
