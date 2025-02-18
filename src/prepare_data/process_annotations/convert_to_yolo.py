@@ -99,7 +99,7 @@ def save_annotations(
         the target detection type
     """
     logging.info("Saving annotations in YOLO format.")
-    output_dir = YoloPaths.face_labels_input_dir if target == "face" else YoloPaths.person_labels_input_dir if target == "person" else YoloPaths.person_face_labels_input_dir if target == "person_face" else YoloPaths.gaze_labels_input_dir      
+    output_dir =  YoloPaths.person_face_labels_input_dir if target == "person_face" else YoloPaths.person_face_object_labels_input_dir if target == "person_face_object" else YoloPaths.gaze_labels_input_dir      
     output_dir.mkdir(parents=True, exist_ok=True)
     
     file_contents = {}
@@ -166,17 +166,19 @@ def main(target: str) -> None:
     logging.info(f"Starting the conversion process for Yolo {target} detection.")
     try:
         category_ids = {
-            "face": YoloConfig.face_target_class_ids,
+            "person_face": YoloConfig.person_target_class_ids,
+            "person_face_object" YoloConfig.person_object_target_class_ids,
             "gaze": YoloConfig.face_target_class_ids,
-            "person": YoloConfig.person_target_class_ids,
-            "person_face": YoloConfig.person_target_class_ids
         }.get(target)
 
         if category_ids is None:
-            logging.error(f"Invalid target: {target}. Expected 'face', 'person', 'person_face' or 'gaze'.")
+            logging.error(f"Invalid target: {target}. Expected 'person_face', 'person_face_object' or 'gaze'.")
             return
 
-        annotations = fetch_all_annotations(category_ids=category_ids)
+        if target == "person_face_object":
+            annotations = fetch_all_annotations(category_ids=category_ids, True)
+        else:
+            annotations = fetch_all_annotations(category_ids=category_ids)
         logging.info(f"Fetched {len(annotations)} {target} annotations.")
         save_annotations(annotations, target)
         logging.info(f"Successfully saved all {target} annotations.")
