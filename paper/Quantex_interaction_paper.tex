@@ -227,71 +227,22 @@ Childrens everyday experiences are known to shape childrens development but only
 
 \section{Introduction}\label{introduction}
 
-\begin{verbatim}
-1.  Contextualize Early Childhood Social Development
-\end{verbatim}
-
 According to various developmental psychologists, children's everyday experiences play a vital role in their development (Carpendale \& Lewis, 2020; Heyes, 2018; Piaget, 1964; Rogoff, Dahl, \& Callanan, 2018; Smith, Jayaraman, Clerkin, \& Yu, 2018; Tomasello, 2009; Vygotsky, 1978). Everyday interactions, in particular, have been recognized for decades as crucial in the process of actively constructing knowledge (Piaget, 1964) and in transforming sensory experiences into structured understanding (Vygotsky, 1978). Building upon these foundational theories, more recent research has examined the mechanisms of social interaction further. For instance, Michael Tomasello introduced the concept of shared intentionality, illustrating how collaborative activities enable children to comprehend others' intentions and perspectives, leading to cooperative behaviors and cultural learning (Tomasello, 2009).
 
-\begin{verbatim}
-    2.  Identify the Research Gap
-\end{verbatim}
+Whereas theoretical frameworks and controlled laboratory studies have significantly advanced our understanding of children's social development, they often fail to capture the complexities of interactions occurring in naturalistic settings. Observing children in their everyday environments offers a more authentic view of their social behaviors; however, this approach presents challenges due to the extensive data collection and analysis required.
 
-While theoretical approaches and controlled laboratory studies have significantly advanced our understanding of children's social development, they often fail to capture the complexities of interactions occurring in naturalistic home settings. Observing children in their everyday environments provides a more authentic view of their social behaviors, yet this approach presents challenges due to the extensive data collection and analysis required. Conducting large-scale studies in naturalistic settings is labor-intensive and time-consuming. Manual data collection and analysis can be particularly daunting, often limiting the scope and scale of such research. These challenges have severely restricted the accumulation of comprehensive datasets that accurately reflect children's natural social behaviors in complex environments.
+To address these challenges, researchers have increasingly turned to data-driven approaches that utilize sensors and recording devices to gather objective data on social interactions. For instance, Onnela, Waber, Pentland, Schnorf, and Lazer (2014) employed wearable sensors to analyze social interactions in adult work settings, capturing the duration of close proximity between individuals. The study inferred that women were more talkative than men and more likely to be physically close to other women in group settings. Rossano et al. (2022) examined social interactions among 31 two- to four-year-olds using 563 hours of video and audio recordings from a preschool during free play sessions over seven days. Manual interaction labels revealed that four-year-olds engaged in more cooperative social interactions and experienced fewer conflicts than two-year-olds, with object play and conversations being the most common forms of social engagement in both age groups. Dai et al. (2022) investigated social interactions of 174 preschool children over three years, collecting voice and proximity data using wearable wireless RFID tags to study the co-development of social interactions and language acquisition. They employed manually labeled interaction data to train a temporal segment model that automatically identified periods of free play or class play, concluding that classmates frequently engaged in both contexts. Lemaignan, Edmunds, Senft, and Belpaeme (2018) created a dataset comprising 45 hours of manually labeled social interactions between 45 child-child pairs and 30 child-robot pairs, including video and audio recordings, 3D facial data, skeletal information, and game interactions. While the dataset focused on capturing interactions in naturalistic settings without specific instructions, the laboratory sessions were limited to 40 minutes.
 
-Despite these challenges, numerous research have utilized data-driven approaches to investigate children's social interactions:
-Onnela et. al (Onnela, Waber, Pentland, Schnorf, \& Lazer, 2014) investigated social interactions in two different adult work settings utilized sensors capturing for how long two individuals were close to each other. Rossano et. al \href{mailto:5@rossanoHow24yearold2022}{\nolinkurl{5@rossanoHow24yearold2022}}{]} studied 31 two- to four-year-old's social interactions using 563 hours of video and audio recordings from a preschool during free play session over the course of 7 days. Based on manual interaction labels they found that four-year-olds engage in more cooperative social interactions while also fighting less than two-year-olds. The most common forms of social engagement in both age groups were playing with objects and conversations.
+While these studies have advanced our understanding of social interactions, they often focus on controlled environments or are constrained by limited observation periods. Moreover, the manual data collection and analysis involved remain labor-intensive and time-consuming, and the current body of research lacks comprehensive data-driven studies analyzing children's social interactions within their home environments.
 
-Dai et. al (Dai et al., 2022) investigated social and oral interactions of children in pre-school setting over several years. They collected voice and distance using wearable wireless RFID tags to study how socialization and language acquisition develop side by side. One of the findings based on this data was that age difference significantly influences the interaction duration. Akcakir et. al (Akçakır et al., 2024) approximated social interactions using spatial proximity sensors and the amount of time spent close to another child for children in preschool. One of the key findings was that age difference significantly influences the interaction duration. Lemaignan et. al (Lemaignan, Edmunds, Senft, \& Belpaeme, 2018) created a dataset of social interactions between children and robots. The dataset comprises 45 hours of manually labeled data of social interactions between 45 child-child pairs and 30 child-robot pairs. The dataset includes video and audio recordings, 30 3D face recordings, skeletal information, and game interactions. The focus of the dataset is on a naturalistic setting, with no instructions given, but limited to 40 minutes.
+To overcome these limitations, our study investigates social interactions in naturalistic home settings over an extended period. We have created the \textbf{Quantex} dataset. The dataset currently includes 197.20 hours of egocentric video and audio recordings from children aged 3 to 5 years and enables the analysis of specific patterns of social interactions, including:
+- Presence of Individuals: Utilizing Yolo11 for person detection to identify when others are present in the child's environment.
+- Presence of Faces: Employing Yolo11 face detection to recognize faces the child encounters.
+- Object Interactions: Analyzing the objects with which the child interacts using Yolo11 object detection
+- Gaze Behaviors: Classifying gaze direction to determine when others are looking at the child.
+- Speech Dynamics: Implementing voice type classification to differentiate between the child's speech and that of others, distinguishing between peers and adults.
 
-\begin{verbatim}
-3.  Introduce the Study’s Focus
-\end{verbatim}
-
-(Dai et al., 2022) investigated social and oral interactions of children in pre-school setting over several years.collected voice and distance using wearable wireless RFID tags to study how socialisation and langauge acquisition develops side by side
-
-one of the findings based on this data:
-(Akçakır et al., 2024) approximate Social interactions using spatial proximity sensors and the amount of time spent close to another child for children in pre school, one of the key findings was that
-age difference significantly influences the interaction duration
-
-(Lemaignan et al., 2018):
-- 45h of manually labeled data of social interactions between 45 child-child pairs and 30 child-robot pairs
-- dataset comprises video and audio recordings, 30 3D face recordings, skeletal information and game interactions
-- focus on naturalistic setting, no instructions given, but limited to 40 minutes
-
-\begin{verbatim}
-3.  Introduce the Study’s Focus
-•   Present the specific patterns of social interactions under investigation:
-•   Presence of individuals (person detection)
-•   Facial engagements (face detection)
-•   Objects the child interacts with (object detection)
-•   Speech dynamics (voice type classification)
-•   Gaze behaviors, particularly when others look at the child (gaze classification)
-
-
-4.  Articulate the Research Objectives
-•   State the aim to quantify the frequency of each interaction pattern, both individually and in combination.
-•   Express the intent to compare these patterns across different age groups within the 3-5 year range to identify developmental variations.
-
-
-5.  Highlight the Study’s Significance
-•   Discuss how understanding these interaction patterns can inform developmental psychology, early childhood education, and parenting strategies.
-•   Suggest potential applications of the findings in designing interventions or educational programs tailored to specific developmental needs.
-\end{verbatim}
-
-In the context of children's developmental trajectories, research has focused on areas like language acquisition, theory of mind, and social cognition, utilizing a range of methods and data sources. For instance, Donnelly et al. (Donnelly \& Kidd, 2021) used audio-only data to explore the relationship between conversational turn-taking and vocabulary growth in children, while Roy et al. (Roy, Frank, DeCamp, Miller, \& Roy, 2015) examined how words used in specific contexts are learned more easily, emphasizing the importance of multimodal contexts. In contrast, Rowe (Rowe \& Goldin-Meadow, 2009) leveraged video data to investigate how gestures at 14 months predict vocabulary development in children from different socioeconomic backgrounds. Ruffman et al. (Ruffman et al., 2023) used head-mounted video cameras to study how repeated behaviors in everyday life correlate with the acquisition of mental state vocabulary, supporting the minimalist view of theory of mind development. Bergelson (Bergelson et al., 2023), on the other hand, used large-scale audio data to explore the impact of adult speech on children's language production across diverse cultural contexts. These studies demonstrate the value of both audio and video data in understanding children's development, yet they highlight the need for datasets that capture the full diversity of children's everyday experiences.
-
-A significant challenge in this field is the extensive amount of data needed to comprehensively study children's daily lives. Traditional methods, such as manual annotation, are time-consuming and impractical for large-scale datasets. To address this, computational models offer scalable solutions for analyzing social interactions and behaviors. For instance, OpenPose (Cao, Hidalgo, Simon, Wei, \& Sheikh, 2018) allows the tracking of human body, face, and hand poses, providing insights into gestures and engagement. YOLOv8 (Redmon, Divvala, Girshick, \& Farhadi, 2015) offers efficient object detection for analyzing children's interactions with their environment, whereas models like I3D (Carreira \& Zisserman, 2017) provide an automataed solution for classifying activities in video data. For audio, Wave2Vec 2.0 (Baevski, Zhou, Mohamed, \& Auli, 2020) provides robust speech-to-text and speech representation capabilities, enabling the study of conversational dynamics. Together, these models facilitate the efficient analysis of multimodal data, but their improvement and development depend on the availability of diverse, high-quality datasets. A notable example of such a dataset is ImageNet (Russakovsky et al., 2014), which has been crucial in advancing computer vision models. Similarly, expanding publicly available datasets in developmental psychology could accelerate progress in studying children's everyday experiences.
-
-Several publicly available datasets have made valuable contributions to our understanding of children's social and communicative behavior. For example, the SAYCam dataset (Sullivan, Mei, Perfors, Wojcik, \& Frank, 2021) provides audio-video recordings from infants (6--32 months) who wore head-mounted cameras over two years, capturing naturalistic speech and behaviors. Similarly, the DAMI-P2C dataset (Chen, Alghowinem, Jang, Breazeal, \& Park, 2023) includes audio and video recordings of parent-child interactions during story reading, with annotations for body movements in a controlled environment. The MMDB dataset (Rehg et al., 2013) offers multimodal data (audio, video, physiological) of children (15--30 months) engaged in semi-structured play interactions, recorded in a lab. Another example is the UpStory dataset (Fraile et al., 2024), which features audio and video of primary school children (8-10 years) in dyadic storytelling interactions, also recorded in a lab setting. Additionally, the BabyView dataset (Long et al., 2024) provides high-resolution, egocentric video of children aged 6 months to 5 years, recorded at home and in preschool environments, with annotations for speech transcription and pose estimation. While these datasets vary in age, setting, and target behaviors, they collectively highlight the need for more naturalistic, at-home datasets that can capture the full range of children's daily activities.
-
-\begin{itemize}
-\tightlist
-\item
-  what is out there regarding social interaction
-\end{itemize}
-
-we analyze the Quantex dataset regarding different aspect of social interactions and look at the presence and combination of general interactions patterns like the presence of persons, faces, gaze, and objects in children's everyday interactions. We furthermode investigate how those interaction aspects change over time and how they are related to the child's age. We trained a YOLO11 model to detect persons and faces in the videos and analyzed the presence of gaze and objects in the videos. We furthermore applied a pre-trained voice type classifier to detect speech in the audio data.
+The primary objectives of this study are to quantify interaction patterns by measuring the frequency and duration of each identified interaction type, both individually and in combination. Additionaly we compare these patterns across different age groups within the 3 to 5-year range to identify developmental variations and milestones. Understanding these interaction patterns can inform developmental psychology about the actual nature of social interactions in children's everyday lives, eventually leading to more insights into
 
 \section{Methodology}\label{methodology}
 
@@ -541,35 +492,11 @@ We applied the Voice Type Classifier to the extracted audio data from the Quante
 
 \phantomsection\label{refs}
 \begin{CSLReferences}{1}{0}
-\bibitem[\citeproctext]{ref-akcakirExploringInterplayIndividual2024}
-Akçakır, G., Azaiez, A., Ceria, A., Eminente, C., Ferranti, G., Gandhi, G., \ldots{} Iacopini, I. (2024). Exploring the interplay of individual traits and interaction dynamics in preschool social networks. \url{https://doi.org/10.48550/ARXIV.2407.12728}
-
-\bibitem[\citeproctext]{ref-baevskiWav2vec20Framework2020}
-Baevski, A., Zhou, H., Mohamed, A., \& Auli, M. (2020). Wav2vec 2.0: {A Framework} for {Self-Supervised Learning} of {Speech Representations}. \url{https://doi.org/10.48550/ARXIV.2006.11477}
-
-\bibitem[\citeproctext]{ref-bergelsonEverydayLanguageInput2023}
-Bergelson, E., Soderstrom, M., Schwarz, I.-C., Rowland, C. F., Ramírez-Esparza, N., R. Hamrick, L., \ldots{} Cristia, A. (2023). Everyday language input and production in 1,001 children from six continents. \emph{Proceedings of the National Academy of Sciences}, \emph{120}(52), e2300671120. \url{https://doi.org/10.1073/pnas.2300671120}
-
-\bibitem[\citeproctext]{ref-caoOpenPoseRealtimeMultiPerson2018}
-Cao, Z., Hidalgo, G., Simon, T., Wei, S.-E., \& Sheikh, Y. (2018). {OpenPose}: {Realtime Multi-Person 2D Pose Estimation} using {Part Affinity Fields}. \url{https://doi.org/10.48550/ARXIV.1812.08008}
-
 \bibitem[\citeproctext]{ref-carpendaleWhatMakesUs2020}
 Carpendale, J., \& Lewis, C. (2020). \emph{What {Makes Us Human}: {How Minds Develop} through {Social Interactions}} (1st ed.). Routledge. \url{https://doi.org/10.4324/9781003125105}
 
-\bibitem[\citeproctext]{ref-carreiraQuoVadisAction2017}
-Carreira, J., \& Zisserman, A. (2017). Quo {Vadis}, {Action Recognition}? {A New Model} and the {Kinetics Dataset}. \url{https://doi.org/10.48550/ARXIV.1705.07750}
-
-\bibitem[\citeproctext]{ref-chenDyadicAffectParentChild2023}
-Chen, H., Alghowinem, S., Jang, S. J., Breazeal, C., \& Park, H. W. (2023). Dyadic {Affect} in {Parent-Child Multimodal Interaction}: {Introducing} the {DAMI-P2C Dataset} and its {Preliminary Analysis}. \emph{IEEE Transactions on Affective Computing}, \emph{14}(4), 3345--3361. \url{https://doi.org/10.1109/TAFFC.2022.3178689}
-
 \bibitem[\citeproctext]{ref-daiLongitudinalDataCollection2022}
 Dai, S., Bouchet, H., Karsai, M., Chevrot, J.-P., Fleury, E., \& Nardy, A. (2022). Longitudinal data collection to follow social network and language development dynamics at preschool. \emph{Scientific Data}, \emph{9}(1), 777. \url{https://doi.org/10.1038/s41597-022-01756-x}
-
-\bibitem[\citeproctext]{ref-donnellyLongitudinalRelationshipConversational2021}
-Donnelly, S., \& Kidd, E. (2021). The {Longitudinal Relationship Between Conversational Turn}‐{Taking} and {Vocabulary Growth} in {Early Language Development}. \emph{Child Development}, \emph{92}(2), 609--625. \url{https://doi.org/10.1111/cdev.13511}
-
-\bibitem[\citeproctext]{ref-fraileUpStoryUppsalaStorytelling2024}
-Fraile, M., Calvo-Barajas, N., Apeiron, A. S., Varni, G., Lindblad, J., Sladoje, N., \& Castellano, G. (2024). {UpStory}: The {Uppsala Storytelling} dataset. \url{https://doi.org/10.48550/ARXIV.2407.04352}
 
 \bibitem[\citeproctext]{ref-heyesCognitiveGadgetsCultural2018}
 Heyes, C. M. (2018). \emph{Cognitive gadgets: The cultural evolution of thinking}. Cambridge (Mass.): Harvard University press.
@@ -592,9 +519,6 @@ Lemaignan, S., Edmunds, C. E. R., Senft, E., \& Belpaeme, T. (2018). The {PInSoR
 \bibitem[\citeproctext]{ref-liGeneralizedFocalLoss2020}
 Li, X., Wang, W., Wu, L., Chen, S., Hu, X., Li, J., \ldots{} Yang, J. (2020, June 8). Generalized {Focal Loss}: {Learning Qualified} and {Distributed Bounding Boxes} for {Dense Object Detection}. \url{https://doi.org/10.48550/arXiv.2006.04388}
 
-\bibitem[\citeproctext]{ref-longBabyViewDatasetHighresolution2024}
-Long, B., Xiang, V., Stojanov, S., Sparks, R. Z., Yin, Z., Keene, G. E., \ldots{} Frank, M. C. (2024, June 14). The {BabyView} dataset: {High-resolution} egocentric videos of infants' and young children's everyday experiences. \url{https://doi.org/10.48550/arXiv.2406.10447}
-
 \bibitem[\citeproctext]{ref-loshchilovSGDRStochasticGradient2017}
 Loshchilov, I., \& Hutter, F. (2017, May 3). {SGDR}: {Stochastic Gradient Descent} with {Warm Restarts}. \url{https://doi.org/10.48550/arXiv.1608.03983}
 
@@ -604,32 +528,14 @@ Onnela, J.-P., Waber, B. N., Pentland, A., Schnorf, S., \& Lazer, D. (2014). Usi
 \bibitem[\citeproctext]{ref-piagetPartCognitiveDevelopment1964}
 Piaget, J. (1964). Part {I}: {Cognitive} development in children: {Piaget} development and learning. \emph{Journal of Research in Science Teaching}, \emph{2}(3), 176--186. \url{https://doi.org/10.1002/tea.3660020306}
 
-\bibitem[\citeproctext]{ref-redmonYouOnlyLook2015}
-Redmon, J., Divvala, S., Girshick, R., \& Farhadi, A. (2015). You {Only Look Once}: {Unified}, {Real-Time Object Detection}. \url{https://doi.org/10.48550/ARXIV.1506.02640}
-
-\bibitem[\citeproctext]{ref-rehgDecodingChildrensSocial2013}
-Rehg, J. M., Abowd, G. D., Rozga, A., Romero, M., Clements, M. A., Sclaroff, S., \ldots{} Ye, Z. (2013). Decoding {Children}'s {Social Behavior}. \emph{2013 {IEEE Conference} on {Computer Vision} and {Pattern Recognition}}, 3414--3421. Portland, OR, USA: IEEE. \url{https://doi.org/10.1109/CVPR.2013.438}
-
 \bibitem[\citeproctext]{ref-rogoffImportanceUnderstandingChildrens2018}
 Rogoff, B., Dahl, A., \& Callanan, M. (2018). The importance of understanding children's lived experience. \emph{Developmental Review}, \emph{50}, 5--15. \url{https://doi.org/10.1016/j.dr.2018.05.006}
 
-\bibitem[\citeproctext]{ref-roweDifferencesEarlyGesture2009}
-Rowe, M. L., \& Goldin-Meadow, S. (2009). Differences in {Early Gesture Explain SES Disparities} in {Child Vocabulary Size} at {School Entry}. \emph{Science}, \emph{323}(5916), 951--953. \url{https://doi.org/10.1126/science.1167025}
-
-\bibitem[\citeproctext]{ref-royPredictingBirthSpoken2015}
-Roy, B. C., Frank, M. C., DeCamp, P., Miller, M., \& Roy, D. (2015). Predicting the birth of a spoken word. \emph{Proceedings of the National Academy of Sciences}, \emph{112}(41), 12663--12668. \url{https://doi.org/10.1073/pnas.1419773112}
-
-\bibitem[\citeproctext]{ref-ruffmanExposureBehavioralRegularities2023}
-Ruffman, T., Chen, L., Lorimer, B., Vanier, S., Edgar, K., Scarf, D., \& Taumoepeau, M. (2023). Exposure to behavioral regularities in everyday life predicts infants' acquisition of mental state vocabulary. \emph{Developmental Science}, \emph{26}(4), e13343. \url{https://doi.org/10.1111/desc.13343}
-
-\bibitem[\citeproctext]{ref-russakovskyImageNetLargeScale2014}
-Russakovsky, O., Deng, J., Su, H., Krause, J., Satheesh, S., Ma, S., \ldots{} Fei-Fei, L. (2014). {ImageNet Large Scale Visual Recognition Challenge}. \url{https://doi.org/10.48550/ARXIV.1409.0575}
+\bibitem[\citeproctext]{ref-rossanoHow24yearold2022}
+Rossano, F., Terwilliger, J., Bangerter, A., Genty, E., Heesen, R., \& Zuberbühler, K. (2022). How 2- and 4-year-old children coordinate social interactions with peers. \emph{Philosophical Transactions of the Royal Society B: Biological Sciences}, \emph{377}(1859), 20210100. \url{https://doi.org/10.1098/rstb.2021.0100}
 
 \bibitem[\citeproctext]{ref-smithDevelopingInfantCreates2018}
 Smith, L. B., Jayaraman, S., Clerkin, E., \& Yu, C. (2018). The {Developing Infant Creates} a {Curriculum} for {Statistical Learning}. \emph{Trends in Cognitive Sciences}, \emph{22}(4), 325--336. \url{https://doi.org/10.1016/j.tics.2018.02.004}
-
-\bibitem[\citeproctext]{ref-sullivanSAYCamLargeLongitudinal2021}
-Sullivan, J., Mei, M., Perfors, A., Wojcik, E., \& Frank, M. C. (2021). {SAYCam}: {A Large}, {Longitudinal Audiovisual Dataset Recorded From} the {Infant}'s {Perspective}. \emph{Open Mind}, \emph{5}, 20--29. \url{https://doi.org/10.1162/opmi_a_00039}
 
 \bibitem[\citeproctext]{ref-tervenLossFunctionsMetrics2024}
 Terven, J., Cordova-Esparza, D. M., Ramirez-Pedraza, A., Chavez-Urbiola, E. A., \& Romero-Gonzalez, J. A. (2024, October 12). Loss {Functions} and {Metrics} in {Deep Learning}. \url{https://doi.org/10.48550/arXiv.2307.02694}
