@@ -50,7 +50,7 @@ def main(dataset_type: str) -> None:
             logging.info(f"DataFrame saved to: {VTCPaths.childlens_gt_df_file_path}")
             
         # Evaluate the performance of the VTC output
-        compute_metrics(VTCPaths.childlens_df_file_path_01)
+        compute_metrics(VTCPaths.childlens_df_file_path_20)
         
             
 if __name__ == "__main__":
