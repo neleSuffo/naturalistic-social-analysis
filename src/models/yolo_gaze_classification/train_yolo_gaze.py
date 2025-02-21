@@ -24,7 +24,7 @@ output_dir = YoloPaths.gaze_output_dir / experiment_name
 model.train(
     data="/home/nele_pauline_suffo/ProcessedData/yolo_gaze_input",
     epochs=200,  # Total number of epochs
-    imgsz=1280,  # Image size
+    imgsz=640,  # Image size
     batch=16,   # Batch size
     project=str(YoloPaths.gaze_output_dir),  # Output directory
     name=experiment_name,  # Experiment name
