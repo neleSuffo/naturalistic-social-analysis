@@ -1,69 +1,65 @@
 import cv2
+import dlib
+from pathlib import Path
 import logging
-import mediapipe as mp
+import numpy as np
 
 logging.basicConfig(level=logging.INFO)
 
-# Initialize MediaPipe Face Mesh
-mp_face_mesh = mp.solutions.face_mesh
-face_mesh = mp_face_mesh.FaceMesh(static_image_mode=True,
-                                  max_num_faces=1,
-                                  refine_landmarks=True,  # Enables detection of refined landmarks around eyes and lips
-                                  min_detection_confidence=0.5,
-                                  min_tracking_confidence=0.5)
-
-mp_drawing = mp.solutions.drawing_utils
-mp_drawing_styles = mp.solutions.drawing_styles
+# Load Dlib's pre-trained face detector and shape predictor
+detector = dlib.get_frontal_face_detector()
+predictor = dlib.shape_predictor("/home/nele_pauline_suffo/models/shape_predictor_68_face_landmarks.dat")  # Ensure this file is in your working directory
 
 def process_and_save_frame(frame_path, output_dir):
-    """
-    Process the input frame to detect facial landmarks and save the annotated frame.
-
-    Parameters:
-    - frame_path: Path to the input image frame.
-    - output_dir: Directory where the annotated frame will be saved.
-    """
-    # Read the image from the given path
-    image = cv2.imread(frame_path)
+    """Process cropped face image to detect facial landmarks and save annotated frame."""
+    image = cv2.imread(str(frame_path))
     if image is None:
-        print(f"Error reading image {frame_path}")
-        return
+        raise ValueError(f"Could not load image from {frame_path}")
 
-    # Convert the BGR image to RGB
-    rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    logging.info("Processing frame %s", frame_path)
-    results = face_mesh.process(rgb_image)
+    gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-    if results.multi_face_landmarks:
-        for face_landmarks in results.multi_face_landmarks:
-            # Draw the face mesh annotations on the image.
-            mp_drawing.draw_landmarks(
-                image=image,
-                landmark_list=face_landmarks,
-                connections=mp_face_mesh.FACEMESH_TESSELATION,
-                landmark_drawing_spec=None,
-                connection_drawing_spec=mp_drawing_styles.get_default_face_mesh_tesselation_style())
-            mp_drawing.draw_landmarks(
-                image=image,
-                landmark_list=face_landmarks,
-                connections=mp_face_mesh.FACEMESH_CONTOURS,
-                landmark_drawing_spec=None,
-                connection_drawing_spec=mp_drawing_styles.get_default_face_mesh_contours_style())
-            mp_drawing.draw_landmarks(
-                image=image,
-                landmark_list=face_landmarks,
-                connections=mp_face_mesh.FACEMESH_IRISES,
-                landmark_drawing_spec=None,
-                connection_drawing_spec=mp_drawing_styles.get_default_face_mesh_iris_connections_style())
+    # Create dlib rectangle for the entire image since it's already a cropped face
+    height, width = gray_image.shape
+    face_rect = dlib.rectangle(0, 0, width, height)
+    
+    # Get landmarks
+    landmarks = predictor(gray_image, face_rect)
+    
+    # Draw and count landmarks
+    feature_counts = {'left_eye': 0, 'right_eye': 0, 'nose': 0, 'mouth': 0}
+    
+    for n in range(68):
+        x = landmarks.part(n).x
+        y = landmarks.part(n).y
+        
+        if 36 <= n <= 41:  # Left eye
+            color = (255, 0, 0)
+            feature_counts['left_eye'] += 1
+        elif 42 <= n <= 47:  # Right eye
+            color = (0, 255, 0)
+            feature_counts['right_eye'] += 1
+        elif 27 <= n <= 35:  # Nose
+            color = (0, 0, 255)
+            feature_counts['nose'] += 1
+        elif 48 <= n <= 67:  # Mouth
+            color = (0, 255, 255)
+            feature_counts['mouth'] += 1
+        else:
+            color = (128, 128, 128)
+            
+        cv2.circle(image, (x, y), 2, color, -1)
 
-    # Prepare the output path
-    filename = os.path.basename(frame_path)
-    output_path = os.path.join(output_dir, filename)
-    logging.info("Saving processed frame to %s", output_path)
+    # Log feature counts
+    for feature, count in feature_counts.items():
+        logging.info(f"{feature}: {count} landmarks detected")
 
-    # Save the annotated image to the output directory
-    cv2.imwrite(output_path, image)
+    output_path = Path(output_dir) / f"landmarks_{Path(frame_path).name}"
+    cv2.imwrite(str(output_path), image)
+    logging.info(f"Annotated frame saved at {output_path}")
 
+# Usage
+image_path = Path("/home/nele_pauline_suffo/ProcessedData/quantex_gaze_input/quantex_at_home_id262565_2022_05_08_02_036240_face_0.jpg")
+output_dir = Path("/home/nele_pauline_suffo/outputs/yolo_gaze_classification")
+output_dir.mkdir(parents=True, exist_ok=True)
 
-image_path = "/home/nele_pauline_suffo/ProcessedData/quantex_gaze_input/quantex_at_home_id262691_2022_03_19_01_022770_face_0.jpg"
-output_dir = "/home/nele_pauline_suffo/outputs/yolo_gaze_classification"
+process_and_save_frame(image_path, output_dir)
