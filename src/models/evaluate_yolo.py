@@ -37,20 +37,36 @@ def main():
     )
 
     # Extract precision and recall
-    precision = metrics.results_dict['metrics/precision(B)']
-    recall = metrics.results_dict['metrics/recall(B)']
-    f1_score = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
+    if args.yolo_target == "person_face":
+        precision = metrics.results_dict['metrics/precision']
+        recall = metrics.results_dict['metrics/recall']
+        f1_score = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
 
-    # Log results
-    logging.info(f"Precision: {precision:.4f}")
-    logging.info(f"Recall: {recall:.4f}")
-    logging.info(f"F1 Score: {f1_score:.4f}")
+        # Log results
+        logging.info(f"Precision: {precision:.4f}")
+        logging.info(f"Recall: {recall:.4f}")
+        logging.info(f"F1 Score: {f1_score:.4f}")
 
-    # Save precision and recall to a file
-    with open(output_path / "precision_recall.txt", "w") as f:
-        f.write(f"Precision: {precision}\n")
-        f.write(f"Recall: {recall}\n")
-        f.write(f"F1 Score: {f1_score}\n")
+        # Save precision and recall to a file
+        with open(output_path / "precision_recall.txt", "w") as f:
+            f.write(f"Precision: {precision}\n")
+            f.write(f"Recall: {recall}\n")
+            f.write(f"F1 Score: {f1_score}\n")
 
+    elif args.yolo_target == "gaze":
+        accuracy_top1 = metrics.results_dict['metrics/accuracy_top1']
+        accuracy_top5 = metrics.results_dict['metrics/accuracy_top5']
+        fitness = metrics.results_dict['fitness']
+        
+        # Log results
+        logging.info(f"Accuracy Top 1: {accuracy_top1:.4f}")
+        logging.info(f"Accuracy Top 5: {accuracy_top5:.4f}")
+        logging.info(f"Fitness: {fitness:.4f}")
+        
+        # Save accuracy and fitness to a file
+        with open(output_path / "accuracy_fitness.txt", "w") as f:
+            f.write(f"Accuracy Top 1: {accuracy_top1}\n")
+            f.write(f"Accuracy Top 5: {accuracy_top5}\n")
+            f.write(f"Fitness: {fitness}\n")
 if __name__ == '__main__':
     main()
