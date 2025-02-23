@@ -73,7 +73,7 @@ def prepare_data_generators(train_dir, validation_dir, img_width, img_height, ba
 def train_model(model, train_generator, validation_generator, epochs):
     # Define early stopping callback
     from tensorflow.keras.callbacks import EarlyStopping
-    early_stopping = EarlyStopping(monitor='val_accuracy', patience=5, mode='max', verbose=1)
+    early_stopping = EarlyStopping(monitor='val_accuracy', patience=10, mode='max', verbose=1)
 
     # Train the model
     history = model.fit(
@@ -96,7 +96,7 @@ def main():
     tf.config.threading.set_inter_op_parallelism_threads(4)
     tf.config.threading.set_intra_op_parallelism_threads(4)
     img_width, img_height = 224, 224
-    batch_size = 32
+    batch_size = 16
     epochs = 20
     train_dir = '/home/nele_pauline_suffo/ProcessedData/yolo_gaze_input/train'
     validation_dir = '/home/nele_pauline_suffo/ProcessedData/yolo_gaze_input/val'
