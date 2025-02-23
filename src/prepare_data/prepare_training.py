@@ -220,7 +220,7 @@ def get_pfo_class_distribution(total_images: list, annotation_folder: Path, yolo
     return images_only_person, images_only_face, images_multiple, images_neither, image_objects
 
 
-def get_pf_class_distribution(total_images: list, annotation_folder: Path, yolo_target: str) -> tuple:
+def get_pf_class_distribution(total_images: list, annotation_folder: Path) -> tuple:
     """
     This function reads the label files and groups images based on their class distribution.
     
@@ -237,8 +237,7 @@ def get_pf_class_distribution(total_images: list, annotation_folder: Path, yolo_
         List of image names.
     annotation_folder: Path
         Path to the directory containing label files.
-    yolo_target: str
-        The target type for YOLO (e.g., "person_face" or "person_face_object").
+
     Returns:
     -------
     images_only_person: set
@@ -269,6 +268,7 @@ def get_pf_class_distribution(total_images: list, annotation_folder: Path, yolo_
     images_only_face = set()
     images_multiple = set()
     images_neither = set()
+    image_objects = {}
     
     for image_file in total_images:
         image_file = Path(image_file)
@@ -312,9 +312,6 @@ def get_pf_class_distribution(total_images: list, annotation_folder: Path, yolo_
     logging.info(f"Total number of annotated frames: {total_num_images}")
     logging.info(f"Class distribution: {len(images_only_person)} only person {only_person_ratio:.2f}, {len(images_only_face)} only face {only_face_ratio:.2f}, {len(images_multiple)} multiple {multiple_ratio:.2f}, {len(images_neither)} neither {neither_ratio:.2f}")
     # Log object counts
-    logging.info("\nObject category counts:")
-    for cat_id, (name, count) in object_counts.items():
-        logging.info(f"{name}: {count}")
     return images_only_person, images_only_face, images_multiple, images_neither, image_objects
 
 def get_gaze_class_distribution(total_images: list, annotation_folder: Path) -> tuple:
@@ -449,14 +446,19 @@ def stratified_split_with_objects(image_sets, image_objects, train_ratio=Trainin
             if category in image_objects.get(img, []):
                 y[i, j] = 1  # Mark object presence
 
-    # Apply Multi-Label Stratified Shuffle Split
-    msss = MultilabelStratifiedShuffleSplit(n_splits=1, test_size=(1 - train_ratio), random_state=42)
-    train_idx, test_idx = next(msss.split(images_neither, y))
+    # First split (train vs rest)
+    msss = MultilabelStratifiedShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
+    train_idx, temp_idx = next(msss.split(images_neither, y))
 
-    # Further split train set into train/val
-    val_ratio_adjusted = val_ratio / (train_ratio + val_ratio)  # Adjusted ratio for second split
-    train_idx, val_idx = next(MultilabelStratifiedShuffleSplit(n_splits=1, test_size=val_ratio_adjusted, random_state=42)
-                              .split(np.array(images_neither)[train_idx], y[train_idx]))
+    # Second split (val vs test) - split the remaining 20% equally
+    test_val_images = np.array(images_neither)[temp_idx]
+    test_val_labels = y[temp_idx]
+    msss_second = MultilabelStratifiedShuffleSplit(n_splits=1, test_size=0.5, random_state=42)
+    val_idx, test_idx = next(msss_second.split(test_val_images, test_val_labels))
+
+    # Convert indices back to original space
+    val_idx = temp_idx[val_idx]
+    test_idx = temp_idx[test_idx]
     
     # After splits are created, count and log object distributions
     def count_objects(image_list):
@@ -490,6 +492,43 @@ def stratified_split_with_objects(image_sets, image_objects, train_ratio=Trainin
 
     return train, val, test
 
+def log_split_distributions(train, val, test, image_objects, image_sets):
+    """Log detailed distribution of images across splits"""
+    
+    # Log people/face distributions
+    splits = {'Train': train, 'Val': val, 'Test': test}
+    categories = {
+        'Person only': image_sets[0],
+        'Face only': image_sets[1], 
+        'Person & Face': image_sets[2],
+        'Neither (objects)': image_sets[3]
+    }
+
+    logging.info("\nImage Distribution by Category:")
+    logging.info(f"{'Category':<15} {'Train':<8} {'Val':<8} {'Test':<8} {'Total':<8}")
+    logging.info("-" * 47)
+    
+    for cat_name, cat_set in categories.items():
+        train_count = len(set(train) & cat_set)
+        val_count = len(set(val) & cat_set) 
+        test_count = len(set(test) & cat_set)
+        total = len(cat_set)
+        logging.info(f"{cat_name:<15} {train_count:<8} {val_count:<8} {test_count:<8} {total:<8}")
+
+    # Log object distributions
+    object_categories = ["book", "animal", "toy", "kitchenware", "screen", "food", "other_object"]
+    
+    logging.info("\nObject Distribution in 'Neither' Category:")
+    logging.info(f"{'Object':<12} {'Train':<8} {'Val':<8} {'Test':<8} {'Total':<8}")
+    logging.info("-" * 44)
+    
+    for obj in object_categories:
+        train_count = sum(1 for img in train if obj in image_objects.get(img, []))
+        val_count = sum(1 for img in val if obj in image_objects.get(img, []))
+        test_count = sum(1 for img in test if obj in image_objects.get(img, []))
+        total = train_count + val_count + test_count
+        logging.info(f"{obj:<12} {train_count:<8} {val_count:<8} {test_count:<8} {total:<8}")
+        
 def move_images(yolo_target: str, image_names: list, split_type: str, label_path: Path):
     """
     This function moves the images to the specified split directory.
@@ -587,6 +626,8 @@ def split_yolo_data(label_path: Path, yolo_target: str):
             (images_only_person, images_only_face, images_multiple, images_neither), 
             image_objects
         )        
+        image_sets = (images_only_person, images_only_face, images_multiple, images_neither)
+        log_split_distributions(train, val, test, image_objects, image_sets)
         for split_name, split_set in (("train", train), ("val", val), ("test", test)):
             move_images(yolo_target, split_set, split_name, label_path)
         
