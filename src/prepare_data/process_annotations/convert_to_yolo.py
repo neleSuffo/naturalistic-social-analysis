@@ -123,7 +123,7 @@ def save_annotations(
         # define mapping for the category_id
         gaze_mapping = {'No': 0, 'Yes': 1}
         person_face_mapping = {1: 0, 2: 0, 10: 1, 11:2}
-        person_face_object_mapping = {1: 0, 2: 0, 10: 1, 11:2, 3:3, 4:4, 5:5, 6:6, 7:7, 8:8, 12:9}
+        person_face_object_mapping = {1: 0, 2: 0, 10: 1, 11:2, 3:3, 4:9, 5:4, 6:5, 7:6, 8:7, 12:8} #map class 4 (animal) to 9, to be able to exclude it later
         if target == "gaze":
             # category id is replaced with gaze_directed_at_child (No: 0, Yes: 1)
             category_id = gaze_mapping.get(gaze_directed_at_child, gaze_directed_at_child)
