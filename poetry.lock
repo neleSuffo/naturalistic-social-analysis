@@ -1380,6 +1380,22 @@ test = ["pytest (<7.1)", "pytest-asyncio", "testpath"]
 test-extra = ["curio", "matplotlib (!=3.2.0)", "nbformat", "numpy (>=1.21)", "pandas", "pytest (<7.1)", "pytest-asyncio", "testpath", "trio"]
 
 [[package]]
+name = "iterative-stratification"
+version = "0.1.9"
+description = "Package that provides scikit-learn compatible cross validators with stratification for multilabel data"
+optional = false
+python-versions = "*"
+files = [
+    {file = "iterative_stratification-0.1.9-py3-none-any.whl", hash = "sha256:476f8deff6753fb1725612fe41e59cc2058f8f2524ae5d1ccee88eb8c8d3de80"},
+    {file = "iterative_stratification-0.1.9.tar.gz", hash = "sha256:e7e299a3b28909fd0867d50ae6fc512def3bd482f71666ebaf0a3480b84cec42"},
+]
+
+[package.dependencies]
+numpy = "*"
+scikit-learn = "*"
+scipy = "*"
+
+[[package]]
 name = "jedi"
 version = "0.19.1"
 description = "An autocompletion tool for Python that can be used for text editors."
@@ -4967,4 +4983,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "~3.8"
-content-hash = "408fc7cc4ae5b1712d684fb0934a5f4f87177264208934a3533d75ea4d8a72f8"
+content-hash = "944bd7259be43402d734b8fc46d29efe02f3784dee0a8ab40f8c8605374d6776"

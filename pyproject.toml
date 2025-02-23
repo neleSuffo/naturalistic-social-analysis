@@ -61,6 +61,7 @@ face-recognition = "^1.3.0"
 protobuf = "<3.21"
 tensorflow = "2.10.0"
 focal-loss = "^0.0.7"
+iterative-stratification = "^0.1.9"
 
 
 [tool.poetry.group.dev.dependencies]
