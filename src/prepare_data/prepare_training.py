@@ -477,14 +477,7 @@ def stratified_split_with_objects(image_sets, image_objects, train_ratio=Trainin
     train_counts = count_objects(neither_train)
     val_counts = count_objects(neither_val)
     test_counts = count_objects(neither_test)
-
-    # Log the distributions
-    logging.info("Object distribution in 'neither' set splits:")
-    logging.info(f"{'Category':<12} {'Train':<8} {'Val':<8} {'Test':<8}")
-    logging.info("-" * 36)
-    for category in object_categories:
-        logging.info(f"{category:<12} {train_counts[category]:<8} {val_counts[category]:<8} {test_counts[category]:<8}")
-
+    
     # Assign final splits
     train.extend([images_neither[i] for i in train_idx])
     val.extend([images_neither[i] for i in val_idx])
