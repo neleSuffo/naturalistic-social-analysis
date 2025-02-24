@@ -31,20 +31,22 @@ class DetectionPaths:
     file_name_id_mapping_path = Path(BasePaths.data_dir/"quantex_file_name_to_id_dict/annotations.xml")
 
 class YoloPaths:
+    yolo_detections_dir = Path(BasePaths.leuphana_ipe_dir/"src/models/")
+    
     all_trained_weights_path = Path(BasePaths.models_dir/'yolo11_all_detection.pt')
-    all_data_config_path = Path(BasePaths.leuphana_ipe_dir/"src/models/all_detections/all_dataset.yaml")
+    all_data_config_path = yolo_detections_dir/"yolo_all_dataset.yaml"
     all_labels_input_dir = Path(BasePaths.data_dir/"yolo_all_labels")
     all_data_input_dir = Path(BasePaths.data_dir/"yolo_all_input")
-    all_output_dir = Path(BasePaths.output_dir/"yolo_all_classification/")
+    all_output_dir = Path(BasePaths.output_dir/"yolo_all_detections/")
     
     person_face_trained_weights_path = Path(BasePaths.models_dir/'yolo11_person_face_detection.pt')
-    person_face_data_config_path = Path(BasePaths.leuphana_ipe_dir/"src/models/yolo_person_face_detection/person_face_dataset.yaml")
+    person_face_data_config_path = yolo_detections_dir/"person_face_dataset.yaml"
     person_face_labels_input_dir = Path(BasePaths.data_dir/"yolo_person_face_labels")
     person_face_data_input_dir = Path(BasePaths.data_dir/"yolo_person_face_input")
-    person_face_output_dir = Path(BasePaths.output_dir/"yolo_person_face_classification/")
+    person_face_output_dir = Path(BasePaths.output_dir/"yolo_person_face_detections/")
     
     person_face_object_trained_weights_path = Path(BasePaths.models_dir/'yolo11_detections.pt')
-    person_face_object_data_config_path = Path(BasePaths.leuphana_ipe_dir/"src/models/yolo_detections/yolo_detections_dataset.yaml")
+    person_face_object_data_config_path = yolo_detections_dir/"yolo_detections_dataset.yaml"
     person_face_object_labels_input_dir = Path(BasePaths.data_dir/"yolo_detections_labels")
     person_face_object_data_input_dir = Path(BasePaths.data_dir/"yolo_detections_input")
     person_face_object_output_dir = Path(BasePaths.output_dir/"yolo_detections/")
