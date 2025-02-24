@@ -1,0 +1,22 @@
+
+train: /home/nele_pauline_suffo/ProcessedData/yolo_all_input/images/train
+val: /home/nele_pauline_suffo/ProcessedData/yolo_all_input/images/val
+test: /home/nele_pauline_suffo/ProcessedData/yolo_all_input/images/test
+
+
+# Number of classes
+nc: 11
+
+# Class names
+names:
+  0: "infant/child"
+  1: "adult"
+  2: "infant/child face"
+  3: "adult face"
+  4: "child body parts"
+  5: "book"
+  6: "toy"
+  7: "kitchenware"
+  8: "screen"
+  9: "food"
+  10: "other_object"
