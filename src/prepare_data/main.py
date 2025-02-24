@@ -68,7 +68,7 @@ if __name__ == "__main__":
     parser.add_argument('--face_rawframes', action='store_true', help='Run face rawframes extraction')
     parser.add_argument('--annotations', action='store_true', help='Run annotation processing')
     parser.add_argument('--model_target', type=str, help='Model to convert to (e.g., "yolo", "mtcnn", "all")')
-    parser.add_argument('--yolo_target', type=str, help='Target YOLO label ("person_face", "person_face", "gaze")')
+    parser.add_argument('--yolo_target', type=str, help='Target YOLO label ("person_face", "person_face_object", "gaze")')
     parser.add_argument('--setup_db', action='store_true', default=False, help='Whether to set up the database (default: False)')
     parser.add_argument('--training', action='store_true', help='Prepare training data')
     parser.add_argument('--balanced', action='store_true', help='Balance the dataset into equal number of frames with and without class')
