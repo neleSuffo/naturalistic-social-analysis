@@ -161,12 +161,13 @@ def get_pfo_class_distribution(total_images: list, annotation_folder: Path, yolo
     """
     object_counts = {
         3: "book",
-        4: "animal",
-        5: "toy", 
-        6: "kitchenware",
-        7: "screen",
-        8: "food",
-        9: "other_object"
+        4: "toy", 
+        5: "kitchenware",
+        6: "screen",
+        7: "food",
+        8: "other_object",
+        9: "animal",
+
     }
         
     images_only_person = set()
@@ -253,12 +254,13 @@ def get_pf_class_distribution(total_images: list, annotation_folder: Path) -> tu
     """
     object_counts = {
         3: ["book", 0],
-        4: ["animal", 0],
-        5: ["toy", 0], 
-        6: ["kitchenware", 0],
-        7: ["screen", 0],
-        8: ["food", 0],
-        9: ["other_object", 0]
+        4: ["toy", 0], 
+        5: ["kitchenware", 0],
+        6: ["screen", 0],
+        7: ["food", 0],
+        8: ["other_object", 0],
+        9: ["animal", 0],
+
     }
         
     # Create reverse mapping from class_id to object name
@@ -436,7 +438,7 @@ def stratified_split_with_objects(image_sets, image_objects, train_ratio=Trainin
         test.extend(image_list[train_split + val_split:])
     
     # Now handle "neither" set using Multi-Label Stratified Sampling
-    object_categories = ["book", "animal", "toy", "kitchenware", "screen", "food", "other_object"]
+    object_categories = ["book", "toy", "kitchenware", "screen", "food", "other_object", "animal"]
     images_neither = list(image_sets[-1])  # The "neither" set (last in list)
     
     # Create binary matrix (multi-label representation)
@@ -509,7 +511,7 @@ def log_split_distributions(train, val, test, image_objects, image_sets):
         logging.info(f"{cat_name:<15} {train_count:<8} {val_count:<8} {test_count:<8} {total:<8}")
 
     # Log object distributions
-    object_categories = ["book", "animal", "toy", "kitchenware", "screen", "food", "other_object"]
+    object_categories = ["book", "toy", "kitchenware", "screen", "food", "other_object", "animal"]
     
     logging.info("\nObject Distribution in 'Neither' Category:")
     logging.info(f"{'Object':<12} {'Train':<8} {'Val':<8} {'Test':<8} {'Total':<8}")
