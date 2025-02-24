@@ -70,7 +70,8 @@ def fetch_all_annotations(
             a.bbox, 
             i.file_name, 
             v.file_name as video_file_name,
-            a.gaze_directed_at_child
+            a.gaze_directed_at_child,
+            a.person_age
         FROM annotations a
         JOIN images i ON a.image_id = i.frame_id AND a.video_id = i.video_id
         JOIN videos v ON a.video_id = v.id
