@@ -31,6 +31,12 @@ class DetectionPaths:
     file_name_id_mapping_path = Path(BasePaths.data_dir/"quantex_file_name_to_id_dict/annotations.xml")
 
 class YoloPaths:
+    all_trained_weights_path = Path(BasePaths.models_dir/'yolo11_all_detection.pt')
+    all_data_config_path = Path(BasePaths.leuphana_ipe_dir/"src/models/all_detections/all_dataset.yaml")
+    all_labels_input_dir = Path(BasePaths.data_dir/"yolo_all_labels")
+    all_data_input_dir = Path(BasePaths.data_dir/"yolo_all_input")
+    all_output_dir = Path(BasePaths.output_dir/"yolo_all_classification/")
+    
     person_face_trained_weights_path = Path(BasePaths.models_dir/'yolo11_person_face_detection.pt')
     person_face_data_config_path = Path(BasePaths.leuphana_ipe_dir/"src/models/yolo_person_face_detection/person_face_dataset.yaml")
     person_face_labels_input_dir = Path(BasePaths.data_dir/"yolo_person_face_labels")
