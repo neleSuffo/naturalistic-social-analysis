@@ -26,7 +26,7 @@ def main(model: str, yolo_target: str, setup_db: bool = False) -> None:
     """
     # Validate arguments
     valid_models = {"yolo", "all"}
-    valid_targets = {"person_face", "person_face_object", "gaze"}
+    valid_targets = {"all", "person_face", "person_face_object", "gaze"}
     
     if model not in valid_models:
         raise ValueError(f"Invalid model '{model}'. Must be one of: {valid_models}")
