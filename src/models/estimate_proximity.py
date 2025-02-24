@@ -170,6 +170,19 @@ def main():
     # Load the YOLO model
     model = YOLO(model_path)
 
+def get_reference_proximity_metrics(model, close_image_path, far_image_path):
+    """
+    Calculate the raw proximity metrics for the reference images.
+    
+    Parameters:
+        model (YOLO): YOLO model for inference.
+        close_image_path (str): Path to the close reference image.
+        far_image_path (str): Path to the far reference image.
+    
+    Returns:
+        min_proximity (float): Minimum proximity metric.
+        max_proximity (float): Maximum proximity metric.
+    """
     # Load and process reference images
     close_image = cv2.imread(close_image_path)
     far_image = cv2.imread(far_image_path)
@@ -178,9 +191,15 @@ def main():
     results_close = model(close_image)
     results_far = model(far_image)
     
+    # Extract bounding boxes
     face_bbox_close, person_bbox_close = extract_bounding_boxes(results_close)
     face_bbox_far, person_bbox_far = extract_bounding_boxes(results_far)
 
+    face_bbox_close = face_bbox_close[0] if face_bbox_close else None
+    person_bbox_close = person_bbox_close[0] if person_bbox_close else None
+    face_bbox_far = face_bbox_far[0] if face_bbox_far else None
+    person_bbox_far = person_bbox_far[0] if person_bbox_far else None
+    
     # Calculate raw proximity metrics for reference images
     min_proximity, _ = calculate_proximity(face_bbox_close, person_bbox_close, close_image.shape)
     max_proximity, _ = calculate_proximity(face_bbox_far, person_bbox_far, far_image.shape)
