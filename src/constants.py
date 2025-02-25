@@ -60,6 +60,8 @@ class YoloPaths:
     gaze_data_input_dir = Path(BasePaths.data_dir/"yolo_gaze_input_balanced")
     gaze_output_dir = Path(BasePaths.output_dir/"yolo_gaze_classification/")
 
+class ResNetPaths:
+    trained_weights_path = Path(BasePaths.models_dir/"resnet_gaze_classification.pth")
     
 class VTCPaths:
     childlens_audio_dir = Path(BasePaths.data_dir/"childlens_audio")
