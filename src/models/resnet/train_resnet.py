@@ -6,6 +6,7 @@ from torchvision import transforms
 from torch.utils.data import DataLoader
 import torchvision.datasets as datasets
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from constants import ResNetPaths
 
 torch.cuda.set_per_process_memory_fraction(0.5, device=0)  # Use only 50% of GPU 0 memory
 
@@ -65,7 +66,7 @@ num_epochs = 100
 patience = 10
 best_val_loss = float("inf")
 early_stop_counter = 0
-model_save_path = "/home/nele_pauline_suffo/models/resnet_gaze_classification.pth"
+model_save_path = ResNetPaths.trained_weights_path
 
 logging.info(f"Starting training for {num_epochs} epochs...")
 
