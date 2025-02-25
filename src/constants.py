@@ -31,7 +31,7 @@ class DetectionPaths:
     file_name_id_mapping_path = Path(BasePaths.data_dir/"quantex_file_name_to_id_dict/annotations.xml")
 
 class YoloPaths:
-    yolo_detections_dir = Path(BasePaths.leuphana_ipe_dir/"src/models/")
+    yolo_detections_dir = Path(BasePaths.leuphana_ipe_dir/"src/models/yolo_detections/")
     
     all_trained_weights_path = Path(BasePaths.models_dir/'yolo11_all_detection.pt')
     all_data_config_path = yolo_detections_dir/"yolo_all_dataset.yaml"
