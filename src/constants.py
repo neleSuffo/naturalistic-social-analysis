@@ -62,6 +62,8 @@ class YoloPaths:
 
 class ResNetPaths:
     trained_weights_path = Path(BasePaths.models_dir/"resnet_gaze_classification.pth")
+    out_dir = Path(BasePaths.output_dir/"resnet_gaze_classification/")
+    confusion_matrix_path = Path(out_dir/"confusion_matrix.png")
     
 class VTCPaths:
     childlens_audio_dir = Path(BasePaths.data_dir/"childlens_audio")
