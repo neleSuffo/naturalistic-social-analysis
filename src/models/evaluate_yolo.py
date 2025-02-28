@@ -14,9 +14,15 @@ def main():
     args = parser.parse_args()
 
     # Load the YOLO model with the supplied target weights
+    if args.yolo_target == "all_detections":
+        model = YOLO(YoloPaths.all_trained_weights_path)
+        folder_name = "all_detections_validation_" + datetime.now().strftime("%Y%m%d_%H%M%S")
+        data_config = str(YoloPaths.all_data_config_path)
+        project_folder = str(YoloPaths.all_output_dir)
+        output_path = YoloPaths.all_output_dir / folder_name
     if args.yolo_target == "person_face":
         model = YOLO(YoloPaths.person_face_trained_weights_path)
-        folder_name = "person_validation_" + datetime.now().strftime("%Y%m%d_%H%M%S")
+        folder_name = "person_face_validation_" + datetime.now().strftime("%Y%m%d_%H%M%S")
         data_config = str(YoloPaths.person_face_data_config_path)
         project_folder = str(YoloPaths.person_face_output_dir)
         output_path = YoloPaths.person_face_output_dir / folder_name
@@ -37,7 +43,7 @@ def main():
     )
 
     # Extract precision and recall
-    if args.yolo_target == "person_face":
+    if args.yolo_target == "person_face" or args.yolo_target == "all_detections":
         precision = metrics.results_dict['metrics/precision']
         recall = metrics.results_dict['metrics/recall']
         f1_score = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
