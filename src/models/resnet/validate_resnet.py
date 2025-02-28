@@ -21,15 +21,15 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Load model architecture
 logging.info("Loading model architecture...")
-resnet50 = models.resnet50(weights=None)
-num_ftrs = resnet50.fc.in_features
-resnet50.fc = nn.Linear(num_ftrs, 1)
+resnet152 = models.resnet152(weights=None)
+num_ftrs = resnet152.fc.in_features
+resnet152.fc = nn.Linear(num_ftrs, 1)
 
 # Load trained weights
 model_path = ResNetPaths.trained_weights_path
 if os.path.exists(model_path):
     state_dict = torch.load(model_path, map_location=device)
-    model = resnet50
+    model = resnet152
     
     try:
         model.load_state_dict(state_dict)
@@ -64,24 +64,27 @@ logging.info(f"Validation dataset size: {len(val_dataset)} images")
 y_true = []
 y_pred = []
 
-with torch.no_grad():  # No gradient computation needed for evaluation
+with torch.no_grad():
     for images, labels in val_loader:
         images = images.to(device)
-        labels = labels.to(device)  # Keep labels on the same device as the model
+        labels = labels.to(device)
         
-        # Perform forward pass
-        outputs = model(images)  # Outputs are logits transformed by sigmoid already
-        predictions = (outputs >= 0.5).float()  # Convert to binary predictions
+        outputs = model(images)
+        predictions = (outputs.squeeze() >= 0.5).float()  # Add squeeze() here
+        
+        # Move to CPU and convert to numpy arrays immediately
+        y_true.extend(labels.cpu().numpy().flatten())  # Add flatten()
+        y_pred.extend(predictions.cpu().numpy().flatten())  # Add flatten()
 
-        # Collect true labels and predictions
-        y_true.extend(labels.cpu().numpy())  # Move labels to CPU for metrics calculation
-        y_pred.extend(predictions.cpu().numpy())  # Move predictions to CPU for metrics calculation
+# Convert lists to numpy arrays
+y_true = np.array(y_true)
+y_pred = np.array(y_pred)
 
-# Compute metrics (ensuring they are calculated for class "Gaze" = 1)
+# Compute metrics
 accuracy = accuracy_score(y_true, y_pred)
-precision = precision_score(y_true, y_pred, pos_label=1)  # Calculate for "Gaze" class (1)
-recall = recall_score(y_true, y_pred, pos_label=1)  # Calculate for "Gaze" class (1)
-f1 = f1_score(y_true, y_pred, pos_label=1)  # Calculate for "Gaze" class (1)
+precision = precision_score(y_true, y_pred)
+recall = recall_score(y_true, y_pred)
+f1 = f1_score(y_true, y_pred)
 
 logging.info(f"Validation Accuracy: {accuracy:.4f}")
 logging.info(f"Precision (Gaze): {precision:.4f}, Recall (Gaze): {recall:.4f}, F1 Score (Gaze): {f1:.4f}")
