@@ -36,7 +36,7 @@ model = model.to(device)
 # Loss function and optimizer
 criterion = nn.BCEWithLogitsLoss()  # Combines sigmoid + BCELoss safely
 optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
-scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=3, factor=0.5)
+scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10)
 
 # Enable Automatic Mixed Precision (AMP)
 scaler = torch.amp.GradScaler()
