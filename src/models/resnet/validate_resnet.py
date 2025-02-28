@@ -5,9 +5,13 @@ from torchvision import transforms
 from torch.utils.data import DataLoader
 import torchvision.datasets as datasets
 import logging
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 import os
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
 from constants import ResNetPaths
+from pathlib import Path
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -37,7 +41,7 @@ else:
     logging.error(f"Model file {model_path} not found!")
     exit()
 
-# Add Sigmoid to model for evaluation if necessary
+# Add Sigmoid to model for evaluation
 model = nn.Sequential(model, nn.Sigmoid())  # Ensures sigmoid is applied to the output
 model = model.to(device)
 model.eval()  # Set model to evaluation mode
@@ -70,14 +74,35 @@ with torch.no_grad():  # No gradient computation needed for evaluation
         predictions = (outputs >= 0.5).float()  # Convert to binary predictions
 
         # Collect true labels and predictions
-        y_true.extend(labels.cpu().numpy())  # Labels should be moved to CPU for metrics calculation
-        y_pred.extend(predictions.cpu().numpy())  # Predictions should be moved to CPU for metrics calculation
+        y_true.extend(labels.cpu().numpy())  # Move labels to CPU for metrics calculation
+        y_pred.extend(predictions.cpu().numpy())  # Move predictions to CPU for metrics calculation
 
-# Compute metrics
+# Compute metrics (ensuring they are calculated for class "Gaze" = 1)
 accuracy = accuracy_score(y_true, y_pred)
-precision = precision_score(y_true, y_pred)
-recall = recall_score(y_true, y_pred)
-f1 = f1_score(y_true, y_pred)
+precision = precision_score(y_true, y_pred, pos_label=1)  # Calculate for "Gaze" class (1)
+recall = recall_score(y_true, y_pred, pos_label=1)  # Calculate for "Gaze" class (1)
+f1 = f1_score(y_true, y_pred, pos_label=1)  # Calculate for "Gaze" class (1)
 
 logging.info(f"Validation Accuracy: {accuracy:.4f}")
-logging.info(f"Precision: {precision:.4f}, Recall: {recall:.4f}, F1 Score: {f1:.4f}")
+logging.info(f"Precision (Gaze): {precision:.4f}, Recall (Gaze): {recall:.4f}, F1 Score (Gaze): {f1:.4f}")
+
+# Compute the confusion matrix
+conf_matrix = confusion_matrix(y_true, y_pred)
+
+# Plot and save the confusion matrix
+plt.figure(figsize=(6, 5))
+sns.heatmap(conf_matrix, annot=True, fmt='d', cmap='Blues', xticklabels=["Gaze", "No Gaze"], yticklabels=["Gaze", "No Gaze"])
+plt.xlabel("Predicted Label")
+plt.ylabel("True Label")
+plt.title("Confusion Matrix")
+
+# Create output directory if it does not exist
+conf_matrix_path = Path(ResNetPaths.confusion_matrix_path)
+conf_matrix_path.parent.mkdir(parents=True, exist_ok=True)
+
+# Save the confusion matrix to a file
+plt.savefig(conf_matrix_path)
+logging.info(f"Confusion matrix saved to {conf_matrix_path}")
+
+# Show the plot (optional, can be removed for headless execution)
+plt.show()
