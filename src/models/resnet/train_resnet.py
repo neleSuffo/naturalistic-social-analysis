@@ -8,6 +8,7 @@ import torchvision.datasets as datasets
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 import matplotlib.pyplot as plt
 import numpy as np
+import time
 from constants import ResNetPaths
 
 # Limit GPU memory usage
@@ -80,6 +81,7 @@ logging.info(f"Starting training for {num_epochs} epochs...")
 for epoch in range(num_epochs):
     model.train()
     running_loss = 0.0
+    start_time = time.time()  # Track epoch time
 
     for batch_idx, (images, labels) in enumerate(train_loader):
         images, labels = images.to(device), labels.to(device).float().unsqueeze(1)  # Reshape labels
@@ -94,6 +96,17 @@ for epoch in range(num_epochs):
         scaler.update()
 
         running_loss += loss.item()
+
+        # Print loss every 10 steps
+        if (batch_idx + 1) % 10 == 0:
+            elapsed_time = time.time() - start_time
+            avg_time_per_batch = elapsed_time / (batch_idx + 1)
+            remaining_batches = len(train_loader) - (batch_idx + 1)
+            eta = avg_time_per_batch * remaining_batches
+            logging.info(
+                f"Epoch [{epoch+1}/{num_epochs}], Step [{batch_idx+1}/{len(train_loader)}], "
+                f"Loss: {loss.item():.4f}, ETA: {eta:.2f}s"
+            )
 
     avg_train_loss = running_loss / len(train_loader)
     train_losses.append(avg_train_loss)
@@ -129,7 +142,8 @@ for epoch in range(num_epochs):
     recalls.append(rec)
     f1_scores.append(f1)
 
-    logging.info(f"Epoch [{epoch+1}/{num_epochs}] - Train Loss: {avg_train_loss:.4f}, Val Loss: {avg_val_loss:.4f}")
+    elapsed_time = time.time() - start_time
+    logging.info(f"Epoch [{epoch+1}/{num_epochs}] - Train Loss: {avg_train_loss:.4f}, Val Loss: {avg_val_loss:.4f} (Time: {elapsed_time:.2f}s)")
     logging.info(f"Validation Metrics - Accuracy: {acc:.4f}, Precision: {prec:.4f}, Recall: {rec:.4f}, F1 Score: {f1:.4f}")
 
     # Adjust learning rate
