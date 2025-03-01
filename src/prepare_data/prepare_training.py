@@ -316,15 +316,12 @@ def get_pf_class_distribution(total_images: list, annotation_folder: Path) -> tu
 
 def get_all_class_distribution(total_images: list, annotation_folder: Path) -> tuple:
     """
-    This function reads the label files and groups images based on their class distribution.
+    Reads label files and groups images based on their refined class distribution.
+
+    Updates:
+      - Separates 'person' into 'adult_person' and 'child_person'.
+      - Separates 'face' into 'adult_face' and 'child_face'.
     
-    For each label file, all class_ids in the file are examined at once.
-    Class 2 is ignored in the grouping so that:
-      - Images with only 0s or 1s are considered as "only persons".
-      - Images with only 2s or 3s are considered as "only faces".
-      - Images with both 0s,1s, 2s,3s are "multiple classes".
-      - Otherwise, if the file is empty or contains no 0, 1,2 or 3, it's "neither".
-      
     Parameters:
     ----------
     total_images: list
@@ -334,14 +331,18 @@ def get_all_class_distribution(total_images: list, annotation_folder: Path) -> t
 
     Returns:
     -------
-    images_only_person: set
-        Set of image names with only class 0.
-    images_only_face: set
-        Set of image names with only class 1.
+    images_adult_person: set
+        Set of images containing only adult persons.
+    images_child_person: set
+        Set of images containing only child persons.
+    images_adult_face: set
+        Set of images containing only adult faces.
+    images_child_face: set
+        Set of images containing only child faces.
     images_multiple: set
-        Set of image names with both classes 0 and 1.
+        Set of images containing both persons and faces.
     images_neither: set
-        Set of image names with no classes or only class 2.
+        Set of images with neither persons nor faces.
     image_objects: dict
         Dictionary containing object categories for each image.
     """
@@ -354,16 +355,25 @@ def get_all_class_distribution(total_images: list, annotation_folder: Path) -> t
         10: ["other_object", 0],
         11: ["animal", 0],
     }
-  
-    # Create reverse mapping from class_id to object name
+
+    # Class mapping
+    class_mapping = {
+        0: "adult_person",
+        1: "child_person",
+        2: "adult_face",
+        3: "child_face"
+    }
+
     id_to_name = {k: v[0] for k, v in object_counts.items()}
     
-    images_only_person = set()
-    images_only_face = set()
+    images_adult_person = set()
+    images_child_person = set()
+    images_adult_face = set()
+    images_child_face = set()
     images_multiple = set()
     images_neither = set()
     image_objects = {}
-    
+
     for image_file in total_images:
         image_file = Path(image_file)
         annotation_file = annotation_folder / image_file.with_suffix('.txt').name
@@ -372,7 +382,7 @@ def get_all_class_distribution(total_images: list, annotation_folder: Path) -> t
         if annotation_file.exists() and annotation_file.stat().st_size > 0:
             with open(annotation_file, 'r') as f:
                 labels = f.readlines()    
-        
+
             # Get all class_ids from the file.
             class_ids = {int(line.split()[0]) for line in labels if line.split()}
             
@@ -380,33 +390,39 @@ def get_all_class_distribution(total_images: list, annotation_folder: Path) -> t
             image_objects[image_file.stem] = [id_to_name[class_id] 
                                             for class_id in class_ids 
                                             if class_id in id_to_name]
-           # Update object counts
-            for class_id in class_ids:
-                if class_id in object_counts:
-                    object_counts[class_id][1] += 1
+
             # Ignore class 4 (child body parts)
             reduced_ids = class_ids - {4}
-            # if reduced_ids is only 0s and 1s
-            if reduced_ids == {0} or reduced_ids == {1} or reduced_ids == {0, 1}:
-                images_only_person.add(image_file.stem)
-            elif reduced_ids == {2} or reduced_ids == {3} or reduced_ids == {2, 3}:
-                images_only_face.add(image_file.stem)
-            elif reduced_ids == {0, 2} or reduced_ids == {0, 3} or reduced_ids == {1, 2} or reduced_ids == {1, 3} or reduced_ids == {0, 1, 2} or reduced_ids == {0, 1, 3} or reduced_ids == {0, 2, 3} or reduced_ids == {1, 2, 3} or reduced_ids == {0, 1, 2, 3}:
+            
+            # Assign to refined categories
+            if reduced_ids == {0}:  
+                images_child_person.add(image_file.stem)
+            elif reduced_ids == {1}:  
+                images_adult_person.add(image_file.stem)
+            elif reduced_ids == {2}:  
+                images_child_face.add(image_file.stem)
+            elif reduced_ids == {3}:  
+                images_adult_face.add(image_file.stem)
+            elif any(x in reduced_ids for x in {0, 1}) and any(y in reduced_ids for y in {2, 3}):
                 images_multiple.add(image_file.stem)
             else:
                 images_neither.add(image_file.stem)
         else:
             images_neither.add(image_file.stem)
-        
+
+    # Logging
     total_num_images = len(total_images)
-    only_person_ratio = len(images_only_person) / total_num_images
-    only_face_ratio = len(images_only_face) / total_num_images
-    multiple_ratio = len(images_multiple) / total_num_images
-    neither_ratio = len(images_neither) / total_num_images
     logging.info(f"Total number of annotated frames: {total_num_images}")
-    logging.info(f"Class distribution: {len(images_only_person)} only person {only_person_ratio:.2f}, {len(images_only_face)} only face {only_face_ratio:.2f}, {len(images_multiple)} multiple {multiple_ratio:.2f}, {len(images_neither)} neither {neither_ratio:.2f}")
-    # Log object counts
-    return images_only_person, images_only_face, images_multiple, images_neither, image_objects
+    logging.info(f"Class distribution: {len(images_adult_person)} adult person, "
+                 f"{len(images_child_person)} child person, "
+                 f"{len(images_adult_face)} adult face, "
+                 f"{len(images_child_face)} child face, "
+                 f"{len(images_multiple)} multiple, "
+                 f"{len(images_neither)} neither")
+
+    return (images_adult_person, images_child_person, 
+            images_adult_face, images_child_face, 
+            images_multiple, images_neither, image_objects)
 
 def get_gaze_class_distribution(total_images: list, annotation_folder: Path) -> tuple:
     """
@@ -755,7 +771,46 @@ def log_split_distributions(train, val, test, image_objects, image_sets):
         test_count = sum(1 for img in test if obj in image_objects.get(img, []))
         total = train_count + val_count + test_count
         logging.info(f"{obj:<12} {train_count:<8} {val_count:<8} {test_count:<8} {total:<8}")
-        
+ 
+ def log_all_split_distributions(train, val, test, image_objects, image_sets):
+    """Log detailed distribution of images across splits"""
+    
+    # Log people/face distributions
+    splits = {'Train': train, 'Val': val, 'Test': test}
+    categories = {
+        'Adult only': image_sets[0],
+        'Child/Infant only': image_sets[1], 
+        'Adult face only': image_sets[2], 
+        'Child/Infant face only': image_sets[3], 
+        'Person & Face': image_sets[4],
+        'Neither (objects)': image_sets[5]
+    }
+
+    logging.info("\nImage Distribution by Category:")
+    logging.info(f"{'Category':<15} {'Train':<8} {'Val':<8} {'Test':<8} {'Total':<8}")
+    logging.info("-" * 47)
+    
+    for cat_name, cat_set in categories.items():
+        train_count = len(set(train) & cat_set)
+        val_count = len(set(val) & cat_set) 
+        test_count = len(set(test) & cat_set)
+        total = len(cat_set)
+        logging.info(f"{cat_name:<15} {train_count:<8} {val_count:<8} {test_count:<8} {total:<8}")
+
+    # Log object distributions
+    object_categories = ["book", "toy", "kitchenware", "screen", "food", "other_object", "animal"]
+    
+    logging.info("\nObject Distribution in 'Neither' Category:")
+    logging.info(f"{'Object':<12} {'Train':<8} {'Val':<8} {'Test':<8} {'Total':<8}")
+    logging.info("-" * 44)
+    
+    for obj in object_categories:
+        train_count = sum(1 for img in train if obj in image_objects.get(img, []))
+        val_count = sum(1 for img in val if obj in image_objects.get(img, []))
+        test_count = sum(1 for img in test if obj in image_objects.get(img, []))
+        total = train_count + val_count + test_count
+        logging.info(f"{obj:<12} {train_count:<8} {val_count:<8} {test_count:<8} {total:<8}")    
+           
 def move_images(yolo_target: str, image_names: list, split_type: str, label_path: Path):
     """
     This function moves the images to the specified split directory.
@@ -837,8 +892,10 @@ def split_yolo_data(label_path: Path, yolo_target: str):
     try:
         if yolo_target == "gaze":
             images_gaze, images_no_gaze = distribution_funcs[yolo_target](total_images, label_path)
-        else:
+        elif yolo_target == "person_face" or yolo_target == "person_face_object":
             images_only_person, images_only_face, images_multiple, images_neither, image_objects = distribution_funcs[yolo_target](total_images, label_path)
+        else:
+            images_adult_person, images_child_person, images_adult_face, images_child_face, images_multiple, images_neither, image_objects = distribution_funcs[yolo_target](total_images, label_path)
     except KeyError:
         raise ValueError(f"Invalid yolo_target: {yolo_target}")
     
@@ -862,12 +919,12 @@ def split_yolo_data(label_path: Path, yolo_target: str):
         for split_name, split_set in (("train", train), ("val", val), ("test", test)):
             move_images(yolo_target, split_set, split_name, label_path)
     elif yolo_target == "all":
-        train, val, test = stratified_split_all(
-            (images_only_person, images_only_face, images_multiple, images_neither), 
+        train, val, test = stratified_split_all( 
+            (images_adult_person, images_child_person, images_adult_face, images_child_face, images_multiple, images_neither), 
             image_objects
-        )        
-        image_sets = (images_only_person, images_only_face, images_multiple, images_neither)
-        log_split_distributions(train, val, test, image_objects, image_sets)
+        )
+        image_sets = (images_adult_person, images_child_person, images_adult_face, images_child_face, images_multiple, images_neither)
+        log_all_split_distributions(train, val, test, image_objects, image_sets)
         for split_name, split_set in (("train", train), ("val", val), ("test", test)):
             move_images(yolo_target, split_set, split_name, label_path)
         
