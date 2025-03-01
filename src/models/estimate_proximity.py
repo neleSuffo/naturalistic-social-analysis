@@ -1,5 +1,6 @@
 import cv2
 import logging
+import argparse
 import os
 import json
 from ultralytics import YOLO
@@ -37,18 +38,34 @@ def find_matching_person(face_bbox, person_bboxes):
             return person_bbox
     return None
 
-def normalize_proximity(raw_proximity, min_proximity, max_proximity):
-    """Normalize proximity between 0 and 1, where 1 indicates closeness."""
-    return max(0, min(1, 1 - (raw_proximity - min_proximity) / (max_proximity - min_proximity)))
+def normalize_proximity(face_area, ref_far, ref_close):
+    """Normalize proximity so that ref_far maps to 0 and ref_close maps to 1."""
+    if ref_close is None or ref_far is None or ref_close == ref_far:
+        logging.warning("Invalid reference values for proximity calculation.")
+        return None
 
-def calculate_proximity(face_bbox, person_bbox, image_shape, ref_close, ref_far):
-    """Calculate normalized proximity based on bounding box size and reference values."""
-    if ref_close is None or ref_far is None:
-        return None  # Cannot compute without references
+    normalized_value = (face_area - ref_far) / (ref_close - ref_far)
+    return max(0, min(1, normalized_value))  # Ensure it's between 0 and 1
 
-    face_area = face_bbox[2] * face_bbox[3]  # width * height
-    proximity_metric = (face_area - ref_far) / (ref_close - ref_far)
-    return normalize_proximity(proximity_metric, 0, 1)
+def calculate_proximity(face_bbox, image_shape, min_ref_area, max_ref_area):
+    """Compute proximity based on detected face area relative to reference values."""
+    if face_bbox is None:
+        return None
+
+    # Extract face bounding box coordinates
+    x1, y1, x2, y2 = face_bbox
+    face_area = (x2 - x1) * (y2 - y1)  # Compute area of the detected face
+
+    # Normalize face area to a value between 0 and 1
+    if face_area <= min_ref_area:
+        return 0.0  # Smallest possible proximity (far away)
+    if face_area >= max_ref_area:
+        return 1.0  # Largest possible proximity (very close)
+
+    # Scale the face area between min_ref_area and max_ref_area
+    proximity = (face_area - min_ref_area) / (max_ref_area - min_ref_area)
+    
+    return proximity
 
 def process_detections(faces, persons, image_shape, ref_close, ref_far):
     """Process detections and compute proximity information."""
@@ -134,7 +151,7 @@ def describe_proximity(proximity):
     if proximity is None:
         return "No valid detection"
     elif proximity < 0.2:
-        return "Very far away"
+        return "Far away"
     elif proximity < 0.4:
         return "Quite far"
     elif proximity < 0.6:
@@ -145,44 +162,54 @@ def describe_proximity(proximity):
         return "Very close"
 
 def compute_proximity(image_path, model, ref_metrics):
-    """Compute and return the proximity value for a given image."""
+    """Compute and return the proximity value for each detected face in a given image."""
     image = cv2.imread(image_path)
     if image is None:
         logging.error(f"Failed to load image from {image_path}")
-        return None
+        return {}
 
     results = model(image)
-    child, adult, child_face, adult_face = extract_bounding_boxes(results)
+    child_bboxes, adult_bboxes, child_faces, adult_faces = extract_bounding_boxes(results)
 
-    child_proximity = process_detections(child_face, child, image.shape, ref_metrics[0], ref_metrics[1])
-    adult_proximity = process_detections(adult_face, adult, image.shape, ref_metrics[2], ref_metrics[3])
+    proximities = {}  # Store proximity values for each detected face
+    logging.info(f"Proximity values for {image_path}")
 
-    # Combine proximity values
-    proximities = [p for p in [child_proximity, adult_proximity] if p is not None]
-    average_proximity = sum(proximities) / len(proximities) if proximities else None
+    # Process child faces
+    for i, face_bbox in enumerate(child_faces):
+        proximity = calculate_proximity(face_bbox, image.shape, ref_metrics[0], ref_metrics[1])
+        if proximity is not None:
+            description = describe_proximity(proximity)
+            face_key = f"child_face_{i+1}"
+            proximities[face_key] = proximity
+            logging.info(f"{face_key}: Proximity = {proximity:.2f} ({description})")
 
-    # Get qualitative description
-    proximity_description = describe_proximity(average_proximity)
+    # Process adult faces
+    for i, face_bbox in enumerate(adult_faces):
+        proximity = calculate_proximity(face_bbox, image.shape, ref_metrics[2], ref_metrics[3])
+        if proximity is not None:
+            description = describe_proximity(proximity)
+            face_key = f"adult_face_{i+1}"
+            proximities[face_key] = proximity
+            logging.info(f"{face_key}: Proximity = {proximity:.2f} ({description})")
 
-    if average_proximity is not None:
-        logging.info(f"Proximity for image {image_path}: {average_proximity:.2f} ({proximity_description})")
-    else:
+    if not proximities:
         logging.info(f"No valid proximity data for image {image_path}")
 
-    return average_proximity
-
 def main():
+    parser = argparse.ArgumentParser(description='Compute proximity for detected faces in an image.')
+    parser.add_argument('--image_path', type=str, required=True,
+                       help='Path to the input image')
+    args = parser.parse_args()
+
     model_path = "/home/nele_pauline_suffo/models/yolo11_all_detection.pt"
     child_close_image_path = "/home/nele_pauline_suffo/ProcessedData/quantex_videos_processed/quantex_at_home_id264041_2023_05_22_07/quantex_at_home_id264041_2023_05_22_07_041970.jpg"
     child_far_image_path = "/home/nele_pauline_suffo/ProcessedData/quantex_videos_processed/quantex_at_home_id255944_2022_03_25_01/quantex_at_home_id255944_2022_03_25_01_052500.jpg"
     adult_close_image_path = "/home/nele_pauline_suffo/ProcessedData/quantex_videos_processed/quantex_at_home_id264368_2024_10_18_01/quantex_at_home_id264368_2024_10_18_01_000060.jpg"
     adult_far_image_path = "/home/nele_pauline_suffo/ProcessedData/quantex_videos_processed/quantex_at_home_id264683_2024_09_28_01/quantex_at_home_id264683_2024_09_28_01_001620.jpg"
 
-    image_path = "/home/nele_pauline_suffo/ProcessedData/quantex_videos_processed/quantex_at_home_id267094_2023_04_06_02/quantex_at_home_id267094_2023_04_06_02_023970.jpg"
-
     model = YOLO(model_path)
     ref_metrics = get_reference_proximity_metrics(model, child_close_image_path, child_far_image_path, adult_close_image_path, adult_far_image_path)
-    proximity = compute_proximity(image_path, model, ref_metrics)
+    compute_proximity(args.image_path, model, ref_metrics)
 
 if __name__ == "__main__":
     main()
