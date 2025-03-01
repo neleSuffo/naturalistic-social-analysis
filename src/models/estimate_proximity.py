@@ -114,13 +114,16 @@ def compute_proximity(image_path, model, ref_metrics):
     return sum(proximities) / len(proximities) if proximities else None  # Return average proximity
 
 def main():
-    model_path = '/home/nele_pauline_suffo/models/yolo11_all_detection.pt'
-    image_path = '/home/nele_pauline_suffo/ProcessedData/quantex_videos_processed/sample.jpg'
-    close_image_path = '/home/nele_pauline_suffo/ProcessedData/quantex_videos_processed/close_reference.jpg'
-    far_image_path = '/home/nele_pauline_suffo/ProcessedData/quantex_videos_processed/far_reference.jpg'
+    model_path = "/home/nele_pauline_suffo/models/yolo11_all_detection.pt"
+    child_close_image_path = "/home/nele_pauline_suffo/ProcessedData/quantex_videos_processed/quantex_at_home_id264041_2023_05_22_07/quantex_at_home_id264041_2023_05_22_07_041970.jpg"
+    child_far_image_path = "/home/nele_pauline_suffo/ProcessedData/quantex_videos_processed/quantex_at_home_id255944_2022_03_25_01/quantex_at_home_id255944_2022_03_25_01_052500.jpg"
+    adult_close_image_path = "/home/nele_pauline_suffo/ProcessedData/quantex_videos_processed/quantex_at_home_id264368_2024_10_18_01/quantex_at_home_id264368_2024_10_18_01_000060.jpg"
+    adult_far_image_path = "/home/nele_pauline_suffo/ProcessedData/quantex_videos_processed/quantex_at_home_id264683_2024_09_28_01/quantex_at_home_id264683_2024_09_28_01_001620.jpg"
+    
+    image_path = "/home/nele_pauline_suffo/ProcessedData/quantex_videos_processed/quantex_at_home_id255695_2022_02_21_01/quantex_at_home_id255695_2022_02_21_01_017280.jpg"
 
     model = YOLO(model_path)
-    ref_metrics = get_reference_proximity_metrics(model, close_image_path, far_image_path)
+    ref_metrics = get_reference_proximity_metrics(model, child_close_image_path, child_far_image_path, adult_close_image_path, adult_far_image_path)
     proximity = compute_proximity(image_path, model, ref_metrics)
 
     if proximity is not None:
