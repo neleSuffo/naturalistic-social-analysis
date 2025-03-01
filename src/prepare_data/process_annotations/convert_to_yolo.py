@@ -126,7 +126,7 @@ def save_annotations(
         person_face_object_mapping = {1: 0, 2: 0, 10: 1, 11:2, 3:3, 4:9, 5:4, 6:5, 7:6, 8:7, 12:8} #map class 4 (animal) to 9, to be able to exclude it later
         all_mapping =   {(1, 'Inf'): 0, (1, 'Child'): 0, (1, 'Teen'): 1, (10, 'Adult'): 1, 
                         (2, 'Inf'): 0, (2, 'Child'): 0, (2, 'Teen'): 1, (2, 'Adult'): 1, 
-                        (10, 'Inf'): 2, (10, 'Child'): 2, (10, 'Teen'): 3, (10, 'Adult'): 3,
+                        (10, 'infant'): 2, (10, 'child'): 2, (10, 'teen'): 3, (10, 'adult'): 3,
                         11: 4, 3: 5, 4: 11, 5: 6, 6: 7, 7: 8, 8: 9, 12: 10}
         
         if target == "gaze":
