@@ -1,5 +1,7 @@
 import cv2
 import logging
+import os
+import json
 from ultralytics import YOLO
 
 # Configure logging
@@ -61,10 +63,32 @@ def process_detections(faces, persons, image_shape, ref_close, ref_far):
         return sum(proximities) / len(proximities)  # Return the average proximity
     return None
 
+# File to store reference values
+REFERENCE_FILE = "/home/nele_pauline_suffo/outputs/reference_proximity.json"
+
+def save_reference_metrics(metrics):
+    """Save reference metrics to a JSON file."""
+    with open(REFERENCE_FILE, "w") as f:
+        json.dump(metrics, f)
+
+def load_reference_metrics():
+    """Load reference metrics from a JSON file if available."""
+    if os.path.exists(REFERENCE_FILE):
+        with open(REFERENCE_FILE, "r") as f:
+            return json.load(f)
+    return None
+
 def get_reference_proximity_metrics(model, child_close_image_path, child_far_image_path, adult_close_image_path, adult_far_image_path):
-    """Calculate reference proximity metrics separately for child and adult faces."""
+    """Retrieve or compute reference proximity metrics separately for child and adult faces."""
     
-    logging.info("Loading reference images...")
+    # Try loading stored references
+    stored_metrics = load_reference_metrics()
+    if stored_metrics:
+        logging.info("Loaded reference metrics from file.")
+        return stored_metrics["child_ref_close"], stored_metrics["child_ref_far"], stored_metrics["adult_ref_close"], stored_metrics["adult_ref_far"]
+    
+    logging.info("Computing reference metrics...")
+
     child_close_image = cv2.imread(child_close_image_path)
     child_far_image = cv2.imread(child_far_image_path)
     adult_close_image = cv2.imread(adult_close_image_path)
@@ -94,7 +118,31 @@ def get_reference_proximity_metrics(model, child_close_image_path, child_far_ima
     logging.info(f"Child Ref Close: {child_ref_close}, Child Ref Far: {child_ref_far}")
     logging.info(f"Adult Ref Close: {adult_ref_close}, Adult Ref Far: {adult_ref_far}")
 
+    # Save computed references for future runs
+    metrics = {
+        "child_ref_close": child_ref_close,
+        "child_ref_far": child_ref_far,
+        "adult_ref_close": adult_ref_close,
+        "adult_ref_far": adult_ref_far
+    }
+    save_reference_metrics(metrics)
+
     return child_ref_close, child_ref_far, adult_ref_close, adult_ref_far
+
+def describe_proximity(proximity):
+    """Returns a qualitative description of proximity."""
+    if proximity is None:
+        return "No valid detection"
+    elif proximity < 0.2:
+        return "Very far away"
+    elif proximity < 0.4:
+        return "Quite far"
+    elif proximity < 0.6:
+        return "Moderate distance"
+    elif proximity < 0.8:
+        return "Quite close"
+    else:
+        return "Very close"
 
 def compute_proximity(image_path, model, ref_metrics):
     """Compute and return the proximity value for a given image."""
@@ -111,7 +159,17 @@ def compute_proximity(image_path, model, ref_metrics):
 
     # Combine proximity values
     proximities = [p for p in [child_proximity, adult_proximity] if p is not None]
-    return sum(proximities) / len(proximities) if proximities else None  # Return average proximity
+    average_proximity = sum(proximities) / len(proximities) if proximities else None
+
+    # Get qualitative description
+    proximity_description = describe_proximity(average_proximity)
+
+    if average_proximity is not None:
+        logging.info(f"Proximity for image {image_path}: {average_proximity:.2f} ({proximity_description})")
+    else:
+        logging.info(f"No valid proximity data for image {image_path}")
+
+    return average_proximity
 
 def main():
     model_path = "/home/nele_pauline_suffo/models/yolo11_all_detection.pt"
@@ -119,17 +177,12 @@ def main():
     child_far_image_path = "/home/nele_pauline_suffo/ProcessedData/quantex_videos_processed/quantex_at_home_id255944_2022_03_25_01/quantex_at_home_id255944_2022_03_25_01_052500.jpg"
     adult_close_image_path = "/home/nele_pauline_suffo/ProcessedData/quantex_videos_processed/quantex_at_home_id264368_2024_10_18_01/quantex_at_home_id264368_2024_10_18_01_000060.jpg"
     adult_far_image_path = "/home/nele_pauline_suffo/ProcessedData/quantex_videos_processed/quantex_at_home_id264683_2024_09_28_01/quantex_at_home_id264683_2024_09_28_01_001620.jpg"
-    
-    image_path = "/home/nele_pauline_suffo/ProcessedData/quantex_videos_processed/quantex_at_home_id255695_2022_02_21_01/quantex_at_home_id255695_2022_02_21_01_017280.jpg"
+
+    image_path = "/home/nele_pauline_suffo/ProcessedData/quantex_videos_processed/quantex_at_home_id267094_2023_04_06_02/quantex_at_home_id267094_2023_04_06_02_023970.jpg"
 
     model = YOLO(model_path)
     ref_metrics = get_reference_proximity_metrics(model, child_close_image_path, child_far_image_path, adult_close_image_path, adult_far_image_path)
     proximity = compute_proximity(image_path, model, ref_metrics)
-
-    if proximity is not None:
-        logging.info(f"Proximity for image {image_path}: {proximity:.2f}")
-    else:
-        logging.info(f"No valid proximity data for image {image_path}")
 
 if __name__ == "__main__":
     main()
