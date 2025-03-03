@@ -80,6 +80,10 @@ def calculate_proximity(face_bbox, min_ref_area, max_ref_area, ref_aspect_ratio,
     face_area = face_width * face_height
     aspect_ratio = float(face_width) / float(face_height)
 
+    print(f"min_ref_area: {min_ref_area}")
+    print(f"max_ref_area: {max_ref_area}")
+    print(f"detected face_area: {face_area}")
+
     # Check if the face is a "partial face" based on aspect ratio
     if ref_aspect_ratio is not None:  # Only check if we have a valid reference ratio
         if abs(aspect_ratio - ref_aspect_ratio) > aspect_ratio_threshold:
@@ -87,14 +91,15 @@ def calculate_proximity(face_bbox, min_ref_area, max_ref_area, ref_aspect_ratio,
             return 1.0  # Partial face: very close
 
     # Normalize face area to a value between 0 and 1
-    if face_area <= min_ref_area:
+    if face_area <= max_ref_area:
+        logging.info("Face area smaller than max_ref_area")
         return 0.0  # Smallest possible proximity (far away)
-    if face_area >= max_ref_area:
+    if face_area >= min_ref_area:
+        logging.info("Face area larger than min_ref_area")
         return 1.0  # Largest possible proximity (very close)
 
     # Scale the face area between min_ref_area and max_ref_area
-    proximity = (face_area - min_ref_area) / (max_ref_area - min_ref_area)
-
+    proximity = (face_area - max_ref_area) / (min_ref_area - max_ref_area)   
     return proximity
 
 # File to store reference values
@@ -191,7 +196,7 @@ def describe_proximity(proximity):
     if proximity is None:
         return "No valid detection"
     elif proximity < 0.2:
-        return "Far away"
+        return "Further away"
     elif proximity < 0.4:
         return "Quite far"
     elif proximity < 0.6:
@@ -267,10 +272,11 @@ def return_proximity(bounding_box: list, face_type: str, ref_metrics: tuple):
     """
     if face_type == "infant/child face":
         proximity = calculate_proximity(bounding_box, ref_metrics[0], ref_metrics[1], ref_metrics[4])
+        print("proximity", proximity)
         return proximity
     elif face_type == "adult face":
-        print("ref_metrics", ref_metrics[2], ref_metrics[3], ref_metrics[5])
         proximity = calculate_proximity(bounding_box, ref_metrics[2], ref_metrics[3], ref_metrics[5])
+        print("proximity", proximity)
         return proximity
         
 def get_proximity(bounding_box: list, face_type: str):
