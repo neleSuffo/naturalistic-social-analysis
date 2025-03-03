@@ -47,8 +47,29 @@ def normalize_proximity(face_area, ref_far, ref_close):
     normalized_value = (face_area - ref_far) / (ref_close - ref_far)
     return max(0, min(1, normalized_value))  # Ensure it's between 0 and 1
 
-def calculate_proximity(face_bbox, image_shape, min_ref_area, max_ref_area, ref_aspect_ratio, aspect_ratio_threshold=0.5):
-    """Compute proximity based on detected face area and aspect ratio relative to reference values."""
+def calculate_proximity(face_bbox, min_ref_area, max_ref_area, ref_aspect_ratio, aspect_ratio_threshold=0.5):
+    """
+    Compute proximity based on detected face area and aspect ratio relative to reference values.
+    
+    Parameters:
+    ----------
+    face_bbox: tuple
+        Bounding box coordinates for the detected face (x, y, width, height)
+    min_ref_area: int
+        Minimum reference area for face detection
+    max_ref_area: int
+        Maximum reference area for face detection
+    ref_aspect_ratio: float 
+        Reference aspect ratio for face detection
+    aspect_ratio_threshold: float
+        Maximum deviation from the reference aspect ratio
+        
+    Returns:
+    --------
+    float
+        Proximity value for the detected face
+    
+    """
     if face_bbox is None:
         return None
 
@@ -181,7 +202,18 @@ def describe_proximity(proximity):
         return "Very close"
 
 def compute_proximity(image_path, model, ref_metrics):
-    """Compute and return the proximity value for each detected face in a given image."""
+    """
+    Compute and return the proximity value for each detected face in a given image.
+    
+    Parameters:
+    ----------
+    image_path: str
+        Path to the input image.
+    model: YOLO
+        YOLO model for face detection.
+    ref_metrics: tuple
+        Reference metrics for proximity calculation.
+    """
     image = cv2.imread(image_path)
     if image is None:
         logging.error(f"Failed to load image from {image_path}")
@@ -195,7 +227,7 @@ def compute_proximity(image_path, model, ref_metrics):
 
     # Process child faces
     for i, face_bbox in enumerate(child_faces):
-        proximity = calculate_proximity(face_bbox, image.shape, ref_metrics[0], ref_metrics[1], ref_metrics[4]) # Pass child aspect ratio
+        proximity = calculate_proximity(face_bbox, ref_metrics[0], ref_metrics[1], ref_metrics[4]) # Pass child aspect ratio
         if proximity is not None:
             description = describe_proximity(proximity)
             face_key = f"child_face_{i+1}"
@@ -204,7 +236,7 @@ def compute_proximity(image_path, model, ref_metrics):
 
     # Process adult faces
     for i, face_bbox in enumerate(adult_faces):
-        proximity = calculate_proximity(face_bbox, image.shape, ref_metrics[2], ref_metrics[3], ref_metrics[5]) # Pass adult aspect ratio
+        proximity = calculate_proximity(face_bbox, ref_metrics[2], ref_metrics[3], ref_metrics[5]) # Pass adult aspect ratio
         if proximity is not None:
             description = describe_proximity(proximity)
             face_key = f"adult_face_{i+1}"
@@ -213,6 +245,58 @@ def compute_proximity(image_path, model, ref_metrics):
 
     if not proximities:
         logging.info(f"No valid proximity data for image {image_path}")
+
+def return_proximity(bounding_box: list, face_type: str, ref_metrics: tuple):
+    """
+    Compute and return the proximity value for each detected face in a given image.
+    
+    Parameters:
+    ----------
+    bounding_box: list
+        Bounding box coordinates for the detected face
+    face_type: str
+        Type of the detected face (child or adult)
+    ref_metrics: tuple
+        Reference metrics for proximity calculation.
+        
+    Returns:
+    --------
+    dict
+        Proximity value for the detected face
+    
+    """
+    if face_type == "infant/child face":
+        proximity = calculate_proximity(bounding_box, ref_metrics[0], ref_metrics[1], ref_metrics[4])
+        return proximity
+    elif face_type == "adult face":
+        print("ref_metrics", ref_metrics[2], ref_metrics[3], ref_metrics[5])
+        proximity = calculate_proximity(bounding_box, ref_metrics[2], ref_metrics[3], ref_metrics[5])
+        return proximity
+        
+def get_proximity(bounding_box: list, face_type: str):
+    """ 
+    This function is used to compute the proximity of detected faces in an image.
+    
+    Parameters:
+    ----------
+    bounding_box: list
+        Bounding box coordinates for the detected face
+    face_type: str
+        Type of the detected face (child or adult)
+    
+    Returns:
+    --------
+    proximity: float
+        Proximity value for the detected face
+    
+    """
+    ref_metrics = load_reference_metrics()
+    if ref_metrics is None:
+        logging.warning("Reference metrics not found. Please run the reference computation script.")
+        return
+    ref_metrics_list = list(ref_metrics.values())
+    proximity = return_proximity(bounding_box, face_type, ref_metrics_list)
+    return proximity
 
 def main():
     parser = argparse.ArgumentParser(description='Compute proximity for detected faces in an image.')
