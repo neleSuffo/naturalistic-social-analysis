@@ -47,14 +47,23 @@ def normalize_proximity(face_area, ref_far, ref_close):
     normalized_value = (face_area - ref_far) / (ref_close - ref_far)
     return max(0, min(1, normalized_value))  # Ensure it's between 0 and 1
 
-def calculate_proximity(face_bbox, image_shape, min_ref_area, max_ref_area):
-    """Compute proximity based on detected face area relative to reference values."""
+def calculate_proximity(face_bbox, image_shape, min_ref_area, max_ref_area, ref_aspect_ratio, aspect_ratio_threshold=0.5):
+    """Compute proximity based on detected face area and aspect ratio relative to reference values."""
     if face_bbox is None:
         return None
 
     # Extract face bounding box coordinates
     x1, y1, x2, y2 = face_bbox
-    face_area = (x2 - x1) * (y2 - y1)  # Compute area of the detected face
+    face_width = x2 - x1
+    face_height = y2 - y1
+    face_area = face_width * face_height
+    aspect_ratio = float(face_width) / float(face_height)
+
+    # Check if the face is a "partial face" based on aspect ratio
+    if ref_aspect_ratio is not None:  # Only check if we have a valid reference ratio
+        if abs(aspect_ratio - ref_aspect_ratio) > aspect_ratio_threshold:
+            logging.info(f"Partial face detected! Aspect ratio {aspect_ratio:.2f} deviates significantly from reference {ref_aspect_ratio:.2f}")
+            return 1.0  # Partial face: very close
 
     # Normalize face area to a value between 0 and 1
     if face_area <= min_ref_area:
@@ -64,21 +73,8 @@ def calculate_proximity(face_bbox, image_shape, min_ref_area, max_ref_area):
 
     # Scale the face area between min_ref_area and max_ref_area
     proximity = (face_area - min_ref_area) / (max_ref_area - min_ref_area)
-    
-    return proximity
 
-def process_detections(faces, persons, image_shape, ref_close, ref_far):
-    """Process detections and compute proximity information."""
-    proximities = []
-    for face_bbox in faces:
-        matching_person = find_matching_person(face_bbox, persons)
-        proximity = calculate_proximity(face_bbox, matching_person, image_shape, ref_close, ref_far)
-        if proximity is not None:
-            proximities.append(proximity)
-    
-    if proximities:
-        return sum(proximities) / len(proximities)  # Return the average proximity
-    return None
+    return proximity
 
 # File to store reference values
 REFERENCE_FILE = "/home/nele_pauline_suffo/outputs/reference_proximity.json"
@@ -92,18 +88,26 @@ def load_reference_metrics():
     """Load reference metrics from a JSON file if available."""
     if os.path.exists(REFERENCE_FILE):
         with open(REFERENCE_FILE, "r") as f:
-            return json.load(f)
+            data = json.load(f)
+        # Ensure all keys are present for backward compatibility
+        if not all(k in data for k in ("child_ref_close", "child_ref_far", "adult_ref_close", "adult_ref_far", "child_ref_aspect_ratio", "adult_ref_aspect_ratio")):
+            logging.warning("Reference file is missing some metrics, recomputing...")
+            return None
+        return data
     return None
 
+
 def get_reference_proximity_metrics(model, child_close_image_path, child_far_image_path, adult_close_image_path, adult_far_image_path):
-    """Retrieve or compute reference proximity metrics separately for child and adult faces."""
-    
+    """Retrieve or compute reference proximity metrics and aspect ratios separately for child and adult faces."""
+
     # Try loading stored references
     stored_metrics = load_reference_metrics()
     if stored_metrics:
         logging.info("Loaded reference metrics from file.")
-        return stored_metrics["child_ref_close"], stored_metrics["child_ref_far"], stored_metrics["adult_ref_close"], stored_metrics["adult_ref_far"]
-    
+        return (stored_metrics["child_ref_close"], stored_metrics["child_ref_far"],
+                stored_metrics["adult_ref_close"], stored_metrics["adult_ref_far"],
+                stored_metrics["child_ref_aspect_ratio"], stored_metrics["adult_ref_aspect_ratio"])
+
     logging.info("Computing reference metrics...")
 
     child_close_image = cv2.imread(child_close_image_path)
@@ -127,24 +131,39 @@ def get_reference_proximity_metrics(model, child_close_image_path, child_far_ima
             return None
         return sum([face[2] * face[3] for face in faces]) / len(faces)
 
+    def compute_average_aspect_ratio(faces, label):
+        if not faces:
+            logging.warning(f"No {label} faces detected in reference images.")
+            return None
+        aspect_ratios = [float(face[2]) / float(face[3]) for face in faces]  # width / height
+        return sum(aspect_ratios) / len(aspect_ratios)
+
     child_ref_close = compute_average_area(child_face_close, "child close")
     child_ref_far = compute_average_area(child_face_far, "child far")
     adult_ref_close = compute_average_area(adult_face_close, "adult close")
     adult_ref_far = compute_average_area(adult_face_far, "adult far")
 
+    child_ref_aspect_ratio = compute_average_aspect_ratio(child_face_close, "child close")
+    adult_ref_aspect_ratio = compute_average_aspect_ratio(adult_face_close, "adult close")
+
     logging.info(f"Child Ref Close: {child_ref_close}, Child Ref Far: {child_ref_far}")
     logging.info(f"Adult Ref Close: {adult_ref_close}, Adult Ref Far: {adult_ref_far}")
+    logging.info(f"Child Ref Aspect Ratio: {child_ref_aspect_ratio}, Adult Ref Aspect Ratio: {adult_ref_aspect_ratio}")
 
     # Save computed references for future runs
     metrics = {
         "child_ref_close": child_ref_close,
         "child_ref_far": child_ref_far,
         "adult_ref_close": adult_ref_close,
-        "adult_ref_far": adult_ref_far
+        "adult_ref_far": adult_ref_far,
+        "child_ref_aspect_ratio": child_ref_aspect_ratio,
+        "adult_ref_aspect_ratio": adult_ref_aspect_ratio
     }
     save_reference_metrics(metrics)
 
-    return child_ref_close, child_ref_far, adult_ref_close, adult_ref_far
+    return (child_ref_close, child_ref_far, adult_ref_close, adult_ref_far,
+            child_ref_aspect_ratio, adult_ref_aspect_ratio)
+
 
 def describe_proximity(proximity):
     """Returns a qualitative description of proximity."""
@@ -176,7 +195,7 @@ def compute_proximity(image_path, model, ref_metrics):
 
     # Process child faces
     for i, face_bbox in enumerate(child_faces):
-        proximity = calculate_proximity(face_bbox, image.shape, ref_metrics[0], ref_metrics[1])
+        proximity = calculate_proximity(face_bbox, image.shape, ref_metrics[0], ref_metrics[1], ref_metrics[4]) # Pass child aspect ratio
         if proximity is not None:
             description = describe_proximity(proximity)
             face_key = f"child_face_{i+1}"
@@ -185,7 +204,7 @@ def compute_proximity(image_path, model, ref_metrics):
 
     # Process adult faces
     for i, face_bbox in enumerate(adult_faces):
-        proximity = calculate_proximity(face_bbox, image.shape, ref_metrics[2], ref_metrics[3])
+        proximity = calculate_proximity(face_bbox, image.shape, ref_metrics[2], ref_metrics[3], ref_metrics[5]) # Pass adult aspect ratio
         if proximity is not None:
             description = describe_proximity(proximity)
             face_key = f"adult_face_{i+1}"
@@ -208,8 +227,11 @@ def main():
     adult_far_image_path = "/home/nele_pauline_suffo/ProcessedData/quantex_videos_processed/quantex_at_home_id264683_2024_09_28_01/quantex_at_home_id264683_2024_09_28_01_001620.jpg"
 
     model = YOLO(model_path)
-    ref_metrics = get_reference_proximity_metrics(model, child_close_image_path, child_far_image_path, adult_close_image_path, adult_far_image_path)
+    (child_ref_close, child_ref_far, adult_ref_close, adult_ref_far,
+     child_ref_aspect_ratio, adult_ref_aspect_ratio) = get_reference_proximity_metrics(model, child_close_image_path, child_far_image_path, adult_close_image_path, adult_far_image_path)
+    ref_metrics = (child_ref_close, child_ref_far, adult_ref_close, adult_ref_far, child_ref_aspect_ratio, adult_ref_aspect_ratio)
     compute_proximity(args.image_path, model, ref_metrics)
+
 
 if __name__ == "__main__":
     main()
