@@ -14,7 +14,7 @@ def main():
     args = parser.parse_args()
 
     # Load the YOLO model with the supplied target weights
-    if args.yolo_target == "all_detections":
+    if args.yolo_target == "all":
         model = YOLO(YoloPaths.all_trained_weights_path)
         folder_name = "all_detections_validation_" + datetime.now().strftime("%Y%m%d_%H%M%S")
         data_config = str(YoloPaths.all_data_config_path)
@@ -43,7 +43,7 @@ def main():
     )
 
     # Extract precision and recall
-    if args.yolo_target == "person_face" or args.yolo_target == "all_detections":
+    if args.yolo_target == "person_face" or args.yolo_target == "all":
         precision = metrics.results_dict['metrics/precision']
         recall = metrics.results_dict['metrics/recall']
         f1_score = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
