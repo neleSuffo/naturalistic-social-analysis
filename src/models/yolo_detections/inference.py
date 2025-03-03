@@ -6,6 +6,20 @@ from ultralytics import YOLO
 from constants import YoloPaths
 from estimate_proximity import get_proximity, describe_proximity
 
+# Add this after the imports
+CLASS_COLORS = {
+    0: (215, 65, 117),    # Pink for class 0
+    1: (105, 22, 51),  # Magenta for class 1
+    2: (199, 200, 126),    # Green for class 2
+    3: (210, 187, 109),  # Light Green for class 3
+    4: (179, 182, 176),    # Gray for class 4
+    5: (102, 120, 124),  # Strong Gray for class 5
+    6: (141, 142, 61),  # Strong Green for class 6
+    7: (45, 55, 58),      # Black for class 7
+    8: (242, 192, 209),    # Light Pink for class 8
+    9: (201, 210, 213),    # Ice Blue for class 9
+    10: (217, 218, 169),   # Green Yellow for class 10
+}
 # Load the YOLOv11 model
 model = YOLO(YoloPaths.all_trained_weights_path)
 
@@ -34,12 +48,10 @@ def run_inference(image_path):
                 proximity_description = describe_proximity(proximity)
 
             # Assign a unique color to each class
-            if class_id not in class_colors:
-                class_colors[class_id] = [random.randint(0, 255) for _ in range(3)]
-            color = class_colors[class_id]
-            
+            color = CLASS_COLORS[class_id]
+
             # Draw bounding box
-            cv2.rectangle(image, (x1, y1), (x2, y2), color, 2)
+            cv2.rectangle(image, (x1, y1), (x2, y2), color, 4)
 
             # Display class name and confidence score
             if class_id in [2,3]:
