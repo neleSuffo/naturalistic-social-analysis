@@ -15,8 +15,9 @@ class DetectionPaths:
     face_detections_dir = Path(BasePaths.home_dir/"outputs/mtcnn/")
     #videos_input_dir = Path(BasePaths.data_dir//"videos_train/") 
     quantex_videos_input_dir = Path(BasePaths.data_dir/"quantex_videos/") 
-    videos_input_dir = Path(BasePaths.data_dir/"videos_superannotate_all/") 
+    childlens_videos_input_dir = Path(BasePaths.data_dir/"childlens_videos/") 
     images_input_dir = Path(BasePaths.data_dir/"quantex_videos_processed/")
+    childlens_images_input_dir = Path(BasePaths.data_dir/"childlens_videos_processed/")
     gaze_images_input_dir = Path(BasePaths.data_dir/"quantex_rawframes_gaze/")
     # Path variable to the annotation xml files
     quantex_annotations_dir = Path(BasePaths.data_dir/"quantex_annotations/")
