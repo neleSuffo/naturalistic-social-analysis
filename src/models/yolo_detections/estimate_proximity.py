@@ -3,6 +3,7 @@ import logging
 import argparse
 import os
 import json
+import numpy as np
 from ultralytics import YOLO
 
 # Configure logging
@@ -80,8 +81,6 @@ def calculate_proximity(face_bbox, min_ref_area, max_ref_area, ref_aspect_ratio,
     face_area = face_width * face_height
     aspect_ratio = float(face_width) / float(face_height)
 
-    print(f"min_ref_area: {min_ref_area}")
-    print(f"max_ref_area: {max_ref_area}")
     print(f"detected face_area: {face_area}")
 
     # Check if the face is a "partial face" based on aspect ratio
@@ -99,7 +98,8 @@ def calculate_proximity(face_bbox, min_ref_area, max_ref_area, ref_aspect_ratio,
         return 1.0  # Largest possible proximity (very close)
 
     # Scale the face area between min_ref_area and max_ref_area
-    proximity = (face_area - max_ref_area) / (min_ref_area - max_ref_area)   
+    #proximity = (face_area - max_ref_area) / (min_ref_area - max_ref_area)  
+    proximity = (np.log(face_area) - np.log(max_ref_area)) / (np.log(min_ref_area) - np.log(max_ref_area)) 
     return proximity
 
 # File to store reference values
