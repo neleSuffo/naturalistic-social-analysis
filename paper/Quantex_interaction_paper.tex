@@ -343,32 +343,57 @@ In the following sections, we describe each module in detail, including training
 
 \section{Supplementary Material}\label{supplementary-material}
 
-\subsection{Yolo11m: Person and Face Detection}\label{yolo11m-person-and-face-detection}
+\subsection{YOLO11x: Multi-Class Detection of Persons, Faces, and Objects}\label{yolo11x-multi-class-detection-of-persons-faces-and-objects}
 
 In our study, we utilized Ultralytics' YOLO11, the ``latest iteration in the Ultralytics YOLO series of real-time object detectors'' (Jocher \& Qiu, 2024), trained on the COCO dataset. Released in October 2024, YOLO11 introduces architectural improvements such as the C2PSA block (Convolutional Block with Parallel Spatial Attention), which enhances spatial attention within feature maps, allowing the model to focus more precisely on critical areas of an image compared to previous Yolo versions. Additionally, YOLO11 incorporates the C3K2 block, designed to be faster and more efficient, enhancing the overall performance of the feature aggregation process (Khanam \& Hussain, 2024). These advancements make the YOLO11 detection model, pretrained on COCO, well-suited for training on our egocentric dataset, which captures dynamic movements from a camera perspective on chest height.
 
-However, our dataset presents unique challenges due to the egocentric viewpoint, as the body parts of the child wearing the camera frequently appear in the footage. To prevent misclassification, we use a dedicated annotation scheme where all individuals in the scene are labeled as ``person,'' but each is assigned a unique ID. The key child, who wears the camera, is always assigned ID = 1. During preprocessing, we map the key child (ID = 1) into a separate category, ``child body parts,'' to distinguish their presence from other individuals. Since standard YOLO models do not inherently make this distinction, we fine-tune YOLO11m to recognize and differentiate between the key child's body parts and other people. This adaptation ensures accurate person detection while minimizing false positives from the child's own body, ultimately allowing for more precise analyses of social interactions. Additionally, YOLO11 does not include a predefined ``face'' class in its standard configuration, further underscoring the need for fine-tuning to meet the specific requirements of our dataset.
+\subsubsection{Dataset Preprocessing}\label{dataset-preprocessing}
+
+Our dataset presents unique challenges due to its egocentric viewpoint, as the body parts of the child wearing the camera frequently appear in the footage. To prevent misclassification, we adopt a dedicated annotation scheme where all individuals in the scene are labeled as ``person,'' each assigned a unique ID. The key child, who wears the camera, is consistently assigned ID = 1. During preprocessing, we map the key child (ID = 1) into a separate category, ``child body parts,'' to distinguish their presence from other individuals. Furthermore, we refine the ``person'' and ``face'' categories by introducing additional distinctions that standard YOLO models do not inherently make. Specifically, we differentiate between (1) the key child (who wears the camera) and other individuals, (2) adults and children/infants for both full-body detections and faces. These modifications allow for a more precise analysis of social interactions while reducing false positives caused from the key child's own body while capturing detailed information on the presence and classification of people and objects in the child's environment. To address these challenges, our fine-tuned YOLO11 model is trained to:
+
+\begin{itemize}
+\tightlist
+\item
+  Recognize and differentiate between the key child's body parts and other individuals.
+\item
+  Distinguish between adults and children/infants for both full-body detections and faces.
+\item
+  Identify and classify six specific object categories (toy, book, food, kitchenware, screen, other object) relevant to the child's interactions.
+\end{itemize}
+
+While our dataset originally included seven object categories, we excluded the ``animal'' category from training due to its low occurrence (only 19 instances), whereas all other categories had counts exceeding 1,000. As a result, our final model was trained on six object categories.
 
 \subsubsection{Dataset Splitting}\label{dataset-splitting}
 
-We started data preprocessing with a dataset comprising a total of 113799 frames from 80 annotated videos. Prior to splitting this dataset into training, validation, and testing datasets, we analyzed the proportion of frames containing annotated persons as well as faces versus those without any annotations. Our analysis showed that at least one person was present in 45.25\% of the frames and at least one face was visible in 45.25\% of the frames. We applied a stratified split to ensure that each of the training, validation, and testing dataset preserved the original ratio of frames with persons, frames with faces to frames without any persons or faces. As a result, the final data distribution, displayed in detail in table \ref{tab:person-dataset-splits}) consisted of 91038 frames in the training dataset, 11379 frames in the validation and 11382 frames in the testing dataset, guaranteeing that the model's performance evaluation remained accurate to the real-world data distribution.
+We started data splitting with a dataset comprising a total of 113799 frames from 80 annotated videos. Prior to splitting this dataset into training, validation, and testing datasets, we analyzed the proportion of frames containing annotated persons, faces and objects versus those without any annotations. Our analysis showed that at least one adult or child (full body or face) was present in 29.75\% of the frames and at least one face was visible in 29.75\% of the frames.
+
+We applied a stratified split to ensure that each of the training, validation, and testing dataset preserved the original ratio of frames with persons (adult and child/infant), frames with faces (adult and child/infant), frames with objects (6 object classes without animal) to frames without any of the relevant classes. As a result, the final data distribution, displayed in detail in table \ref{tab:person-dataset-splits}) consisted of 91038 frames in the training dataset, 11379 frames in the validation and 11382 frames in the testing dataset, guaranteeing that the model's performance evaluation remained accurate to the real-world data distribution.
 
 \begin{table}[tbp]
 
 \begin{center}
 \begin{threeparttable}
 
-\caption{\label{tab:person-dataset-splits}Dataset splits for the YOLO11 person and face detection model trained on the Quantex dataset. The table shows the total number of frames, as well as the number of frames with only persons, only faces, both persons and faces, and no persons or faces in the training, validation, and testing datasets.}
+\caption{\label{tab:person-dataset-splits}Dataset splits for the YOLO11 person and face detection model trained on the Quantex dataset. The table shows the distribution of annotated persons, faces, and objects in the training, validation, and testing datasets.}
 
-\begin{tabular}{llllll}
+\begin{tabular}{cccccc}
 \toprule
 Quantex & \multicolumn{1}{c}{Percentage} & \multicolumn{1}{c}{Training} & \multicolumn{1}{c}{Validation} & \multicolumn{1}{c}{Testing} & \multicolumn{1}{c}{Total}\\
 \midrule
-Only Person(s) & 30.19 & 27484 & 3435 & 3436 & 34355\\
-Only Face(s) & 0.22 & 202 & 25 & 26 & 253\\
-Persons and Faces & 14.83 & 13506 & 1688 & 1689 & 16883\\
-No Person or Face & 54.75 & 49846 & 6230 & 6232 & 62308\\
-Total &  & 91038 & 11378 & 11573 & 113799\\
+Adult Only & 6.54 & 5961 & 745 & 746 & 7452\\
+Child/Infant Only & 8.23 & 7494 & 936 & 938 & 9368\\
+Adult face only & 0.15 & 13 & 1 & 3 & 17\\
+Child/Infant face only & 0.12 & 108 & 13 & 14 & 135\\
+Person \& Face & 14.84 & 13506 & 1688 & 1689 & 16883\\
+Book & 9.19 & 8399 & 1037 & 1026 & 10462\\
+Toy & 15.23 & 13879 & 1721 & 1737 & 17337\\
+Kitchenware & 2.10 & 1892 & 236 & 266 & 2394\\
+Screen & 3.71 & 3386 & 422 & 410 & 4218\\
+Food & 0.98 & 900 & 107 & 108 & 1115\\
+Other Object & 16.14 & 14706 & 1839 & 1829 & 18374\\
+Animal & 0.02 & 16 & 1 & 2 & 19\\
+Neither & 22.87 & 20794 & 2631 & 2618 & 26025\\
+Total & 100 & 91037 & 11377 & 11385 & 113799\\
 \bottomrule
 \end{tabular}
 
@@ -383,7 +408,7 @@ Model training was conducted on a Linux server equipped with an Intel(R) Xeon(R)
 
 The loss function of the YOLO11 model comprises three main components: Box Loss, Classification Loss, and Distribution Focal Loss (DFL) (Li et al., 2020; Terven, Cordova-Esparza, Ramirez-Pedraza, Chavez-Urbiola, \& Romero-Gonzalez, 2024). \emph{Box Loss} quantifies the difference between predicted bounding boxes and ground truth boxes, ensuring precise localization of detected objects by penalizing inaccuracies in position and size. \emph{Classification Loss} evaluates the model's ability to correctly assign detected objects to their respective classes, reducing false positives and false negatives. \emph{Distribution Focal Loss} enhances the model's ability to detect challenging objects, particularly small or partially occluded ones, by refining the localization of bounding box coordinates and emphasizing hard-to-detect instances. Together, these loss components contribute to a more robust and accurate detection model.
 
-During the training process, we observed that all three loss components decreased over time, indicating effective learning and improved performance, as visible in in figure \ref{fig:person-loss-curves}. A steady decrease in Box Loss indicates that the model is becoming increasingly accurate in localizing persons, faces and child body parts within frames. Similarly, the steady convergence of the Classification Loss reveals the model's increasing ability to reliably classifiy the detected object in either ``person'', ``face'' or ``child body part''. The decrease in DFL over time indicates that the model is getting better at focusing on and correctly identifying difficult-to-detect persons, faces or child body parts, which improves its overall detection capabilities. Conclusively, the loss curves show that the model effectively learned to localize and identify the target classes during the training period.
+During the training process, we observed that all three loss components decreased over time, indicating effective learning and improved performance, as visible in in figure \ref{fig:person-loss-curves}. A steady decrease in Box Loss indicates that the model is becoming increasingly accurate in localizing persons, faces and objects within frames. Similarly, the steady convergence of the Classification Loss reveals the model's increasing ability to reliably classifiy the detected object in one of the relevant classes. The decrease in DFL over time indicates that the model is getting better at focusing on and correctly identifying difficult-to-detect persons, faces or objects, which improves its overall detection capabilities. Conclusively, the loss curves show that the model effectively learned to localize and identify the target classes during the training period.
 
 \begin{figure}
 
@@ -444,6 +469,14 @@ Quantex & 0 & 0 & 0 & 0 & 0\\
 
 \subsection{Yolo11m-cls: Gaze Classification}\label{yolo11m-cls-gaze-classification}
 
+\begin{itemize}
+\tightlist
+\item
+  for the gaze classifiaction step in our automated pipeline model selection was more difficult due to different available approaches and the unique challenges of the egocentric perspective
+\item
+  available were modes for direct gaze estimation like LiteGaze (Guo, Wu, Miao, \& Chen, 2023) or
+\end{itemize}
+
 In the gaze classification part of our study, we employed Ultralytics' YOLO11 architecture (Jocher \& Qiu, 2024), more specifically the yolo11m classification model which is pretrained on ImageNet. The video data, collected from a camera on chest height, present unique challenges due to its egocentric perspective. This viewpoint sometimes introduced motion blur and the particular recoring angle can make it difficult to determine whether a person's gaze is directed at the child, even for human annotators. We therefore defined to classify a person's gaze as ``directed towards the child'' when the person's gaze is oriented towards the child's face, body, or in their general direction. This included cases where the person is looking directly at the camera, which is worn by the child, or slightly upward, estimating where the child's head would be. For each face, we annotated the gaze as either directed at the child (``gaze'') or not (``no gaze''). Due to the architectural enhancements of YOLO11, such as the C2PSA block, which improves the model's ability to focus on critical regions within an image, we chose YOLO11 for our gaze classification task and fine-tuned the pretrained Yolo11m model to classify gaze accordingly.
 
 \subsubsection{Dataset Splitting}\label{dataset-splitting-1}
@@ -481,7 +514,26 @@ Figure \ref{fig:person-loss-curves} provides an overview of the loss curves for 
 
 \subsubsection{Model Evaluation Metrics}\label{model-evaluation-metrics-1}
 
-\subsection{Object Detection}\label{object-detection-1}
+\subsection{Proximity Heuristic}\label{proximity-heuristic}
+
+Proximity between individuals is an important aspect of social interaction. Previous studies have shown that interpersonal distance can provide insights into the nature of relationships and social engagement (Hernández-Heredia, Reyes-Manzano, Flores-Hernández, Ramos-Fernández, \& Guzmán-Vargas, 2024; Janssen et al., 2024; Onnela et al., 2014). Since our dataset does not contain explicit proximity labels, we developed a heuristic approach to estimate the distance between the child and other individuals.
+
+Our heuristic relies on the bounding boxes of detected faces, assuming that the size of these bounding boxes provides an implicit cue for proximity. Specifically, we infer that larger bounding boxes correspond to individuals who are closer to the camera, whereas smaller bounding boxes indicate individuals positioned further away. To quantify this relationship, we calculate the area of a detected face bounding box as the product of its width and height. This computed size is then compared to a predefined reference bounding box. For both adults and children/infants, we selected two reference face sizes: one corresponding to a face very close to the camera (within arm's reach) and another representing a face further away (e.g., in the background or outdoors). By normalizing the detected face sizes relative to these reference sizes, we obtain a proximity score ranging from 0 to 1, where a value of 1 indicates a face extremely close to the camera, and 0 represents a face that is far away.
+
+To better account for the nonlinear relationship between face size and distance, we applied a logarithmic transformation to the bounding box areas. Since face area decreases quadratically as distance increases, a simple linear mapping would make small differences appear too large for close faces and too small for distant ones. The logarithmic transformation helps balance this by compressing large values and stretching smaller ones, creating a more natural and meaningful proximity scale. This approach aligns with how humans perceive size, as our sensitivity to changes depends on relative differences rather than absolute ones (Stevens \& Marks, 2017). By using this scaling, we ensure that proximity estimates remain consistent across different face sizes and distances.
+
+\begin{figure}
+
+{\centering \includegraphics{Quantex_interaction_paper_files/figure-latex/proximity-classifications-1} 
+
+}
+
+\caption{Proximity heuristic examples. Example \textbf{A} shows a face close to the camera, while example \textbf{B} depicts a face further away.}\label{fig:proximity-classifications}
+\end{figure}
+
+In addition to absolute size, we incorporate a width-to-height ratio as an additional cue for proximity estimation. This ratio was determined separately for adult and child/infant faces based on reference images depicting full, front-facing faces. If a detected face exhibits a significant deviation from the expected aspect ratio, we infer that the face is partially cropped due to extreme proximity to the camera. In such cases, the proximity score is set to 1. An example illustrating this case is shown in Figure \ref{fig:proximity-close-face}.
+
+This heuristic provides an interpretable and computationally efficient method for estimating proximity in egocentric recordings, allowing us to examine the spatial dynamics of social interactions without the need for explicit depth information or additional sensors.
 
 \subsection{Voice Type Classification}\label{voice-type-classification}
 
@@ -507,8 +559,17 @@ Carpendale, J., \& Lewis, C. (2020). \emph{What {Makes Us Human}: {How Minds Dev
 \bibitem[\citeproctext]{ref-daiLongitudinalDataCollection2022}
 Dai, S., Bouchet, H., Karsai, M., Chevrot, J.-P., Fleury, E., \& Nardy, A. (2022). Longitudinal data collection to follow social network and language development dynamics at preschool. \emph{Scientific Data}, \emph{9}(1), 777. \url{https://doi.org/10.1038/s41597-022-01756-x}
 
+\bibitem[\citeproctext]{ref-guoLiteGazeNeuralArchitecture2023}
+Guo, X., Wu, Y., Miao, J., \& Chen, Y. (2023). {LiteGaze}: {Neural} architecture search for efficient gaze estimation. \emph{PLOS ONE}, \emph{18}(5), e0284814. \url{https://doi.org/10.1371/journal.pone.0284814}
+
+\bibitem[\citeproctext]{ref-hernandez-herediaProximitySensorMeasuring2024}
+Hernández-Heredia, T. K., Reyes-Manzano, C. F., Flores-Hernández, D. A., Ramos-Fernández, G., \& Guzmán-Vargas, L. (2024). Proximity {Sensor} for {Measuring Social Interaction} in a {School Environment}. \emph{Sensors}, \emph{24}(15), 4822. \url{https://doi.org/10.3390/s24154822}
+
 \bibitem[\citeproctext]{ref-heyesCognitiveGadgetsCultural2018}
 Heyes, C. M. (2018). \emph{Cognitive gadgets: The cultural evolution of thinking}. Cambridge (Mass.): Harvard University press.
+
+\bibitem[\citeproctext]{ref-janssenTrackingRealtimeProximity2024}
+Janssen, L. H. C., Verkuil, B., Nedderhoff, A., Van Houtum, L. A. E. M., Wever, M. C. M., \& Elzinga, B. M. (2024). Tracking real-time proximity in daily life: {A} new tool to examine social interactions. \emph{Behavior Research Methods}, \emph{56}(7), 7482--7497. \url{https://doi.org/10.3758/s13428-024-02432-1}
 
 \bibitem[\citeproctext]{ref-jocherUltralyticsYOLO112024}
 Jocher, G., \& Qiu, J. (2024). \emph{Ultralytics {YOLO11}}. Retrieved from \url{https://github.com/ultralytics/ultralytics}
@@ -545,6 +606,9 @@ Rossano, F., Terwilliger, J., Bangerter, A., Genty, E., Heesen, R., \& Zuberbüh
 
 \bibitem[\citeproctext]{ref-smithDevelopingInfantCreates2018}
 Smith, L. B., Jayaraman, S., Clerkin, E., \& Yu, C. (2018). The {Developing Infant Creates} a {Curriculum} for {Statistical Learning}. \emph{Trends in Cognitive Sciences}, \emph{22}(4), 325--336. \url{https://doi.org/10.1016/j.tics.2018.02.004}
+
+\bibitem[\citeproctext]{ref-stevensPsychophysicsIntroductionIts2017}
+Stevens, S. S., \& Marks, L. E. (2017). \emph{Psychophysics: {Introduction} to {Its Perceptual}, {Neural}, and {Social Prospects}} (1st ed.). Routledge. \url{https://doi.org/10.4324/9781315127675}
 
 \bibitem[\citeproctext]{ref-tervenLossFunctionsMetrics2024}
 Terven, J., Cordova-Esparza, D. M., Ramirez-Pedraza, A., Chavez-Urbiola, E. A., \& Romero-Gonzalez, J. A. (2024, October 12). Loss {Functions} and {Metrics} in {Deep Learning}. \url{https://doi.org/10.48550/arXiv.2307.02694}
