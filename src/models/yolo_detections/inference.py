@@ -55,7 +55,7 @@ def run_inference(image_path):
 
             # Display class name and confidence score
             if class_id in [2,3]:
-                label = f"{class_name} {confidence:.2f} {proximity_description}"
+                label = f"{class_name} {confidence:.2f}, Proximity: {proximity:.2f} {proximity_description}"
             else:
                 label = f"{class_name} {confidence:.2f}"
             font = cv2.FONT_HERSHEY_SIMPLEX
