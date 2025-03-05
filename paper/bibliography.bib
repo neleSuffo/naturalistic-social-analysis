@@ -214,6 +214,20 @@
   file = {/Users/nelesuffo/Zotero/storage/XZZVRTPE/Chen et al. - 2023 - Dyadic Affect in Parent-Child Multimodal Interacti.pdf}
 }
 
+@online{chengAppearancebasedGazeEstimation2021,
+  title = {Appearance-Based {{Gaze Estimation With Deep Learning}}: {{A Review}} and {{Benchmark}}},
+  shorttitle = {Appearance-Based {{Gaze Estimation With Deep Learning}}},
+  author = {Cheng, Yihua and Wang, Haofei and Bao, Yiwei and Lu, Feng},
+  date = {2021},
+  doi = {10.48550/ARXIV.2104.12668},
+  url = {https://arxiv.org/abs/2104.12668},
+  urldate = {2025-03-04},
+  abstract = {Human gaze provides valuable information on human focus and intentions, making it a crucial area of research. Recently, deep learning has revolutionized appearance-based gaze estimation. However, due to the unique features of gaze estimation research, such as the unfair comparison between 2D gaze positions and 3D gaze vectors and the different pre-processing and post-processing methods, there is a lack of a definitive guideline for developing deep learning-based gaze estimation algorithms. In this paper, we present a systematic review of the appearance-based gaze estimation methods using deep learning. Firstly, we survey the existing gaze estimation algorithms along the typical gaze estimation pipeline: deep feature extraction, deep learning model design, personal calibration and platforms. Secondly, to fairly compare the performance of different approaches, we summarize the data pre-processing and post-processing methods, including face/eye detection, data rectification, 2D/3D gaze conversion and gaze origin conversion. Finally, we set up a comprehensive benchmark for deep learning-based gaze estimation. We characterize all the public datasets and provide the source code of typical gaze estimation algorithms. This paper serves not only as a reference to develop deep learning-based gaze estimation methods, but also a guideline for future gaze estimation research. The project web page can be found at https://phi-ai.buaa.edu.cn/Gazehub.},
+  pubstate = {prepublished},
+  version = {2},
+  keywords = {Computer Vision and Pattern Recognition (cs.CV),FOS: Computer and information sciences}
+}
+
 @software{coddYOLOv11nfacedetection2024,
   title = {{{YOLOv11n-face-detection}}},
   author = {Codd, Adam},
@@ -486,6 +500,20 @@
   pubstate = {prepublished},
   version = {1},
   keywords = {Audio and Speech Processing (eess.AS),Computer Vision and Pattern Recognition (cs.CV),FOS: Computer and information sciences,FOS: Electrical engineering electronic engineering information engineering,Sound (cs.SD)}
+}
+
+@online{kellnhoferGaze360PhysicallyUnconstrained2019,
+  title = {Gaze360: {{Physically Unconstrained Gaze Estimation}} in the {{Wild}}},
+  shorttitle = {Gaze360},
+  author = {Kellnhofer, Petr and Recasens, Adria and Stent, Simon and Matusik, Wojciech and Torralba, Antonio},
+  date = {2019},
+  doi = {10.48550/ARXIV.1910.10088},
+  url = {https://arxiv.org/abs/1910.10088},
+  urldate = {2025-03-04},
+  abstract = {Understanding where people are looking is an informative social cue. In this work, we present Gaze360, a large-scale gaze-tracking dataset and method for robust 3D gaze estimation in unconstrained images. Our dataset consists of 238 subjects in indoor and outdoor environments with labelled 3D gaze across a wide range of head poses and distances. It is the largest publicly available dataset of its kind by both subject and variety, made possible by a simple and efficient collection method. Our proposed 3D gaze model extends existing models to include temporal information and to directly output an estimate of gaze uncertainty. We demonstrate the benefits of our model via an ablation study, and show its generalization performance via a cross-dataset evaluation against other recent gaze benchmark datasets. We furthermore propose a simple self-supervised approach to improve cross-dataset domain adaptation. Finally, we demonstrate an application of our model for estimating customer attention in a supermarket setting. Our dataset and models are available at http://gaze360.csail.mit.edu .},
+  pubstate = {prepublished},
+  version = {1},
+  keywords = {Computer Vision and Pattern Recognition (cs.CV),FOS: Computer and information sciences}
 }
 
 @online{khanamYOLOv11OverviewKey2024,
@@ -818,6 +846,24 @@
   abstract = {Infants possess a remarkable ability to rapidly learn and process visual inputs. As an infant's mobility increases, so does the variety and dynamics of their visual inputs. Is this change in the properties of the visual inputs beneficial or even critical for the proper development of the visual system? To address this question, we used video recordings from infants wearing head-mounted cameras to train a variety of self-supervised learning models. Critically, we separated the infant data by age group and evaluated the importance of training with a curriculum aligned with developmental order. We found that initiating learning with the data from the youngest age group provided the strongest learning signal and led to the best learning outcomes in terms of downstream task performance. We then showed that the benefits of the data from the youngest age group are due to the slowness and simplicity of the visual experience. The results provide strong empirical evidence for the importance of the properties of the early infant experience and developmental progression in training. More broadly, our approach and findings take a noteworthy step towards reverse engineering the learning mechanisms in newborn brains using image-computable models from artificial intelligence.}
 }
 
+@article{shahDriverGazeEstimation2022,
+  title = {A {{Driver Gaze Estimation Method Based}} on {{Deep Learning}}},
+  author = {Shah, Sayyed Mudassar and Sun, Zhaoyun and Zaman, Khalid and Hussain, Altaf and Shoaib, Muhammad and Pei, Lili},
+  date = {2022-05-23},
+  journaltitle = {Sensors},
+  shortjournal = {Sensors},
+  volume = {22},
+  number = {10},
+  pages = {3959},
+  issn = {1424-8220},
+  doi = {10.3390/s22103959},
+  url = {https://www.mdpi.com/1424-8220/22/10/3959},
+  urldate = {2025-03-05},
+  abstract = {Car crashes are among the top ten leading causes of death; they could mainly be attributed to distracted drivers. An advanced driver-assistance technique (ADAT) is a procedure that can notify the driver about a dangerous scenario, reduce traffic crashes, and improve road safety. The main contribution of this work involved utilizing the driver’s attention to build an efficient ADAT. To obtain this “attention value”, the gaze tracking method is proposed. The gaze direction of the driver is critical toward understanding/discerning fatal distractions, pertaining to when it is obligatory to notify the driver about the risks on the road. A real-time gaze tracking system is proposed in this paper for the development of an ADAT that obtains and communicates the gaze information of the driver. The developed ADAT system detects various head poses of the driver and estimates eye gaze directions, which play important roles in assisting the driver and avoiding any unwanted circumstances. The first (and more significant) task in this research work involved the development of a benchmark image dataset consisting of head poses and horizontal and vertical direction gazes of the driver’s eyes. To detect the driver’s face accurately and efficiently, the You Only Look Once (YOLO-V4) face detector was used by modifying it with the Inception-v3 CNN model for robust feature learning and improved face detection. Finally, transfer learning in the InceptionResNet-v2 CNN model was performed, where the CNN was used as a classification model for head pose detection and eye gaze angle estimation; a regression layer to the InceptionResNet-v2 CNN was added instead of SoftMax and the classification output layer. The proposed model detects and estimates head pose directions and eye directions with higher accuracy. The average accuracy achieved by the head pose detection system was 91\%; the model achieved a RMSE of 2.68 for vertical and 3.61 for horizontal eye gaze estimations.},
+  langid = {english},
+  file = {/Users/nelesuffo/Zotero/storage/XHZYYH2H/Shah et al. - 2022 - A Driver Gaze Estimation Method Based on Deep Lear.pdf}
+}
+
 @online{simonyanTwoStreamConvolutionalNetworks2014,
   title = {Two-{{Stream Convolutional Networks}} for {{Action Recognition}} in {{Videos}}},
   author = {Simonyan, Karen and Zisserman, Andrew},
@@ -1083,6 +1129,50 @@
   file = {/Users/nelesuffo/Zotero/storage/ZVPCJWU6/Yoshida and Smith - 2008 - What's in View for Toddlers Using a Head Camera t.pdf}
 }
 
+@inproceedings{zhangAppearancebasedGazeEstimation2015,
+  title = {Appearance-Based Gaze Estimation in the Wild},
+  booktitle = {2015 {{IEEE Conference}} on {{Computer Vision}} and {{Pattern Recognition}} ({{CVPR}})},
+  author = {Zhang, Xucong and Sugano, Yusuke and Fritz, Mario and Bulling, Andreas},
+  date = {2015-06},
+  pages = {4511--4520},
+  publisher = {IEEE},
+  location = {Boston, MA, USA},
+  doi = {10.1109/CVPR.2015.7299081},
+  url = {http://ieeexplore.ieee.org/document/7299081/},
+  urldate = {2025-03-04},
+  eventtitle = {2015 {{IEEE Conference}} on {{Computer Vision}} and {{Pattern Recognition}} ({{CVPR}})},
+  isbn = {978-1-4673-6964-0},
+  file = {/Users/nelesuffo/Zotero/storage/9GCPTTJG/Zhang et al. - 2015 - Appearance-based gaze estimation in the wild.pdf}
+}
+
+@online{zhangETHXGazeLargeScale2020,
+  title = {{{ETH-XGaze}}: {{A Large Scale Dataset}} for {{Gaze Estimation}} under {{Extreme Head Pose}} and {{Gaze Variation}}},
+  shorttitle = {{{ETH-XGaze}}},
+  author = {Zhang, Xucong and Park, Seonwook and Beeler, Thabo and Bradley, Derek and Tang, Siyu and Hilliges, Otmar},
+  date = {2020},
+  doi = {10.48550/ARXIV.2007.15837},
+  url = {https://arxiv.org/abs/2007.15837},
+  urldate = {2025-03-05},
+  abstract = {Gaze estimation is a fundamental task in many applications of computer vision, human computer interaction and robotics. Many state-of-the-art methods are trained and tested on custom datasets, making comparison across methods challenging. Furthermore, existing gaze estimation datasets have limited head pose and gaze variations, and the evaluations are conducted using different protocols and metrics. In this paper, we propose a new gaze estimation dataset called ETH-XGaze, consisting of over one million high-resolution images of varying gaze under extreme head poses. We collect this dataset from 110 participants with a custom hardware setup including 18 digital SLR cameras and adjustable illumination conditions, and a calibrated system to record ground truth gaze targets. We show that our dataset can significantly improve the robustness of gaze estimation methods across different head poses and gaze angles. Additionally, we define a standardized experimental protocol and evaluation metric on ETH-XGaze, to better unify gaze estimation research going forward. The dataset and benchmark website are available at https://ait.ethz.ch/projects/2020/ETH-XGaze},
+  pubstate = {prepublished},
+  version = {1},
+  keywords = {Computer Vision and Pattern Recognition (cs.CV),FOS: Computer and information sciences}
+}
+
+@article{zhangItsWrittenAll2016,
+  title = {It's {{Written All Over Your Face}}: {{Full-Face Appearance-Based Gaze Estimation}}},
+  shorttitle = {It's {{Written All Over Your Face}}},
+  author = {Zhang, Xucong and Sugano, Yusuke and Fritz, Mario and Bulling, Andreas},
+  date = {2016},
+  publisher = {arXiv},
+  doi = {10.48550/ARXIV.1611.08860},
+  url = {https://arxiv.org/abs/1611.08860},
+  urldate = {2025-03-04},
+  abstract = {Eye gaze is an important non-verbal cue for human affect analysis. Recent gaze estimation work indicated that information from the full face region can benefit performance. Pushing this idea further, we propose an appearance-based method that, in contrast to a long-standing line of work in computer vision, only takes the full face image as input. Our method encodes the face image using a convolutional neural network with spatial weights applied on the feature maps to flexibly suppress or enhance information in different facial regions. Through extensive evaluation, we show that our full-face method significantly outperforms the state of the art for both 2D and 3D gaze estimation, achieving improvements of up to 14.3\% on MPIIGaze and 27.7\% on EYEDIAP for person-independent 3D gaze estimation. We further show that this improvement is consistent across different illumination conditions and gaze directions and particularly pronounced for the most challenging extreme head poses.},
+  version = {4},
+  keywords = {Computer Vision and Pattern Recognition (cs.CV),FOS: Computer and information sciences,Human-Computer Interaction (cs.HC)}
+}
+
 @article{zhangJointFaceDetection2016,
   title = {Joint {{Face Detection}} and {{Alignment}} Using {{Multi-task Cascaded Convolutional Networks}}},
   author = {Zhang, Kaipeng and Zhang, Zhanpeng and Li, Zhifeng and Qiao, Yu},
@@ -1102,6 +1192,23 @@
   abstract = {Face detection and alignment in unconstrained environment are challenging due to various poses, illuminations and occlusions. Recent studies show that deep learning approaches can achieve impressive performance on these two tasks. In this paper, we propose a deep cascaded multi-task framework which exploits the inherent correlation between them to boost up their performance. In particular, our framework adopts a cascaded structure with three stages of carefully designed deep convolutional networks that predict face and landmark location in a coarse-to-fine manner. In addition, in the learning process, we propose a new online hard sample mining strategy that can improve the performance automatically without manual sample selection. Our method achieves superior accuracy over the state-of-the-art techniques on the challenging FDDB and WIDER FACE benchmark for face detection, and AFLW benchmark for face alignment, while keeps real time performance.},
   keywords = {Computer Science - Computer Vision and Pattern Recognition},
   file = {/Users/nelesuffo/Zotero/storage/P9QEVZ4Z/Zhang et al. - 2016 - Joint Face Detection and Alignment using Multi-tas.pdf;/Users/nelesuffo/Zotero/storage/JK3IAJHK/1604.html}
+}
+
+@article{zhangMPIIGazeRealWorldDataset2019,
+  title = {{{MPIIGaze}}: {{Real-World Dataset}} and {{Deep Appearance-Based Gaze Estimation}}},
+  shorttitle = {{{MPIIGaze}}},
+  author = {Zhang, Xucong and Sugano, Yusuke and Fritz, Mario and Bulling, Andreas},
+  date = {2019-01-01},
+  journaltitle = {IEEE Transactions on Pattern Analysis and Machine Intelligence},
+  shortjournal = {IEEE Trans. Pattern Anal. Mach. Intell.},
+  volume = {41},
+  number = {1},
+  pages = {162--175},
+  issn = {0162-8828, 2160-9292, 1939-3539},
+  doi = {10.1109/TPAMI.2017.2778103},
+  url = {https://ieeexplore.ieee.org/document/8122058/},
+  urldate = {2025-03-05},
+  file = {/Users/nelesuffo/Zotero/storage/HVK38PL6/Zhang et al. - 2019 - MPIIGaze Real-World Dataset and Deep Appearance-B.pdf}
 }
 
 @software{zotero-1479,

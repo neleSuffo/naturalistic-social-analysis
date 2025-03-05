@@ -419,16 +419,6 @@ During the training process, we observed that all three loss components decrease
 \caption{Training and Validation Loss Curves for the YOLO11 person detection model.}\label{fig:person-loss-curves}
 \end{figure}
 
-\subsubsection{Model Evaluation Metrics}\label{model-evaluation-metrics}
-
-The YOLO11 model achieved a precision of 0.92 and a recall of 0.87 on the testing set, resulting in an F1-score of 0.90. These metrics, summarized in table \ref{tab:person-detection-metrics-detailed} indicate the model's strong performance in accurately identifying faces while minimizing the number of missed detections and false positives. The precision-recall curve, displayed in figure \ref{fig:person-metrics}, further illustrates this performance, with the curve remaining close to the top-left corner. This positioning signifies that the model maintains high precision and recall across various thresholds, underscoring its effectiveness in detecting faces with confidence.
-
-Analysis of the confusion matrix reveals that 86\% of all faces are correctly identified by the model, corresponding to 1905 true positives, while 234 faces were missed (false negatives). False negatives predominantly occurred in scenarios where faces were in the background, blurred due to motion, or occluded by the child's body. In such instances, adjacent frames often provided clearer views, aiding in more accurate classification. The model exhibited a false positive rate of approximately 2.72\%, with 251 frames incorrectly classified as containing faces when none were present. These false positives were often attributed to objects or toys resembling facial features. In face detection systems, achieving a balance between false positives and false negatives is crucial. Given this context, a 2.1\% false positive rate is generally considered acceptable.
-
-To provide a comprehensive understanding of the model's performance, we have included visual examples of true positives, false positives, and false negatives in figure \ref{fig:person-detection-examples}. These images highlight the model's strengths and areas where challenges persist, offering insights into specific scenarios that influence detection accuracy.
-
-Overall, the YOLO11 model demonstrates robust performance in face detection tasks. However, challenges remain in dynamic scenarios, particularly with partially visible, rotated, or side-view faces. These findings underscore the complexities inherent in analyzing egocentric video data, where movement and varying perspectives introduce additional challenges.
-
 \begin{table}[tbp]
 
 \begin{center}
@@ -467,36 +457,52 @@ Quantex & 0 & 0 & 0 & 0 & 0\\
 \caption{\textbf{A}, \textbf{B} - Examples of True Positives, \textbf{C}, \textbf{D} – Examples of False Negatives, \textbf{E}, \textbf{F} – Examples of False Positives in the YOLO11 person detection model.}\label{fig:person-detection-examples}
 \end{figure}
 
-\subsection{Yolo11m-cls: Gaze Classification}\label{yolo11m-cls-gaze-classification}
+\subsubsection{Model Evaluation Metrics}\label{model-evaluation-metrics}
 
-\begin{itemize}
-\tightlist
-\item
-  for the gaze classifiaction step in our automated pipeline model selection was more difficult due to different available approaches and the unique challenges of the egocentric perspective
-\item
-  available were modes for direct gaze estimation like LiteGaze (Guo, Wu, Miao, \& Chen, 2023) or
-\end{itemize}
+The YOLO11 model achieved a precision of 0.92 and a recall of 0.87 on the testing set, resulting in an F1-score of 0.90. These metrics, summarized in table \ref{tab:person-detection-metrics-detailed} indicate the model's strong performance in accurately identifying faces while minimizing the number of missed detections and false positives. The precision-recall curve, displayed in figure \ref{fig:person-metrics}, further illustrates this performance, with the curve remaining close to the top-left corner. This positioning signifies that the model maintains high precision and recall across various thresholds, underscoring its effectiveness in detecting faces with confidence.
 
-In the gaze classification part of our study, we employed Ultralytics' YOLO11 architecture (Jocher \& Qiu, 2024), more specifically the yolo11m classification model which is pretrained on ImageNet. The video data, collected from a camera on chest height, present unique challenges due to its egocentric perspective. This viewpoint sometimes introduced motion blur and the particular recoring angle can make it difficult to determine whether a person's gaze is directed at the child, even for human annotators. We therefore defined to classify a person's gaze as ``directed towards the child'' when the person's gaze is oriented towards the child's face, body, or in their general direction. This included cases where the person is looking directly at the camera, which is worn by the child, or slightly upward, estimating where the child's head would be. For each face, we annotated the gaze as either directed at the child (``gaze'') or not (``no gaze''). Due to the architectural enhancements of YOLO11, such as the C2PSA block, which improves the model's ability to focus on critical regions within an image, we chose YOLO11 for our gaze classification task and fine-tuned the pretrained Yolo11m model to classify gaze accordingly.
+Analysis of the confusion matrix reveals that 86\% of all faces are correctly identified by the model, corresponding to 1905 true positives, while 234 faces were missed (false negatives). False negatives predominantly occurred in scenarios where faces were in the background, blurred due to motion, or occluded by the child's body. In such instances, adjacent frames often provided clearer views, aiding in more accurate classification. The model exhibited a false positive rate of approximately 2.72\%, with 251 frames incorrectly classified as containing faces when none were present. These false positives were often attributed to objects or toys resembling facial features. In face detection systems, achieving a balance between false positives and false negatives is crucial. Given this context, a 2.1\% false positive rate is generally considered acceptable.
+
+To provide a comprehensive understanding of the model's performance, we have included visual examples of true positives, false positives, and false negatives in figure \ref{fig:person-detection-examples}. These images highlight the model's strengths and areas where challenges persist, offering insights into specific scenarios that influence detection accuracy.
+
+Overall, the YOLO11 model demonstrates robust performance in face detection tasks. However, challenges remain in dynamic scenarios, particularly with partially visible, rotated, or side-view faces. These findings underscore the complexities inherent in analyzing egocentric video data, where movement and varying perspectives introduce additional challenges.
+
+\subsection{Yolo11x-cls: Gaze Classification}\label{yolo11x-cls-gaze-classification}
+
+Selecting an appropriate model for gaze classification in our automated pipeline presented unique challenges due to the egocentric perspective of our dataset. Many gaze estimation methods rely on high-quality eye images, either extracted separately (Zhang, Sugano, Fritz, \& Bulling, 2015) or as part of the full face (Zhang, Sugano, Fritz, \& Bulling, 2016). However, our dataset often contains blurry or partially occluded faces captured at varying angles, making such approaches not suitable. Additionally, rather than predicting fine-grained gaze direction (e.g., left or right), our focus is on the binary classification of whether a person's gaze is directed toward the child.
+
+(Cheng, Wang, Bao, \& Lu, 2021) provides an overview of the challenges and recent advancements in gaze estimation methods, including approaches that incorporate temporal information, such as Gaze360 (Kellnhofer, Recasens, Stent, Matusik, \& Torralba, 2019). While these methods improve tracking across frames, they are not the primary focus of our study, as we analyze social interactions on a frame-by-frame basis.
+
+Given these constraints, we opted for a CNN-based approach trained on ground truth annotations. Recent studies (Shah et al., 2022; Zhang et al., 2020; Zhang, Sugano, Fritz, \& Bulling, 2019) have explored different CNN based gaze estimation architectures, among which are VGG, ResNet or YOLO architectures. Based on these findings, we implemented a VGG, ResNet, and YOLO-based model for binary classification (gaze directed toward the child or not). In our preliminary tests, Ultralytics' YOLO11 architecture (Jocher \& Qiu, 2024) demonstrated the best performance, leading us to select the YOLO11x classification model, pretrained on ImageNet, for our gaze classification task.
+
+Given these constraints, we opted for a CNN-based approach trained on ground truth annotations. Recent studies (Shah et al., 2022; Zhang et al., 2020, 2019) have explored different CNN-based gaze estimation architectures, including VGG, ResNet, and YOLO. Based on these findings, we implemented and compared three models; VGG, ResNet, and YOLO; for binary classification (gaze directed toward the child or not). In our preliminary tests, Ultralytics' YOLO11 architecture (Jocher \& Qiu, 2024) demonstrated the best performance, leading us to select the YOLO11x classification model, pretrained on ImageNet, for our gaze classification task.
+
+The egocentric nature of our video data, recorded from a chest-mounted camera, posed additional challenges such as motion blur and oblique viewing angles, making gaze classification difficult even for human annotators. To address this, we defined gaze as ``directed toward the child'' when a person's gaze was oriented toward the child's face, body, or general direction. This included cases where the person was looking directly at the camera (worn by the child) or slightly upward, estimating the likely position of the child's head. Each detected face was annotated as either ``gaze'' (gaze directed at the child) or ``no gaze'' (gaze directed elsewhere).
+
+YOLO11's architectural enhancements, such as the C2PSA block, improve the model's ability to focus on critical regions within an image, making it well-suited for our task. We fine-tuned the pretrained YOLO11x-cls model for gaze classification, enabling it to robustly determine whether individuals in the scene were engaged in visual attention toward the child.
 
 \subsubsection{Dataset Splitting}\label{dataset-splitting-1}
 
-For the gaze classification task, we utilized a subset of the Quantex dataset, focusing specifically on frames containing annotated faces. This subset comprised the cut-out faces extracted from the annotated face bounding boxes, resulting in 20889 frames from 64 annotated videos. An analysis of each annotated face's gaze property revealed that 21.25\% of the faces were annotated as having gaze directed towards the child. Although the dataset is imbalanced, with ``no gaze'' as the majority class, we decided not to balance it, as too much data would have been lost, and the resulting dataset would have been too small. To preserve the existing gaze-to-no-gaze ratio, we instead employed a stratified sampling technique, ensuring proportional representation across the training, validation, and testing datasets. This approach resulted in the data distribution presented in Table (\textbf{ref?})(tab:gaze-dataset-splits). Specifically, the training set comprised 16710 frames, the validation set 2088 frames, and the testing set 2091 frames. By maintaining consistent class distribution across all subsets, we aimed to ensure that the model's performance evaluation accurately reflects real-world data distributions.
+For the gaze classification task, we utilized a subset of the Quantex dataset, focusing specifically on frames containing annotated faces. This subset consisted of cut-out faces extracted from the annotated face bounding boxes, resulting in20889 frames from 64 annotated videos. An analysis of the gaze labels showed that 21.25\% of the faces were annotated as having gaze directed toward the child, resulting in an imbalanced dataset.
+
+Since our dataset was already a subset of the Quantex dataset, downsampling to achieve balance would have led to a loss of valuable data. To address this, we applied data augmentation techniques instead of downsampling, ensuring that the final dataset remained balanced while retaining all available samples. The final dataset comprised 32902frames, with an equal distribution of 50\% gaze-directed and 50\% non-gaze frames.
+
+To maintain this balance across all model training stages, we performed stratified dataset splitting which resulted in the data distribution presented in Table \ref{tab:gaze-dataset-splits}. Specifically, the training set comprised 26320 frames, the validation set 3290 frames, and the testing set 3292 frames.
 
 \begin{table}[tbp]
 
 \begin{center}
 \begin{threeparttable}
 
-\caption{\label{tab:gaze-dataset-splits}Dataset splits for the YOLO11 gaze classification model trained on the Quantex dataset. The table shows the total number of frames, as well as the number of frames with gaze and no gaze in the training, validation, and testing datasets. 'Gaze' indicates frames where the person's gaze is directed towards the child, while 'No Gaze' indicates frames where the person's gaze is not directed towards the child. Ratios are given in percentages.}
+\caption{\label{tab:gaze-dataset-splits}Dataset splits for the YOLO11 gaze classification model trained on the Quantex dataset. The table shows the total number of frames, as well as the number of frames with gaze and no gaze in the training, validation, and testing datasets after data augmentation of the minory class (Gaze). 'Gaze' indicates frames where the person's gaze is directed towards the child, while 'No Gaze' indicates frames where the person's gaze is not directed towards the child. Ratios are given in percentages.}
 
 \begin{tabular}{llllll}
 \toprule
 Quantex & \multicolumn{1}{c}{Ratio} & \multicolumn{1}{c}{Training} & \multicolumn{1}{c}{Validation} & \multicolumn{1}{c}{Testing} & \multicolumn{1}{c}{Total}\\
 \midrule
-Gaze & 21.25 & 3550 & 443 & 445 & 4438\\
-No Gaze & 78.75 & 13160 & 1645 & 1646 & 16451\\
-Total & 100.00 & 16710 & 2088 & 2091 & 20889\\
+Gaze & 50 & 13160 & 1645 & 1646 & 16451\\
+No Gaze & 50 & 13160 & 1645 & 1646 & 16451\\
+Total & 100.00 & 26320 & 3290 & 3292 & 32902\\
 \bottomrule
 \end{tabular}
 
@@ -520,16 +526,16 @@ Proximity between individuals is an important aspect of social interaction. Prev
 
 Our heuristic relies on the bounding boxes of detected faces, assuming that the size of these bounding boxes provides an implicit cue for proximity. Specifically, we infer that larger bounding boxes correspond to individuals who are closer to the camera, whereas smaller bounding boxes indicate individuals positioned further away. To quantify this relationship, we calculate the area of a detected face bounding box as the product of its width and height. This computed size is then compared to a predefined reference bounding box. For both adults and children/infants, we selected two reference face sizes: one corresponding to a face very close to the camera (within arm's reach) and another representing a face further away (e.g., in the background or outdoors). By normalizing the detected face sizes relative to these reference sizes, we obtain a proximity score ranging from 0 to 1, where a value of 1 indicates a face extremely close to the camera, and 0 represents a face that is far away.
 
-To better account for the nonlinear relationship between face size and distance, we applied a logarithmic transformation to the bounding box areas. Since face area decreases quadratically as distance increases, a simple linear mapping would make small differences appear too large for close faces and too small for distant ones. The logarithmic transformation helps balance this by compressing large values and stretching smaller ones, creating a more natural and meaningful proximity scale. This approach aligns with how humans perceive size, as our sensitivity to changes depends on relative differences rather than absolute ones (Stevens \& Marks, 2017). By using this scaling, we ensure that proximity estimates remain consistent across different face sizes and distances.
-
 \begin{figure}
 
 {\centering \includegraphics{Quantex_interaction_paper_files/figure-latex/proximity-classifications-1} 
 
 }
 
-\caption{Proximity heuristic examples. Example \textbf{A} shows a face close to the camera, while example \textbf{B} depicts a face further away.}\label{fig:proximity-classifications}
+\caption{Proximity heuristic examples. Example \textbf{A} shows a face far away from the camera (proximity score = 0.07), example \textbf{B} depicts a face slighlty closer (proximity score = 0.2). Example \textbf{C} shows a face quite close to the camera (proximity score = 0.6), and example \textbf{D} illustrates a face extremely close to the camera (proximity score = 1).}\label{fig:proximity-classifications}
 \end{figure}
+
+To better account for the nonlinear relationship between face size and distance, we applied a logarithmic transformation to the bounding box areas. Since face area decreases quadratically as distance increases, a simple linear mapping would make small differences appear too large for close faces and too small for distant ones. The logarithmic transformation helps balance this by compressing large values and stretching smaller ones, creating a more natural and meaningful proximity scale. This approach aligns with how humans perceive size, as our sensitivity to changes depends on relative differences rather than absolute ones (Stevens \& Marks, 2017). By using this scaling, we ensure that proximity estimates remain consistent across different face sizes and distances.
 
 In addition to absolute size, we incorporate a width-to-height ratio as an additional cue for proximity estimation. This ratio was determined separately for adult and child/infant faces based on reference images depicting full, front-facing faces. If a detected face exhibits a significant deviation from the expected aspect ratio, we infer that the face is partially cropped due to extreme proximity to the camera. In such cases, the proximity score is set to 1. An example illustrating this case is shown in Figure \ref{fig:proximity-close-face}.
 
@@ -537,9 +543,9 @@ This heuristic provides an interpretable and computationally efficient method fo
 
 \subsection{Voice Type Classification}\label{voice-type-classification}
 
-Regarding the audio component of our interaction analysis, we aimed to use a model that not only detects the presence of speech but also distinguishes between the key child wearing the camera and other speakers. This distinction is crucial for understanding the dynamics of the interactions and the role of the key child in the social context. To achieve this, we applied the Voice Type Classifier (Lavechin, Bousbib, Bredin, Dupoux, \& Cristia, 2020), an open-source model designed to identify five different voice types: key child, other child, female adult, male adult, and speech in general. The model is based on a convolutional neural network (CNN) architecture and was trained on 260 hours of child-centered recordings across 10 different languages.
+Regarding the audio component of our interaction analysis, we aimed to use a model that does not only detect the presence of speech but also distinguishes between the key child wearing the camera and other speakers. This distinction is crucial for understanding the dynamics of the interactions and the role of the key child in the social context. To achieve this, we applied the Voice Type Classifier (Lavechin, Bousbib, Bredin, Dupoux, \& Cristia, 2020), an open-source model designed to identify five different voice types: key child, other child, female adult, male adult, and speech in general. The model is based on a convolutional neural network (CNN) architecture and was trained on 260 hours of child-centered recordings across 10 different languages.
 
-Although the Quantex dataset does not include explicit audio labels, we are confident in the model's suitability for our data. Prior testing on a similar labeled dataset which was also collected in our lab, ChildLens, demonstrated that the Voice Type Classifier achieved an F1 score of 58.1 (reference to ChildLens paper), which is comparable to the F1 score of 57.3 reported on the original training dataset. These results indicate that the model generalizes well to child-centered recordings, making it a reliable choice for our analysis.
+Although the Quantex dataset does not include explicit audio labels, we are confident in the model's suitability for our data. Prior testing on a similar labeled dataset which was also collected in our lab, ChildLens, demonstrated that the Voice Type Classifier achieved an F1 score of 58.1 (reference to ChildLens paper), which is comparable to the F1 score of 57.3 reported on the original training dataset. These results indicate that the model generalizes well to our child-centered recordings, making it a reliable choice for our analysis.
 
 We applied the Voice Type Classifier to the extracted audio data from the Quantex dataset using the code provided by the authors of the voice type classifier (Lavechin, 2020). The model was used to detect the presence of speech and classify the speaker into one of the five predefined categories.
 
@@ -556,11 +562,11 @@ We applied the Voice Type Classifier to the extracted audio data from the Quante
 \bibitem[\citeproctext]{ref-carpendaleWhatMakesUs2020}
 Carpendale, J., \& Lewis, C. (2020). \emph{What {Makes Us Human}: {How Minds Develop} through {Social Interactions}} (1st ed.). Routledge. \url{https://doi.org/10.4324/9781003125105}
 
+\bibitem[\citeproctext]{ref-chengAppearancebasedGazeEstimation2021}
+Cheng, Y., Wang, H., Bao, Y., \& Lu, F. (2021). Appearance-based {Gaze Estimation With Deep Learning}: {A Review} and {Benchmark}. \url{https://doi.org/10.48550/ARXIV.2104.12668}
+
 \bibitem[\citeproctext]{ref-daiLongitudinalDataCollection2022}
 Dai, S., Bouchet, H., Karsai, M., Chevrot, J.-P., Fleury, E., \& Nardy, A. (2022). Longitudinal data collection to follow social network and language development dynamics at preschool. \emph{Scientific Data}, \emph{9}(1), 777. \url{https://doi.org/10.1038/s41597-022-01756-x}
-
-\bibitem[\citeproctext]{ref-guoLiteGazeNeuralArchitecture2023}
-Guo, X., Wu, Y., Miao, J., \& Chen, Y. (2023). {LiteGaze}: {Neural} architecture search for efficient gaze estimation. \emph{PLOS ONE}, \emph{18}(5), e0284814. \url{https://doi.org/10.1371/journal.pone.0284814}
 
 \bibitem[\citeproctext]{ref-hernandez-herediaProximitySensorMeasuring2024}
 Hernández-Heredia, T. K., Reyes-Manzano, C. F., Flores-Hernández, D. A., Ramos-Fernández, G., \& Guzmán-Vargas, L. (2024). Proximity {Sensor} for {Measuring Social Interaction} in a {School Environment}. \emph{Sensors}, \emph{24}(15), 4822. \url{https://doi.org/10.3390/s24154822}
@@ -573,6 +579,9 @@ Janssen, L. H. C., Verkuil, B., Nedderhoff, A., Van Houtum, L. A. E. M., Wever, 
 
 \bibitem[\citeproctext]{ref-jocherUltralyticsYOLO112024}
 Jocher, G., \& Qiu, J. (2024). \emph{Ultralytics {YOLO11}}. Retrieved from \url{https://github.com/ultralytics/ultralytics}
+
+\bibitem[\citeproctext]{ref-kellnhoferGaze360PhysicallyUnconstrained2019}
+Kellnhofer, P., Recasens, A., Stent, S., Matusik, W., \& Torralba, A. (2019). Gaze360: {Physically Unconstrained Gaze Estimation} in the {Wild}. \url{https://doi.org/10.48550/ARXIV.1910.10088}
 
 \bibitem[\citeproctext]{ref-khanamYOLOv11OverviewKey2024}
 Khanam, R., \& Hussain, M. (2024, October 23). {YOLOv11}: {An Overview} of the {Key Architectural Enhancements}. \url{https://doi.org/10.48550/arXiv.2410.17725}
@@ -604,6 +613,9 @@ Rogoff, B., Dahl, A., \& Callanan, M. (2018). The importance of understanding ch
 \bibitem[\citeproctext]{ref-rossanoHow24yearold2022}
 Rossano, F., Terwilliger, J., Bangerter, A., Genty, E., Heesen, R., \& Zuberbühler, K. (2022). How 2- and 4-year-old children coordinate social interactions with peers. \emph{Philosophical Transactions of the Royal Society B: Biological Sciences}, \emph{377}(1859), 20210100. \url{https://doi.org/10.1098/rstb.2021.0100}
 
+\bibitem[\citeproctext]{ref-shahDriverGazeEstimation2022}
+Shah, S. M., Sun, Z., Zaman, K., Hussain, A., Shoaib, M., \& Pei, L. (2022). A {Driver Gaze Estimation Method Based} on {Deep Learning}. \emph{Sensors}, \emph{22}(10), 3959. \url{https://doi.org/10.3390/s22103959}
+
 \bibitem[\citeproctext]{ref-smithDevelopingInfantCreates2018}
 Smith, L. B., Jayaraman, S., Clerkin, E., \& Yu, C. (2018). The {Developing Infant Creates} a {Curriculum} for {Statistical Learning}. \emph{Trends in Cognitive Sciences}, \emph{22}(4), 325--336. \url{https://doi.org/10.1016/j.tics.2018.02.004}
 
@@ -618,6 +630,18 @@ Tomasello, M. (2009). \emph{Cultural {Origins} of {Human Cognition}}. Cambridge:
 
 \bibitem[\citeproctext]{ref-vygotskyMindSocietyDevelopment1978}
 Vygotsky, L. S. (1978). \emph{Mind in {Society}: {The Development} of {Higher Psychological Processes}}. Cambridge, MA: Harvard University Press.
+
+\bibitem[\citeproctext]{ref-zhangETHXGazeLargeScale2020}
+Zhang, X., Park, S., Beeler, T., Bradley, D., Tang, S., \& Hilliges, O. (2020). {ETH-XGaze}: {A Large Scale Dataset} for {Gaze Estimation} under {Extreme Head Pose} and {Gaze Variation}. \url{https://doi.org/10.48550/ARXIV.2007.15837}
+
+\bibitem[\citeproctext]{ref-zhangAppearancebasedGazeEstimation2015}
+Zhang, X., Sugano, Y., Fritz, M., \& Bulling, A. (2015). Appearance-based gaze estimation in the wild. \emph{2015 {IEEE Conference} on {Computer Vision} and {Pattern Recognition} ({CVPR})}, 4511--4520. Boston, MA, USA: IEEE. \url{https://doi.org/10.1109/CVPR.2015.7299081}
+
+\bibitem[\citeproctext]{ref-zhangItsWrittenAll2016}
+Zhang, X., Sugano, Y., Fritz, M., \& Bulling, A. (2016). \emph{It's {Written All Over Your Face}: {Full-Face Appearance-Based Gaze Estimation}}. \url{https://doi.org/10.48550/ARXIV.1611.08860}
+
+\bibitem[\citeproctext]{ref-zhangMPIIGazeRealWorldDataset2019}
+Zhang, X., Sugano, Y., Fritz, M., \& Bulling, A. (2019). {MPIIGaze}: {Real-World Dataset} and {Deep Appearance-Based Gaze Estimation}. \emph{IEEE Transactions on Pattern Analysis and Machine Intelligence}, \emph{41}(1), 162--175. \url{https://doi.org/10.1109/TPAMI.2017.2778103}
 
 \end{CSLReferences}
 
