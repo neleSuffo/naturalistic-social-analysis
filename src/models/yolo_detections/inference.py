@@ -45,7 +45,7 @@ def run_inference(image_path):
             if class_id in [2,3]:  
                 bounding_box = [x1, y1, x2, y2]
                 proximity = get_proximity(bounding_box, class_name)
-                proximity_description = describe_proximity(proximity)
+                #proximity_description = describe_proximity(proximity)
 
             # Assign a unique color to each class
             color = CLASS_COLORS[class_id]
@@ -55,7 +55,7 @@ def run_inference(image_path):
 
             # Display class name and confidence score
             if class_id in [2,3]:
-                label = f"{class_name} {confidence:.2f}, Proximity: {proximity:.2f} {proximity_description}"
+                label = f"{class_name} {confidence:.2f}, Proximity: {proximity:.2f}"
             else:
                 label = f"{class_name} {confidence:.2f}"
             font = cv2.FONT_HERSHEY_SIMPLEX
