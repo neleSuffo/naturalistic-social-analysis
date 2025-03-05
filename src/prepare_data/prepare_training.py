@@ -3,7 +3,9 @@ import random
 import logging
 import argparse
 import numpy as np
+import pandas as pd
 from pathlib import Path
+from sklearn.model_selection import train_test_split
 from constants import DetectionPaths, YoloPaths
 from config import TrainingConfig
 from iterstrat.ml_stratifiers import MultilabelStratifiedShuffleSplit
@@ -314,14 +316,10 @@ def get_pf_class_distribution(total_images: list, annotation_folder: Path) -> tu
     # Log object counts
     return images_only_person, images_only_face, images_multiple, images_neither, image_objects
 
-def get_all_class_distribution(total_images: list, annotation_folder: Path) -> tuple:
+def get_all_class_distribution(total_images: list, annotation_folder: Path):
     """
     Reads label files and groups images based on their refined class distribution.
 
-    Updates:
-      - Separates 'person' into 'adult_person' and 'child_person'.
-      - Separates 'face' into 'adult_face' and 'child_face'.
-    
     Parameters:
     ----------
     total_images: list
@@ -331,29 +329,16 @@ def get_all_class_distribution(total_images: list, annotation_folder: Path) -> t
 
     Returns:
     -------
-    images_adult_person: set
-        Set of images containing only adult persons.
-    images_child_person: set
-        Set of images containing only child persons.
-    images_adult_face: set
-        Set of images containing only adult faces.
-    images_child_face: set
-        Set of images containing only child faces.
-    images_multiple: set
-        Set of images containing both persons and faces.
-    images_neither: set
-        Set of images with neither persons nor faces.
-    image_objects: dict
-        Dictionary containing object categories for each image.
+    df: pd.DataFrame
+        DataFrame containing image filenames and their corresponding one-hot encoded class labels.
     """
     object_counts = {
-        5: ["book", 0],
-        6: ["toy", 0], 
-        7: ["kitchenware", 0],
-        8: ["screen", 0],
-        9: ["food", 0],
-        10: ["other_object", 0],
-        11: ["animal", 0],
+        5: "book",
+        6: "toy", 
+        7: "kitchenware",
+        8: "screen",
+        9: "food",
+        10: "other_object",
     }
 
     # Class mapping
@@ -364,65 +349,33 @@ def get_all_class_distribution(total_images: list, annotation_folder: Path) -> t
         3: "child_face"
     }
 
-    id_to_name = {k: v[0] for k, v in object_counts.items()}
-    
-    images_adult_person = set()
-    images_child_person = set()
-    images_adult_face = set()
-    images_child_face = set()
-    images_multiple = set()
-    images_neither = set()
-    image_objects = {}
+    # Combine all class mappings
+    id_to_name = {**class_mapping, **object_counts}
+
+    image_class_mapping = []
 
     for image_file in total_images:
         image_file = Path(image_file)
         annotation_file = annotation_folder / image_file.with_suffix('.txt').name
-        image_objects[image_file.stem] = []
 
         if annotation_file.exists() and annotation_file.stat().st_size > 0:
             with open(annotation_file, 'r') as f:
-                labels = f.readlines()    
+                class_ids = {int(line.split()[0]) for line in f if line.split()}
 
-            # Get all class_ids from the file.
-            class_ids = {int(line.split()[0]) for line in labels if line.split()}
-            
-            # Build list of object categories for this image
-            image_objects[image_file.stem] = [id_to_name[class_id] 
-                                            for class_id in class_ids 
-                                            if class_id in id_to_name]
-
-            # Ignore class 4 (child body parts)
-            reduced_ids = class_ids - {4}
-            
-            # Assign to refined categories
-            if reduced_ids == {0}:  
-                images_child_person.add(image_file.stem)
-            elif reduced_ids == {1}:  
-                images_adult_person.add(image_file.stem)
-            elif reduced_ids == {2}:  
-                images_child_face.add(image_file.stem)
-            elif reduced_ids == {3}:  
-                images_adult_face.add(image_file.stem)
-            elif any(x in reduced_ids for x in {0, 1}) and any(y in reduced_ids for y in {2, 3}):
-                images_multiple.add(image_file.stem)
-            else:
-                images_neither.add(image_file.stem)
+            # Convert class IDs to names
+            labels = [id_to_name[cid] for cid in class_ids if cid in id_to_name]
         else:
-            images_neither.add(image_file.stem)
+            labels = []
 
-    # Logging
-    total_num_images = len(total_images)
-    logging.info(f"Total number of annotated frames: {total_num_images}")
-    logging.info(f"Class distribution: {len(images_adult_person)} adult person, "
-                 f"{len(images_child_person)} child person, "
-                 f"{len(images_adult_face)} adult face, "
-                 f"{len(images_child_face)} child face, "
-                 f"{len(images_multiple)} multiple, "
-                 f"{len(images_neither)} neither")
+        image_class_mapping.append({
+            "filename": image_file.stem,
+            **{class_name: (1 if class_name in labels else 0) for class_name in id_to_name.values()}
+        })
 
-    return (images_adult_person, images_child_person, 
-            images_adult_face, images_child_face, 
-            images_multiple, images_neither, image_objects)
+    # Convert to DataFrame
+    df = pd.DataFrame(image_class_mapping)
+
+    return df
 
 def get_gaze_class_distribution(total_images: list, annotation_folder: Path) -> tuple:
     """
@@ -595,72 +548,33 @@ def stratified_split_with_objects(image_sets, image_objects, train_ratio=Trainin
 
     return train, val, test
     
-def stratified_split_all(image_sets, image_objects, train_ratio=TrainingConfig.train_test_split_ratio):
+def stratified_split_all(df: pd.DataFrame):
     """
-    Within each subgroup split the images balanced on multi labels
+    Splits the dataset into training, validation, and testing while preserving class distribution.
+
+    Parameters:
+    ----------
+    df: pd.DataFrame
+        DataFrame containing image filenames and their one-hot encoded class labels.
+
+    Returns:
+    -------
+    train_df, val_df, test_df: pd.DataFrame
+        DataFrames containing train, validation, and test splits.
     """
-    train, val, test = [], [], []
-    val_ratio = (1 - train_ratio) / 2
+    test_size = (1-TrainingConfig.train_test_split_ratio) / 2
+    val_size = test_size
+    # Extract class labels for stratification
+    stratify_labels = df.iloc[:, 1:]
     
-    # First split the three sets (only person, only face, both person & face) normally
-    for image_set in image_sets[:-1]:  # Exclude "neither" for now
-        image_list = list(image_set)
-        random.shuffle(image_list)
-        total = len(image_list)
-        train_split = int(total * train_ratio)
-        val_split = int(total * val_ratio)
-        
-        train.extend(image_list[:train_split])
-        val.extend(image_list[train_split:train_split + val_split])
-        test.extend(image_list[train_split + val_split:])
-    
-    # Now handle "neither" set using Multi-Label Stratified Sampling
-    object_categories = ["book", "toy", "kitchenware", "screen", "food", "other_object", "animal"]
-    images_neither = list(image_sets[-1])  # The "neither" set (last in list)
-    
-    # Create binary matrix (multi-label representation)
-    y = np.zeros((len(images_neither), len(object_categories)), dtype=int)
-    for i, img in enumerate(images_neither):
-        for j, category in enumerate(object_categories):
-            if category in image_objects.get(img, []):
-                y[i, j] = 1  # Mark object presence
+    # First, split into train+val and test
+    train_val, test = train_test_split(df, test_size=test_size, stratify=stratify_labels, random_state=42)
 
-    # First split (train vs rest)
-    msss = MultilabelStratifiedShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
-    train_idx, temp_idx = next(msss.split(images_neither, y))
+    # Extract new stratify labels after first split
+    stratify_labels_train_val = train_val.iloc[:, 1:]
 
-    # Second split (val vs test) - split the remaining 20% equally
-    test_val_images = np.array(images_neither)[temp_idx]
-    test_val_labels = y[temp_idx]
-    msss_second = MultilabelStratifiedShuffleSplit(n_splits=1, test_size=0.5, random_state=42)
-    val_idx, test_idx = next(msss_second.split(test_val_images, test_val_labels))
-
-    # Convert indices back to original space
-    val_idx = temp_idx[val_idx]
-    test_idx = temp_idx[test_idx]
-    
-    # After splits are created, count and log object distributions
-    def count_objects(image_list):
-        counts = {cat: 0 for cat in object_categories}
-        for img in image_list:
-            for obj in image_objects.get(img, []):
-                counts[obj] += 1
-        return counts
-    
-    # Get neither-set images for each split
-    neither_train = [images_neither[i] for i in train_idx]
-    neither_val = [images_neither[i] for i in val_idx]
-    neither_test = [images_neither[i] for i in test_idx]
-
-    # Count objects in each split
-    train_counts = count_objects(neither_train)
-    val_counts = count_objects(neither_val)
-    test_counts = count_objects(neither_test)
-    
-    # Assign final splits
-    train.extend([images_neither[i] for i in train_idx])
-    val.extend([images_neither[i] for i in val_idx])
-    test.extend([images_neither[i] for i in test_idx])
+    # Now split train+val into train and val
+    train, val = train_test_split(train_val, test_size=val_size, stratify=stratify_labels_train_val, random_state=42)
 
     return train, val, test
 
@@ -701,44 +615,34 @@ def log_split_distributions(train, val, test, image_objects, image_sets):
         total = train_count + val_count + test_count
         logging.info(f"{obj:<12} {train_count:<8} {val_count:<8} {test_count:<8} {total:<8}")
  
-def log_all_split_distributions(train, val, test, image_objects, image_sets):
-    """Log detailed distribution of images across splits"""
-    
-    # Log people/face distributions
-    splits = {'Train': train, 'Val': val, 'Test': test}
-    categories = {
-        'Adult only': image_sets[0],
-        'Child/Infant only': image_sets[1], 
-        'Adult face only': image_sets[2], 
-        'Child/Infant face only': image_sets[3], 
-        'Person & Face': image_sets[4],
-        'Neither (objects)': image_sets[5]
-    }
+def log_all_split_distributions(train_df, val_df, test_df):
+    """Log detailed distribution of images across splits."""
+
+    splits = {'Train': train_df, 'Val': val_df, 'Test': test_df}
+
+    # All class categories
+    all_categories = [
+        "adult_person", "child_person", "adult_face", "child_face",
+        "book", "toy", "kitchenware", "screen", "food", "other_object", "animal"
+    ]
 
     logging.info("\nImage Distribution by Category:")
-    logging.info(f"{'Category':<15} {'Train':<8} {'Val':<8} {'Test':<8} {'Total':<8}")
-    logging.info("-" * 47)
-    
-    for cat_name, cat_set in categories.items():
-        train_count = len(set(train) & cat_set)
-        val_count = len(set(val) & cat_set) 
-        test_count = len(set(test) & cat_set)
-        total = len(cat_set)
-        logging.info(f"{cat_name:<15} {train_count:<8} {val_count:<8} {test_count:<8} {total:<8}")
+    logging.info(f"{'Category':<20} {'Train':<8} {'Val':<8} {'Test':<8} {'Total':<8}")
+    logging.info("-" * 55)
 
-    # Log object distributions
-    object_categories = ["book", "toy", "kitchenware", "screen", "food", "other_object", "animal"]
-    
-    logging.info("\nObject Distribution in 'Neither' Category:")
-    logging.info(f"{'Object':<12} {'Train':<8} {'Val':<8} {'Test':<8} {'Total':<8}")
-    logging.info("-" * 44)
-    
-    for obj in object_categories:
-        train_count = sum(1 for img in train if obj in image_objects.get(img, []))
-        val_count = sum(1 for img in val if obj in image_objects.get(img, []))
-        test_count = sum(1 for img in test if obj in image_objects.get(img, []))
+    for cat_name in all_categories:
+        train_count = train_df[cat_name].sum()
+        val_count = val_df[cat_name].sum()
+        test_count = test_df[cat_name].sum()
         total = train_count + val_count + test_count
-        logging.info(f"{obj:<12} {train_count:<8} {val_count:<8} {test_count:<8} {total:<8}")    
+        logging.info(f"{cat_name:<20} {train_count:<8} {val_count:<8} {test_count:<8} {total:<8}")
+
+    # Log "Neither" category (images that contain none of the above)
+    neither_train = (train_df[all_categories].sum(axis=1) == 0).sum()
+    neither_val = (val_df[all_categories].sum(axis=1) == 0).sum()
+    neither_test = (test_df[all_categories].sum(axis=1) == 0).sum()
+    neither_total = neither_train + neither_val + neither_test
+    logging.info(f"{'Neither':<20} {neither_train:<8} {neither_val:<8} {neither_test:<8} {neither_total:<8}")
 
 def stratified_split(image_sets, train_ratio=TrainingConfig.train_test_split_ratio):
     """Basic stratified split without object consideration"""
@@ -839,41 +743,34 @@ def split_yolo_data(label_path: Path, yolo_target: str):
     try:
         if yolo_target == "gaze":
             images_gaze, images_no_gaze = distribution_funcs[yolo_target](total_images, label_path)
-        elif yolo_target == "person_face" or yolo_target == "person_face_object":
+            splits_dict = gaze_stratified_split((looking_at, not_looking_at))
+            for gaze_class in ["gaze", "no_gaze"]:
+                train, val, test = splits_dict[gaze_class]
+                for split_name, split_set in (("train", train), ("val", val), ("test", test)):
+                    move_images(gaze_class, split_set, split_name, label_path)
+        elif yolo_target == "person_face":
             images_only_person, images_only_face, images_multiple, images_neither, image_objects = distribution_funcs[yolo_target](total_images, label_path)
-        else:
-            images_adult_person, images_child_person, images_adult_face, images_child_face, images_multiple, images_neither, image_objects = distribution_funcs[yolo_target](total_images, label_path)
+            train, val, test = stratified_split((images_only_person, images_only_face, images_multiple, images_neither))
+            for split_name, split_set in (("train", train), ("val", val), ("test", test)):
+                move_images(yolo_target, split_set, split_name, label_path)
+        elif yolo_target == "person_face_object":
+            images_only_person, images_only_face, images_multiple, images_neither, image_objects = distribution_funcs[yolo_target](total_images, label_path)
+            train, val, test = stratified_split_with_objects(
+                (images_only_person, images_only_face, images_multiple, images_neither), 
+                image_objects
+            )        
+            image_sets = (images_only_person, images_only_face, images_multiple, images_neither)
+            log_split_distributions(train, val, test, image_objects, image_sets)
+            for split_name, split_set in (("train", train), ("val", val), ("test", test)):
+                move_images(yolo_target, split_set, split_name, label_path)
+        elif yolo_target == "all":
+            df = distribution_funcs[yolo_target](total_images, label_path)
+            train, val, test = stratified_split_all(df)
+            log_all_split_distributions(train, val, test, image_objects, image_sets)
+            #for split_name, split_set in (("train", train), ("val", val), ("test", test)):
+                #move_images(yolo_target, split_set, split_name, label_path)
     except KeyError:
         raise ValueError(f"Invalid yolo_target: {yolo_target}")
-    
-    if yolo_target == "gaze":
-        splits_dict = gaze_stratified_split((looking_at, not_looking_at))
-        for gaze_class in ["gaze", "no_gaze"]:
-            train, val, test = splits_dict[gaze_class]
-            for split_name, split_set in (("train", train), ("val", val), ("test", test)):
-                move_images(gaze_class, split_set, split_name, label_path)
-    elif yolo_target == "person_face":
-        train, val, test = stratified_split((images_only_person, images_only_face, images_multiple, images_neither))
-        for split_name, split_set in (("train", train), ("val", val), ("test", test)):
-            move_images(yolo_target, split_set, split_name, label_path)
-    elif yolo_target == "person_face_object":
-        train, val, test = stratified_split_with_objects(
-            (images_only_person, images_only_face, images_multiple, images_neither), 
-            image_objects
-        )        
-        image_sets = (images_only_person, images_only_face, images_multiple, images_neither)
-        log_split_distributions(train, val, test, image_objects, image_sets)
-        for split_name, split_set in (("train", train), ("val", val), ("test", test)):
-            move_images(yolo_target, split_set, split_name, label_path)
-    elif yolo_target == "all":
-        train, val, test = stratified_split_all( 
-            (images_adult_person, images_child_person, images_adult_face, images_child_face, images_multiple, images_neither), 
-            image_objects
-        )
-        image_sets = (images_adult_person, images_child_person, images_adult_face, images_child_face, images_multiple, images_neither)
-        log_all_split_distributions(train, val, test, image_objects, image_sets)
-        for split_name, split_set in (("train", train), ("val", val), ("test", test)):
-            move_images(yolo_target, split_set, split_name, label_path)
         
 def main(model_target: str, yolo_target: str):
     """
