@@ -375,6 +375,8 @@ def get_all_class_distribution(total_images: list, annotation_folder: Path):
     # Convert to DataFrame
     df = pd.DataFrame(image_class_mapping)
 
+    # save df
+    df.to_csv("/home/nele_pauline_suffo/outputs/yolo_all_detections/all_class_distribution.csv", index=False)
     return df
 
 def get_gaze_class_distribution(total_images: list, annotation_folder: Path) -> tuple:
@@ -548,7 +550,7 @@ def stratified_split_with_objects(image_sets, image_objects, train_ratio=Trainin
 
     return train, val, test
     
-def stratified_split_all(df: pd.DataFrame):
+def stratified_split_all(df: pd.DataFrame, train_ratio=TrainingConfig.train_test_split_ratio, random_seed=TrainingConfig.random_seed):
     """
     Splits the dataset into training, validation, and testing while preserving class distribution.
 
@@ -556,27 +558,40 @@ def stratified_split_all(df: pd.DataFrame):
     ----------
     df: pd.DataFrame
         DataFrame containing image filenames and their one-hot encoded class labels.
+    train_ratio: float
+        Ratio of the dataset to allocate for training (default from TrainingConfig).
+    random_seed: int
+        Random seed for reproducibility.
 
     Returns:
     -------
     train_df, val_df, test_df: pd.DataFrame
         DataFrames containing train, validation, and test splits.
     """
-    test_size = (1-TrainingConfig.train_test_split_ratio) / 2
-    val_size = test_size
-    # Extract class labels for stratification
-    stratify_labels = df.iloc[:, 1:]
+    val_test_ratio = (1 - train_ratio) / 2  # Split remaining data equally between val & test
+
+    # Extract multi-labels (excluding first column if it's filenames)
+    y = df.iloc[:, 1:].values  
+
+    # First split (train vs rest)
+    msss = MultilabelStratifiedShuffleSplit(n_splits=1, test_size=(1 - train_ratio), random_state=random_seed)
+    train_idx, temp_idx = next(msss.split(df, y))
+
+    # Second split (val vs test) - split remaining 20% equally
+    msss_second = MultilabelStratifiedShuffleSplit(n_splits=1, test_size=0.5, random_state=random_seed)
+    val_idx, test_idx = next(msss_second.split(df.iloc[temp_idx], y[temp_idx]))
+
+    # Get final DataFrames
+    train_df = df.iloc[train_idx]
+    val_df = df.iloc[temp_idx[val_idx]]
+    test_df = df.iloc[temp_idx[test_idx]]
     
-    # First, split into train+val and test
-    train_val, test = train_test_split(df, test_size=test_size, stratify=stratify_labels, random_state=42)
-
-    # Extract new stratify labels after first split
-    stratify_labels_train_val = train_val.iloc[:, 1:]
-
-    # Now split train+val into train and val
-    train, val = train_test_split(train_val, test_size=val_size, stratify=stratify_labels_train_val, random_state=42)
-
-    return train, val, test
+    # get file names from the first column as list
+    train = train_df.iloc[:, 0].tolist()
+    val = val_df.iloc[:, 0].tolist()
+    test = test_df.iloc[:, 0].tolist()
+    
+    return train, val, test, train_df, val_df, test_df
 
 def log_split_distributions(train, val, test, image_objects, image_sets):
     """Log detailed distribution of images across splits"""
@@ -623,7 +638,7 @@ def log_all_split_distributions(train_df, val_df, test_df):
     # All class categories
     all_categories = [
         "adult_person", "child_person", "adult_face", "child_face",
-        "book", "toy", "kitchenware", "screen", "food", "other_object", "animal"
+        "book", "toy", "kitchenware", "screen", "food", "other_object"
     ]
 
     logging.info("\nImage Distribution by Category:")
@@ -643,6 +658,10 @@ def log_all_split_distributions(train_df, val_df, test_df):
     neither_test = (test_df[all_categories].sum(axis=1) == 0).sum()
     neither_total = neither_train + neither_val + neither_test
     logging.info(f"{'Neither':<20} {neither_train:<8} {neither_val:<8} {neither_test:<8} {neither_total:<8}")
+    
+    # log number of images per split
+    logging.info(f"Total number of images: {len(train_df) + len(val_df) + len(test_df)}")
+    logging.info(f"Train: {len(train_df)}, Val: {len(val_df)}, Test: {len(test_df)}")
 
 def stratified_split(image_sets, train_ratio=TrainingConfig.train_test_split_ratio):
     """Basic stratified split without object consideration"""
@@ -765,10 +784,10 @@ def split_yolo_data(label_path: Path, yolo_target: str):
                 move_images(yolo_target, split_set, split_name, label_path)
         elif yolo_target == "all":
             df = distribution_funcs[yolo_target](total_images, label_path)
-            train, val, test = stratified_split_all(df)
-            log_all_split_distributions(train, val, test, image_objects, image_sets)
-            #for split_name, split_set in (("train", train), ("val", val), ("test", test)):
-                #move_images(yolo_target, split_set, split_name, label_path)
+            train, val, test, train_df, val_df, test_df = stratified_split_all(df)
+            log_all_split_distributions(train_df, val_df, test_df)
+            for split_name, split_set in (("train", train), ("val", val), ("test", test)):
+                move_images(yolo_target, split_set, split_name, label_path)
     except KeyError:
         raise ValueError(f"Invalid yolo_target: {yolo_target}")
         
