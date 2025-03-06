@@ -217,10 +217,10 @@ While these studies have advanced our understanding of social interactions, they
 
 To overcome these limitations, our study investigates social interactions in naturalistic home settings over an extended period. We have created the **Quantex** dataset which currently includes  `r quantex_sum_hours` hours of egocentric video and audio recordings from children aged 3 to 5 years and enables the analysis of specific patterns of social interactions, including:
 
-- Presence of Individuals: Utilizing Yolo11 for person detection to identify when others are present in the child’s environment.
-- Presence of Faces: Employing Yolo11 face detection to recognize faces the child encounters.
-- Object Interactions: Analyzing the objects with which the child interacts using Yolo11 object detection
-- Gaze Behaviors: Classifying gaze direction to determine when others are looking at the child.
+- Presence of Individuals: Utilizing YOLO11 for person detection to identify when others are present in the child’s environment.
+- Presence of Faces: Employing YOLO11 face detection to recognize faces the child encounters.
+- Object Interactions: Analyzing the objects with which the child interacts using YOLO11 object detection
+- Gaze Behaviors: Classifying gaze direction with YOLO11-cls to determine when others are looking at the child.
 - Speech Dynamics: Implementing voice type classification to differentiate between the child’s speech and that of others, distinguishing between peers and adults.
 	
 The primary objectives of this study are to quantify interaction patterns by measuring the frequency and duration of each identified interaction type, both individually and in combination. Additionaly we compare these patterns across different age groups within the 3 to 5-year range to identify developmental variations and milestones. Understanding these interaction patterns can inform developmental psychology about the actual nature of social interactions in children’s everyday lives.
@@ -366,6 +366,10 @@ person_tn <- num_person_frames_test - person_tp - person_fp - person_fn
 person_fpr <- person_fp / (person_fp + person_tn) * 100
 num_person <- person_fp + person_fn
 per_wrong_person <- person_fp / person_tp * 100
+
+person_fpr = (person_fp / (person_fp + person_tn)) * 100
+person_fnr = (person_fn / (person_fn + person_tp)) * 100
+
 person_recall <- 0.87
 person_precision <- 0.92
 person_f1_score <- 0.90
@@ -374,7 +378,7 @@ person_num_epochs <- 86
 person_training_time <- 200
 ```
 
-In our study, we utilized Ultralytics' YOLO11, the "latest iteration in the Ultralytics YOLO series of real-time object detectors" [@jocherUltralyticsYOLO112024], trained on the COCO dataset. Released in October 2024, YOLO11 introduces architectural improvements such as the C2PSA block (Convolutional Block with Parallel Spatial Attention), which enhances spatial attention within feature maps, allowing the model to focus more precisely on critical areas of an image compared to previous Yolo versions. Additionally, YOLO11 incorporates the C3K2 block, designed to be faster and more efficient, enhancing the overall performance of the feature aggregation process [@khanamYOLOv11OverviewKey2024]. These advancements make the YOLO11 detection model, pretrained on COCO, well-suited for training on our egocentric dataset, which captures dynamic movements from a camera perspective on chest height.
+In our study, we utilized Ultralytics' YOLO11, the "latest iteration in the Ultralytics YOLO series of real-time object detectors" [@jocherUltralyticsYOLO112024], trained on the COCO dataset. Released in October 2024, YOLO11 introduces architectural improvements such as the C2PSA block (Convolutional Block with Parallel Spatial Attention), which enhances spatial attention within feature maps, allowing the model to focus more precisely on critical areas of an image compared to previous YOLO versions. Additionally, YOLO11 incorporates the C3K2 block, designed to be faster and more efficient, enhancing the overall performance of the feature aggregation process [@khanamYOLOv11OverviewKey2024]. These advancements make the YOLO11 detection model, pretrained on COCO, well-suited for training on our egocentric dataset, which captures dynamic movements from a camera perspective on chest height.
 
 ### Dataset Preprocessing
 Our dataset presents unique challenges due to its egocentric viewpoint, as the body parts of the child wearing the camera frequently appear in the footage. To prevent misclassification, we adopt a dedicated annotation scheme where all individuals in the scene are labeled as “person,” each assigned a unique ID. The key child, who wears the camera, is consistently assigned ID = 1. During preprocessing, we map the key child (ID = 1) into a separate category, “child body parts,” to distinguish their presence from other individuals. Furthermore, we refine the “person” and “face” categories by introducing additional distinctions that standard YOLO models do not inherently make. Specifically, we differentiate between (1) the key child (who wears the camera) and other individuals, (2) adults and children/infants for both full-body detections and faces. These modifications allow for a more precise analysis of social interactions while reducing false positives caused from the key child’s own body while capturing detailed information on the presence and classification of people and objects in the child’s environment. To address these challenges, our fine-tuned YOLO11 model is trained to:
@@ -391,21 +395,20 @@ We started data splitting with a dataset comprising a total of `r person_total_n
 We applied a stratified split to ensure that each of the training, validation, and testing dataset preserved the original ratio of frames with persons (adult and child/infant), frames with faces (adult and child/infant), frames with objects (6 object classes without animal) to frames without any of the relevant classes. As a result, the final data distribution, displayed in detail in table \@ref(tab:person-dataset-splits)) consisted of `r num_person_frames_train` frames in the training dataset, `r num_person_frames_val` frames in the validation and `r num_person_frames_test` frames in the testing dataset, guaranteeing that the model's performance evaluation remained accurate to the real-world data distribution.
 
 ```{r person-dataset-splits, echo=FALSE, message=FALSE, warnings=FALSE, results='asis', eval=TRUE}
-my.data <- "Quantex                 | Percentage  | Training  | Validation  | Testing | Total
-            Adult Only              | 6.54        | 5961      | 745         | 746     | 7452
-            Child/Infant Only       | 8.23        | 7494      | 936         | 938     | 9368
-            Adult face only         | 0.15        | 13        | 1           | 3       | 17
-            Child/Infant face only  | 0.12        | 108       | 13          | 14      | 135
-            Person & Face           | 14.84       | 13506     | 1688        | 1689    | 16883
-            Book                    | 9.19        | 8399      | 1037        | 1026    | 10462
-            Toy                     | 15.23       | 13879     | 1721        | 1737    | 17337
-            Kitchenware             | 2.10        | 1892      | 236         | 266     | 2394
-            Screen                  | 3.71        | 3386      | 422         | 410     | 4218
-            Food                    | 0.98        | 900       | 107         | 108     | 1115
-            Other Object            | 16.14       | 14706     | 1839        | 1829    | 18374
-            Animal                  | 0.02        | 16        | 1           | 2       | 19 
-            Neither                 | 22.87       | 20794     | 2631        | 2618    | 26025
-            Total                   | 100         | 91037     | 11377       | 11385   | 113799"
+my.data <- "Class             | Percentage  | Training  | Validation  | Testing | Total Occurances
+            Adult             | 6.54        | 5961      | 745         | 746     | 7452
+            Child/Infant      | 8.23        | 7494      | 936         | 938     | 9368
+            Adult Face        | 0.15        | 13        | 1           | 3       | 17
+            Child/Infant Face | 0.12        | 108       | 13          | 14      | 135
+            Book              | 9.19        | 8399      | 1037        | 1026    | 10462
+            Toy               | 15.23       | 13879     | 1721        | 1737    | 17337
+            Kitchenware       | 2.10        | 1892      | 236         | 266     | 2394
+            Screen            | 3.71        | 3386      | 422         | 410     | 4218
+            Food              | 0.98        | 900       | 107         | 108     | 1115
+            Other Object      | 16.14       | 14706     | 1839        | 1829    | 18374
+            Animal            | 0.02        | 16        | 1           | 2       | 19 
+            Neither           | 22.87       | 20794     | 2631        | 2618    | 26025
+            Total             | 100         | 91037     | 11377       | 11385   | 113799"
 
   
 df <- read.delim(textConnection(my.data), header=FALSE, sep="|", strip.white=TRUE, stringsAsFactors=FALSE)
@@ -419,7 +422,7 @@ row.names(df) <- NULL
 # Print the updated table
 apa_table(
   df,
-  caption = "Dataset splits for the YOLO11 person and face detection model trained on the Quantex dataset. The table shows the distribution of annotated persons, faces, and objects in the training, validation, and testing datasets.",
+  caption = "Dataset splits for the YOLO11 detection model trained on the Quantex dataset. The table shows the distribution of annotated persons, faces, and objects in the training, validation, and testing datasets.",
   align = "c",
   escape = FALSE
 )
@@ -427,18 +430,17 @@ apa_table(
 ### Training and Convergence
 Model training was conducted on a Linux server equipped with an Intel(R) Xeon(R) Silver 4214Y CPU @ 2.20GHz with 48 cores, a Quadro RTX 8000 GPU and 188 GB of RAM. The model was trained for a total of `r person_num_epochs` epochs, taking `r person_training_time` hours to complete. Training utilized YOLO11’s built-in data augmentation, an image size of 640, a batch size of 16, a cosine annealing learning rate scheduler [@loshchilovSGDRStochasticGradient2017], and early stopping after 10 epochs without improvement, with a maximum of 200 epochs.
 
-The loss function of the YOLO11 model comprises three main components: Box Loss, Classification Loss, and Distribution Focal Loss (DFL) [@tervenLossFunctionsMetrics2024; @liGeneralizedFocalLoss2020]. _Box Loss_ quantifies the difference between predicted bounding boxes and ground truth boxes, ensuring precise localization of detected objects by penalizing inaccuracies in position and size. _Classification Loss_ evaluates the model’s ability to correctly assign detected objects to their respective classes, reducing false positives and false negatives. _Distribution Focal Loss_ enhances the model's ability to detect challenging objects, particularly small or partially occluded ones, by refining the localization of bounding box coordinates and emphasizing hard-to-detect instances. Together, these loss components contribute to a more robust and accurate detection model. 
-
-During the training process, we observed that all three loss components decreased over time, indicating effective learning and improved performance, as visible in in figure \@ref(fig:person-loss-curves). A steady decrease in Box Loss indicates that the model is becoming increasingly accurate in localizing persons, faces and objects within frames. Similarly, the steady convergence of the Classification Loss reveals the model's increasing ability to reliably classifiy the detected object in one of the relevant classes. The decrease in DFL over time indicates that the model is getting better at focusing on and correctly identifying difficult-to-detect persons, faces or objects, which improves its overall detection capabilities. Conclusively, the loss curves show that the model effectively learned to localize and identify the target classes during the training period.
-
 ```{r person-loss-curves, fig.align='center', fig.cap="Training and Validation Loss Curves for the YOLO11 person detection model.", out.width="450px"}
 knitr::include_graphics("images/yolo_face_loss_curves.png")
 ```
 
-```{r person-detection-metrics-detailed, echo=FALSE, message=FALSE, warnings=FALSE, results='asis', eval=TRUE}
-my.data <- "Dataset | Precision | Recall | F1-Score | False Positive Rate | False Negative Rate
-            Quantex | 0  | 0 | 0| 0 | 0"
+The loss function of the YOLO11 model comprises three main components: Box Loss, Classification Loss, and Distribution Focal Loss (DFL) [@tervenLossFunctionsMetrics2024; @liGeneralizedFocalLoss2020]. _Box Loss_ quantifies the difference between predicted bounding boxes and ground truth boxes, ensuring precise localization of detected persons, faces and objects by penalizing inaccuracies in position and size. _Classification Loss_ evaluates the model’s ability to correctly assign detected instances to their respective classes, reducing false positives and false negatives. _Distribution Focal Loss_ enhances the model's ability to detect challenging persons, faces and objects, particularly small or partially occluded ones, by refining the localization of bounding box coordinates and emphasizing hard-to-detect instances. Together, these loss components contribute to a more robust and accurate detection model. 
 
+During the training process, we observed that all three loss components decreased over time, indicating effective learning and improved performance, as visible in in figure \@ref(fig:person-loss-curves). A steady decrease in Box Loss indicates that the model is becoming increasingly accurate in localizing persons, faces and objects within frames. Similarly, the steady convergence of the Classification Loss reveals the model's increasing ability to reliably classifiy the detected instance in one of the relevant classes. The decrease in DFL over time indicates that the model is getting better at focusing on and correctly identifying difficult-to-detect persons, faces or objects, which improves its overall detection capabilities. Conclusively, the loss curves show that the model effectively learned to localize and identify the target classes during the training period.
+
+```{r person-detection-metrics-detailed, echo=FALSE, message=FALSE, warnings=FALSE, results='asis', eval=TRUE}
+my.data <- "Precision | Recall  | F1-Score  | FPR   | FNR
+            0.92      | 0.87    | 0.90      | 2.72  | 10.94"
 df <- read.delim(textConnection(my.data), header=FALSE, sep="|", strip.white=TRUE, stringsAsFactors=FALSE)
 
 # Set the column names
@@ -450,15 +452,15 @@ row.names(df) <- NULL
 # Print the updated table
 apa_table(
   df,
-  caption = "Evaluation metrics for the YOLO11m detection model trained on the Quantex dataset to detect persons and faces while distinguishing between the key child and other individuals. False Positive Rate and False Negative Rate are given in percentages.",
+  caption = "Evaluation metrics for the YOLO11x detection model trained on the Quantex dataset to detect persons, faces and six object classes. False Positive Rate (FPR) and False Negative Rate (FNR) are given in percentages.",
   escape = TRUE
 )
 ```
 
-```{r person-metrics, fig.align='center', fig.cap="\\textbf{A} - Confusion Matrix for the YOLO11 person and face detection model trained on the Quantex dataset. \\textbf{B} - Precision-Recall Curve for the YOLO11 person detection model."}
+```{r person-metrics, fig.align='center', fig.cap="\\textbf{A} - Confusion Matrix for the YOLO11x detection model trained on the Quantex dataset. \\textbf{B} - Precision-Recall Curve for the YOLO11x detection model."}
 # Load images
-img1 <- ggdraw() + draw_image("images/yolo_face_confusion_matrix.png", scale = 1)
-img2 <- ggdraw() + draw_image("images/yolo_pf_precision_recall_curve.png", scale = 1.2)
+img1 <- ggdraw() + draw_image("images/confusion_matrix_detection.png", scale = 1)
+img2 <- ggdraw() + draw_image("images/yolo_precision_recall_curve.png", scale = 1.2)
 
 # Combine img1 and img2 into the first row with equal heights
 top_row <- (img1 + img2) + 
@@ -515,7 +517,7 @@ To provide a comprehensive understanding of the model’s performance, we have i
 
 Overall, the YOLO11 model demonstrates robust performance in face detection tasks. However, challenges remain in dynamic scenarios, particularly with partially visible, rotated, or side-view faces. These findings underscore the complexities inherent in analyzing egocentric video data, where movement and varying perspectives introduce additional challenges.
 
-## Yolo11x-cls: Gaze Classification
+## YOLO11x-cls: Gaze Classification
 ```{r gaze-statistics, echo=FALSE, message=FALSE, warning=FALSE}
 total_num_gaze_frames <- 20889
 final_num_gaze_frames <- 32902
@@ -524,22 +526,22 @@ num_gaze_frames_train <- 73364
 gaze_to_no_gaze_ratio <- 21.25
 
 num_gaze_frames_train <- 26320
-num_gaze_frames_val <- 3290
-num_gaze_frames_test <- 3292
+num_gaze_frames_val <- 2088
+num_gaze_frames_test <- 2091
 
-gaze_tp <- 1905
-gaze_fp <- 251
-gaze_fn <- 234
-gaze_tn <- num_gaze_frames_test - gaze_tp - gaze_fp - gaze_fn
+gaze_tp <- 343
+gaze_fp <- 195
+gaze_fn <- 102
+gaze_tn <- 1443
 gaze_fpr <- gaze_fp / (gaze_fp + gaze_tn) * 100
-num_gaze <- gaze_fp + gaze_fn
+num_gaze <- gaze_tp + gaze_fn
 per_wrong_gaze <- gaze_fp / gaze_tp * 100
-gaze_recall <- 0.88
-gaze_precision <- 0.92
-gaze_f1_score <- 0.90
+gaze_recall <- 0.77
+gaze_precision <- 0.64
+gaze_f1_score <- 0.70
 
-gaze_num_epochs <- 165
-gaze_training_time <- 283
+gaze_num_epochs <- 37
+gaze_training_time <- 00
 ```
 
 Selecting an appropriate model for gaze classification in our automated pipeline presented unique challenges due to the egocentric perspective of our dataset. Many gaze estimation methods rely on high-quality eye images, either extracted separately [@zhangAppearancebasedGazeEstimation2015] or as part of the full face [@zhangItsWrittenAll2016]. However, our dataset often contains blurry or partially occluded faces captured at varying angles, making such approaches not suitable. Additionally, rather than predicting fine-grained gaze direction (e.g., left or right), our focus is on the binary classification of whether a person’s gaze is directed toward the child.
@@ -555,17 +557,15 @@ The egocentric nature of our video data, recorded from a chest-mounted camera, p
 YOLO11’s architectural enhancements, such as the C2PSA block, improve the model’s ability to focus on critical regions within an image, making it well-suited for our task. We fine-tuned the pretrained YOLO11x-cls model for gaze classification, enabling it to robustly determine whether individuals in the scene were engaged in visual attention toward the child.
 
 ### Dataset Splitting
-For the gaze classification task, we utilized a subset of the Quantex dataset, focusing specifically on frames containing annotated faces. This subset consisted of cut-out faces extracted from the annotated face bounding boxes, resulting in`r total_num_gaze_frames` frames from `r gaze_total_num_videos` annotated videos. An analysis of the gaze labels showed that `r gaze_to_no_gaze_ratio`% of the faces were annotated as having gaze directed toward the child, resulting in an imbalanced dataset.
+For the gaze classification task, we utilized a subset of the Quantex dataset, focusing specifically on frames containing annotated faces. This subset consisted of cut-out faces extracted from the annotated face bounding boxes, resulting in `r total_num_gaze_frames` frames from `r gaze_total_num_videos` annotated videos. An analysis of the gaze labels showed that `r gaze_to_no_gaze_ratio`% of the faces were annotated as having gaze directed toward the child, leading to a class imbalance.
 
-Since our dataset was already a subset of the Quantex dataset, downsampling to achieve balance would have led to a loss of valuable data. To address this, we applied data augmentation techniques instead of downsampling, ensuring that the final dataset remained balanced while retaining all available samples. The final dataset comprised `r final_num_gaze_frames `frames, with an equal distribution of 50% gaze-directed and 50% non-gaze frames.
-
-To maintain this balance across all model training stages, we performed stratified dataset splitting which resulted in the data distribution presented in Table \@ref(tab:gaze-dataset-splits). Specifically, the training set comprised `r num_gaze_frames_train` frames, the validation set `r num_gaze_frames_val` frames, and the testing set `r num_gaze_frames_test` frames.
+To maintain the original distribution of gaze labels across datasets, we first applied stratified dataset splitting, ensuring that the training, validation, and testing sets reflected the natural ratio of gaze and non-gaze frames. To address class imbalance in the training dataset, we applied data augmentation to increase the number of gaze frames. Since our dataset was already a subset of the Quantex dataset, downsampling to achieve balance would have resulted in a loss of valuable data. As a result, the final dataset included a balanced training set with 50% gaze and 50% no-gaze frames, while the validation and testing sets retained their original, unbalanced distribution. The final data distribution is presented in Table \@ref(tab:gaze-dataset-splits), with `r num_gaze_frames_train` frames in the training set, `r num_gaze_frames_val `frames in the validation set, and `r num_gaze_frames_test` frames in the testing set.
 
 ```{r gaze-dataset-splits, echo=FALSE, message=FALSE, warnings=FALSE, results='asis', eval=TRUE}
-my.data <- "Quantex   | Ratio   | Training  | Validation  | Testing | Total
-            Gaze      | 50      | 13160     | 1645        | 1646    | 16451
-            No Gaze   | 50      | 13160     | 1645        | 1646    | 16451
-            Total     | 100.00  | 26320     | 3290        | 3292    | 32902"
+my.data <- "Quantex   | Train Ratio | Training  | Val & Test Ratio  | Validation  | Testing | Total
+            Gaze      | 50          | 13160     | 79                | 1645        | 1646    | 16451
+            No Gaze   | 50          | 13160     | 21                | 443         | 445     | 14048
+            Total     | 100         | 26320     | 100               | 2088        | 2091    | 30499"
 
 df <- read.delim(textConnection(my.data), header=FALSE, sep="|", strip.white=TRUE, stringsAsFactors=FALSE)
 
@@ -578,21 +578,61 @@ row.names(df) <- NULL
 # Print the updated table
 apa_table(
   df,
-  caption = "Dataset splits for the YOLO11 gaze classification model trained on the Quantex dataset. The table shows the total number of frames, as well as the number of frames with gaze and no gaze in the training, validation, and testing datasets after data augmentation of the minory class (Gaze). 'Gaze' indicates frames where the person's gaze is directed towards the child, while 'No Gaze' indicates frames where the person's gaze is not directed towards the child. Ratios are given in percentages.",
+  caption = "Dataset splits for the YOLO11x gaze classification model trained on the Quantex dataset. The table shows the total number of frames, as well as the number of frames with gaze and no gaze in the training, validation, and testing datasets after data augmentation of the minory class (Gaze). 'Gaze' indicates frames where the person's gaze is directed towards the child, while 'No Gaze' indicates frames where the person's gaze is not directed towards the child. Ratios are given in percentages.",
   escape = TRUE
 )
 ```
 ### Training and Convergence
-We trained the gaze classification model on the same linux server that was used for the person and face detection model training. The model was trained for a total of `r gaze_num_epochs` epochs, taking `r gaze_training_time` hours to complete. Similar to the person and face detection model, model training was conducted applying an image size of 640, a batch size of 16, a cosine annealing learning rate scheduler [@loshchilovSGDRStochasticGradient2017], and early stopping after 10 epochs without improvement, with a maximum of 200 epochs.
+We trained the gaze classification model on the same Linux server used for person and object detection model training. Training ran for `r gaze_num_epochs` epochs, completing in `r gaze_training_time` hours. Similar to the YOLO detection model, we used an input image size of 640, a batch size of 16, a cosine annealing learning rate scheduler [@loshchilovSGDRStochasticGradient2017], and early stopping after 10 epochs without improvement, with a maximum of 200 epochs.
 
-Figure \@ref(fig:person-loss-curves) provides an overview of the loss curves for the gaze classification model, showing the Box Loss, Classification Loss, and Distribution Focal Loss (DFL) over the training period. 
-- tbd
+```{r gaze-loss-confusion-matrix, fig.align='center', fig.cap="\\textbf{A} - Training and Validation Loss Curves for the YOLO11x gaze classification model. \\textbf{B} - Confusion Matrix for the YOLO11x gaze classification model trained on the Quantex dataset."}
+# Load images
+img1 <- ggdraw() + draw_image("images/gaze_loss_curves.png", scale = 1)
+img2 <- ggdraw() + draw_image("images/confusion_matrix_gaze.png", scale = 1)
 
+# Combine img1 and img2 into the first row with equal heights
+top_row <- (img1 + img2) + 
+  plot_layout(widths = c(1, 1))
+
+final_layout <- (top_row) +
+  plot_layout(heights = c(1))  # Adjust row heights if needed
+
+# Add labels (A), (B), (C) to the images
+final_labeled_layout <- final_layout +
+  plot_annotation(tag_levels = 'A')  # Adds "A", "B", "C" automatically
+
+# Display the final layout
+final_labeled_layout
+```
+
+Figure \@ref(fig:gaze-loss-confusion-matrix) shows the cross-entropy loss curves for both training and validation. The steady decline in loss over time indicates that the model effectively learned to classify whether a person is looking in the direction of the child or not. The convergence of the training and validation loss curves suggests that the model generalizes well, as there is no indication of overfitting. Since gaze classification is a binary task, we used top-1 accuracy as the primary evaluation metric. Figure \@ref(fig:gaze-loss-confusion-matrix) also illustrates the increasing accuracy over time, confirming that the model progressively improves its ability to classify gaze correctly.
 
 ### Model Evaluation Metrics
+The YOLO11x gaze classification model achieved a precision of `r gaze_precision`, a recall of `r gaze_recall`, and an F1-score of `r gaze_f1_score` on the testing set. These metrics, summarized in table \@ref(tab:gaze-metrics), indicate that the model effectively distinguishes between gaze and no-gaze frames, though there is still room for improvement. The egocentric perspective of the dataset presents challenges, as faces are often partially occluded or blurred, making gaze classification difficult—even for human annotators, who occasionally required a second inspection to determine gaze direction.
+
+```{r gaze-metrics, echo=FALSE, message=FALSE, warnings=FALSE, results='asis', eval=TRUE}
+my.data <- "Precision | Recall  | F1-Score
+            0.63      | 0.77    | 0.70"
+
+df <- read.delim(textConnection(my.data), header=FALSE, sep="|", strip.white=TRUE, stringsAsFactors=FALSE)
+
+# Set the column names
+names(df) <- unname(as.list(df[1,]))
+df <- df[-1,]  # Remove the first row with column names
+row.names(df) <- NULL
 
 
+# Print the updated table
+apa_table(
+  df,
+  caption = "Evaluation metrics for the YOLO11x gaze classification model trained on the Quantex dataset to classify whether a person is looking into the direction of the child wearing the camera or not. Precision, recall, and F1-score are given for the testing set.",
+  escape = TRUE
+)
+```
 
+One of the primary challenges arises from cut-off faces, where the eyes are not always visible. In such cases, the model must rely on other facial features, such as head orientation or mouth position, to infer gaze direction. While this approach is often effective, it occasionally leads to misclassifications. Despite these difficulties, the model achieved a satisfactory recall, correctly identifying `r gaze_recall*100`% of all gaze frames. The F1-score of 0`r gaze_f1_score*100` balances precision and recall, providing a comprehensive measure of the model’s performance.
+
+More advanced gaze estimation methods—such as incorporating temporal information or leveraging additional facial landmarks—could further improve performance. However, given the constraints of our dataset and the focus on binary gaze classification, the YOLO11x model serves as a strong foundation for analyzing the gaze aspect of social interactions in egocentric video data.
 
 ## Proximity Heuristic
 Proximity between individuals is an important aspect of social interaction. Previous studies have shown that interpersonal distance can provide insights into the nature of relationships and social engagement [@janssenTrackingRealtimeProximity2024; @hernandez-herediaProximitySensorMeasuring2024; @onnelaUsingSociometersQuantify2014]. Since our dataset does not contain explicit proximity labels, we developed a heuristic approach to estimate the distance between the child and other individuals.

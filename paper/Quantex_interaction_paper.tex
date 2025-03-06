@@ -240,13 +240,13 @@ To overcome these limitations, our study investigates social interactions in nat
 \begin{itemize}
 \tightlist
 \item
-  Presence of Individuals: Utilizing Yolo11 for person detection to identify when others are present in the child's environment.
+  Presence of Individuals: Utilizing YOLO11 for person detection to identify when others are present in the child's environment.
 \item
-  Presence of Faces: Employing Yolo11 face detection to recognize faces the child encounters.
+  Presence of Faces: Employing YOLO11 face detection to recognize faces the child encounters.
 \item
-  Object Interactions: Analyzing the objects with which the child interacts using Yolo11 object detection
+  Object Interactions: Analyzing the objects with which the child interacts using YOLO11 object detection
 \item
-  Gaze Behaviors: Classifying gaze direction to determine when others are looking at the child.
+  Gaze Behaviors: Classifying gaze direction with YOLO11-cls to determine when others are looking at the child.
 \item
   Speech Dynamics: Implementing voice type classification to differentiate between the child's speech and that of others, distinguishing between peers and adults.
 \end{itemize}
@@ -345,7 +345,7 @@ In the following sections, we describe each module in detail, including training
 
 \subsection{YOLO11x: Multi-Class Detection of Persons, Faces, and Objects}\label{yolo11x-multi-class-detection-of-persons-faces-and-objects}
 
-In our study, we utilized Ultralytics' YOLO11, the ``latest iteration in the Ultralytics YOLO series of real-time object detectors'' (Jocher \& Qiu, 2024), trained on the COCO dataset. Released in October 2024, YOLO11 introduces architectural improvements such as the C2PSA block (Convolutional Block with Parallel Spatial Attention), which enhances spatial attention within feature maps, allowing the model to focus more precisely on critical areas of an image compared to previous Yolo versions. Additionally, YOLO11 incorporates the C3K2 block, designed to be faster and more efficient, enhancing the overall performance of the feature aggregation process (Khanam \& Hussain, 2024). These advancements make the YOLO11 detection model, pretrained on COCO, well-suited for training on our egocentric dataset, which captures dynamic movements from a camera perspective on chest height.
+In our study, we utilized Ultralytics' YOLO11, the ``latest iteration in the Ultralytics YOLO series of real-time object detectors'' (Jocher \& Qiu, 2024), trained on the COCO dataset. Released in October 2024, YOLO11 introduces architectural improvements such as the C2PSA block (Convolutional Block with Parallel Spatial Attention), which enhances spatial attention within feature maps, allowing the model to focus more precisely on critical areas of an image compared to previous YOLO versions. Additionally, YOLO11 incorporates the C3K2 block, designed to be faster and more efficient, enhancing the overall performance of the feature aggregation process (Khanam \& Hussain, 2024). These advancements make the YOLO11 detection model, pretrained on COCO, well-suited for training on our egocentric dataset, which captures dynamic movements from a camera perspective on chest height.
 
 \subsubsection{Dataset Preprocessing}\label{dataset-preprocessing}
 
@@ -374,17 +374,16 @@ We applied a stratified split to ensure that each of the training, validation, a
 \begin{center}
 \begin{threeparttable}
 
-\caption{\label{tab:person-dataset-splits}Dataset splits for the YOLO11 person and face detection model trained on the Quantex dataset. The table shows the distribution of annotated persons, faces, and objects in the training, validation, and testing datasets.}
+\caption{\label{tab:person-dataset-splits}Dataset splits for the YOLO11 detection model trained on the Quantex dataset. The table shows the distribution of annotated persons, faces, and objects in the training, validation, and testing datasets.}
 
 \begin{tabular}{cccccc}
 \toprule
-Quantex & \multicolumn{1}{c}{Percentage} & \multicolumn{1}{c}{Training} & \multicolumn{1}{c}{Validation} & \multicolumn{1}{c}{Testing} & \multicolumn{1}{c}{Total}\\
+Class & \multicolumn{1}{c}{Percentage} & \multicolumn{1}{c}{Training} & \multicolumn{1}{c}{Validation} & \multicolumn{1}{c}{Testing} & \multicolumn{1}{c}{Total Occurances}\\
 \midrule
-Adult Only & 6.54 & 5961 & 745 & 746 & 7452\\
-Child/Infant Only & 8.23 & 7494 & 936 & 938 & 9368\\
-Adult face only & 0.15 & 13 & 1 & 3 & 17\\
-Child/Infant face only & 0.12 & 108 & 13 & 14 & 135\\
-Person \& Face & 14.84 & 13506 & 1688 & 1689 & 16883\\
+Adult & 6.54 & 5961 & 745 & 746 & 7452\\
+Child/Infant & 8.23 & 7494 & 936 & 938 & 9368\\
+Adult Face & 0.15 & 13 & 1 & 3 & 17\\
+Child/Infant Face & 0.12 & 108 & 13 & 14 & 135\\
 Book & 9.19 & 8399 & 1037 & 1026 & 10462\\
 Toy & 15.23 & 13879 & 1721 & 1737 & 17337\\
 Kitchenware & 2.10 & 1892 & 236 & 266 & 2394\\
@@ -406,10 +405,6 @@ Total & 100 & 91037 & 11377 & 11385 & 113799\\
 
 Model training was conducted on a Linux server equipped with an Intel(R) Xeon(R) Silver 4214Y CPU @ 2.20GHz with 48 cores, a Quadro RTX 8000 GPU and 188 GB of RAM. The model was trained for a total of 86 epochs, taking 200 hours to complete. Training utilized YOLO11's built-in data augmentation, an image size of 640, a batch size of 16, a cosine annealing learning rate scheduler (Loshchilov \& Hutter, 2017), and early stopping after 10 epochs without improvement, with a maximum of 200 epochs.
 
-The loss function of the YOLO11 model comprises three main components: Box Loss, Classification Loss, and Distribution Focal Loss (DFL) (Li et al., 2020; Terven, Cordova-Esparza, Ramirez-Pedraza, Chavez-Urbiola, \& Romero-Gonzalez, 2024). \emph{Box Loss} quantifies the difference between predicted bounding boxes and ground truth boxes, ensuring precise localization of detected objects by penalizing inaccuracies in position and size. \emph{Classification Loss} evaluates the model's ability to correctly assign detected objects to their respective classes, reducing false positives and false negatives. \emph{Distribution Focal Loss} enhances the model's ability to detect challenging objects, particularly small or partially occluded ones, by refining the localization of bounding box coordinates and emphasizing hard-to-detect instances. Together, these loss components contribute to a more robust and accurate detection model.
-
-During the training process, we observed that all three loss components decreased over time, indicating effective learning and improved performance, as visible in in figure \ref{fig:person-loss-curves}. A steady decrease in Box Loss indicates that the model is becoming increasingly accurate in localizing persons, faces and objects within frames. Similarly, the steady convergence of the Classification Loss reveals the model's increasing ability to reliably classifiy the detected object in one of the relevant classes. The decrease in DFL over time indicates that the model is getting better at focusing on and correctly identifying difficult-to-detect persons, faces or objects, which improves its overall detection capabilities. Conclusively, the loss curves show that the model effectively learned to localize and identify the target classes during the training period.
-
 \begin{figure}
 
 {\centering \includegraphics[width=450px]{images/yolo_face_loss_curves} 
@@ -419,18 +414,22 @@ During the training process, we observed that all three loss components decrease
 \caption{Training and Validation Loss Curves for the YOLO11 person detection model.}\label{fig:person-loss-curves}
 \end{figure}
 
+The loss function of the YOLO11 model comprises three main components: Box Loss, Classification Loss, and Distribution Focal Loss (DFL) (Li et al., 2020; Terven, Cordova-Esparza, Ramirez-Pedraza, Chavez-Urbiola, \& Romero-Gonzalez, 2024). \emph{Box Loss} quantifies the difference between predicted bounding boxes and ground truth boxes, ensuring precise localization of detected persons, faces and objects by penalizing inaccuracies in position and size. \emph{Classification Loss} evaluates the model's ability to correctly assign detected instances to their respective classes, reducing false positives and false negatives. \emph{Distribution Focal Loss} enhances the model's ability to detect challenging persons, faces and objects, particularly small or partially occluded ones, by refining the localization of bounding box coordinates and emphasizing hard-to-detect instances. Together, these loss components contribute to a more robust and accurate detection model.
+
+During the training process, we observed that all three loss components decreased over time, indicating effective learning and improved performance, as visible in in figure \ref{fig:person-loss-curves}. A steady decrease in Box Loss indicates that the model is becoming increasingly accurate in localizing persons, faces and objects within frames. Similarly, the steady convergence of the Classification Loss reveals the model's increasing ability to reliably classifiy the detected instance in one of the relevant classes. The decrease in DFL over time indicates that the model is getting better at focusing on and correctly identifying difficult-to-detect persons, faces or objects, which improves its overall detection capabilities. Conclusively, the loss curves show that the model effectively learned to localize and identify the target classes during the training period.
+
 \begin{table}[tbp]
 
 \begin{center}
 \begin{threeparttable}
 
-\caption{\label{tab:person-detection-metrics-detailed}Evaluation metrics for the YOLO11m detection model trained on the Quantex dataset to detect persons and faces while distinguishing between the key child and other individuals. False Positive Rate and False Negative Rate are given in percentages.}
+\caption{\label{tab:person-detection-metrics-detailed}Evaluation metrics for the YOLO11x detection model trained on the Quantex dataset to detect persons, faces and six object classes. False Positive Rate (FPR) and False Negative Rate (FNR) are given in percentages.}
 
-\begin{tabular}{llllll}
+\begin{tabular}{lllll}
 \toprule
-Dataset & \multicolumn{1}{c}{Precision} & \multicolumn{1}{c}{Recall} & \multicolumn{1}{c}{F1-Score} & \multicolumn{1}{c}{False Positive Rate} & \multicolumn{1}{c}{False Negative Rate}\\
+Precision & \multicolumn{1}{c}{Recall} & \multicolumn{1}{c}{F1-Score} & \multicolumn{1}{c}{FPR} & \multicolumn{1}{c}{FNR}\\
 \midrule
-Quantex & 0 & 0 & 0 & 0 & 0\\
+0.92 & 0.87 & 0.90 & 2.72 & 10.94\\
 \bottomrule
 \end{tabular}
 
@@ -445,7 +444,7 @@ Quantex & 0 & 0 & 0 & 0 & 0\\
 
 }
 
-\caption{\textbf{A} - Confusion Matrix for the YOLO11 person and face detection model trained on the Quantex dataset. \textbf{B} - Precision-Recall Curve for the YOLO11 person detection model.}\label{fig:person-metrics}
+\caption{\textbf{A} - Confusion Matrix for the YOLO11x detection model trained on the Quantex dataset. \textbf{B} - Precision-Recall Curve for the YOLO11x detection model.}\label{fig:person-metrics}
 \end{figure}
 
 \begin{figure}
@@ -467,7 +466,7 @@ To provide a comprehensive understanding of the model's performance, we have inc
 
 Overall, the YOLO11 model demonstrates robust performance in face detection tasks. However, challenges remain in dynamic scenarios, particularly with partially visible, rotated, or side-view faces. These findings underscore the complexities inherent in analyzing egocentric video data, where movement and varying perspectives introduce additional challenges.
 
-\subsection{Yolo11x-cls: Gaze Classification}\label{yolo11x-cls-gaze-classification}
+\subsection{YOLO11x-cls: Gaze Classification}\label{yolo11x-cls-gaze-classification}
 
 Selecting an appropriate model for gaze classification in our automated pipeline presented unique challenges due to the egocentric perspective of our dataset. Many gaze estimation methods rely on high-quality eye images, either extracted separately (Zhang, Sugano, Fritz, \& Bulling, 2015) or as part of the full face (Zhang, Sugano, Fritz, \& Bulling, 2016). However, our dataset often contains blurry or partially occluded faces captured at varying angles, making such approaches not suitable. Additionally, rather than predicting fine-grained gaze direction (e.g., left or right), our focus is on the binary classification of whether a person's gaze is directed toward the child.
 
@@ -483,26 +482,24 @@ YOLO11's architectural enhancements, such as the C2PSA block, improve the model'
 
 \subsubsection{Dataset Splitting}\label{dataset-splitting-1}
 
-For the gaze classification task, we utilized a subset of the Quantex dataset, focusing specifically on frames containing annotated faces. This subset consisted of cut-out faces extracted from the annotated face bounding boxes, resulting in20889 frames from 64 annotated videos. An analysis of the gaze labels showed that 21.25\% of the faces were annotated as having gaze directed toward the child, resulting in an imbalanced dataset.
+For the gaze classification task, we utilized a subset of the Quantex dataset, focusing specifically on frames containing annotated faces. This subset consisted of cut-out faces extracted from the annotated face bounding boxes, resulting in 20889 frames from 64 annotated videos. An analysis of the gaze labels showed that 21.25\% of the faces were annotated as having gaze directed toward the child, leading to a class imbalance.
 
-Since our dataset was already a subset of the Quantex dataset, downsampling to achieve balance would have led to a loss of valuable data. To address this, we applied data augmentation techniques instead of downsampling, ensuring that the final dataset remained balanced while retaining all available samples. The final dataset comprised 32902frames, with an equal distribution of 50\% gaze-directed and 50\% non-gaze frames.
-
-To maintain this balance across all model training stages, we performed stratified dataset splitting which resulted in the data distribution presented in Table \ref{tab:gaze-dataset-splits}. Specifically, the training set comprised 26320 frames, the validation set 3290 frames, and the testing set 3292 frames.
+To maintain the original distribution of gaze labels across datasets, we first applied stratified dataset splitting, ensuring that the training, validation, and testing sets reflected the natural ratio of gaze and non-gaze frames. To address class imbalance in the training dataset, we applied data augmentation to increase the number of gaze frames. Since our dataset was already a subset of the Quantex dataset, downsampling to achieve balance would have resulted in a loss of valuable data. As a result, the final dataset included a balanced training set with 50\% gaze and 50\% no-gaze frames, while the validation and testing sets retained their original, unbalanced distribution. The final data distribution is presented in Table \ref{tab:gaze-dataset-splits}, with 26320 frames in the training set, 2088frames in the validation set, and 2091 frames in the testing set.
 
 \begin{table}[tbp]
 
 \begin{center}
 \begin{threeparttable}
 
-\caption{\label{tab:gaze-dataset-splits}Dataset splits for the YOLO11 gaze classification model trained on the Quantex dataset. The table shows the total number of frames, as well as the number of frames with gaze and no gaze in the training, validation, and testing datasets after data augmentation of the minory class (Gaze). 'Gaze' indicates frames where the person's gaze is directed towards the child, while 'No Gaze' indicates frames where the person's gaze is not directed towards the child. Ratios are given in percentages.}
+\caption{\label{tab:gaze-dataset-splits}Dataset splits for the YOLO11x gaze classification model trained on the Quantex dataset. The table shows the total number of frames, as well as the number of frames with gaze and no gaze in the training, validation, and testing datasets after data augmentation of the minory class (Gaze). 'Gaze' indicates frames where the person's gaze is directed towards the child, while 'No Gaze' indicates frames where the person's gaze is not directed towards the child. Ratios are given in percentages.}
 
-\begin{tabular}{llllll}
+\begin{tabular}{lllllll}
 \toprule
-Quantex & \multicolumn{1}{c}{Ratio} & \multicolumn{1}{c}{Training} & \multicolumn{1}{c}{Validation} & \multicolumn{1}{c}{Testing} & \multicolumn{1}{c}{Total}\\
+Quantex & \multicolumn{1}{c}{Train Ratio} & \multicolumn{1}{c}{Training} & \multicolumn{1}{c}{Val \& Test Ratio} & \multicolumn{1}{c}{Validation} & \multicolumn{1}{c}{Testing} & \multicolumn{1}{c}{Total}\\
 \midrule
-Gaze & 50 & 13160 & 1645 & 1646 & 16451\\
-No Gaze & 50 & 13160 & 1645 & 1646 & 16451\\
-Total & 100.00 & 26320 & 3290 & 3292 & 32902\\
+Gaze & 50 & 13160 & 79 & 1645 & 1646 & 16451\\
+No Gaze & 50 & 13160 & 21 & 443 & 445 & 14048\\
+Total & 100 & 26320 & 100 & 2088 & 2091 & 30499\\
 \bottomrule
 \end{tabular}
 
@@ -513,12 +510,46 @@ Total & 100.00 & 26320 & 3290 & 3292 & 32902\\
 
 \subsubsection{Training and Convergence}\label{training-and-convergence-1}
 
-We trained the gaze classification model on the same linux server that was used for the person and face detection model training. The model was trained for a total of 165 epochs, taking 283 hours to complete. Similar to the person and face detection model, model training was conducted applying an image size of 640, a batch size of 16, a cosine annealing learning rate scheduler (Loshchilov \& Hutter, 2017), and early stopping after 10 epochs without improvement, with a maximum of 200 epochs.
+We trained the gaze classification model on the same Linux server used for person and object detection model training. Training ran for 37 epochs, completing in 0 hours. Similar to the YOLO detection model, we used an input image size of 640, a batch size of 16, a cosine annealing learning rate scheduler (Loshchilov \& Hutter, 2017), and early stopping after 10 epochs without improvement, with a maximum of 200 epochs.
 
-Figure \ref{fig:person-loss-curves} provides an overview of the loss curves for the gaze classification model, showing the Box Loss, Classification Loss, and Distribution Focal Loss (DFL) over the training period.
-- tbd
+\begin{figure}
+
+{\centering \includegraphics{Quantex_interaction_paper_files/figure-latex/gaze-loss-confusion-matrix-1} 
+
+}
+
+\caption{\textbf{A} - Training and Validation Loss Curves for the YOLO11x gaze classification model. \textbf{B} - Confusion Matrix for the YOLO11x gaze classification model trained on the Quantex dataset.}\label{fig:gaze-loss-confusion-matrix}
+\end{figure}
+
+Figure \ref{fig:gaze-loss-confusion-matrix} shows the cross-entropy loss curves for both training and validation. The steady decline in loss over time indicates that the model effectively learned to classify whether a person is looking in the direction of the child or not. The convergence of the training and validation loss curves suggests that the model generalizes well, as there is no indication of overfitting. Since gaze classification is a binary task, we used top-1 accuracy as the primary evaluation metric. Figure \ref{fig:gaze-loss-confusion-matrix} also illustrates the increasing accuracy over time, confirming that the model progressively improves its ability to classify gaze correctly.
 
 \subsubsection{Model Evaluation Metrics}\label{model-evaluation-metrics-1}
+
+The YOLO11x gaze classification model achieved a precision of 0.64, a recall of 0.77, and an F1-score of 0.70 on the testing set. These metrics, summarized in table \ref{tab:gaze-metrics}, indicate that the model effectively distinguishes between gaze and no-gaze frames, though there is still room for improvement. The egocentric perspective of the dataset presents challenges, as faces are often partially occluded or blurred, making gaze classification difficult---even for human annotators, who occasionally required a second inspection to determine gaze direction.
+
+\begin{table}[tbp]
+
+\begin{center}
+\begin{threeparttable}
+
+\caption{\label{tab:gaze-metrics}Evaluation metrics for the YOLO11x gaze classification model trained on the Quantex dataset to classify whether a person is looking into the direction of the child wearing the camera or not. Precision, recall, and F1-score are given for the testing set.}
+
+\begin{tabular}{lll}
+\toprule
+Precision & \multicolumn{1}{c}{Recall} & \multicolumn{1}{c}{F1-Score}\\
+\midrule
+0.63 & 0.77 & 0.70\\
+\bottomrule
+\end{tabular}
+
+\end{threeparttable}
+\end{center}
+
+\end{table}
+
+One of the primary challenges arises from cut-off faces, where the eyes are not always visible. In such cases, the model must rely on other facial features, such as head orientation or mouth position, to infer gaze direction. While this approach is often effective, it occasionally leads to misclassifications. Despite these difficulties, the model achieved a satisfactory recall, correctly identifying 77\% of all gaze frames. The F1-score of 070 balances precision and recall, providing a comprehensive measure of the model's performance.
+
+More advanced gaze estimation methods---such as incorporating temporal information or leveraging additional facial landmarks---could further improve performance. However, given the constraints of our dataset and the focus on binary gaze classification, the YOLO11x model serves as a strong foundation for analyzing the gaze aspect of social interactions in egocentric video data.
 
 \subsection{Proximity Heuristic}\label{proximity-heuristic}
 
