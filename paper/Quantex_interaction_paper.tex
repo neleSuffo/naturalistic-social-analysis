@@ -302,10 +302,9 @@ For the video data, the annotation strategy required persons, faces, and objects
 Our automated analysis pipeline consists of four key modules: person and face detection, gaze classification, object detection, and voice type classification. Each module operates independently, utilizing separate machine learning models. Except for the voice type classifier, all models were trained on the Quantex dataset.
 
 The pipeline follows a sequential process:
-1. Person and face detection identifies the presence of individuals in the video frames.
+1. YOLO11x detection model identifies the presence of individuals (persons and faces) and types of objects the key child interacts with, both in social and independent play contexts, in the video frames.
 2. Gaze classification determines whether detected faces are looking at the child.
 3. Voice type classification detects the presence of speech and identifies whether the speaker is the key child, another child, or an adult.
-4. Object detection provides insights into the types of objects children interact with, both in social and independent play contexts.
 
 By integrating these modules, our pipeline enables a comprehensive analysis of children's everyday experiences, capturing both social interactions and independent play
 
