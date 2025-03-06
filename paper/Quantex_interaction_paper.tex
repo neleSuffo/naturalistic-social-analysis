@@ -361,38 +361,54 @@ Our dataset presents unique challenges due to its egocentric viewpoint, as the b
   Identify and classify six specific object categories (toy, book, food, kitchenware, screen, other object) relevant to the child's interactions.
 \end{itemize}
 
-While our dataset originally included seven object categories, we excluded the ``animal'' category from training due to its low occurrence (only 19 instances), whereas all other categories had counts exceeding 1,000. As a result, our final model was trained on six object categories.
+While our dataset originally included seven object categories, we merged the ``animal'' category with the ``other object'' category due to its low occurrence (only 19 instances), whereas all other categories had counts exceeding 1,000. As a result, our final model was trained on six object categories.
 
 \subsubsection{Dataset Splitting}\label{dataset-splitting}
 
-We started data splitting with a dataset comprising a total of 113799 frames from 80 annotated videos. Prior to splitting this dataset into training, validation, and testing datasets, we analyzed the proportion of frames containing annotated persons, faces and objects versus those without any annotations. Our analysis showed that at least one adult or child (full body or face) was present in 29.75\% of the frames and at least one face was visible in 29.75\% of the frames.
-
-We applied a stratified split to ensure that each of the training, validation, and testing dataset preserved the original ratio of frames with persons (adult and child/infant), frames with faces (adult and child/infant), frames with objects (6 object classes without animal) to frames without any of the relevant classes. As a result, the final data distribution, displayed in detail in table \ref{tab:person-dataset-splits}) consisted of 91038 frames in the training dataset, 11379 frames in the validation and 11382 frames in the testing dataset, guaranteeing that the model's performance evaluation remained accurate to the real-world data distribution.
+We started data splitting with a dataset comprising a total of 113799 frames from 80 annotated videos. Prior to splitting this dataset into training, validation, and testing datasets, we analyzed how often each class was present in the dataset. The class distribution, displayed in detail in table \ref{tab:det-class-distribution}, revealed that the dataset was imbalanced, with the ``neither'' class (frames without any of the relevant classes) being the most frequent. To address this imbalance, we applied a stratified split to ensure that each dataset preserved the original class distribution. As a result, the final data distribution (see figure \ref{det-dataset-splits}) consisted of 91038 frames in the training dataset, 11379 frames in the validation and 11382 frames in the testing dataset, guaranteeing that the model's performance evaluation remained accurate to the real-world data distribution.
 
 \begin{table}[tbp]
 
 \begin{center}
 \begin{threeparttable}
 
-\caption{\label{tab:person-dataset-splits}Dataset splits for the YOLO11 detection model trained on the Quantex dataset. The table shows the distribution of annotated persons, faces, and objects in the training, validation, and testing datasets.}
+\caption{\label{tab:det-class-distribution}Dataset splits for the YOLO11 detection model trained on the Quantex dataset. The table shows the distribution of annotated persons, faces, and objects in the training, validation, and testing datasets.}
 
-\begin{tabular}{cccccc}
+\begin{tabular}{lllll}
 \toprule
-Class & \multicolumn{1}{c}{Percentage} & \multicolumn{1}{c}{Training} & \multicolumn{1}{c}{Validation} & \multicolumn{1}{c}{Testing} & \multicolumn{1}{c}{Total Occurances}\\
+Class & \multicolumn{1}{c}{Training} & \multicolumn{1}{c}{Validation} & \multicolumn{1}{c}{Testing} & \multicolumn{1}{c}{Total}\\
 \midrule
-Adult & 6.54 & 5961 & 745 & 746 & 7452\\
-Child/Infant & 8.23 & 7494 & 936 & 938 & 9368\\
-Adult Face & 0.15 & 13 & 1 & 3 & 17\\
-Child/Infant Face & 0.12 & 108 & 13 & 14 & 135\\
-Book & 9.19 & 8399 & 1037 & 1026 & 10462\\
-Toy & 15.23 & 13879 & 1721 & 1737 & 17337\\
-Kitchenware & 2.10 & 1892 & 236 & 266 & 2394\\
-Screen & 3.71 & 3386 & 422 & 410 & 4218\\
-Food & 0.98 & 900 & 107 & 108 & 1115\\
-Other Object & 16.14 & 14706 & 1839 & 1829 & 18374\\
-Animal & 0.02 & 16 & 1 & 2 & 19\\
-Neither & 22.87 & 20794 & 2631 & 2618 & 26025\\
-Total & 100 & 91037 & 11377 & 11385 & 113799\\
+Adult & 25706 & 3213 & 3213 & 32132\\
+Child/Infant & 22403 & 2801 & 2800 & 28004\\
+Adult Face & 669 & 1083 & 1084 & 10836\\
+Child/Infant Face & 6756 & 844 & 845 & 8445\\
+Book & 8370 & 1046 & 1046 & 10462\\
+Toy & 13870 & 1734 & 1733 & 17337\\
+Kitchenware & 1915 & 239 & 240 & 2394\\
+Screen & 3374 & 422 & 422 & 4218\\
+Food & 892 & 111 & 112 & 1115\\
+Other Object & 14699 & 1838 & 1837 & 18374\\
+Neither & 32341 & 4004 & 4005 & 40350\\
+\bottomrule
+\end{tabular}
+
+\end{threeparttable}
+\end{center}
+
+\end{table}
+
+\begin{table}[tbp]
+
+\begin{center}
+\begin{threeparttable}
+
+\caption{\label{tab:det-dataset-splits}Number of images in the training, validation, and testing datasets for the YOLO11 detection model.}
+
+\begin{tabular}{lllll}
+\toprule
+ & \multicolumn{1}{c}{Training} & \multicolumn{1}{c}{Validation} & \multicolumn{1}{c}{Testing} & \multicolumn{1}{c}{Total}\\
+\midrule
+Number of images & 91039 & 11380 & 11380 & 113799\\
 \bottomrule
 \end{tabular}
 
@@ -411,19 +427,19 @@ Model training was conducted on a Linux server equipped with an Intel(R) Xeon(R)
 
 }
 
-\caption{Training and Validation Loss Curves for the YOLO11 person detection model.}\label{fig:person-loss-curves}
+\caption{Training and Validation Loss Curves for the YOLO11x detection model.}\label{fig:det-loss-curves}
 \end{figure}
 
 The loss function of the YOLO11 model comprises three main components: Box Loss, Classification Loss, and Distribution Focal Loss (DFL) (Li et al., 2020; Terven, Cordova-Esparza, Ramirez-Pedraza, Chavez-Urbiola, \& Romero-Gonzalez, 2024). \emph{Box Loss} quantifies the difference between predicted bounding boxes and ground truth boxes, ensuring precise localization of detected persons, faces and objects by penalizing inaccuracies in position and size. \emph{Classification Loss} evaluates the model's ability to correctly assign detected instances to their respective classes, reducing false positives and false negatives. \emph{Distribution Focal Loss} enhances the model's ability to detect challenging persons, faces and objects, particularly small or partially occluded ones, by refining the localization of bounding box coordinates and emphasizing hard-to-detect instances. Together, these loss components contribute to a more robust and accurate detection model.
 
-During the training process, we observed that all three loss components decreased over time, indicating effective learning and improved performance, as visible in in figure \ref{fig:person-loss-curves}. A steady decrease in Box Loss indicates that the model is becoming increasingly accurate in localizing persons, faces and objects within frames. Similarly, the steady convergence of the Classification Loss reveals the model's increasing ability to reliably classifiy the detected instance in one of the relevant classes. The decrease in DFL over time indicates that the model is getting better at focusing on and correctly identifying difficult-to-detect persons, faces or objects, which improves its overall detection capabilities. Conclusively, the loss curves show that the model effectively learned to localize and identify the target classes during the training period.
+During the training process, we observed that all three loss components decreased over time, indicating effective learning and improved performance, as visible in in figure \ref{fig:det-loss-curves}. A steady decrease in Box Loss indicates that the model is becoming increasingly accurate in localizing persons, faces and objects within frames. Similarly, the steady convergence of the Classification Loss reveals the model's increasing ability to reliably classifiy the detected instance in one of the relevant classes. The decrease in DFL over time indicates that the model is getting better at focusing on and correctly identifying difficult-to-detect persons, faces or objects, which improves its overall detection capabilities. Conclusively, the loss curves show that the model effectively learned to localize and identify the target classes during the training period.
 
 \begin{table}[tbp]
 
 \begin{center}
 \begin{threeparttable}
 
-\caption{\label{tab:person-detection-metrics-detailed}Evaluation metrics for the YOLO11x detection model trained on the Quantex dataset to detect persons, faces and six object classes. False Positive Rate (FPR) and False Negative Rate (FNR) are given in percentages.}
+\caption{\label{tab:det-detection-metrics-detailed}Evaluation metrics for the YOLO11x detection model trained on the Quantex dataset to detect persons, faces and six object classes. False Positive Rate (FPR) and False Negative Rate (FNR) are given in percentages.}
 
 \begin{tabular}{lllll}
 \toprule
@@ -440,29 +456,33 @@ Precision & \multicolumn{1}{c}{Recall} & \multicolumn{1}{c}{F1-Score} & \multico
 
 \begin{figure}
 
-{\centering \includegraphics{Quantex_interaction_paper_files/figure-latex/person-metrics-1} 
+{\centering \includegraphics{Quantex_interaction_paper_files/figure-latex/det-metrics-1} 
 
 }
 
-\caption{\textbf{A} - Confusion Matrix for the YOLO11x detection model trained on the Quantex dataset. \textbf{B} - Precision-Recall Curve for the YOLO11x detection model.}\label{fig:person-metrics}
+\caption{\textbf{A} - Confusion Matrix for the YOLO11x detection model trained on the Quantex dataset. \textbf{B} - Precision-Recall Curve for the YOLO11x detection model.}\label{fig:det-metrics}
 \end{figure}
 
 \begin{figure}
 
-{\centering \includegraphics{Quantex_interaction_paper_files/figure-latex/person-detection-examples-1} 
+{\centering \includegraphics{Quantex_interaction_paper_files/figure-latex/det-detection-examples-1} 
 
 }
 
-\caption{\textbf{A}, \textbf{B} - Examples of True Positives, \textbf{C}, \textbf{D} – Examples of False Negatives, \textbf{E}, \textbf{F} – Examples of False Positives in the YOLO11 person detection model.}\label{fig:person-detection-examples}
+\caption{\textbf{A}, \textbf{B} - Examples of True Positives, \textbf{C}, \textbf{D} – Examples of False Negatives, \textbf{E}, \textbf{F} – Examples of False Positives in the YOLO11 person detection model.}\label{fig:det-detection-examples}
 \end{figure}
 
 \subsubsection{Model Evaluation Metrics}\label{model-evaluation-metrics}
 
-The YOLO11 model achieved a precision of 0.92 and a recall of 0.87 on the testing set, resulting in an F1-score of 0.90. These metrics, summarized in table \ref{tab:person-detection-metrics-detailed} indicate the model's strong performance in accurately identifying faces while minimizing the number of missed detections and false positives. The precision-recall curve, displayed in figure \ref{fig:person-metrics}, further illustrates this performance, with the curve remaining close to the top-left corner. This positioning signifies that the model maintains high precision and recall across various thresholds, underscoring its effectiveness in detecting faces with confidence.
+The performance of the object detection model was evaluated using a confusion matrix and precision-recall (PR) curves. The YOLO11 model achieved a precision of 0.89 and a recall of 0.79 on the testing set, resulting in an F1-score of 0.84. The normalized confusion matrix (see figure \ref{fig:det-metrics}) reveals strong overall performance with mean Average Precision across all classes mAP=0.86. The averaged precision-recall curve remains close to the top-left corner and signifies that the model maintains high precision and recall across various thresholds, underscoring its effectiveness in detecting the different classes. Notably, the confusion matrix demonstrates minimal confusion between most classes, indicating that the model can effectively distinguish between them (see figure \ref{fig:det-metrics}).
 
-Analysis of the confusion matrix reveals that 86\% of all faces are correctly identified by the model, corresponding to 1905 true positives, while 234 faces were missed (false negatives). False negatives predominantly occurred in scenarios where faces were in the background, blurred due to motion, or occluded by the child's body. In such instances, adjacent frames often provided clearer views, aiding in more accurate classification. The model exhibited a false positive rate of approximately 2.72\%, with 251 frames incorrectly classified as containing faces when none were present. These false positives were often attributed to objects or toys resembling facial features. In face detection systems, achieving a balance between false positives and false negatives is crucial. Given this context, a 2.1\% false positive rate is generally considered acceptable.
+Analysis of the confusion matrix reveals that the classes ``infant/child'' (0.81), ``adult'' (0.91), ``adult face'' (0.91), ``child body parts'' (0.94), ``infant/child face'' (0.82), ``book'' (0.90) and ``screen'' (0.93) exhibit high Average Precision (AP) scores in the PR curves (see figure \ref{fig:det-metrics}), signifying excellent precision and recall.
 
-To provide a comprehensive understanding of the model's performance, we have included visual examples of true positives, false positives, and false negatives in figure \ref{fig:person-detection-examples}. These images highlight the model's strengths and areas where challenges persist, offering insights into specific scenarios that influence detection accuracy.
+Conversely, the ``food'' class shows significantly lower performance (AP = 0.619), compounded by its low prevalence in the dataset (0.98\% of the total occurrences). The confusion matrix supports this observation, indicating that 36\% of ``food'' items are frequently misclassified as ``background''. This misclassification is likely due to the limited number of training samples for this class (1115 total occurrences). Performance for ``other\_object'' (AP 0.820) also lags behind, along with ``infant/child'' (AP 0.857) and ``infant/child face'' (AP 0.854). ``Kitchenware'' class has AP score of 0.774. Analysis suggests a higher proportion of false negatives in the ``food,'' ``other object'', ``infant/child'', and ``infant/child face'' classes than other classes.
+
+The confusion matrix also indicates some confusion between ``infant/child'' and ``background'' classes, with 17\% of images from the ``infant/child'' class identified as ``background''. In general, the object classes (food, other\_object, kitchenware) appear to be more challenging for the model. This may be due to the annotation strategy, which prioritized labeling only the objects with which the child directly interacts. Many other objects in the scene are not annotated and might be visually similar to the target objects, leading the model to become confused during training.
+
+To address these issues, future work will focus on targeted data augmentation, with an emphasis on under-represented categories such as food, and address the specific problem of annotation, explore advanced training techniques that allow to penalize errors on the under-represented class more heavily, and implement a more comprehensive annotation protocol to account for all objects that might influence the model's classification.
 
 Overall, the YOLO11 model demonstrates robust performance in face detection tasks. However, challenges remain in dynamic scenarios, particularly with partially visible, rotated, or side-view faces. These findings underscore the complexities inherent in analyzing egocentric video data, where movement and varying perspectives introduce additional challenges.
 
@@ -510,7 +530,7 @@ Total & 100 & 26320 & 100 & 2088 & 2091 & 30499\\
 
 \subsubsection{Training and Convergence}\label{training-and-convergence-1}
 
-We trained the gaze classification model on the same Linux server used for person and object detection model training. Training ran for 37 epochs, completing in 0 hours. Similar to the YOLO detection model, we used an input image size of 640, a batch size of 16, a cosine annealing learning rate scheduler (Loshchilov \& Hutter, 2017), and early stopping after 10 epochs without improvement, with a maximum of 200 epochs.
+We trained the gaze classification model on the same Linux server used for person and object detection model training. Training ran for 37 epochs, completing in 10.40 hours. Similar to the YOLO detection model, we used an input image size of 640, a batch size of 16, a cosine annealing learning rate scheduler (Loshchilov \& Hutter, 2017), and early stopping after 10 epochs without improvement, with a maximum of 200 epochs.
 
 \begin{figure}
 
