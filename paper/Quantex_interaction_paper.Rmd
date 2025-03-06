@@ -371,6 +371,17 @@ tp_adult_face <- 0.91
 tp_child_body_parts <- 0.94
 tp_book <- 0.9
 tp_screen <- 0.93
+tp_toy <- 0.76
+tp_kitchenware <- 0.75
+tp_other_object <- 0.79
+
+fn_kitchenware <- 0.22
+fn_toy <- 0.22
+fn_other_object <- 0.19
+
+ap_toy <- 0.77
+ap_kitchenware <- 0.77
+ap_other_object <- 0.82
 
 det_num_epochs <- 86
 det_training_time <- 200
@@ -385,7 +396,7 @@ Our dataset presents unique challenges due to its egocentric viewpoint, as the b
 - Distinguish between adults and children/infants for both full-body detections and faces.
 - Identify and classify six specific object categories (toy, book, food, kitchenware, screen, other object) relevant to the child’s interactions.
 
-While our dataset originally included seven object categories, we merged the "animal" category with the "other object" category due to its low occurrence (only 19 instances), whereas all other categories had counts exceeding 1,000. As a result, our final model was trained on six object categories.
+While our dataset originally included seven object categories, we merged "animal" and "food" into the "other object" category due to their low occurrences (19 and 1,115 instances, respectively), whereas all other categories had more than 2,000 instances. As a result, our final model was trained on five object categories.
 
 ### Dataset Splitting
 We started data splitting with a dataset comprising a total of `r det_total_num_frames` frames from `r det_total_num_videos` annotated videos. Prior to splitting this dataset into training, validation, and testing datasets, we analyzed how often each class was present in the dataset. The class distribution, displayed in detail in table \@ref(tab:det-class-distribution), revealed that the dataset was imbalanced, with the "neither" class (frames without any of the relevant classes) being the most frequent. To address this imbalance, we applied a stratified split to ensure that each dataset preserved the original class distribution. As a result, the final data distribution (see figure \@ref(det-dataset-splits)) consisted of `r num_det_frames_train` frames in the training dataset, `r num_det_frames_val` frames in the validation and `r num_det_frames_test` frames in the testing dataset, guaranteeing that the model's performance evaluation remained accurate to the real-world data distribution.
@@ -400,8 +411,7 @@ my.data <- "Class                   | Training  | Validation  | Testing | Total
             Toy                     | 13870     | 1734        | 1733    | 17337
             Kitchenware             | 1915      | 239         | 240     | 2394
             Screen                  | 3374      | 422         | 422     | 4218
-            Food                    | 892       | 111         | 112     | 1115
-            Other Object            | 14699     | 1838        | 1837    | 18374
+            Other Object            | 15608     | 1950        | 1950    | 19508
             Neither                 | 32341     | 4004        | 4005    | 40350"
 
 df <- read.delim(textConnection(my.data), header=FALSE, sep="|", strip.white=TRUE, stringsAsFactors=FALSE)
@@ -525,13 +535,9 @@ The performance of the object detection model was evaluated using a confusion ma
 
 Analysis of the confusion matrix reveals that the classes "infant/child" (`r tp_child`), "adult" (`r tp_adult`), "adult face" (`r tp_adult`), "child body parts" (`r tp_child_body_parts`), "infant/child face" (`r tp_child_face`), "book" (`r tp_book`) and "screen" (`r tp_screen`) exhibit high Average Precision (AP) scores in the PR curves (see figure \@ref(fig:det-metrics)), signifying excellent precision and recall.
 
-Conversely, the "food" class shows significantly lower performance (AP = 0.619), compounded by its low prevalence in the dataset (0.98% of the total occurrences). The confusion matrix supports this observation, indicating that 36% of "food" items are frequently misclassified as "background". This misclassification is likely due to the limited number of training samples for this class (1115 total occurrences). Performance for "other\_object" (AP 0.820) also lags behind, along with "infant/child" (AP 0.857) and "infant/child face" (AP 0.854). "Kitchenware" class has AP score of 0.774. Analysis suggests a higher proportion of false negatives in the “food," "other object", "infant/child", and "infant/child face" classes than other classes.
+Contrarily, the "toy", "kitchenware" and "other object" classes show lower performance, with AP scores of `r ap_toy`, `r ap_kitchenware`, and `r ap_other_object`, respectively. The confusion matrix supports this observation, indicating that `r fn_kitchenware*100`% of "kitchenware" and `r fn_toy*100`% of "toy" items are frequently misclassified as "background". This misclassification is likely due to the annotation strategy, which prioritized labeling only the objects with which the child directly interacts. As a result, many other objects in the scene remain unannotated, despite being visually similar to the target objects, leading to confusion during training. Overall, the object classes appear to be more challenging for the model, particularly "kitchenware", "toy" and "other object". These results suggest that increasing the number of annotated samples, particularly for the objects the child directly interacts with, could improve detection performance. Additionally, future work could also explore model adjustments or data augmentation techniques to enhance the model’s ability to distinguish these difficult classes, especially for small or partially visible objects.
 
-The confusion matrix also indicates some confusion between "infant/child" and "background" classes, with 17% of images from the "infant/child" class identified as "background". In general, the object classes (food, other\_object, kitchenware) appear to be more challenging for the model. This may be due to the annotation strategy, which prioritized labeling only the objects with which the child directly interacts. Many other objects in the scene are not annotated and might be visually similar to the target objects, leading the model to become confused during training.
-
-To address these issues, future work will focus on targeted data augmentation, with an emphasis on under-represented categories such as food, and address the specific problem of annotation, explore advanced training techniques that allow to penalize errors on the under-represented class more heavily, and implement a more comprehensive annotation protocol to account for all objects that might influence the model's classification.
-
-Overall, the YOLO11 model demonstrates robust performance in face detection tasks. However, challenges remain in dynamic scenarios, particularly with partially visible, rotated, or side-view faces. These findings underscore the complexities inherent in analyzing egocentric video data, where movement and varying perspectives introduce additional challenges.
+Overall, the YOLO11 model demonstrates robust performance in detecting persons, faces and objects. However, challenges remain in detecting certain object classes, particularly "kitchenware", "toy" and "other object", which require further investigation to improve model performance. These findings underscore the complexities inherent in analyzing egocentric video data, where movement and varying perspectives introduce additional challenges.
 
 ## YOLO11x-cls: Gaze Classification
 ```{r gaze-statistics, echo=FALSE, message=FALSE, warning=FALSE}
