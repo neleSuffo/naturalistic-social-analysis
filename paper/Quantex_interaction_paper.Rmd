@@ -459,9 +459,19 @@ The loss function of the YOLO11 model comprises three main components: Box Loss,
 
 During the training process, we observed that all three loss components decreased over time, indicating effective learning and improved performance, as visible in in figure \@ref(fig:det-loss-curves). A steady decrease in Box Loss indicates that the model is becoming increasingly accurate in localizing persons, faces and objects within frames. Similarly, the steady convergence of the Classification Loss reveals the model's increasing ability to reliably classifiy the detected instance in one of the relevant classes. The decrease in DFL over time indicates that the model is getting better at focusing on and correctly identifying difficult-to-detect persons, faces or objects, which improves its overall detection capabilities. Conclusively, the loss curves show that the model effectively learned to localize and identify the target classes during the training period.
 
-```{r det-detection-metrics-detailed, echo=FALSE, message=FALSE, warnings=FALSE, results='asis', eval=TRUE}
-my.data <- "Precision | Recall  | F1-Score  | FPR   | FNR
-            0.92      | 0.87    | 0.90      | 2.72  | 10.94"
+```{r det-map_all, echo=FALSE, message=FALSE, warnings=FALSE, results='asis', eval=TRUE}
+my.data <- "class | mAP@0.5
+             infant/child | 0.87
+             adult | 0.95
+             infant/child face | 0.85
+             adult face | 0.95
+             child body parts | 0.97
+             book | 0.94
+             toy | 0.78
+             kitchenware | 0.81
+             screen | 0.96
+             other object | 0.83"
+
 df <- read.delim(textConnection(my.data), header=FALSE, sep="|", strip.white=TRUE, stringsAsFactors=FALSE)
 
 # Set the column names
@@ -473,8 +483,28 @@ row.names(df) <- NULL
 # Print the updated table
 apa_table(
   df,
-  caption = "Evaluation metrics for the YOLO11x detection model trained on the Quantex dataset to detect persons, faces and six object classes. False Positive Rate (FPR) and False Negative Rate (FNR) are given in percentages.",
-  escape = TRUE
+  caption = "Mean Average Precision (mAP@0.5) for the YOLO11x detection model trained on the Quantex dataset. The table shows the mAP@0.5 for each class.",
+  escape = FALSE,
+)
+```
+          
+```{r det-detection-metrics-detailed, echo=FALSE, message=FALSE, warnings=FALSE, results='asis', eval=TRUE}
+my.data <- "mAP@0.5 | Precision | Recall  | F1-Score
+             0.858  | 0.89      | 0.79    | 0.84"
+
+df <- read.delim(textConnection(my.data), header=FALSE, sep="|", strip.white=TRUE, stringsAsFactors=FALSE)
+
+# Set the column names
+names(df) <- unname(as.list(df[1,]))
+df <- df[-1,]  # Remove the first row with column names
+row.names(df) <- NULL
+
+
+# Print the updated table
+apa_table(
+  df,
+  caption = "Detection metrics for the YOLO11x detection model trained on the Quantex dataset. The table reports mean Average Precision at IoU 0.5 (mAP@0.5), along with the averaged precision, recall, and F1-score across all classes.",
+escape = FALSE,
 )
 ```
 
@@ -499,13 +529,11 @@ final_labeled_layout
 ```
 
 
-```{r det-detection-examples, echo=FALSE, dpi=600, fig.align='center', fig.cap="\\textbf{A}, \\textbf{B} - Examples of True Positives, \\textbf{C}, \\textbf{D} – Examples of False Negatives, \\textbf{E}, \\textbf{F} – Examples of False Positives in the YOLO11 person detection model."}
-img1 <- ggdraw() + draw_image("images/quantex_at_home_id255944_2022_03_07_01_002760.jpg", scale = 0.95)
-img2 <- ggdraw() + draw_image("images/quantex_at_home_id255944_2022_03_07_01_002760.jpg", scale = 0.95)
-img3 <- ggdraw() + draw_image("images/quantex_at_home_id255944_2022_03_07_01_002760.jpg", scale = 0.95)
-img4 <- ggdraw() + draw_image("images/quantex_at_home_id255944_2022_03_07_01_002760.jpg", scale = 0.95)
-img5 <- ggdraw() + draw_image("images/quantex_at_home_id255944_2022_03_07_01_002760.jpg", scale = 0.95)
-img6 <- ggdraw() + draw_image("images/quantex_at_home_id255944_2022_03_07_01_002760.jpg", scale = 0.95)
+```{r det-detection-examples, echo=FALSE, dpi=600, fig.align='center', fig.cap="Detection examples for the YOLO11x detection model trained on the Quantex dataset."}
+img1 <- ggdraw() + draw_image("images/yolo_person_face_object_1.jpg", scale = 0.95)
+img2 <- ggdraw() + draw_image("images/yolo_objects.jpg", scale = 0.95)
+img3 <- ggdraw() + draw_image("images/yolo_person_face.jpg", scale = 0.95)
+img4 <- ggdraw() + draw_image("images/yolo_person_face_object_2.jpg", scale = 0.95)
 
 # Combine img1 and img2 into the first row with equal heights
 top_row <- (img1 + img2) + 
@@ -516,11 +544,9 @@ middle_row <- (img3 + img4) +
   plot_layout(widths = c(1, 1))
 
 # Combine img1 and img2 into the first row with equal heights
-bottom_row <- (img5 + img6) + 
-  plot_layout(widths = c(1, 1))
 
-final_layout <- (top_row / middle_row / bottom_row) +
-  plot_layout(heights = c(1, 1, 1))  # Adjust row heights if needed
+final_layout <- (top_row / middle_row) +
+  plot_layout(heights = c(1, 1))  # Adjust row heights if needed
 
 # Add labels (A), (B), (C) to the images
 final_labeled_layout <- final_layout +
@@ -530,13 +556,11 @@ final_labeled_layout <- final_layout +
 final_labeled_layout
 ```
 ### Model Evaluation Metrics
-The performance of the object detection model was evaluated using a confusion matrix and precision-recall (PR) curves. The YOLO11 model achieved a precision of `r det_precision` and a recall of `r det_recall` on the testing set, resulting in an F1-score of `r det_f1_score`. The normalized confusion matrix (see figure \@ref(fig:det-metrics)) reveals strong overall performance with mean Average Precision across all classes mAP=`r det_map`. The averaged precision-recall curve remains close to the top-left corner and signifies that the model maintains high precision and recall across various thresholds, underscoring its effectiveness in detecting the different classes. Notably, the confusion matrix demonstrates minimal confusion between most classes, indicating that the model can effectively distinguish between them (see figure \@ref(fig:det-metrics)).
+The performance of the object detection model was evaluated using a confusion matrix and precision-recall (PR) curves. The YOLO11 model achieved a precision of `r det_precision` and a recall of `r det_recall` on the testing set, resulting in an F1-score of `r det_f1_score`. The normalized confusion matrix (see figure \@ref(fig:det-metrics)) reveals strong overall performance with mean Average Precision across all classes mAP=`r det_map`. The averaged precision-recall curve remains close to the top-left corner and signifies that the model maintains high precision and recall across various thresholds, underscoring its effectiveness in detecting the different classes. Notably, the confusion matrix demonstrates minimal confusion between most classes, indicating that the model can effectively distinguish between them (see figure \@ref(fig:det-metrics)). A closer look at class-wise performance reveals that the model excels in detecting people and certain objects. The “infant/child,” “adult,” and “adult face” classes, as well as “child body parts,” “infant/child face,” “book,” and “screen,” all achieve high Average Precision (AP) scores. This indicates that the model reliably identifies these categories with strong precision and recall (see figure \@ref(fig:det-metrics)).
 
-Analysis of the confusion matrix reveals that the classes "infant/child" (`r tp_child`), "adult" (`r tp_adult`), "adult face" (`r tp_adult`), "child body parts" (`r tp_child_body_parts`), "infant/child face" (`r tp_child_face`), "book" (`r tp_book`) and "screen" (`r tp_screen`) exhibit high Average Precision (AP) scores in the PR curves (see figure \@ref(fig:det-metrics)), signifying excellent precision and recall.
+Conversely, some object classes remain more challenging. In particular, the “toy,” “kitchenware,” and “other object” categories exhibit lower AP scores of `r ap_toy`, `r ap_kitchenware`, and `r ap_other_object`, respectively. The confusion matrix confirms that `r fn_kitchenware*100`% of “kitchenware” and `r fn_toy*100`% of “toy” instances are frequently misclassified as “background.” This issue likely stems from the annotation strategy, which prioritized labeling only objects that the child directly interacted with. As a result, other visually similar objects in the background remain unannotated, introducing ambiguity during training. Additionally, “infant/child” and “infant/child face” also show notable false negative rates of 17%, further contributing to misclassification. These findings suggest that increasing the number of annotated samples—particularly for objects with which the child interacts—could improve detection performance. Future work could also explore model refinements or data augmentation techniques to enhance the detection of small, occluded, or partially visible objects.
 
-Contrarily, the "toy", "kitchenware" and "other object" classes show lower performance, with AP scores of `r ap_toy`, `r ap_kitchenware`, and `r ap_other_object`, respectively. The confusion matrix supports this observation, indicating that `r fn_kitchenware*100`% of "kitchenware" and `r fn_toy*100`% of "toy" items are frequently misclassified as "background". This misclassification is likely due to the annotation strategy, which prioritized labeling only the objects with which the child directly interacts. As a result, many other objects in the scene remain unannotated, despite being visually similar to the target objects, leading to confusion during training. Overall, the object classes appear to be more challenging for the model, particularly "kitchenware", "toy" and "other object". These results suggest that increasing the number of annotated samples, particularly for the objects the child directly interacts with, could improve detection performance. Additionally, future work could also explore model adjustments or data augmentation techniques to enhance the model’s ability to distinguish these difficult classes, especially for small or partially visible objects.
-
-Overall, the YOLO11 model demonstrates robust performance in detecting persons, faces and objects. However, challenges remain in detecting certain object classes, particularly "kitchenware", "toy" and "other object", which require further investigation to improve model performance. These findings underscore the complexities inherent in analyzing egocentric video data, where movement and varying perspectives introduce additional challenges.
+Overall, the YOLO11 model demonstrates strong performance in detecting people, faces, and several object classes. However, challenges remain in distinguishing certain objects, particularly “kitchenware,” “toy,” and “other object.” These results underscore the complexities of analyzing egocentric video data, where movement and shifting perspectives add additional layers of difficulty.
 
 ## YOLO11x-cls: Gaze Classification
 ```{r gaze-statistics, echo=FALSE, message=FALSE, warning=FALSE}
