@@ -44,8 +44,8 @@ def main():
 
     # Extract precision and recall
     if args.yolo_target == "person_face" or args.yolo_target == "all":
-        precision = metrics.results_dict['metrics/precision']
-        recall = metrics.results_dict['metrics/recall']
+        precision = metrics.results_dict['metrics/precision(B)']
+        recall = metrics.results_dict['metrics/recall(B)']
         f1_score = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
 
         # Log results
