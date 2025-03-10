@@ -252,6 +252,7 @@ def process_video(video_path: Path, detection_model: YOLO, gaze_model: YOLO, cur
         
     cap = cv2.VideoCapture(str(video_path))
     frame_idx = 0
+    processed_frames = 0
     # Initialize totals dictionary using the class mapping
     total_counts = {name: 0 for name in YoloConfig.detection_mapping.values()}
 
@@ -268,7 +269,8 @@ def process_video(video_path: Path, detection_model: YOLO, gaze_model: YOLO, cur
             for class_name, count in detection_counts.items():
                 total_counts[class_name] += count
             conn.commit()
-
+            processed_frames += 1
+        
         frame_idx += 1
 
     cap.release()
@@ -283,7 +285,8 @@ def process_video(video_path: Path, detection_model: YOLO, gaze_model: YOLO, cur
         f.write(f"Video Statistics for: {video_path.name}\n")
         f.write("=" * 50 + "\n")
         f.write(f"Video ID: {video_id}\n")
-        f.write(f"Total Frames Processed: {frame_idx}\n")
+        f.write(f"Total Video Frames: {frame_idx}\n")
+        f.write(f"Processed Frames: {processed_frames} (every 10th frame)\n")
         f.write("\nDetection Counts:\n")
         f.write("-" * 20 + "\n")
     
