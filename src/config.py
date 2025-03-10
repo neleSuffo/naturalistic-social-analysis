@@ -39,11 +39,11 @@ class YoloConfig:
     person_object_target_class_ids = [1,2,3,4,5,6,7,8,10,11,12]
     face_target_class_ids = [10]
     detection_mapping = {
-        0: 'child',
+        0: 'infant/child',
         1: 'adult',
-        2: 'child_face',
-        3: 'adult_face',
-        4: 'child_body_parts',
+        2: 'infant/child face',
+        3: 'adult face',
+        4: 'child body parts',
         5: 'book',
         6: 'toy',
         7: 'kitchenware',
