@@ -12,8 +12,8 @@ def main(num_videos_to_process: int):
     num_videos_to_process: int
         The number of videos
     """
-    # Setup the detection database which will hold the detection results
-    #setup_detection_database()
+    # Setup the detection database which will hold the detection results (if it doesnt already exist)
+    setup_detection_database()
     # Run the detection pipeline
     yolo_person_face_gaze.main(num_videos_to_process)
     
