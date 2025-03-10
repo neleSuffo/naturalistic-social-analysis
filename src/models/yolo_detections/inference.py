@@ -4,7 +4,7 @@ import argparse
 import random
 from ultralytics import YOLO
 from constants import YoloPaths
-from estimate_proximity import get_proximity, describe_proximity
+from estimate_proximity import get_proximity
 
 # Add this after the imports
 CLASS_COLORS = {
@@ -45,7 +45,6 @@ def run_inference(image_path):
             if class_id in [2,3]:  
                 bounding_box = [x1, y1, x2, y2]
                 proximity = get_proximity(bounding_box, class_name)
-                #proximity_description = describe_proximity(proximity)
 
             # Assign a unique color to each class
             color = CLASS_COLORS[class_id]
