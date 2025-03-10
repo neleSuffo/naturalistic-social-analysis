@@ -76,6 +76,7 @@ def setup_detection_database(db_path: Path = DetectionPaths.detection_db_path):
             y_max INTEGER,
             gaze_direction INTEGER,
             gaze_confidence REAL,
+            proximity REAL,
             FOREIGN KEY (video_id, frame_number) REFERENCES Frames(video_id, frame_number)
         )
     ''')
