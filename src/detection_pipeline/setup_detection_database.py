@@ -40,6 +40,7 @@ def setup_detection_database(db_path: Path = DetectionPaths.detection_db_path):
             frame_id INTEGER PRIMARY KEY AUTOINCREMENT,
             video_id INTEGER,
             frame_number INTEGER,
+            UNIQUE(video_id, frame_number),
             FOREIGN KEY (video_id) REFERENCES Videos(video_id)
         )
     ''')
@@ -65,6 +66,7 @@ def setup_detection_database(db_path: Path = DetectionPaths.detection_db_path):
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS Detections (
             detection_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            video_id INTEGER,
             frame_number INTEGER,
             object_class TEXT,
             confidence_score REAL,
@@ -74,7 +76,7 @@ def setup_detection_database(db_path: Path = DetectionPaths.detection_db_path):
             y_max INTEGER,
             gaze_direction INTEGER,
             gaze_confidence REAL,
-            FOREIGN KEY (frame_number) REFERENCES Frames(frame_number)
+            FOREIGN KEY (video_id, frame_number) REFERENCES Frames(video_id, frame_number)
         )
     ''')
 
