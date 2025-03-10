@@ -38,6 +38,19 @@ class YoloConfig:
     person_target_class_ids = [1,2,10,11]
     person_object_target_class_ids = [1,2,3,4,5,6,7,8,10,11,12]
     face_target_class_ids = [10]
+    detection_mapping = {
+        0: 'child',
+        1: 'adult',
+        2: 'child_face',
+        3: 'adult_face',
+        4: 'child_body_parts',
+        5: 'book',
+        6: 'toy',
+        7: 'kitchenware',
+        8: 'screen',
+        9: 'food',
+        10: 'other_object'
+    }
     
 class VTCConfig:
     audio_file_suffix = Path("_16kHz.wav")
