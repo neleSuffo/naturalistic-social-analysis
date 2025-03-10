@@ -8,16 +8,22 @@ logging.basicConfig(level=logging.INFO)
 def setup_detection_database(db_path: Path = DetectionPaths.detection_db_path):
     """
     This function sets up the SQLite database for storing detection results.
+    If the database already exists, it skips creation.
     
     Parameters:
     ----------
     db_path : Path
         Path to the SQLite database file, defaults to DetectionPaths.detection_db_path
     """
+    # Check if database already exists
+    if db_path.exists():
+        logging.info(f"Database already exists at {db_path}. Skipping creation.")
+        return
+    
     # Ensure directory exists
     db_path.parent.mkdir(parents=True, exist_ok=True)
     
-    # Connect to SQLite database (or create it if it doesn't exist)
+    # Connect to SQLite database (create it since we know it doesn't exist)
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
@@ -73,4 +79,5 @@ def setup_detection_database(db_path: Path = DetectionPaths.detection_db_path):
     ''')
 
     conn.commit()
+    conn.close()
     logging.info(f"Detection database created at {db_path}")
