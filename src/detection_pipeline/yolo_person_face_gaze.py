@@ -298,12 +298,6 @@ def process_video(video_path: Path, person_face_model: YOLO, gaze_model: YOLO, c
         f.write(f"Adults: {total_adults}\n")
         f.write(f"Child Faces: {total_child_faces}\n")
         f.write(f"Adult Faces: {total_adult_faces}\n")
-        f.write(f"\nAverage Detections per Frame:\n")
-        f.write("-" * 20 + "\n")
-        f.write(f"Children: {total_children/frame_idx:.2f}\n")
-        f.write(f"Adults: {total_adults/frame_idx:.2f}\n")
-        f.write(f"Child Faces: {total_child_faces/frame_idx:.2f}\n")
-        f.write(f"Adult Faces: {total_adult_faces/frame_idx:.2f}\n")
     
     logging.info(f"Statistics written to: {output_file}")
     logging.info(f"Finished video: {video_path} | Children: {total_children}, Adults: {total_adults}, "
