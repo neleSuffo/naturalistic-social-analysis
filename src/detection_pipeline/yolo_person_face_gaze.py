@@ -9,6 +9,8 @@ from typing import Tuple
 from pathlib import Path
 from ultralytics import YOLO
 from constants import YoloPaths, DetectionPaths, VTCPaths
+from config import YoloConfig
+from estimate_proximity import get_proximity
 
 def extract_id_from_filename(filename: str) -> str:
     """
@@ -146,7 +148,7 @@ def insert_video_record(video_path, cursor) -> int:
         cursor.execute('SELECT video_id FROM Videos WHERE video_path = ?', (str(video_path),))
         return cursor.fetchone()[0]
 
-def process_frame(frame: np.ndarray, frame_idx: int, video_id: int, person_face_model: YOLO, gaze_model: YOLO, cursor: sqlite3.Cursor) -> Tuple[int, int]:
+def process_frame(frame: np.ndarray, frame_idx: int, video_id: int, detection_model: YOLO, gaze_model: YOLO, cursor: sqlite3.Cursor) -> Tuple[int, int]:
     """
     This function processes a frame. It inserts the frame record and processes each object detected in the frame.
     The steps are as follows:
@@ -161,8 +163,8 @@ def process_frame(frame: np.ndarray, frame_idx: int, video_id: int, person_face_
         Frame index
     video_id : int
         Video ID
-    person_face_model : YOLO
-        YOLO model for person and face detection
+    detection_model : YOLO
+        YOLO model for person, face, and object detection
     gaze_model : YOLO
         YOLO model for gaze classification
     cursor : sqlite3.Cursor
@@ -170,19 +172,15 @@ def process_frame(frame: np.ndarray, frame_idx: int, video_id: int, person_face_
     
     Returns:
     -------
-    num_child : int
-        Number of children detected
-    num_adult : int
-        Number of adults detected
-    num_child_faces : int
-        Number of child faces detected
-    num_adult_faces : int
-        Number of adult faces detected
+    detection_counts : dict
+        Dictionary containing counts of each object class detected
     """
     cursor.execute('INSERT INTO Frames (video_id, frame_number) VALUES (?, ?)', (video_id, frame_idx))
 
-    result = person_face_model(frame)
-    num_child, num_adult, num_child_faces, num_adult_faces = 0, 0, 0, 0
+    result = detection_model(frame)
+
+    # Initialize counts dictionary using the class mapping
+    detection_counts = {name: 0 for name in YoloConfig.detection_mapping.values()}
 
     results = result[0].boxes
     # Extract detection results
@@ -194,39 +192,35 @@ def process_frame(frame: np.ndarray, frame_idx: int, video_id: int, person_face_
     for i in range(len(conf)):
         # Extract bounding box and class label
         x_min, y_min, x_max, y_max = map(int, xyxy[i])  # Bounding box coordinates
+        bounding_box = [x_min, y_min, x_max, y_max]
         confidence_score = conf[i].item()  # Confidence score
         object_class = object_cls[i].item()  # Class label
 
-        # Determine if the detected object is a person or a face
-        if object_class == 0: # infant/child
-            num_child += 1
-            gaze_direction = None
-            gaze_confidence = None
-        elif object_class == 1:  # adult
-            num_adult += 1
-            gaze_direction = None
-            gaze_confidence = None
-        elif object_class == 2:  # child face
-            num_child_faces += 1
-            face_image = frame[y_min:y_max, x_min:x_max]
-            gaze_direction, gaze_confidence = classify_gaze(gaze_model, face_image)
-        elif object_class == 3:  # adult face
-            num_adult_faces += 1
-            face_image = frame[y_min:y_max, x_min:x_max]
-            gaze_direction, gaze_confidence = classify_gaze(gaze_model, face_image)
-        else:
-            continue  # Skip if the object is neither 'person' nor 'face'
+        # Initialize variables
+        gaze_direction = None
+        gaze_confidence = None
+        proximity = None
+        
+        # Get class name from mapping
+        class_name = YoloConfig.detection_mapping[int(object_class)]
+        detection_counts[class_name] += 1
 
-        # Insert detection record into the database
+        # Process faces for gaze and proximity
+        if object_class in [2, 3]:  # child or adult face
+            face_image = frame[y_min:y_max, x_min:x_max]
+            gaze_direction, gaze_confidence = classify_gaze(gaze_model, face_image)
+            proximity = get_proximity(bounding_box, class_name)
+
+        # Insert detection record
         cursor.execute('''
             INSERT INTO Detections 
-            (video_id, frame_number, object_class, confidence_score, x_min, y_min, x_max, y_max, gaze_direction, gaze_confidence)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (video_id, frame_idx, object_class, confidence_score, x_min, y_min, x_max, y_max, gaze_direction, gaze_confidence))
+            (video_id, frame_number, object_class, confidence_score, x_min, y_min, x_max, y_max, gaze_direction, gaze_confidence, proximity)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (video_id, frame_idx, object_class, confidence_score, x_min, y_min, x_max, y_max, gaze_direction, gaze_confidence, proximity))
 
-    return num_child, num_adult, num_child_faces, num_adult_faces
+    return detection_counts
 
-def process_video(video_path: Path, person_face_model: YOLO, gaze_model: YOLO, cursor: sqlite3.Cursor, conn: sqlite3.Connection):
+def process_video(video_path: Path, detection_model: YOLO, gaze_model: YOLO, cursor: sqlite3.Cursor, conn: sqlite3.Connection):
     """
     This function processes a video frame by frame. It inserts the video record, processes each frame, and commits the changes.
     The steps are as follows:
@@ -240,7 +234,7 @@ def process_video(video_path: Path, person_face_model: YOLO, gaze_model: YOLO, c
     ----------
     video_path : Path
         Path to the video file
-    person_face_model : YOLO
+    detection_model : YOLO
         YOLO model for person and face detection
     gaze_model : YOLO
         YOLO model for gaze classification
@@ -258,8 +252,8 @@ def process_video(video_path: Path, person_face_model: YOLO, gaze_model: YOLO, c
         
     cap = cv2.VideoCapture(str(video_path))
     frame_idx = 0
-    total_children, total_adults, total_child_faces, total_adult_faces = 0, 0, 0, 0
-    total_gaze, total_no_gaze = 0, 0
+    # Initialize totals dictionary using the class mapping
+    total_counts = {name: 0 for name in YoloConfig.detection_mapping.values()}
 
     while cap.isOpened():
         ret, frame = cap.read()
@@ -267,13 +261,12 @@ def process_video(video_path: Path, person_face_model: YOLO, gaze_model: YOLO, c
             break
 
         if frame_idx % 10 == 0:
-            num_child, num_adult, num_child_faces, num_adult_faces = process_frame(
-                frame, frame_idx, video_id, person_face_model, gaze_model, cursor
+            detection_counts = process_frame(
+                frame, frame_idx, video_id, detection_model, gaze_model, cursor
             )
-            total_children += num_child
-            total_adults += num_adult
-            total_child_faces += num_child_faces
-            total_adult_faces += num_adult_faces
+            # Update total counts for each class
+            for class_name, count in detection_counts.items():
+                total_counts[class_name] += count
             conn.commit()
 
         frame_idx += 1
@@ -293,11 +286,13 @@ def process_video(video_path: Path, person_face_model: YOLO, gaze_model: YOLO, c
         f.write(f"Total Frames Processed: {frame_idx}\n")
         f.write("\nDetection Counts:\n")
         f.write("-" * 20 + "\n")
-        f.write(f"Children: {total_children}\n")
-        f.write(f"Adults: {total_adults}\n")
-        f.write(f"Child Faces: {total_child_faces}\n")
-        f.write(f"Adult Faces: {total_adult_faces}\n")
     
+        # Write counts for all object classes
+        for class_id, class_name in YoloConfig.detection_mapping.items():
+            formatted_name = class_name.replace('_', ' ').title()
+            count = total_counts[class_name]
+            f.write(f"{formatted_name}: {count}\n")
+            
     logging.info(f"Statistics written to: {output_file}")
     conn.commit()
 
