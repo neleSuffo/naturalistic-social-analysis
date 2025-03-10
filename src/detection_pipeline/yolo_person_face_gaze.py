@@ -180,7 +180,6 @@ def process_frame(frame: np.ndarray, frame_idx: int, video_id: int, person_face_
         Number of adult faces detected
     """
     cursor.execute('INSERT INTO Frames (video_id, frame_number) VALUES (?, ?)', (video_id, frame_idx))
-    frame_id = cursor.lastrowid
 
     result = person_face_model(frame)
     num_child, num_adult, num_child_faces, num_adult_faces = 0, 0, 0, 0
@@ -221,9 +220,9 @@ def process_frame(frame: np.ndarray, frame_idx: int, video_id: int, person_face_
         # Insert detection record into the database
         cursor.execute('''
             INSERT INTO Detections 
-            (frame_number, object_class, confidence_score, x_min, y_min, x_max, y_max, gaze_direction, gaze_confidence)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (frame_idx, object_class, confidence_score, x_min, y_min, x_max, y_max, gaze_direction, gaze_confidence))
+            (video_id, frame_number, object_class, confidence_score, x_min, y_min, x_max, y_max, gaze_direction, gaze_confidence)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (video_id, frame_idx, object_class, confidence_score, x_min, y_min, x_max, y_max, gaze_direction, gaze_confidence))
 
     return num_child, num_adult, num_child_faces, num_adult_faces
 
@@ -300,8 +299,6 @@ def process_video(video_path: Path, person_face_model: YOLO, gaze_model: YOLO, c
         f.write(f"Adult Faces: {total_adult_faces}\n")
     
     logging.info(f"Statistics written to: {output_file}")
-    logging.info(f"Finished video: {video_path} | Children: {total_children}, Adults: {total_adults}, "
-                f"Child Faces: {total_child_faces}, Adult Faces: {total_adult_faces}")
     conn.commit()
 
 def store_voice_detections(video_file_name: str, results_file: Path, fps: int = 30):
@@ -357,8 +354,10 @@ def store_voice_detections(video_file_name: str, results_file: Path, fps: int = 
             
             for frame_offset in range(num_frames):
                 actual_frame = start_frame + frame_offset
-                # Check if a frame record exists; if not, create one.
-                cursor.execute("SELECT frame_number FROM Frames WHERE video_id = ? AND frame_number = ?", (video_id, actual_frame))
+                # Insert frame record if it doesn't exist
+                cursor.execute('INSERT OR IGNORE INTO Frames (video_id, frame_number) VALUES (?, ?)', 
+                            (video_id, actual_frame))
+                                       
                 result = cursor.fetchone()
                 if result is None:
                     cursor.execute("INSERT INTO Frames (video_id, frame_number) VALUES (?, ?)", (video_id, actual_frame))
@@ -368,11 +367,12 @@ def store_voice_detections(video_file_name: str, results_file: Path, fps: int = 
                 
                 # Insert a detection for this specific frame.
                 # For audio there are no spatial coordinates, so we set them to 0.
+                # Insert detection record
                 cursor.execute('''
                     INSERT INTO Detections 
-                    (frame_number, object_class, confidence_score, x_min, y_min, x_max, y_max, gaze_direction, gaze_confidence)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (frame_id, object_class, None, None, None, None, None, None, None))
+                    (video_id, frame_number, object_class, confidence_score, x_min, y_min, x_max, y_max, gaze_direction, gaze_confidence)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (video_id, actual_frame, object_class_str, None, None, None, None, None, None, None))
     
     conn.commit()
     conn.close()
