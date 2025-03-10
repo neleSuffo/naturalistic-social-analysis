@@ -1,12 +1,24 @@
 import subprocess
+import argparse
 import yolo_person_face_gaze
 from setup_detection_database import setup_detection_database
 
-def main():
+def main(num_videos_to_process: int):
+    """
+    This function runs the detection pipeline. It first sets up the detection database and then runs the detection pipeline.
+    
+    Parameters:
+    ----------
+    num_videos_to_process: int
+        The number of videos
+    """
     # Setup the detection database which will hold the detection results
-    setup_detection_database()
+    #setup_detection_database()
     # Run the detection pipeline
-    yolo_person_face_gaze.main()
+    yolo_person_face_gaze.main(num_videos_to_process)
     
 if __name__ == "__main__":
-    main() 
+    parser = argparse.ArgumentParser(description='Run the detection pipeline')
+    parser.add_argument('--num_videos', type=int, help='The number of videos to process')
+    args = parser.parse_args()
+    main(args.num_videos)
