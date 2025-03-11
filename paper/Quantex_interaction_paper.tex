@@ -385,7 +385,7 @@ Class & \multicolumn{1}{c}{Training} & \multicolumn{1}{c}{Validation} & \multico
 \midrule
 Adult & 25706 & 3213 & 3213 & 32132\\
 Child/Infant & 22403 & 2801 & 2800 & 28004\\
-Adult Face & 669 & 1083 & 1084 & 10836\\
+Adult Face & 8669 & 1083 & 1084 & 10836\\
 Child/Infant Face & 6756 & 844 & 845 & 8445\\
 Book & 8370 & 1046 & 1046 & 10462\\
 Toy & 13870 & 1734 & 1733 & 17337\\
@@ -426,7 +426,7 @@ Model training was conducted on a Linux server equipped with an Intel(R) Xeon(R)
 
 \begin{figure}
 
-{\centering \includegraphics[width=450px]{images/yolo_face_loss_curves} 
+{\centering \includegraphics[width=450px]{images/yolo_loss_curves} 
 
 }
 
@@ -477,7 +477,7 @@ other object & 0.83\\
 \toprule
 mAP@0.5 & \multicolumn{1}{c}{Precision} & \multicolumn{1}{c}{Recall} & \multicolumn{1}{c}{F1-Score}\\
 \midrule
-0.858 & 0.89 & 0.79 & 0.84\\
+0.870 & 0.91 & 0.80 & 0.85\\
 \bottomrule
 \end{tabular}
 
@@ -506,7 +506,7 @@ mAP@0.5 & \multicolumn{1}{c}{Precision} & \multicolumn{1}{c}{Recall} & \multicol
 
 \subsubsection{Model Evaluation Metrics}\label{model-evaluation-metrics}
 
-The performance of the object detection model was evaluated using a confusion matrix and precision-recall (PR) curves. The YOLO11 model achieved a precision of 0.89 and a recall of 0.79 on the testing set, resulting in an F1-score of 0.84. The normalized confusion matrix (see figure \ref{fig:det-metrics}) reveals strong overall performance with mean Average Precision across all classes mAP=0.86. The averaged precision-recall curve remains close to the top-left corner and signifies that the model maintains high precision and recall across various thresholds, underscoring its effectiveness in detecting the different classes. Notably, the confusion matrix demonstrates minimal confusion between most classes, indicating that the model can effectively distinguish between them (see figure \ref{fig:det-metrics}). A closer look at class-wise performance reveals that the model excels in detecting people and certain objects. The ``infant/child,'' ``adult,'' and ``adult face'' classes, as well as ``child body parts,'' ``infant/child face,'' ``book,'' and ``screen,'' all achieve high Average Precision (AP) scores. This indicates that the model reliably identifies these categories with strong precision and recall (see figure \ref{fig:det-metrics}).
+The performance of the object detection model was evaluated using a confusion matrix and precision-recall (PR) curves. The YOLO11 model achieved a precision of 0.91 and a recall of 0.80 on the testing set, resulting in an F1-score of 0.85. The normalized confusion matrix (see figure \ref{fig:det-metrics}) reveals strong overall performance with mean Average Precision across all classes mAP=0.87. The averaged precision-recall curve remains close to the top-left corner and signifies that the model maintains high precision and recall across various thresholds, underscoring its effectiveness in detecting the different classes. Notably, the confusion matrix demonstrates minimal confusion between most classes, indicating that the model can effectively distinguish between them (see figure \ref{fig:det-metrics}). A closer look at class-wise performance reveals that the model excels in detecting people and certain objects. The ``infant/child,'' ``adult,'' and ``adult face'' classes, as well as ``child body parts,'' ``infant/child face,'' ``book,'' and ``screen,'' all achieve high Average Precision (AP) scores. This indicates that the model reliably identifies these categories with strong precision and recall (see figure \ref{fig:det-metrics}).
 
 Conversely, some object classes remain more challenging. In particular, the ``toy,'' ``kitchenware,'' and ``other object'' categories exhibit lower AP scores of 0.77, 0.77, and 0.82, respectively. The confusion matrix confirms that 22\% of ``kitchenware'' and 22\% of ``toy'' instances are frequently misclassified as ``background.'' This issue likely stems from the annotation strategy, which prioritized labeling only objects that the child directly interacted with. As a result, other visually similar objects in the background remain unannotated, introducing ambiguity during training. Additionally, ``infant/child'' and ``infant/child face'' also show notable false negative rates of 17\%, further contributing to misclassification. These findings suggest that increasing the number of annotated samples---particularly for objects with which the child interacts with---could improve detection performance. Future work could also explore model refinements or data augmentation techniques to enhance the detection of small, occluded, or partially visible objects.
 
@@ -603,7 +603,9 @@ Proximity between individuals is an important aspect of social interaction. Prev
 
 \subsubsection{Formula for Proximity Estimation}\label{formula-for-proximity-estimation}
 
-We infer proximity from the size of the bounding boxes of detected faces, assuming that the size of these bounding boxes provides an implicit cue for proximity. Specifically, we infer that larger bounding boxes correspond to individuals closer to the camera, whereas smaller bounding boxes indicate individuals further away. The proximity value is calculated using the face area, defined as the product of the bounding box width and height. To account for the nonlinear relationship between face size and distance, we use a logarithmic scaling approach, which maps the calculated face area to a proximity score between 0 and 1.
+We infer proximity from the size of the bounding boxes of detected faces, assuming that the size of these bounding boxes provides an implicit cue for proximity. Specifically, we infer that larger bounding boxes correspond to individuals closer to the camera, whereas smaller bounding boxes indicate individuals further away. The proximity value is calculated using the face area, defined as the product of the bounding box width and height. This computed size is then compared to predefined reference face sizes: one corresponding to a face very close to the camera (within arm's reach) and another representing a face further away (e.g., in the background or outdoors).
+
+Due to the nonlinear relationship between face size and distance, where face area decreases quadratically as distance increases, a simple linear mapping would make small differences appear too large for close faces and too small for distant ones. To address this, we apply a logarithmic scaling approach, which maps the calculated face area to a proximity score between 0 and 1:
 
 \[
 \text{Proximity} = \frac{\ln(\text{Face Area}) - \ln(\text{Max Reference Area})}{\ln(\text{Min Reference Area}) - \ln(\text{Max Reference Area})}
@@ -616,12 +618,12 @@ Where:
 \item
   \(\textbf{Face Area}\) is the area of the detected face, calculated as the width times the height of the bounding box.
 \item
-  \(\textbf{Max Reference Area}\) is the reference area corresponding to the farthest detectable face.
+  \(\textbf{Max Reference Area}\) is the reference area corresponding to the furthest detectable face.
 \item
   \(\textbf{Min Reference Area}\) is the reference area corresponding to the closest detectable face.
 \end{itemize}
 
-This logarithmic scaling ensures that the proximity values are compressed for large faces (close to the camera) and stretched for small faces (farther away), aligning with how humans perceive distance and size changes, as our sensitivity to changes depends on relative differences rather than absolute ones (Stevens \& Marks, 2017). By using the natural logarithm of the face and reference areas, we ensure the proximity score remains meaningful across varying distances.
+This logarithmic transformation ensures that proximity values are compressed for large faces (close to the camera) and stretched for small faces (farther away), making them perceptually meaningful. Since human sensitivity to size changes depends on relative differences rather than absolute ones, logarithmic scaling aligns with psychophysical principles of distance perception (Stevens \& Marks, 2017).
 
 \begin{figure}
 
@@ -652,9 +654,15 @@ This heuristic approach, which combines face area and aspect ratio, provides an 
 
 \subsection{Voice Type Classification}\label{voice-type-classification}
 
-Regarding the audio component of our interaction analysis, we aimed to use a model that does not only detect the presence of speech but also distinguishes between the key child wearing the camera and other speakers. This distinction is crucial for understanding the dynamics of the interactions and the role of the key child in the social context. To achieve this, we applied the Voice Type Classifier (Lavechin, Bousbib, Bredin, Dupoux, \& Cristia, 2020), an open-source model designed to identify five different voice types: key child, other child, female adult, male adult, and speech in general. The model is based on a convolutional neural network (CNN) architecture and was trained on 260 hours of child-centered recordings across 10 different languages.
+Regarding the audio component of our interaction analysis, we aimed to use a model that does not only detect the presence of speech but also distinguishes between the key child wearing the camera and other speakers. This distinction is crucial for understanding the dynamics of the interactions and the role of the key child in the social context. To achieve this, we applied the Voice Type Classifier (Lavechin, Bousbib, Bredin, Dupoux, \& Cristia, 2020), an open-source model designed to identify five different voice types: key child (KCHI), other child (OCH), female adult (FEM), male adult (MAL), and speech in general (SPEECH). This multi-label classification enables the detection of multiple classes simultaneously, which is particularly useful when faced with overlapping speech segments, which frequently occurs in natural interactions.
 
-Although the Quantex dataset does not include explicit audio labels, we are confident in the model's suitability for our data. Prior testing on a similar labeled dataset which was also collected in our lab, ChildLens, demonstrated that the Voice Type Classifier achieved an F1 score of 58.1 (reference to ChildLens paper), which is comparable to the F1 score of 57.3 reported on the original training dataset. These results indicate that the model performs similar to the original work.
+The model, as described by Lavechin et al. (2020), is based on a convolutional neural network (CNN) architecture that includes SincNet components. These components are designed to extract meaningful frequency representations, which are then processed by a stack of bi-directional long short-term memory (LSTM) and fully connected layers. The final layer applies a sigmoid activation function to output a score between 0 and 1 for each class, representing the probability of that voice type being present in the audio segment. The network is trained using binary cross-entropy loss, optimizing each class independently.
+
+The Voice Type Classifier was trained on 260 hours of child-centered recordings spanning 10 different languages. Its architecture is specifically designed to handle the unique challenges of child-centered audio, such as overlapping speech and varying acoustic conditions. To address these complexities, the model incorporates a multi-label classification approach, allowing it to detect multiple voice types simultaneously.
+
+Model performance was evaluated using the F-measure, which balances precision and recall for each voice type. This metric is particularly important as it reflects both the accuracy of identifying each voice type (precision) and the model's ability to detect all occurrences of that voice type (recall). Importantly, the Voice Type Classifier outperforms the LENA system (Ford, Baer, Xu, Yapanel, \& Gray, 2008), a widely used but closed-source alternative, by a large margin.
+
+Although the Quantex dataset does not include explicit audio labels, we are confident in the model's suitability for our data. Prior testing on a similar labeled dataset which was also collected in our lab, ChildLens, demonstrated that the Voice Type Classifier achieved an F1 score of 58.1 (reference to ChildLens paper), which is comparable to the F1 score of 57.3 reported on the original training dataset. These results indicate that the model performs similarly to the original work.
 
 We applied the Voice Type Classifier to the extracted audio data from the Quantex dataset using the code provided by the authors of the voice type classifier (Lavechin, 2020). The model was used to detect the presence of speech and classify the speaker into one of the five predefined categories.
 
@@ -676,6 +684,9 @@ Cheng, Y., Wang, H., Bao, Y., \& Lu, F. (2021). Appearance-based {Gaze Estimatio
 
 \bibitem[\citeproctext]{ref-daiLongitudinalDataCollection2022}
 Dai, S., Bouchet, H., Karsai, M., Chevrot, J.-P., Fleury, E., \& Nardy, A. (2022). Longitudinal data collection to follow social network and language development dynamics at preschool. \emph{Scientific Data}, \emph{9}(1), 777. \url{https://doi.org/10.1038/s41597-022-01756-x}
+
+\bibitem[\citeproctext]{ref-fordLENALanguageEnvironment2008}
+Ford, M., Baer, C. T., Xu, D., Yapanel, U., \& Gray, S. (2008). \emph{The {LENA Language Environment Analysis System}: {Audio Specifications} of the {DLP-0121}}. Retrieved from \url{https://www.lena.org/wp-content/uploads/2016/07/LTR-03-2_Audio_Specifications.pdf}
 
 \bibitem[\citeproctext]{ref-hernandez-herediaProximitySensorMeasuring2024}
 Hernández-Heredia, T. K., Reyes-Manzano, C. F., Flores-Hernández, D. A., Ramos-Fernández, G., \& Guzmán-Vargas, L. (2024). Proximity {Sensor} for {Measuring Social Interaction} in a {School Environment}. \emph{Sensors}, \emph{24}(15), 4822. \url{https://doi.org/10.3390/s24154822}
