@@ -285,8 +285,8 @@ def process_video(video_path: Path, detection_model: YOLO, gaze_model: YOLO, cur
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ''', (
         video_id, frame_idx, processed_frames,
-        total_counts['child'], total_counts['adult'],
-        total_counts['child_face'], total_counts['adult_face'],
+        total_counts['infant/child'], total_counts['adult'],
+        total_counts['infant/child face'], total_counts['adult face'],
         total_counts['book'], total_counts['toy'],
         total_counts['kitchenware'], total_counts['screen'],
         total_counts['food'], total_counts['other_object']
