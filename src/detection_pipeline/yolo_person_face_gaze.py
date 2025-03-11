@@ -275,6 +275,22 @@ def process_video(video_path: Path, detection_model: YOLO, gaze_model: YOLO, cur
 
     cap.release()
     
+    # Store statistics in database
+    cursor.execute('''
+        INSERT INTO VideoStatistics (
+            video_id, total_frames, processed_frames,
+            child_count, adult_count, child_face_count, adult_face_count,
+            book_count, toy_count, kitchenware_count, screen_count,
+            food_count, other_object_count
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (
+        video_id, frame_idx, processed_frames,
+        total_counts['child'], total_counts['adult'],
+        total_counts['child_face'], total_counts['adult_face'],
+        total_counts['book'], total_counts['toy'],
+        total_counts['kitchenware'], total_counts['screen'],
+        total_counts['food'], total_counts['other_object']
+    ))
     # Create output directory if it doesn't exist
     output_dir = Path(DetectionPaths.detection_results_dir) / "stats"
     output_dir.mkdir(parents=True, exist_ok=True)
