@@ -81,6 +81,25 @@ def setup_detection_database(db_path: Path = DetectionPaths.detection_db_path):
         )
     ''')
 
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS VideoStatistics (
+            video_id INTEGER PRIMARY KEY,
+            total_frames INTEGER,
+            processed_frames INTEGER,
+            child_count INTEGER,
+            adult_count INTEGER,
+            child_face_count INTEGER,
+            adult_face_count INTEGER,
+            book_count INTEGER,
+            toy_count INTEGER,
+            kitchenware_count INTEGER,
+            screen_count INTEGER,
+            food_count INTEGER,
+            other_object_count INTEGER,
+            FOREIGN KEY (video_id) REFERENCES Videos(video_id)
+        )
+    ''')
+
     conn.commit()
     conn.close()
     logging.info(f"Detection database created at {db_path}")
