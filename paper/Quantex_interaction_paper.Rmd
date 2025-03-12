@@ -196,19 +196,54 @@ quantex_youngest_month <- as.numeric(format(quantex_youngest_date, "%m"))
 # Calculate the interval between the two dates
 quantex_time_span_months <- (quantex_youngest_year - quantex_oldest_year) * 12 + (quantex_youngest_month - quantex_oldest_month)+1
 
-quantex_nr_annotated_videos <- 100
-quantex_nr_train_frames <- 72687
-quantex_nr_val_frames <- 7720
-quantex_nr_test_frames <- 9272
-quantex_nr_train_videos <- 51
-quantex_nr_val_videos <- 6
-quantex_nr_test_videos <- 7
+quantex_num_videos <- 634
+```
 
+```{r yolo-person-statistics, echo=FALSE, message=FALSE, warning=FALSE}
+ det_total_num_frames <- 113799
+ det_total_num_videos <- 80
+ det_num_frames_train <- 91038
+ det_class_to_total_ratio <- 29.75
+ 
+ num_det_frames_train <- 91038
+ num_det_frames_val <- 11379
+ num_det_frames_test <- 11382
+ 
+ det_recall <- 0.79
+ det_precision <- 0.89
+ det_f1_score <- 0.84
+ det_map <- 0.858
+ det_recall <- 0.80
+ det_precision <- 0.91
+ det_f1_score <- 0.85
+ det_map <- 0.870
+ 
+ tp_child <- 0.81
+ tp_adult <- 0.91
+ tp_child_face <- 0.82
+ tp_adult_face <- 0.91
+ tp_child_body_parts <- 0.94
+ tp_book <- 0.9
+ tp_screen <- 0.93
+ tp_toy <- 0.76
+ tp_kitchenware <- 0.75
+ tp_other_object <- 0.79
+ 
+ fn_kitchenware <- 0.22
+ fn_toy <- 0.22
+ fn_other_object <- 0.19
+ 
+ ap_toy <- 0.77
+ ap_kitchenware <- 0.77
+ ap_other_object <- 0.82
+ 
+ det_num_epochs <- 86
+ det_training_time <- 200
 ```
 
 # Introduction 
 
-According to various developmental psychologists, children’s everyday experiences play a vital role in their development [@piagetPartCognitiveDevelopment1964; @vygotskyMindSocietyDevelopment1978; @rogoffImportanceUnderstandingChildrens2018; @carpendaleWhatMakesUs2020; @smithDevelopingInfantCreates2018; @tomaselloCulturalOriginsHuman2009; @heyesCognitiveGadgetsCultural2018]. Everyday interactions, in particular, have been recognized for decades as crucial in the process of actively constructing knowledge [@piagetPartCognitiveDevelopment1964] and in transforming sensory experiences into structured understanding [@vygotskyMindSocietyDevelopment1978]. Building upon these foundational theories, more recent research has examined the mechanisms of social interaction further. For instance, @tomaselloCulturalOriginsHuman2009 introduced the concept of shared intentionality, illustrating how collaborative activities enable children to comprehend others’ intentions and perspectives, leading to cooperative behaviors and cultural learning .
+According to various developmental psychologists, children’s everyday experiences play a vital role in their development [@piagetPartCognitiveDevelopment1964; @vygotskyMindSocietyDevelopment1978; @rogoffImportanceUnderstandingChildrens2018; @carpendaleWhatMakesUs2020; @smithDevelopingInfantCreates2018; @tomaselloCulturalOriginsHuman2009; @heyesCognitiveGadg fetsCultural2018]. Everyday interactions, in particular, have been recognized for decades as crucial in the process of actively constructing knowledge [@piagetPartCognitiveDevelopment1964] and in transforming sensory experiences into structured understanding [@vygotskyMindSocietyDevelopment1978]. Building upon these foundational theories, more recent research has examined the mechanisms of social interaction further. For instance, @tomaselloCulturalOriginsHuman2009 introduced the concept of shared intentionality, illustrating how collaborative activities enable children to comprehend others’ intentions and perspectives, leading to cooperative behaviors and cultural learning .
 
 Whereas theoretical frameworks and controlled laboratory studies have significantly advanced our understanding of children’s social development, they often fail to capture the complexities of interactions occurring in naturalistic settings. Observing children in their everyday environments offers a more authentic view of their social behaviors; however, this approach presents challenges due to the extensive data collection and analysis required.
 
@@ -227,17 +262,25 @@ The present study investigates social interactions in naturalistic home settings
 	
 The primary objectives of this study are to quantify interaction patterns by measuring the frequency of each identified interaction type, both individually and in combination. Additionaly, we compare these patterns across different age groups within the 3 to 5-year range to identify developmental variations and milestones. [MB: to paper: Understanding these interaction patterns can inform developmental psychology about the actual nature of social interactions in children’s everyday lives.]
 
-# Methodology
+# Methodology {#methodology}
 The following sections provide a detailed description of the data collection process, the structure and characteristics of the dataset, the annotation strategy, and the preprocessing applied to the data prior to analysis. Additionally, an overview of the automated analysis pipeline is provided, giving details about the models used for person and face detection, gaze classification, object detection, and the application of a pre-trained voice type classifier. 
 
-## Participants
-This study collected egocentric video recordings from `r quantex_nr_children` children, aged 3 to 5 years, over a span of `r quantex_time_span_months` months [MB: in addition, it would be  interesting to know in what time intervall the videos were collected for each child, also a more detailed overview of the number of children per age group would be nice]. Participating families lived in a mid-sized city in Germany. The data collection process was approved by the local ethics committee, and all participating families provided written informed consent, allowing the researchers to use the data for scientific purposes. In accordance with data privacy regulations, every child was assigned a unique anonymized ID to protect their identity. Moreover, the video recordings are stored on a secure server and are only accessible to the research team, all of whom have signed confidentiality agreements. [MB: add more info about the process of data collection, that is something along the lines of: RA brought the camera wot the family, instructed them how to use it and then left it with them for as long as they wanted - check with Luise/Alex for a more detaild description)]
+## Participants Recruitment and Data Collection {#participants}
+This study collected egocentric video recordings from `r quantex_nr_children` children, aged 3 to 5 years, over a span of `r quantex_time_span_months` months [MB: in addition, it would be interesting to know in what time intervall the videos were collected for each child, also a more detailed overview of the number of children per age group would be nice]. 
 
-## Materials
+### Recruitment Process
+Participants were recruited from a mid-sized German city through an existing lab database, with approximately equal distribution across age groups (30% 3-year-olds, 35% 4-year-olds, 35% 5-year-olds). The data collection process was approved by the local ethics committee, and all participating families provided written informed consent, allowing the researchers to use the data for scientific purposes. Participants were recruited from an internal lab database and contacted via phone. Parents received a detailed explanation of the study's purpose and procedures, consistent with the information in the study brochure. Families who agreed to participate were provided with a vest equipped with an embedded camera, which children were asked to wear for approximately two hours, with flexible extension options. For privacy protection, recordings were limited to the home environment. Recorded videos were securely stored on the MPI-EVA server and subsequently made available to parents. To enhance convenience, parents could choose to have the camera delivered to their home or workplace, or opt for self-pickup.
 
+### Distribution of Study Materials and Instructions
+At the handover appointment, parents received One or two vests (multiple sizes available), a fully charged camera unit and comprehensive information on the study's purpose and data protection protocols. Parents received hands-on training on camera operation and were encouraged to practice using the equipment. The consent form required listing the participating child and documenting all individuals potentially captured in the recordings. Five copies of data privacy information sheets were provided for distribution to anyone who might be recorded. A follow-up call was scheduled to ensure recording success, typically planned for the weekend following the handover to ensure enough time for recoding.
+
+### Return of Equipment and Final Data Confirmation
+On the scheduled date, parents were contacted to confirm recording success and assess any need for additional time. Flexible rescheduling was offered as needed. Once the recording was completed, a pickup or drop-off appointment was arranged to collect the completed consent form, vest, and camera. Parents were also asked to confirm their current email address for sharing the recordings. Children received a "Labyrinth" game as a thank for their participation.
+
+## Materials {#materials}
 To capture children’s everyday experiences, a wearable vest equipped with a _PatrolEyes WiFi HD Infrared Police Body Camera_ was used (Figure \@ref(fig:camera-cvat-activity-classes)). The camera recorded high-definition video (1920x1080p at 30 fps) with a 140-degree wide-angle lens and also captured audio. Children were free to move around and engage in their usual activities at home without any interference or instructions given to their parents. 
 
-## Dataset Overview
+## Dataset Overview {#dataset}
 The Quantex dataset includes video and audio recordings from `r quantex_nr_children` children aged 3 to 5 years (M=`r quantex_mean_age`, SD=`r quantex_sd_age`). The dataset contains `r quantex_count_3_plus` videos from three-year-olds, `r quantex_count_4_plus` videos from four-year-olds, and `r quantex_count_5_plus` videos from five-year-olds. The number of videos per child varies, as parents decide when and how often to record. The recording duration per child ranges from `r quantex_min_minutes` to `r quantex_max_minutes` minutes (M=`r quantex_mean_minutes`, SD=`r quantex_sd_minutes`). The total duration of all video recordings in the dataset is `r quantex_sum_hours` hours. Figure \@ref(fig:quantex-minutes-per-child) shows the distribution of video duration per child.
 
 ```{r quantex-minutes-per-child, echo=FALSE, message=FALSE, warning=FALSE, fig.align='center', fig.cap="Video recording duration (in minutes) per Child in the Quantex Dataset.", fig.height=2.5, fig.width=3.5}
@@ -276,12 +319,14 @@ quantex_1_plot <- ggplot(quantex_unique_data, aes(x = Minutes_per_ID)) +
 #ggsave(filename = quantex_file_path_1, plot = quantex_1_plot, width = 8, height = 6, dpi = 300)
 ```
 
-## Annotation Strategy
-The dataset annotations cover four key elements: persons, faces, gaze direction, and objects the child interacts with. For each detected person (or reflection of a person, such as in a mirror) and face, additional attributes, such as age and gender [MB: specify exactly which categories these are], are collected. Gaze information indicates whether a detected person’s gaze is directed toward the child or not. Faces are annotated even when occluded or blurry to ensure comprehensive coverage of interactions. Partially visible faces are also annotated if key facial features, such as the nose, eyes, or mouth, remain identifiable. Objects are annotated only when the child is actively interacting with them [MB: that is, holding it in their hands?]. These objects are categorized into six distinct groups: book, screen, animal, food, toy, and kitchenware, with an additional category for other objects. The annotation strategy is summarized in Figure \@ref(fig:camera-cvat-activity-classes).
+## Annotation Strategy {#annotation-strategy}
+The dataset annotations cover four key elements: persons, faces, gaze direction, and objects the child interacts with. For each detected person (or reflection of a person, such as in a mirror) and face, additional attributes are recorded, including a unique identifier, age (infant, child, teen, adult, unknown), and gender (female, male, unknown). Gaze information indicates whether a detected person’s gaze is directed toward the child or not. Faces are annotated even when occluded or blurry to ensure comprehensive coverage of interactions. Partially visible faces are also annotated if key facial features, such as the nose, eyes, or mouth, remain identifiable. 
 
-[MB: say somewhere a) how many videos/frames were annotated - not all of them were. Also say why they were annotated. and also that not all frames but only ever nth frame was annotated]
+The egocentric nature of our video data, recorded from a chest-mounted camera, posed additional challenges such as motion blur and oblique viewing angles, which made gaze classification difficult, even for human annotators. These factors contributed to occlusion or distortion of gaze information in many frames, making accurate gaze direction annotation particularly challenging.
 
-The annotations were generated manually by a team of human annotators. Each video was randomly assigned to an initial annotator, and then reviewed by a second annotator to ensure consistency and accuracy. This peer review process helped to identify and resolve discrepancies, ensuring high-quality annotations. 
+Objects are annotated only when the child is actively interacting with them, either by holding them in their own hands or when another person in the interaction is holding the object in their hands. These objects are categorized into six distinct groups: book, screen, animal, food, toy, and kitchenware, with an additional category for other objects. The annotation strategy is summarized in Figure \@ref(fig:camera-cvat-activity-classes).
+
+The Quantex dataset consists of a total of `r quantex_num_videos` videos. However, only a subset of `r det_total_num_videos` videos was annotated, totaling `r det_total_num_frames` frames. To balance workload while still obtaining meaningful annotations, we applied a frame sampling strategy, annotating every 30th frame, which corresponds to one frame per second. The goal of these annotations was to create ground truth data for training a model that can later be used to analyze the remaining videos in the dataset. While the video data was subject to structured annotation and validation, the audio data was used in its raw form without preprocessing for analysis.
 
 ```{r camera-cvat-activity-classes, echo=FALSE, dpi=600, fig.align='center', fig.cap="\\textbf{A} – Vest with the embedded camera worn by the children, \\textbf{B} – CVAT platform utilized for video annotation, \\textbf{C} – Annotation Strategy in the Quantex dataset."}
 img1 <- ggdraw() + draw_image("images/camera_worn_close.png", scale = 0.8)
@@ -302,19 +347,16 @@ final_labeled_layout <- final_layout +
 # Display the final layout
 final_labeled_layout
 ```
-
-## Data Preprocessing
-[MB:To prepare the video data for analysis, one frame per second was annotated, corresponding to every 30th frame in the video  should be included above - see comment. This frame sampling was chosen to balance the need for a representative sample of the video while keeping the analysis manageable]. [MB:weave in elsewhere so we don't need this section: Similarly, every 30th raw frame was extracted from the annotated video files for further processing. No preprocessing was applied to the audio data, which was used in its raw form for analysis.]
-
-## Automated Analysis Pipeline
+## Automated Analysis Pipeline {#automatic-analysis}
 Our automated analysis pipeline consists of four key modules: person and face detection, gaze classification, object detection, and voice type classification. Each module operates independently, utilizing separate machine learning models. Except for the voice type classifier, all models were trained on the Quantex dataset.
 
 The pipeline follows a sequential process:
+
 	1.	YOLO11x detection model identifies the presence of individuals (persons and faces) and types of objects the key child interacts with, both in social and independent play contexts, in the video frames.
 	2.	Gaze classification determines whether detected faces are looking at the child.
 	3.	Voice type classification detects the presence of speech and identifies whether the speaker is the key child, another child, or an adult.
 
-By integrating these modules, our pipeline enables a comprehensive analysis of children’s everyday experiences, capturing both social interactions and independent play
+By integrating these modules, our pipeline enables a comprehensive analysis of children’s everyday experiences, capturing both social interactions and independent play.
 
 In the following sections, we describe each module in detail, including training data, model architecture, and evaluation metrics. A full technical analysis of each algorithm is provided in the [Supplementary Material].
 
@@ -350,50 +392,106 @@ In the following sections, we describe each module in detail, including training
 
 \newpage
 # Supplementary Material
+## Outline
+This document contains supplementary material for the paper "Exploring Aspects of Social Interaction in Children’s Everyday Lives using Machine Learning: A Multimodal Analysis of the Quantex Dataset". First, we provide an overview of the [Participant Recruitment and Data Collection](#sup-participants), including a detailed description of the [Recruitment and Data Collection](#sup-recruitment) process. We then describe the [Materials](#sup-materials) used in the study, followed by a structured overview of the [Dataset](#sup-dataset), including the [Annotation Strategy](#sup-annotation-strategy). Next, we outline the [Automated Analysis Pipeline](#sup-automatic-analysis), including [YOLO11x: Multi-Class Detection of Persons, Faces, and Objects](#sup-yolo11x), [YOLO11x-cls: Gaze Classification](#sup-yolo11x-cls)), as well as [Voice Type Classification](#sup-voice-type). Finally, we report the [Results](#sup-results) of the automated pipeline, evaluating the performance of the models when applied to all videos in the Quantex dataset.
 
-[MB: One paragraph outlining the structure of the supplement would be nice, see e.g. overview here: https://github.com/ccp-eva/laac/blob/master/writing/supplement/laac_supplement.Rmd.. Supplement will be a separate file.]
+# Methodology {#sup-methodology}
+The following sections provide a detailed description of the data collection process, the structure and characteristics of the dataset, the annotation strategy, and the preprocessing applied to the data prior to analysis. Additionally, an overview of the automated analysis pipeline is provided, giving details about the models used for person and face detection, gaze classification, object detection, and the application of a pre-trained voice type classifier. 
 
+## Participants Recruitment and Data Collection {#sup-participants}
+This study collected egocentric video recordings from `r quantex_nr_children` children, aged 3 to 5 years, over a span of `r quantex_time_span_months` months [MB: in addition, it would be interesting to know in what time intervall the videos were collected for each child, also a more detailed overview of the number of children per age group would be nice]. 
 
-[MB: repeat the participant information here again because it is a separate file. Copy paste from above and add more details if there are more to add]
+### Recruitment Process
+Participants were recruited from a mid-sized German city through an existing lab database, with approximately equal distribution across age groups (30% 3-year-olds, 35% 4-year-olds, 35% 5-year-olds). The data collection process was approved by the local ethics committee, and all participating families provided written informed consent, allowing the researchers to use the data for scientific purposes. Participants were recruited from an internal lab database and contacted via phone. Parents received a detailed explanation of the study's purpose and procedures, consistent with the information in the study brochure. Families who agreed to participate were provided with a vest equipped with an embedded camera, which children were asked to wear for approximately two hours, with flexible extension options. For privacy protection, recordings were limited to the home environment. Recorded videos were securely stored on the MPI-EVA server and subsequently made available to parents. To enhance convenience, parents could choose to have the camera delivered to their home or workplace, or opt for self-pickup.
 
-## YOLO11x: Multi-Class Detection of Persons, Faces, and Objects
-```{r yolo-person-statistics, echo=FALSE, message=FALSE, warning=FALSE}
-det_total_num_frames <- 113799
-det_total_num_videos <- 80
-det_num_frames_train <- 91038
-det_class_to_total_ratio <- 29.75
+### Distribution of Study Materials and Instructions
+At the handover appointment, parents received One or two vests (multiple sizes available), a fully charged camera unit and comprehensive information on the study's purpose and data protection protocols. Parents received hands-on training on camera operation and were encouraged to practice using the equipment. The consent form required listing the participating child and documenting all individuals potentially captured in the recordings. Five copies of data privacy information sheets were provided for distribution to anyone who might be recorded. A follow-up call was scheduled to ensure recording success, typically planned for the weekend following the handover to ensure enough time for recoding.
 
-num_det_frames_train <- 91038
-num_det_frames_val <- 11379
-num_det_frames_test <- 11382
+### Return of Equipment and Final Data Confirmation
+On the scheduled date, parents were contacted to confirm recording success and assess any need for additional time. Flexible rescheduling was offered as needed. Once the recording was completed, a pickup or drop-off appointment was arranged to collect the completed consent form, vest, and camera. Parents were also asked to confirm their current email address for sharing the recordings. Children received a "Labyrinth" game as a thank for their participation.
 
-det_recall <- 0.80
-det_precision <- 0.91
-det_f1_score <- 0.85
-det_map <- 0.870
+## Materials {#sup-materials}
+To capture children’s everyday experiences, a wearable vest equipped with a _PatrolEyes WiFi HD Infrared Police Body Camera_ was used (Figure \@ref(fig:camera-cvat-activity-classes)). The camera recorded high-definition video (1920x1080p at 30 fps) with a 140-degree wide-angle lens and also captured audio. Children were free to move around and engage in their usual activities at home without any interference or instructions given to their parents. 
 
-tp_child <- 0.81
-tp_adult <- 0.91
-tp_child_face <- 0.82
-tp_adult_face <- 0.91
-tp_child_body_parts <- 0.94
-tp_book <- 0.9
-tp_screen <- 0.93
-tp_toy <- 0.76
-tp_kitchenware <- 0.75
-tp_other_object <- 0.79
+## Dataset Overview {#sup-dataset}
+The Quantex dataset includes video and audio recordings from `r quantex_nr_children` children aged 3 to 5 years (M=`r quantex_mean_age`, SD=`r quantex_sd_age`). The dataset contains `r quantex_count_3_plus` videos from three-year-olds, `r quantex_count_4_plus` videos from four-year-olds, and `r quantex_count_5_plus` videos from five-year-olds. The number of videos per child varies, as parents decide when and how often to record. The recording duration per child ranges from `r quantex_min_minutes` to `r quantex_max_minutes` minutes (M=`r quantex_mean_minutes`, SD=`r quantex_sd_minutes`). The total duration of all video recordings in the dataset is `r quantex_sum_hours` hours. Figure \@ref(fig:sup-quantex-minutes-per-child) shows the distribution of video duration per child.
 
-fn_kitchenware <- 0.22
-fn_toy <- 0.22
-fn_other_object <- 0.19
+```{r sup-quantex-minutes-per-child, echo=FALSE, message=FALSE, warning=FALSE, fig.align='center', fig.cap="Video recording duration (in minutes) per Child in the Quantex Dataset.", fig.height=2.5, fig.width=3.5}
+quantex_unique_data$ID <- as.factor(quantex_unique_data$ID)
 
-ap_toy <- 0.77
-ap_kitchenware <- 0.77
-ap_other_object <- 0.82
+ggplot(quantex_unique_data, aes(x = Minutes_per_ID)) +
+  geom_point(aes(y = 0), shape = "I", size = 5) + 
+  geom_density(fill = "gray", alpha = 0.5, color = "black") + 
+  theme_minimal() +
+  theme(legend.position = "none") +
+  labs(
+    x = "Minutes per ID",
+    y = "Density"
+  )
+quantex_1_plot <- ggplot(quantex_unique_data, aes(x = Minutes_per_ID)) +
+  geom_point(aes(y = 0), shape = "I", size = 5) + 
+  geom_density(fill = "gray", alpha = 0.5, color = "black") + 
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.title = element_text(size = 25),      # Increase label size
+    axis.text = element_text(size = 25),       # Increase tick label size
+    axis.ticks.length = unit(0.5, "cm")        # Increase tick size
+  ) +
+  labs(
+    x = "Minutes per ID",
+    y = "Density"
+  )
 
-det_num_epochs <- 86
-det_training_time <- 200
+# Specify the file path and name
+# <- "/Users/nelesuffo/Promotion/projects/leuphana-IPE/paper/images" 
+#file_name_1 <- "quantex_minutes_per_id_plot.png"
+#quantex_file_path_1 <- file.path(quantex_1_output_folder, file_name_1)
+
+# Save the plot
+#ggsave(filename = quantex_file_path_1, plot = quantex_1_plot, width = 8, height = 6, dpi = 300)
 ```
+
+## Annotation Strategy {#sup-annotation-strategy}
+The dataset annotations cover four key elements: persons, faces, gaze direction, and objects the child interacts with. For each detected person (or reflection of a person, such as in a mirror) and face, additional attributes are recorded, including a unique identifier, age (infant, child, teen, adult, unknown), and gender (female, male, unknown). Gaze information indicates whether a detected person’s gaze is directed toward the child or not. Faces are annotated even when occluded or blurry to ensure comprehensive coverage of interactions. Partially visible faces are also annotated if key facial features, such as the nose, eyes, or mouth, remain identifiable. 
+
+The egocentric nature of our video data, recorded from a chest-mounted camera, posed additional challenges such as motion blur and oblique viewing angles, which made gaze classification difficult, even for human annotators. These factors contributed to occlusion or distortion of gaze information in many frames, making accurate gaze direction annotation particularly challenging.
+
+Objects are annotated only when the child is actively interacting with them, either by holding them in their own hands or when another person in the interaction is holding the object in their hands. These objects are categorized into six distinct groups: book, screen, animal, food, toy, and kitchenware, with an additional category for other objects. The annotation strategy is summarized in Figure \@ref(fig:sup-camera-cvat-activity-classes).
+
+The Quantex dataset consists of a total of `r quantex_num_videos` videos. However, only a subset of `r det_total_num_videos` videos was annotated, totaling `r det_total_num_frames` frames. To balance workload while still obtaining meaningful annotations, we applied a frame sampling strategy, annotating every 30th frame, which corresponds to one frame per second. The goal of these annotations was to create ground truth data for training a model that can later be used to analyze the remaining videos in the dataset. While the video data was subject to structured annotation and validation, the audio data was used in its raw form without preprocessing for analysis.
+
+```{r sup-camera-cvat-activity-classes, echo=FALSE, dpi=600, fig.align='center', fig.cap="\\textbf{A} – Vest with the embedded camera worn by the children, \\textbf{B} – CVAT platform utilized for video annotation, \\textbf{C} – Annotation Strategy in the Quantex dataset."}
+img1 <- ggdraw() + draw_image("images/camera_worn_close.png", scale = 0.8)
+img2 <- ggdraw() + draw_image("images/cvat.png", scale = 0.8)
+img3 <- ggdraw() + draw_image("images/quantex_annotation_strategy_narrow.png", scale = 0.9)
+
+# Combine img1 and img2 into the first row with equal heights
+top_row <- (img1 + img2) + 
+  plot_layout(widths = c(0.4, 1))
+
+final_layout <- (top_row / img3) +
+  plot_layout(heights = c(1, 1))  # Adjust row heights if needed
+
+# Add labels (A), (B), (C) to the images
+final_labeled_layout <- final_layout +
+  plot_annotation(tag_levels = 'A')  # Adds "A", "B", "C" automatically
+
+# Display the final layout
+final_labeled_layout
+```
+## Automated Analysis Pipeline {#sup-automatic-analysis}
+Our automated analysis pipeline consists of four key modules: person and face detection, gaze classification, object detection, and voice type classification. Each module operates independently, utilizing separate machine learning models. Except for the voice type classifier, all models were trained on the Quantex dataset.
+
+The pipeline follows a sequential process:
+
+	1.	YOLO11x detection model identifies the presence of individuals (persons and faces) and types of objects the key child interacts with, both in social and independent play contexts, in the video frames.
+	2.	Gaze classification determines whether detected faces are looking at the child.
+	3.	Voice type classification detects the presence of speech and identifies whether the speaker is the key child, another child, or an adult.
+
+By integrating these modules, our pipeline enables a comprehensive analysis of children’s everyday experiences, capturing both social interactions and independent play.
+
+## YOLO11x: Multi-Class Detection of Persons, Faces, and Objects {#sup-yolo11x}
 In our study, we utilized Ultralytics' YOLO11, the "latest iteration in the Ultralytics YOLO series of real-time object detectors" [@jocherUltralyticsYOLO112024], trained on the COCO dataset [@linMicrosoftCOCOCommon2014], a large-scale dataset containing labeled images for 80 object categories commonly found in everyday environments. COCO is widely used for object detection, instance segmentation, and keypoint detection tasks. 
 
 Released in October 2024, YOLO11 introduces architectural improvements such as the C2PSA block (Convolutional Block with Parallel Spatial Attention), which enhances spatial attention within feature maps, allowing the model to focus more precisely on critical areas of an image compared to previous YOLO versions. Additionally, YOLO11 incorporates the C3K2 block, designed to be faster and more efficient, enhancing the overall performance of the feature aggregation process [@khanamYOLOv11OverviewKey2024]. These advancements make the YOLO11 detection model, pretrained on COCO, well-suited for training on our egocentric dataset, which captures dynamic movements from a camera perspective on chest height.
@@ -408,7 +506,7 @@ Additionally, we refine the “person” and “face” categories beyond standa
 - Differentiating the key child from other individuals.
 - Distinguishing adults from children/infants in both full-body detections and faces.
 
-Our fine-tuned YOLO11 model also classifies five object categories relevant to the child’s interactions: toy, book, kitchenware, screen, and other object. Due to low occurrences, "animal" (19 instances, 0.015%) and "food" (1,115 instances, 0.84%) were incldued into "other object", leaving five final object categories with at least 2,000 instances each.
+Our fine-tuned YOLO11 model also classifies five object categories relevant to the child’s interactions: toy, book, kitchenware, screen, and other object. Due to low occurrences, "animal" (19 instances, 0.015%) and "food" (1,115 instances, 0.84%) were included into "other object", leaving five final object categories with at least 2,000 instances each.
 
 ### Dataset Splitting
 [MB:brak it down a bit more: in the dataset we have xx frames, of these xx frames we annotated xx frames etc.]
@@ -528,7 +626,7 @@ escape = FALSE,
 ```{r det-metrics, fig.align='center', fig.cap="\\textbf{A} - Confusion Matrix for the YOLO11x detection model trained on the Quantex dataset. \\textbf{B} - Precision-Recall Curve for the YOLO11x detection model."}
 # Load images
 img1 <- ggdraw() + draw_image("images/confusion_matrix_detection.png", scale = 1)
-img2 <- ggdraw() + draw_image("images/yolo_precision_recall_curve.png", scale = 1.2)
+img2 <- ggdraw() + draw_image("images/yolo_precision_recall_curve.png", scale = 1)
 
 # Combine img1 and img2 into the first row with equal heights
 top_row <- (img1 + img2) + 
@@ -544,7 +642,6 @@ final_labeled_layout <- final_layout +
 # Display the final layout
 final_labeled_layout
 ```
-
 
 ```{r det-detection-examples, echo=FALSE, dpi=600, fig.align='center', fig.cap="Detection examples for the YOLO11x detection model trained on the Quantex dataset."}
 img1 <- ggdraw() + draw_image("images/yolo_person_face_object_1.jpg", scale = 0.95)
@@ -573,11 +670,11 @@ final_labeled_layout <- final_layout +
 final_labeled_layout
 ```
 ### Model Evaluation Metrics
-The performance of the object detection model was evaluated using a confusion matrix and precision-recall (PR) curves. The YOLO11 model achieved a precision of `r det_precision` and a recall of `r det_recall` on the testing set, resulting in an F1-score of `r det_f1_score`. The normalized confusion matrix (see figure \@ref(fig:det-metrics)) reveals strong overall performance with mean Average Precision across all classes mAP=`r det_map`. The averaged precision-recall curve remains close to the top-left corner and signifies that the model maintains high precision and recall across various thresholds, underscoring its effectiveness in detecting the different classes. Notably, the confusion matrix demonstrates minimal confusion between most classes, indicating that the model can effectively distinguish between them (see figure [MB:Figure should be capitalized] \@ref(fig:det-metrics)). A closer look at class-wise performance reveals that the model excels in detecting people and certain objects. The “infant/child,” “adult,” and “adult face” classes, as well as “child body parts,” “infant/child face,” “book,” and “screen,” all achieve high Average Precision (AP) scores. This indicates that the model reliably identifies these categories with strong precision and recall (see figure \@ref(fig:det-metrics)).
+The performance of the object detection model was evaluated using a confusion matrix and precision-recall (PR) curves. The YOLO11 model achieved a precision of `r det_precision` and a recall of `r det_recall` on the testing set, resulting in an F1-score of `r det_f1_score`. The F1 metric is particularly important as it reflects both the accuracy of identifying each class instance (precision) and the model’s ability to detect all occurrences of the class (recall). The normalized confusion matrix (see figure \@ref(fig:det-metrics)) reveals strong overall performance with mean Average Precision across all classes mAP=`r det_map`. The averaged precision-recall curve remains close to the top-left corner and signifies that the model maintains high precision and recall across various thresholds, underscoring its effectiveness in detecting the different classes. Notably, the confusion matrix demonstrates minimal confusion between most classes, indicating that the model can effectively distinguish between them (see Figure \@ref(fig:det-metrics)). A closer look at class-wise performance reveals that the model excels in detecting people and certain objects. The “infant/child,” “adult,” and “adult face” classes, as well as “child body parts,” “infant/child face,” “book,” and “screen,” all achieve high Average Precision (AP) scores. This indicates that the model reliably identifies these categories with strong precision and recall (see figure \@ref(fig:det-metrics)).
 
 On the other hand, some object classes remain more challenging. In particular, the “toy,” “kitchenware,” and “other object” categories exhibit lower AP scores of `r ap_toy`, `r ap_kitchenware`, and `r ap_other_object`, respectively. The confusion matrix confirms that `r fn_kitchenware*100`% of “kitchenware” and `r fn_toy*100`% of “toy” instances are frequently misclassified as “background.” This issue likely stems from the annotation strategy, which prioritized labeling only objects that the child directly interacted with. As a result, other visually similar objects in the background remain unannotated, introducing ambiguity during training. Additionally, “infant/child” and “infant/child face” also show notable false negative rates of 17%, further contributing to misclassification. These findings suggest that increasing the number of annotated samples—particularly for objects with which the child interacts with—could improve detection performance. Future work could also explore model refinements or data augmentation techniques to enhance the detection of small, occluded, or partially visible objects. In conclusion, the YOLO11 model demonstrates strong performance in detecting people, faces, and several object classes.
 
-## YOLO11x-cls: Gaze Classification
+## YOLO11x-cls: Gaze Classification {#sup-yolo11x-cls}
 ```{r gaze-statistics, echo=FALSE, message=FALSE, warning=FALSE}
 total_num_gaze_frames <- 20889
 final_num_gaze_frames <- 32902
@@ -612,8 +709,7 @@ Given these constraints of our dataset, we opted for a CNN-based approach, which
 We fine-tuned YOLO11x-cls, the largest model in the YOLO11 classification series, which has 28.4M parameters. The model achieved the highest accuracy among all YOLO11 variants (acc_top1 = 79.5), making it the optimal choice for gaze classification in our dataset. Moreover YOLO11’s architectural enhancements, such as the C2PSA block, improve the model’s ability to focus on critical regions within an image, ensuring robust detection of visual attention toward the child, even under challenging real-world conditions.
 
 ### Data Annotation and Preprocessing
-[MB: you should say the following once and furter above - one way would be to add a recap of what the dataset looked like and how it was recorded to the beginning of the supplementary material_ The egocentric nature of our video data, recorded from a chest-mounted camera, posed additional challenges such as motion blur and oblique viewing angles, making gaze classification difficult even for human annotators.] We defined gaze as being “directed toward the child” when a person’s gaze was oriented toward the child’s face, body, or general direction of the child. This included instances where the person was looking directly at the camera (worn by the child) or slightly upwards, allowing for an estimation of the likely position of the child’s head. Each detected face was annotated as either “gaze” (gaze directed at the child) or “no gaze” (gaze directed elsewhere).
-
+We defined gaze as being “directed toward the child” when a person’s gaze was oriented toward the child’s face, body, or general direction of the child. This included instances where the person was looking directly at the camera (worn by the child) or slightly upwards, allowing for an estimation of the likely position of the child’s head. Each detected face was annotated as either “gaze” (gaze directed at the child) or “no gaze” (gaze directed elsewhere).
 
 ### Dataset Splitting
 For the gaze classification task, we utilized a subset of the Quantex dataset, focusing specifically on frames containing annotated faces. This subset consisted of cut-out faces extracted from the annotated face bounding boxes, resulting in `r total_num_gaze_frames` frames from `r gaze_total_num_videos` annotated videos. An analysis of the gaze labels showed that `r gaze_to_no_gaze_ratio`% of the faces were annotated as having gaze directed toward the child, leading to a class imbalance.
@@ -693,7 +789,7 @@ One of the primary challenges arises from cut-off faces, where the eyes are not 
 
 More advanced gaze estimation methods—such as incorporating temporal information or leveraging additional facial landmarks—could further improve performance. However, given the constraints of our dataset and the focus on binary gaze classification, the YOLO11x model serves as a strong foundation for analyzing the gaze aspect of social interactions in egocentric video data.
 
-## Proximity Heuristic
+## Proximity Heuristic {#sup-proximity}
 Proximity between individuals is an important aspect of social interaction. Previous studies have shown that interpersonal distance can provide insights into the nature of relationships and social engagement [@janssenTrackingRealtimeProximity2024; @hernandez-herediaProximitySensorMeasuring2024; @onnelaUsingSociometersQuantify2014]. Since our dataset does not contain explicit proximity labels, we developed a heuristic approach to estimate the distance between the child and other individuals.
 
 ### Formula for Proximity Estimation
@@ -755,18 +851,20 @@ r_{\text{expected}} = \frac{w_{\text{expected}}}{h_{\text{expected}}}
 
 Where \( \epsilon \) is a fixed threshold (\(\epsilon\)=0.5) that determines the degree of deviation considered significant for extreme proximity.
 
-This heuristic approach, which combines face area and aspect ratio, provides an efficient and interpretable method for estimating proximity without requiring additional sensors or depth information. It enables us to examine the spatial dynamics of social interactions in egocentric recordings, offering insights into the relationships between children and others during everyday experiences. Examples of proximity estimation are shown in Figure \@ref(fig:proximity-classifications), illustrating the range of proximity scores from 0 (far away) to 1 (extremely close). [MB: to back-up this point, we could extract 100 aces and have Hiwis rate them for distance and then correalte the manual annotation and the predicted score. If we gt seomthing like .9 correaltion, that woul dbe really solid evidence that this is good way to do it. annotatin 100 faces should also be quick ... could even be a task for our new "in house" hiwis].
+This heuristic approach, which combines face area and aspect ratio, provides an efficient and interpretable method for estimating proximity without requiring additional sensors or depth information. It enables us to examine the spatial dynamics of social interactions in egocentric recordings, offering insights into the relationships between children and others during everyday experiences. Examples of proximity estimation are shown in Figure \@ref(fig:proximity-classifications), illustrating the range of proximity scores from 0 (far away) to 1 (extremely close). [MB: to back-up this point, we could extract 100 faces and have Hiwis rate them for distance and then correalte the manual annotation and the predicted score. If we gt seomthing like .9 correaltion, that woul dbe really solid evidence that this is good way to do it. annotatin 100 faces should also be quick ... could even be a task for our new "in house" hiwis].
 
-## Voice Type Classification
+## Voice Type Classification {#sup-voice-type}
 Regarding the audio component of our interaction analysis, we aimed to use a model that does not only detect the presence of speech but also distinguishes between the key child wearing the camera and other speakers. This distinction is crucial for understanding the dynamics of the interactions and the role of the key child in the social context. To achieve this, we applied the Voice Type Classifier [@lavechinOpensourceVoiceType2020], an open-source model designed to identify five different voice types: key child (KCHI), other child (OCH), female adult (FEM), male adult (MAL), and speech in general (SPEECH). This multi-label classification enables the detection of multiple classes simultaneously, which is particularly useful when faced with overlapping speech segments, which frequently occurs in natural interactions.
 
 The model, as described by @lavechinOpensourceVoiceType2020, is based on a convolutional neural network (CNN) architecture that includes SincNet components. These components are designed to extract meaningful frequency representations, which are then processed by a stack of bi-directional long short-term memory (LSTM) and fully connected layers. The final layer applies a sigmoid activation function to output a score between 0 and 1 for each class, representing the probability of that voice type being present in the audio segment. The network is trained using binary cross-entropy loss, optimizing each class independently.
 
 The Voice Type Classifier was trained on 260 hours of child-centered recordings spanning 10 different languages. Its architecture is specifically designed to handle the unique challenges of child-centered audio, such as overlapping speech and varying acoustic conditions. To address these complexities, the model incorporates a multi-label classification approach, allowing it to detect multiple voice types simultaneously.
 
-Model performance was evaluated using the F-measure [MB: if this is the same measure as above, introduce it above and then just use the label here], which balances precision and recall for each voice type. This metric is particularly important as it reflects both the accuracy of identifying each voice type (precision) and the model’s ability to detect all occurrences of that voice type (recall). Importantly, the Voice Type Classifier outperforms the LENA system [@fordLENALanguageEnvironment2008], a widely used but closed-source alternative, by a large margin [MB: give the number]. 
+Model performance was evaluated using the F1-measure, with the classifier showing a significant performance advantage over the widely used, closed-source LENA system [@fordLENALanguageEnvironment2008]. Specifically, the classifier achieved an improvement of 10.6 in the average F1-measure across the five voice type classes.
 
 Although the Quantex dataset does not include explicit audio labels, we are confident in the model’s suitability for our data. Prior testing on a similar labeled dataset which was also collected in our lab, ChildLens, demonstrated that the Voice Type Classifier achieved an F1 score of 58.1 (reference to ChildLens paper), which is comparable to the F1 score of 57.3 reported on the original training dataset. These results indicate that the model performs similarly to the original work.
+
+## Results {#sup-results}
 
 \newpage
 # References
