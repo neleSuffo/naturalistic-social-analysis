@@ -196,7 +196,8 @@ quantex_youngest_month <- as.numeric(format(quantex_youngest_date, "%m"))
 # Calculate the interval between the two dates
 quantex_time_span_months <- (quantex_youngest_year - quantex_oldest_year) * 12 + (quantex_youngest_month - quantex_oldest_month)+1
 
-quantex_num_videos <- 634
+quantex_num_videos <- 634 # Total number of videos in the dataset
+quantex_num_frames <- 19023571 # Total number of frames in the dataset
 ```
 
 ```{r yolo-person-statistics, echo=FALSE, message=FALSE, warning=FALSE}
@@ -249,7 +250,7 @@ Whereas theoretical frameworks and controlled laboratory studies have significan
 
 To address these challenges, researchers have increasingly turned to data-driven approaches that utilize sensors and recording devices to gather objective data on social interactions. For instance, @onnelaUsingSociometersQuantify2014 employed wearable sensors to analyze social interactions in adult work settings, capturing the duration of close proximity between individuals. The study inferred that women were more talkative than men and more likely to be physically close to other women in group settings. @rossanoHow24yearold2022 examined social interactions among 31 two- to four-year-olds using 563 hours of video and audio recordings from a preschool during free play sessions over seven days. Manual interaction labels revealed that four-year-olds engaged in more cooperative social interactions and experienced fewer conflicts than two-year-olds, with object play and conversations being the most common forms of social engagement in both age groups. @daiLongitudinalDataCollection2022 investigated social interactions of 174 preschool children over three years, collecting voice and proximity data using wearable wireless RFID tags to study the co-development of social interactions and language acquisition. They employed manually labeled interaction data to train a temporal segment model that automatically identified periods of free play or class play, concluding that classmates frequently engaged in both contexts. @lemaignanPInSoRoDatasetSupporting2018 created a dataset comprising 45 hours of manually labeled social interactions between 45 child-child pairs and 30 child-robot pairs, including video and audio recordings, 3D facial data, skeletal information, and game interactions. By not providing specific instructions to the children, the researchers aimed to capture interactions in naturalistic settings. However, each laboratory session was limited to 40 minutes.
 
-While these studies have advanced our understanding of social interactions, they often focus on controlled environments or are constrained by limited observation periods [MB: it would be nice to give some numbers - how long were the observation periods - but again, more relevant for the paper.]. Moreover, the manual data collection and analysis involved remain labor-intensive and time-consuming, and the current body of research lacks comprehensive data-driven studies analyzing children’s social interactions within their home environments.
+While these studies have advanced our understanding of social interactions, they often focus on controlled environments or are constrained by limited observation periods. Moreover, the manual data collection and analysis involved remain labor-intensive and time-consuming, and the current body of research lacks comprehensive data-driven studies analyzing children’s social interactions within their home environments.
 
 The present study investigates social interactions in naturalistic home settings over an extended period. The corresponding **Quantex** dataset currently includes  `r quantex_sum_hours` hours of egocentric video and audio recordings from children aged 3 to 5 years. Here we focus on specific patterns of social interactions, including:
 
@@ -260,7 +261,7 @@ The present study investigates social interactions in naturalistic home settings
 - **Person Proximity**: Estimating the distance between the child and others to quantify social engagement.
 - **Speech Dynamics**: Implementing voice type classification to differentiate between the child’s speech and that of others, distinguishing between peers and adults.
 	
-The primary objectives of this study are to quantify interaction patterns by measuring the frequency of each identified interaction type, both individually and in combination. Additionaly, we compare these patterns across different age groups within the 3 to 5-year range to identify developmental variations and milestones. [MB: to paper: Understanding these interaction patterns can inform developmental psychology about the actual nature of social interactions in children’s everyday lives.]
+The primary objectives of this study are to quantify interaction patterns by measuring the frequency of each identified interaction type, both individually and in combination. Additionaly, we compare these patterns across different age groups within the 3 to 5-year range to identify developmental variations and milestones. Understanding these interaction patterns can inform developmental psychology about the actual nature of social interactions in children’s everyday lives.
 
 # Methodology {#methodology}
 The following sections provide a detailed description of the data collection process, the structure and characteristics of the dataset, the annotation strategy, and the preprocessing applied to the data prior to analysis. Additionally, an overview of the automated analysis pipeline is provided, giving details about the models used for person and face detection, gaze classification, object detection, and the application of a pre-trained voice type classifier. 
@@ -509,9 +510,7 @@ Additionally, we refine the “person” and “face” categories beyond standa
 Our fine-tuned YOLO11 model also classifies five object categories relevant to the child’s interactions: toy, book, kitchenware, screen, and other object. Due to low occurrences, "animal" (19 instances, 0.015%) and "food" (1,115 instances, 0.84%) were included into "other object", leaving five final object categories with at least 2,000 instances each.
 
 ### Dataset Splitting
-[MB:brak it down a bit more: in the dataset we have xx frames, of these xx frames we annotated xx frames etc.]
-
-We started data splitting with a dataset comprising a total of `r det_total_num_frames` frames from `r det_total_num_videos` annotated videos. Prior to splitting this dataset into training, validation, and testing datasets, we analyzed how often each class was present in the dataset. The distribution, displayed in detail in Table \@ref(tab:det-class-distribution), revealed an imbalance, with the "Adult" class being the most frequent. To address this imbalance, we applied a stratified split to ensure that each dataset preserved the original class distribution. Following an 80/10/10 split, the final datasets consisted of `r num_det_frames_train` frames for training (80%), `r num_det_frames_val` frames for validation (10%), and `r num_det_frames_test` frames for testing (10%), ensuring an accurate evaluation of model performance relative to real-world data distribution (see Figure \@ref(tab:det-dataset-splits)).
+The full Quantex dataset consists of `r quantex_num_videos` videos, all recorded at 30fps, resulting in `r quantex_num_frames` frames. From this dataset, we annotated `r det_total_num_videos` videos, totaling `r det_total_num_frames` frames. Prior to splitting this dataset into training, validation, and testing datasets, we analyzed how often each class was present in the dataset. The distribution, displayed in detail in Table \@ref(tab:det-class-distribution), revealed an imbalance, with the "Adult" class being the most frequent. To address this imbalance, we applied a stratified split to ensure that each dataset preserved the original class distribution. Following an 80/10/10 split, the final datasets consisted of `r num_det_frames_train` frames for training (80%), `r num_det_frames_val` frames for validation (10%), and `r num_det_frames_test` frames for testing (10%), ensuring an accurate evaluation of model performance relative to real-world data distribution (see Figure \@ref(tab:det-dataset-splits)).
 
 ```{r det-class-distribution, echo=FALSE, message=FALSE, warnings=FALSE, results='asis', eval=TRUE}
 my.data <- "Class                   | Training  | Validation  | Testing | Total
@@ -562,8 +561,6 @@ apa_table(
 ```
 ### Training and Convergence {#training-face}
 Model training was conducted on a Linux server equipped with an Intel(R) Xeon(R) Silver 4214Y CPU @ 2.20GHz with 48 cores, a Quadro RTX 8000 GPU and 188 GB of RAM. The model was trained for a total of `r det_num_epochs` epochs, taking `r det_training_time` hours to complete. Training utilized YOLO11’s built-in data augmentation, an image size of 640, a batch size of 16, a cosine annealing learning rate scheduler [@loshchilovSGDRStochasticGradient2017], and early stopping after 10 epochs without improvement, with a maximum of 200 epochs.
-
-[MB: Ideally, the figure would be nicer in that the labels A and B are not so far removed from the plot and there is less white space around it]
 
 ```{r det-loss-curves, fig.align='center', fig.cap="Training and Validation Loss Curves for the YOLO11x detection model.", out.width="450px"}
 knitr::include_graphics("images/yolo_loss_curves.png")
@@ -625,8 +622,8 @@ escape = FALSE,
 
 ```{r det-metrics, fig.align='center', fig.cap="\\textbf{A} - Confusion Matrix for the YOLO11x detection model trained on the Quantex dataset. \\textbf{B} - Precision-Recall Curve for the YOLO11x detection model."}
 # Load images
-img1 <- ggdraw() + draw_image("images/confusion_matrix_detection.png", scale = 1)
-img2 <- ggdraw() + draw_image("images/yolo_precision_recall_curve.png", scale = 1)
+img1 <- ggdraw() + draw_image("images/confusion_matrix_detection.png", scale = 1.1)
+img2 <- ggdraw() + draw_image("images/yolo_precision_recall_curve.png", scale = 1.1)
 
 # Combine img1 and img2 into the first row with equal heights
 top_row <- (img1 + img2) + 
@@ -642,6 +639,7 @@ final_labeled_layout <- final_layout +
 # Display the final layout
 final_labeled_layout
 ```
+
 
 ```{r det-detection-examples, echo=FALSE, dpi=600, fig.align='center', fig.cap="Detection examples for the YOLO11x detection model trained on the Quantex dataset."}
 img1 <- ggdraw() + draw_image("images/yolo_person_face_object_1.jpg", scale = 0.95)
@@ -851,7 +849,7 @@ r_{\text{expected}} = \frac{w_{\text{expected}}}{h_{\text{expected}}}
 
 Where \( \epsilon \) is a fixed threshold (\(\epsilon\)=0.5) that determines the degree of deviation considered significant for extreme proximity.
 
-This heuristic approach, which combines face area and aspect ratio, provides an efficient and interpretable method for estimating proximity without requiring additional sensors or depth information. It enables us to examine the spatial dynamics of social interactions in egocentric recordings, offering insights into the relationships between children and others during everyday experiences. Examples of proximity estimation are shown in Figure \@ref(fig:proximity-classifications), illustrating the range of proximity scores from 0 (far away) to 1 (extremely close). [MB: to back-up this point, we could extract 100 faces and have Hiwis rate them for distance and then correalte the manual annotation and the predicted score. If we gt seomthing like .9 correaltion, that woul dbe really solid evidence that this is good way to do it. annotatin 100 faces should also be quick ... could even be a task for our new "in house" hiwis].
+This heuristic approach, which combines face area and aspect ratio, provides an efficient and interpretable method for estimating proximity without requiring additional sensors or depth information. It enables us to examine the spatial dynamics of social interactions in egocentric recordings, offering insights into the relationships between children and others during everyday experiences. Examples of proximity estimation are shown in Figure \@ref(fig:proximity-classifications), illustrating the range of proximity scores from 0 (far away) to 1 (extremely close).
 
 ## Voice Type Classification {#sup-voice-type}
 Regarding the audio component of our interaction analysis, we aimed to use a model that does not only detect the presence of speech but also distinguishes between the key child wearing the camera and other speakers. This distinction is crucial for understanding the dynamics of the interactions and the role of the key child in the social context. To achieve this, we applied the Voice Type Classifier [@lavechinOpensourceVoiceType2020], an open-source model designed to identify five different voice types: key child (KCHI), other child (OCH), female adult (FEM), male adult (MAL), and speech in general (SPEECH). This multi-label classification enables the detection of multiple classes simultaneously, which is particularly useful when faced with overlapping speech segments, which frequently occurs in natural interactions.
