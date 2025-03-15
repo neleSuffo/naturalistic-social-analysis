@@ -227,7 +227,7 @@ Childrens everyday experiences are known to shape childrens development but only
 
 \section{Introduction}\label{introduction}
 
-According to various developmental psychologists, children's everyday experiences play a vital role in their development (Carpendale \& Lewis, 2020; Piaget, 1964; Rogoff, Dahl, \& Callanan, 2018; Smith, Jayaraman, Clerkin, \& Yu, 2018; Tomasello, 2009; Vygotsky, 1978; \textbf{heyesCognitiveGadg?}). Everyday interactions, in particular, have been recognized for decades as crucial in the process of actively constructing knowledge (Piaget, 1964) and in transforming sensory experiences into structured understanding (Vygotsky, 1978). Building upon these foundational theories, more recent research has examined the mechanisms of social interaction further. For instance, Tomasello (2009) introduced the concept of shared intentionality, illustrating how collaborative activities enable children to comprehend others' intentions and perspectives, leading to cooperative behaviors and cultural learning .
+According to various developmental psychologists, children's everyday experiences play a vital role in their development (Carpendale \& Lewis, 2020; Piaget, 1964; Rogoff, Dahl, \& Callanan, 2018; Smith, Jayaraman, Clerkin, \& Yu, 2018; Tomasello, 2009; Vygotsky, 1978; \textbf{heyesCognitiveGadg?}; \textbf{fetsCultural2018?}). Everyday interactions, in particular, have been recognized for decades as crucial in the process of actively constructing knowledge (Piaget, 1964) and in transforming sensory experiences into structured understanding (Vygotsky, 1978). Building upon these foundational theories, more recent research has examined the mechanisms of social interaction further. For instance, Tomasello (2009) introduced the concept of shared intentionality, illustrating how collaborative activities enable children to comprehend others' intentions and perspectives, leading to cooperative behaviors and cultural learning .
 
 Whereas theoretical frameworks and controlled laboratory studies have significantly advanced our understanding of children's social development, they often fail to capture the complexities of interactions occurring in naturalistic settings. Observing children in their everyday environments offers a more authentic view of their social behaviors; however, this approach presents challenges due to the extensive data collection and analysis required.
 
@@ -257,7 +257,7 @@ The primary objectives of this study are to quantify interaction patterns by mea
 
 \section{Methodology}\label{methodology}
 
-The following sections provide a detailed description of the data collection process, the structure and characteristics of the dataset, the annotation strategy, and the preprocessing applied to the data prior to analysis. Additionally, an overview of the automated analysis pipeline is provided, giving details about the models used for person and face detection, gaze classification, object detection, and the application of a pre-trained voice type classifier.
+The following sections provide a detailed description of the data collection process, the structure and characteristics of the dataset, the annotation strategy, and the preprocessing applied to the data prior to analysis. Additionally, an overview of the automated analysis pipeline is provided, giving details about the models used for person, face and object detection, gaze classification, and the application of a pre-trained voice type classifier.
 
 \subsection{Participants Recruitment and Data Collection}\label{participants}
 
@@ -265,19 +265,19 @@ This study collected egocentric video recordings from 76 children, aged 3 to 5 y
 
 \subsubsection{Recruitment Process}\label{recruitment-process}
 
-Participants were recruited from a mid-sized German city through an existing lab database, with approximately equal distribution across age groups (30\% 3-year-olds, 35\% 4-year-olds, 35\% 5-year-olds). The data collection process was approved by the local ethics committee, and all participating families provided written informed consent, allowing the researchers to use the data for scientific purposes. Participants were recruited from an internal lab database and contacted via phone. Parents received a detailed explanation of the study's purpose and procedures, consistent with the information in the study brochure. Families who agreed to participate were provided with a vest equipped with an embedded camera, which children were asked to wear for approximately two hours, with flexible extension options. For privacy protection, recordings were limited to the home environment. Recorded videos were securely stored on the MPI-EVA server and subsequently made available to parents. To enhance convenience, parents could choose to have the camera delivered to their home or workplace, or opt for self-pickup.
+Children were recruited from a mid-sized German city via an internal lab database, ensuring balanced age distribution (30\% 3-year-olds, 35\% 4-year-olds, 35\% 5-year-olds). The study was approved by the ethics committee, and all families provided written consent. Parents received detailed study information via phone, and families agreeing to participate were given a vest with an embedded camera, which children were asked to wear for approximately two hours. Recordings were restricted to the home for privacy and securely stored on the MPI-EVA server. Parents could receive the camera via home delivery or self-pickup.
 
 \subsubsection{Distribution of Study Materials and Instructions}\label{distribution-of-study-materials-and-instructions}
 
-At the handover appointment, parents received One or two vests (multiple sizes available), a fully charged camera unit and comprehensive information on the study's purpose and data protection protocols. Parents received hands-on training on camera operation and were encouraged to practice using the equipment. The consent form required listing the participating child and documenting all individuals potentially captured in the recordings. Five copies of data privacy information sheets were provided for distribution to anyone who might be recorded. A follow-up call was scheduled to ensure recording success, typically planned for the weekend following the handover to ensure enough time for recoding.
+At the handover, parents received one or two vests (various sizes), a charged camera unit, and detailed study/data protection information. They were trained on camera operation and encouraged to practice. The consent form listed the participating child and potential individuals captured. Parents were given five privacy information sheets to distribute as needed. A follow-up call was scheduled to ensure recording success, typically planned for the following weekend.
 
 \subsubsection{Return of Equipment and Final Data Confirmation}\label{return-of-equipment-and-final-data-confirmation}
 
-On the scheduled date, parents were contacted to confirm recording success and assess any need for additional time. Flexible rescheduling was offered as needed. Once the recording was completed, a pickup or drop-off appointment was arranged to collect the completed consent form, vest, and camera. Parents were also asked to confirm their current email address for sharing the recordings. Children received a ``Labyrinth'' game as a thank for their participation.
+Parents were contacted to confirm recording success, with flexible rescheduling if needed. Once completed, a pickup/drop-off appointment was arranged to collect the camera, vest, and consent form. Parents confirmed their email for receiving recordings. As a thank-you, children received a Labyrinth game.
 
 \subsection{Materials}\label{materials}
 
-To capture children's everyday experiences, a wearable vest equipped with a \emph{PatrolEyes WiFi HD Infrared Police Body Camera} was used (Figure \ref{fig:camera-cvat-activity-classes}). The camera recorded high-definition video (1920x1080p at 30 fps) with a 140-degree wide-angle lens and also captured audio. Children were free to move around and engage in their usual activities at home without any interference or instructions given to their parents.
+To capture children's everyday experiences, a wearable vest equipped with a \emph{PatrolEyes WiFi HD Infrared Police Body Camera} was used (see Figure \ref{fig:camera-cvat-activity-classes}). The camera recorded high-definition video (1920x1080p at 30 fps) with a 140-degree wide-angle lens and also captured audio. Children were free to move around and engage in their usual activities at home without any interference or instructions given to their parents.
 
 \subsection{Dataset Overview}\label{dataset}
 
@@ -311,29 +311,232 @@ The Quantex dataset consists of a total of 634 videos. However, only a subset of
 \caption{\textbf{A} – Vest with the embedded camera worn by the children, \textbf{B} – CVAT platform utilized for video annotation, \textbf{C} – Annotation Strategy in the Quantex dataset.}\label{fig:camera-cvat-activity-classes}
 \end{figure}
 
-\subsection{Automated Analysis Pipeline}\label{automatic-analysis}
+\section{Automated Analysis Pipeline}\label{automatic-analysis}
 
 Our automated analysis pipeline consists of four key modules: person and face detection, gaze classification, object detection, and voice type classification. Each module operates independently, utilizing separate machine learning models. Except for the voice type classifier, all models were trained on the Quantex dataset.
 
 The pipeline follows a sequential process:
 
-\begin{verbatim}
-1.  YOLO11x detection model identifies the presence of individuals (persons and faces) and types of objects the key child interacts with, both in social and independent play contexts, in the video frames.
-2.  Gaze classification determines whether detected faces are looking at the child.
-3.  Voice type classification detects the presence of speech and identifies whether the speaker is the key child, another child, or an adult.
-\end{verbatim}
+\begin{itemize}
+\tightlist
+\item
+  YOLO11x detection model identifies the presence of individuals (persons and faces) and types of objects the key child interacts with, both in social and independent play contexts, in the video frames.
+\item
+  Gaze classification determines whether detected faces are looking at the child.
+\item
+  Proximity heuristic estimates the distance between the child and others based on face size and aspect ratio.
+\item
+  Voice type classification detects the presence of speech and identifies whether the speaker is the key child, another child, or an adult.
+\end{itemize}
 
 By integrating these modules, our pipeline enables a comprehensive analysis of children's everyday experiences, capturing both social interactions and independent play.
 
 In the following sections, we describe each module in detail, including training data, model architecture, and evaluation metrics. A full technical analysis of each algorithm is provided in the \hyperref[supplementary-material]{Supplementary Material}.
 
-\subsubsection{Person \& Face Detection}\label{person-face-detection}
+\subsection{Yolo11x: Multi-Class Detection of Persons, Faces, and Objects}\label{yolo11x}
 
-\subsubsection{Gaze Classification}\label{gaze-classification}
+We used Ultralytics' YOLO11, the ``latest iteration in the YOLO series of real-time object detectors'' (Jocher \& Qiu, 2024), pretrained on the COCO dataset (Lin et al., 2014), which contains labeled images for 80 everyday object categories. COCO is widely used for object detection and segmentation tasks.
 
-\subsubsection{Object Detection}\label{object-detection}
+Released in October 2024, YOLO11 introduces architectural improvements like the C2PSA block for enhanced spatial attention and the C3K2 block for faster, more efficient feature aggregation (Khanam \& Hussain, 2024). These advancements make it well-suited for our egocentric dataset, which captures dynamic movements from a chest-mounted camera.
 
-\subsubsection{Voice Detection and Classification}\label{voice-detection-and-classification}
+We selected YOLO11x, the largest model in the series, with 56.9M parameters and 194.9 GFLOPs. With the highest accuracy (mAP\(^{val}_{50-95}\) = 54.7) among YOLO11 variants, it was the best choice for our task, given our available computational resources.
+
+\subsubsection{Dataset Annotation and Preprocessing}\label{dataset-annotation-and-preprocessing}
+
+Our egocentric dataset presents challenges as the child's body parts frequently appear in the footage. To prevent misclassification, we assign all individuals the label ``person'' with unique IDs, consistently marking the key child (camera wearer) as ID = 1. During preprocessing, this ID is mapped to a separate ``child body parts'' category to distinguish the child from others.
+
+We refine the ``person'' and ``face'' categories beyond standard YOLO models by:
+
+\begin{itemize}
+\tightlist
+\item
+  Differentiating the key child from other individuals.
+\item
+  Distinguishing adults from children/infants in both full-body detections and faces.
+\end{itemize}
+
+Our fine-tuned YOLO11 model also classifies five object categories relevant to the child's interactions: toy, book, kitchenware, screen, and other object. Due to low occurrences, ``animal'' (19 instances, 0.015\%) and ``food'' (1,115 instances, 0.84\%) were included into ``other object'', leaving five final object categories with at least 2,000 instances each.
+
+The Quantex dataset consists of 634 videos recorded at 30fps, resulting in 19023571 frames. From this, we annotated 80 videos (113799 frames). To address class imbalance---where ``Adult'' was the most frequent---we applied a stratified 80/10/10 split, preserving the original class distribution across training (91039), validation (11380), and testing (11380) sets (see Figure \ref{tab:det-dataset-splits} and \hyperref[sup-yolo11x]{YOLO11x: Multi-Class Detection of Persons, Faces, and Objects} for details).
+
+\begin{table}[tbp]
+
+\begin{center}
+\begin{threeparttable}
+
+\caption{\label{tab:det-dataset-splits-short}Number of frames in the training, validation, and testing datasets for the YOLO11 detection model.}
+
+\begin{tabular}{lllll}
+\toprule
+ & \multicolumn{1}{c}{Training} & \multicolumn{1}{c}{Validation} & \multicolumn{1}{c}{Testing} & \multicolumn{1}{c}{Total}\\
+\midrule
+Number of frames & 91039 & 11380 & 11380 & 113799\\
+\bottomrule
+\end{tabular}
+
+\end{threeparttable}
+\end{center}
+
+\end{table}
+
+\subsubsection{Training and Evaluation}\label{training-face}
+
+Model training was conducted on a Linux server with a Quadro RTX 8000 GPU, 48-core Intel Xeon CPU, and 188 GB RAM. The YOLO11x model was trained for 86 epochs (200 hours) using an image size of 640, batch size of 16, cosine annealing learning rate scheduling (Loshchilov \& Hutter, 2017), and early stopping after 10 epochs without improvement (max 200 epochs).
+
+The loss function comprises Box Loss, Classification Loss, and Distribution Focal Loss (DFL) (Li et al., 2020; Terven, Cordova-Esparza, Ramirez-Pedraza, Chavez-Urbiola, \& Romero-Gonzalez, 2024), ensuring precise localization and classification. All loss components steadily decreased over time, indicating effective learning (see supplementary material for detailed loss curves).
+
+\begin{table}[tbp]
+
+\begin{center}
+\begin{threeparttable}
+
+\caption{\label{tab:det-metrics-short}YOLO11x detection metrics on the Quantex dataset, reporting mAP@0.5, precision, recall, and F1-score across all classes.}
+
+\begin{tabular}{llll}
+\toprule
+mAP@0.5 & \multicolumn{1}{c}{Precision} & \multicolumn{1}{c}{Recall} & \multicolumn{1}{c}{F1-Score}\\
+\midrule
+0.870 & 0.91 & 0.80 & 0.85\\
+\bottomrule
+\end{tabular}
+
+\end{threeparttable}
+\end{center}
+
+\end{table}
+
+\begin{figure}
+
+{\centering \includegraphics{Quantex_interaction_paper_files/figure-latex/det-detection-examples-short-1} 
+
+}
+
+\caption{Detection examples for the YOLO11x detection model trained on the Quantex dataset.}\label{fig:det-detection-examples-short}
+\end{figure}
+
+Evaluation was conducted using a confusion matrix and precision-recall curves. The model achieved a precision of 0.91, recall of 0.80, and F1-score of 0.85, with a mean Average Precision (mAP) of 0.87 (Figure \ref{tab:det-metrics-short}). The confusion matrix shows strong class separation, with high AP scores for people and objects like ``book'' and ``screen.'' However, ``toy'' (0.77), ``kitchenware'' (0.77), and ``other object'' (0.82) had lower AP scores, often misclassified as background. This misclassification stems from our annotation strategy, which prioritized labeling only objects directly interacted with by the child. As a result, visually similar objects in the background remained unannotated, leading to ambiguity during training. Additionally, ``infant/child'' and ``infant/child face'' showed notable false negatives, likely due to occlusions and the limited number of annotated instances. Future improvements could enhance detection by increasing annotated samples and incorporating data augmentation techniques to better handle occluded or unannotated objects. Overall, the model performs well in detecting people, faces, and key object categories, as shown in Figure \ref{fig:det-detection-examples-short}.
+
+\subsection{Yolo11x-cls: Gaze Classification}\label{yolo11x-cls}
+
+Selecting a gaze classification model for our egocentric dataset presented challenges due to blurry, partially occluded faces captured at varying angles. Many gaze estimation methods rely on high-quality eye images (Zhang, Sugano, Fritz, \& Bulling, 2015, 2016), making them unsuitable for our data. Additionally, rather than predicting fine-grained gaze direction (e.g., left or right), our focus is on the binary classification of whether a person's gaze is directed toward the child or not.
+
+Given these constraints, we implemented ResNet- and YOLO-based models, selecting Ultralytics' YOLO11x (Jocher \& Qiu, 2024) after preliminary testing. YOLO11x-cls, the largest variant with 28.4M parameters, achieved the highest accuracy (acc\_top1 = 79.5) on our dataset. Its architectural enhancements, such as the C2PSA block, improve attention to critical regions, ensuring robust gaze detection under real-world conditions.
+
+\subsubsection{Data Annotation and Preprocessing}\label{data-annotation-and-preprocessing}
+
+We defined gaze as directed towarda the child if a person's gaze was oriented toward the child's face, body, or general direction. Each detected face was labeled as ``gaze'' or ``no gaze.''
+
+For training, we extracted cut-out faces from 64 videos, resulting in 20889 frames. Since only 21.25\% of faces were labeled ``gaze,'' we applied stratified splitting and data augmentation to balance the training set while keeping validation and testing sets in their natural distribution (Table \ref{tab:gaze-dataset-splits-short}).
+
+\subsubsection{Training and Evaluation}\label{training-and-evaluation}
+
+We trained YOLO11x-cls for 37 epochs on a Linux server, using an image size of 640, batch size of 16, cosine annealing (Loshchilov \& Hutter, 2017), and early stopping after 10 epochs. Training took 10.40 hours.
+
+The model achieved a precision of 0.64, a recall of 0.77 recall, and an F1-score of 0.70 (Table \ref{tab:gaze-metrics-short}). The cross-entropy loss curves for training and validation steadily decreased, with no signs of overfitting, indicating good generalization (see \hyperref[sup-yolo11x-cls]{Gaze Classification} in the Supplementary Material for details).
+
+\begin{table}[tbp]
+
+\begin{center}
+\begin{threeparttable}
+
+\caption{\label{tab:gaze-dataset-splits-short}Dataset splits for the YOLO11x gaze classification model trained on the Quantex dataset. The table shows the total number of frames, as well as the number of frames with gaze and no gaze in the training, validation, and testing datasets after data augmentation of the minority class (Gaze). 'Gaze' indicates frames where the person's gaze is directed towards the child, while 'No Gaze' indicates frames where the person's gaze is not directed towards the child. Ratios are given in percentages.}
+
+\begin{tabular}{lllllll}
+\toprule
+Quantex & \multicolumn{1}{c}{Train Ratio (\%)} & \multicolumn{1}{c}{Training} & \multicolumn{1}{c}{Val \& Test Ratio (\%)} & \multicolumn{1}{c}{Validation} & \multicolumn{1}{c}{Testing} & \multicolumn{1}{c}{Total}\\
+\midrule
+Gaze & 50 & 13160 & 79 & 1645 & 1646 & 16451\\
+No Gaze & 50 & 13160 & 21 & 443 & 445 & 14048\\
+Total & 100 & 26320 & 100 & 2088 & 2091 & 30499\\
+\bottomrule
+\end{tabular}
+
+\end{threeparttable}
+\end{center}
+
+\end{table}
+
+Despite strong performance, the egocentric perspective introduces challenges. Faces are often occluded or blurred, making gaze classification difficult---even for human annotators, who occasionally required a second inspection. Cut-off faces lacking visible eyes pose an additional issue, requiring the model to rely on head orientation and other facial features, which sometimes leads to misclassification.
+
+Future work could incorporate temporal cues or additional facial landmarks to improve performance. However, given our dataset constraints, YOLO11x provides a solid foundation for analyzing gaze in egocentric video data.
+
+\begin{table}[tbp]
+
+\begin{center}
+\begin{threeparttable}
+
+\caption{\label{tab:gaze-metrics-short}Evaluation metrics for the YOLO11x gaze classification model trained on the Quantex dataset to classify whether a person is looking into the direction of the child wearing the camera or not. Precision, recall, and F1-score are given for the testing set.}
+
+\begin{tabular}{lll}
+\toprule
+Precision & \multicolumn{1}{c}{Recall} & \multicolumn{1}{c}{F1-Score}\\
+\midrule
+0.64 & 0.77 & 0.70\\
+\bottomrule
+\end{tabular}
+
+\end{threeparttable}
+\end{center}
+
+\end{table}
+
+\subsection{Proximity Heuristic}\label{proximity-heuristic}
+
+Proximity plays a key role in social interaction, offering insights into the nature of relationships and social engagement (Hernández-Heredia, Reyes-Manzano, Flores-Hernández, Ramos-Fernández, \& Guzmán-Vargas, 2024; Janssen et al., 2024; Onnela et al., 2014). As our dataset lacks explicit proximity labels, we developed a heuristic method to estimate the distance between the child and others.
+
+\subsubsection{Formula for Proximity Estimation}\label{formula-for-proximity-estimation}
+
+We estimate proximity using the size of detected face bounding boxes, assuming that larger boxes indicate closer individuals and smaller ones suggest greater distance. The proximity value is calculated based on face area (width × height) and compared to reference sizes: one for a face within arm's reach and another for a more distant face (e.g., in the background or outdoors).
+
+Since face area decreases quadratically as distance increases, a simple linear mapping would exaggerate differences for close faces and minimize them for distant ones. To address this, we apply logarithmic scaling, ensuring a more accurate proximity score between 0 and 1:
+
+\[
+\text{Proximity} = \frac{\ln(\text{Face Area}) - \ln(\text{Max Reference Area})}{\ln(\text{Min Reference Area}) - \ln(\text{Max Reference Area})}
+\]
+
+Where:
+
+\begin{itemize}
+\tightlist
+\item
+  \(\textbf{Face Area}\) is the area of the detected face, calculated as the width times the height of the bounding box.
+\item
+  \(\textbf{Max Reference Area}\) is the reference area corresponding to the furthest detectable face.
+\item
+  \(\textbf{Min Reference Area}\) is the reference area corresponding to the closest detectable face.
+\end{itemize}
+
+This logarithmic transformation compresses proximity values for large faces (close to the camera) and stretches them for small faces (farther away), aligning with human perceptual sensitivity to relative size changes (Stevens \& Marks, 2017).
+
+\begin{figure}
+
+{\centering \includegraphics{Quantex_interaction_paper_files/figure-latex/proximity-classifications-1} 
+
+}
+
+\caption{Proximity Heuristic examples. Example \textbf{A} shows a face far away from the camera (proximity score = 0.07), example \textbf{B} depicts a face slighlty closer (proximity score = 0.2). Example \textbf{C} shows a face quite close to the camera (proximity score = 0.6), and example \textbf{D} illustrates a face extremely close to the camera (proximity score = 1).}\label{fig:proximity-classifications}
+\end{figure}
+
+\subsubsection{Incorporating Width-to-Height Ratio}\label{incorporating-width-to-height-ratio}
+
+We use both face size and the width-to-height ratio as cues for proximity.
+Based on reference images of full, front-facing faces, we define an expected aspect ratio for adults and children. If a detected face's ratio deviates significantly, we infer that the face is extremely close to the camera, causing partial cropping of the bounding box.
+
+If the deviation exceeds a defined threshold (\(\epsilon\)), the proximity score is set to 1:
+
+\[
+r_{\text{expected}} = \frac{w_{\text{expected}}}{h_{\text{expected}}}
+\]
+
+\[
+\text{If} \quad |r_{\text{detected}} - r_{\text{expected}}| > \epsilon, \quad P = 1
+\]
+
+This heuristic approach, which combines face area and aspect ratio, provides an efficient and interpretable method for estimating proximity without requiring additional sensors or depth information. It enables us to examine the spatial dynamics of social interactions in egocentric recordings, offering insights into the relationships between children and others during everyday experiences. Examples of proximity estimation are shown in Figure \ref{fig:proximity-classifications}, illustrating the range of proximity scores from 0 (far away) to 1 (extremely close).
+
+\subsection{Voice Type Classification}\label{voice-type}
+
+Regarding the audio component of our interaction analysis, we utilized the Voice Type Classifier (Lavechin, Bousbib, Bredin, Dupoux, \& Cristia, 2020), an open-source model designed to distinguishes between five key voice types: key child (KCHI), other child (OCHI), female adult (FEM), male adult (MAL), and general speech (SPEECH). The model employs a convolutional neural network (CNN) architecture with SincNet components, which extract meaningful frequency representations, and bi-directional long short-term memory (LSTM) layers. The model was trained on 260 hours of child-centered recordings across 10 languages, making it suitable for handling overlapping speech and varying acoustic conditions. Its multi-label classification capability enables the simultaneous detection of multiple voice types, which is particularly useful in natural interactions. The VTC outperforms the widely used LENA system with an absolute improvement of 10.6 in the average F1-measure across the five voice type classes. Additionally, the VTC demonstrated comparable performance on our lab's ChildLens dataset, achieving an F1 score of 58.1, which is comparable to the F1 score of 57.3 reported on the original training dataset. This performance validates the VTC's effectiveness for our data.
 
 \section{Results}\label{results}
 
@@ -377,7 +580,7 @@ Participants were recruited from a mid-sized German city through an existing lab
 
 \subsubsection{Distribution of Study Materials and Instructions}\label{distribution-of-study-materials-and-instructions-1}
 
-At the handover appointment, parents received One or two vests (multiple sizes available), a fully charged camera unit and comprehensive information on the study's purpose and data protection protocols. Parents received hands-on training on camera operation and were encouraged to practice using the equipment. The consent form required listing the participating child and documenting all individuals potentially captured in the recordings. Five copies of data privacy information sheets were provided for distribution to anyone who might be recorded. A follow-up call was scheduled to ensure recording success, typically planned for the weekend following the handover to ensure enough time for recoding.
+At the handover appointment, parents received one or two vests (multiple sizes available), a fully charged camera unit and comprehensive information on the study's purpose and data protection protocols. Parents received hands-on training on camera operation and were encouraged to practice using the equipment. The consent form required listing the participating child and documenting all individuals potentially captured in the recordings. Five copies of data privacy information sheets were provided for distribution to anyone who might be recorded. A follow-up call was scheduled to ensure recording success, typically planned for the weekend following the handover to ensure enough time for recoding.
 
 \subsubsection{Return of Equipment and Final Data Confirmation}\label{return-of-equipment-and-final-data-confirmation-1}
 
@@ -419,7 +622,7 @@ The Quantex dataset consists of a total of 634 videos. However, only a subset of
 \caption{\textbf{A} – Vest with the embedded camera worn by the children, \textbf{B} – CVAT platform utilized for video annotation, \textbf{C} – Annotation Strategy in the Quantex dataset.}\label{fig:sup-camera-cvat-activity-classes}
 \end{figure}
 
-\subsection{Automated Analysis Pipeline}\label{sup-automatic-analysis}
+\section{Automated Analysis Pipeline}\label{sup-automatic-analysis}
 
 Our automated analysis pipeline consists of four key modules: person and face detection, gaze classification, object detection, and voice type classification. Each module operates independently, utilizing separate machine learning models. Except for the voice type classifier, all models were trained on the Quantex dataset.
 
@@ -441,7 +644,7 @@ Released in October 2024, YOLO11 introduces architectural improvements such as t
 
 For our study, we utilized YOLO11x, the largest model in the YOLO11 model series, which has 56.9M parameters and 194.9 GFLOPs. With the highest accuracy (mAP\(^{val}_{50-95}\) = 54.7) among YOLO11 variants, YOLO11x, combined with its architectural advancements, was the optimal choice for our task, as we had the computational resources to support running a larger model.
 
-\subsubsection{Dataset Annotation and Preprocessing}\label{dataset-annotation-and-preprocessing}
+\subsubsection{Dataset Annotation and Preprocessing}\label{dataset-annotation-and-preprocessing-1}
 
 Our dataset presents unique challenges due to its egocentric viewpoint, as body parts of the child wearing the camera frequently appear in the footage. To prevent misclassification, we employ a dedicated annotation scheme where all individuals are labeled as ``person'' with unique IDs, consistently assigning the key child (child wearing the camera) ID = 1. During preprocessing, we map this ID to a separate ``child body parts'' category to distinguish the child's presence from other individuals.
 
@@ -459,7 +662,7 @@ Our fine-tuned YOLO11 model also classifies five object categories relevant to t
 
 \subsubsection{Dataset Splitting}\label{dataset-splitting}
 
-The full Quantex dataset consists of 634 videos, all recorded at 30fps, resulting in 19023571 frames. From this dataset, we annotated 80 videos, totaling 113799 frames. Prior to splitting this dataset into training, validation, and testing datasets, we analyzed how often each class was present in the dataset. The distribution, displayed in detail in Table \ref{tab:det-class-distribution}, revealed an imbalance, with the ``Adult'' class being the most frequent. To address this imbalance, we applied a stratified split to ensure that each dataset preserved the original class distribution. Following an 80/10/10 split, the final datasets consisted of 91038 frames for training (80\%), 11379 frames for validation (10\%), and 11382 frames for testing (10\%), ensuring an accurate evaluation of model performance relative to real-world data distribution (see Figure \ref{tab:det-dataset-splits}).
+The full Quantex dataset consists of 634 videos, all recorded at 30fps, resulting in 19023571 frames. From this dataset, we annotated 80 videos, totaling 113799 frames. Prior to splitting this dataset into training, validation, and testing datasets, we analyzed how often each class was present in the dataset. The distribution, displayed in detail in Table \ref{tab:det-class-distribution}, revealed an imbalance, with the ``Adult'' class being the most frequent. To address this imbalance, we applied a stratified split to ensure that each dataset preserved the original class distribution. Following an 80/10/10 split, the final datasets consisted of 91039 frames for training (80\%), 11380 frames for validation (10\%), and 11380 frames for testing (10\%), ensuring an accurate evaluation of model performance relative to real-world data distribution (see Figure \ref{tab:det-dataset-splits}).
 
 \begin{table}[tbp]
 
@@ -522,7 +725,7 @@ Model training was conducted on a Linux server equipped with an Intel(R) Xeon(R)
 \caption{Training and Validation Loss Curves for the YOLO11x detection model.}\label{fig:det-loss-curves}
 \end{figure}
 
-The loss function of the YOLO11 model comprises three main components: Box Loss, Classification Loss, and Distribution Focal Loss (DFL) (Li et al., 2020; Terven, Cordova-Esparza, Ramirez-Pedraza, Chavez-Urbiola, \& Romero-Gonzalez, 2024). \emph{Box Loss} quantifies the difference between predicted bounding boxes and ground truth boxes, ensuring precise localization of detected persons, faces and objects by penalizing inaccuracies in position and size. \emph{Classification Loss} (DFL) evaluates the model's ability to correctly assign detected instances to their respective classes, reducing false positives and false negatives. \emph{Distribution Focal Loss} enhances the model's ability to detect challenging persons, faces and objects, particularly small or partially occluded ones, by refining the localization of bounding box coordinates and emphasizing hard-to-detect instances. Together, these loss components contribute to a more robust and accurate detection model.
+The loss function of the YOLO11 model comprises three main components: Box Loss, Classification Loss, and Distribution Focal Loss (DFL) (Li et al., 2020; Terven et al., 2024). \emph{Box Loss} quantifies the difference between predicted bounding boxes and ground truth boxes, ensuring precise localization of detected persons, faces and objects by penalizing inaccuracies in position and size. \emph{Classification Loss} (DFL) evaluates the model's ability to correctly assign detected instances to their respective classes, reducing false positives and false negatives. \emph{Distribution Focal Loss} enhances the model's ability to detect challenging persons, faces and objects, particularly small or partially occluded ones, by refining the localization of bounding box coordinates and emphasizing hard-to-detect instances. Together, these loss components contribute to a more robust and accurate detection model.
 
 During the training process, we observed that all three loss components decreased over time, indicating effective learning and improved performance, as visible in in Figure \ref{fig:det-loss-curves}. A steady decrease in Box Loss indicates that the model is becoming increasingly accurate in localizing persons, faces and objects within frames. Similarly, the steady convergence of the Classification Loss reveals the model's increasing ability to reliably classifiy the detected instance in one of the relevant classes. The decrease in DFL over time indicates that the model is getting better at focusing on and correctly identifying difficult-to-detect persons, faces or objects, which improves its overall detection capabilities. Conclusively, the loss curves show that the model effectively learned to localize and identify the target classes during the training period.
 
@@ -597,11 +800,11 @@ mAP@0.5 & \multicolumn{1}{c}{Precision} & \multicolumn{1}{c}{Recall} & \multicol
 
 The performance of the object detection model was evaluated using a confusion matrix and precision-recall (PR) curves. The YOLO11 model achieved a precision of 0.91 and a recall of 0.80 on the testing set, resulting in an F1-score of 0.85. The F1 metric is particularly important as it reflects both the accuracy of identifying each class instance (precision) and the model's ability to detect all occurrences of the class (recall). The normalized confusion matrix (see figure \ref{fig:det-metrics}) reveals strong overall performance with mean Average Precision across all classes mAP=0.87. The averaged precision-recall curve remains close to the top-left corner and signifies that the model maintains high precision and recall across various thresholds, underscoring its effectiveness in detecting the different classes. Notably, the confusion matrix demonstrates minimal confusion between most classes, indicating that the model can effectively distinguish between them (see Figure \ref{fig:det-metrics}). A closer look at class-wise performance reveals that the model excels in detecting people and certain objects. The ``infant/child,'' ``adult,'' and ``adult face'' classes, as well as ``child body parts,'' ``infant/child face,'' ``book,'' and ``screen,'' all achieve high Average Precision (AP) scores. This indicates that the model reliably identifies these categories with strong precision and recall (see figure \ref{fig:det-metrics}).
 
-On the other hand, some object classes remain more challenging. In particular, the ``toy,'' ``kitchenware,'' and ``other object'' categories exhibit lower AP scores of 0.77, 0.77, and 0.82, respectively. The confusion matrix confirms that 22\% of ``kitchenware'' and 22\% of ``toy'' instances are frequently misclassified as ``background.'' This issue likely stems from the annotation strategy, which prioritized labeling only objects that the child directly interacted with. As a result, other visually similar objects in the background remain unannotated, introducing ambiguity during training. Additionally, ``infant/child'' and ``infant/child face'' also show notable false negative rates of 17\%, further contributing to misclassification. These findings suggest that increasing the number of annotated samples---particularly for objects with which the child interacts with---could improve detection performance. Future work could also explore model refinements or data augmentation techniques to enhance the detection of small, occluded, or partially visible objects. In conclusion, the YOLO11 model demonstrates strong performance in detecting people, faces, and several object classes.
+On the other hand, some object classes remain more challenging. In particular, the ``toy,'' ``kitchenware,'' and ``other object'' categories exhibit lower AP scores of 0.77, 0.77, and 0.82, respectively. The confusion matrix confirms that 22\% of ``kitchenware'' and 22\% of ``toy'' instances are frequently misclassified as ``background.'' This issue likely stems from the annotation strategy, which prioritized labeling only objects that the child directly interacted with. As a result, other visually similar objects in the background remain unannotated, introducing ambiguity during training. Additionally, ``infant/child'' and ``infant/child face'' also show notable false negative rates of 17\%, further contributing to misclassification. These findings suggest that increasing the number of annotated samples---particularly for objects with which the child interacts with---could improve detection performance. Future work could also explore model refinements or data augmentation techniques to enhance the detection of small, occluded, or partially visible objects. In conclusion, the YOLO11 model demonstrates strong performance in detecting people, faces, and several object classes, as displayed in Figure \ref{fig:det-detection-examples}.
 
 \subsection{YOLO11x-cls: Gaze Classification}\label{sup-yolo11x-cls}
 
-Selecting an appropriate model for gaze classification in our automated pipeline presented unique challenges due to the egocentric perspective of our dataset. Many gaze estimation methods rely on high-quality eye images, either extracted separately (Zhang, Sugano, Fritz, \& Bulling, 2015) or as part of the full face (Zhang, Sugano, Fritz, \& Bulling, 2016). However, our dataset often contains blurry or partially occluded faces captured at varying angles, making such approaches not suitable. Additionally, rather than predicting fine-grained gaze direction (e.g., left or right), our focus is on the binary classification of whether a person's gaze is directed toward the child or not.
+Selecting an appropriate model for gaze classification in our automated pipeline presented unique challenges due to the egocentric perspective of our dataset. Many gaze estimation methods rely on high-quality eye images, either extracted separately (Zhang et al., 2015) or as part of the full face (Zhang et al., 2016). However, our dataset often contains blurry or partially occluded faces captured at varying angles, making such approaches not suitable. Additionally, rather than predicting fine-grained gaze direction (e.g., left or right), our focus is on the binary classification of whether a person's gaze is directed toward the child or not.
 
 Cheng, Wang, Bao, and Lu (2021) provides an overview of the challenges and recent advancements in gaze estimation methods, including approaches that incorporate temporal information, such as Gaze360 (Kellnhofer, Recasens, Stent, Matusik, \& Torralba, 2019). While these methods improve tracking across frames, they are not the primary focus of our study, as we analyze social interactions on a frame-by-frame basis.
 
@@ -609,7 +812,7 @@ Given these constraints of our dataset, we opted for a CNN-based approach, which
 
 We fine-tuned YOLO11x-cls, the largest model in the YOLO11 classification series, which has 28.4M parameters. The model achieved the highest accuracy among all YOLO11 variants (acc\_top1 = 79.5), making it the optimal choice for gaze classification in our dataset. Moreover YOLO11's architectural enhancements, such as the C2PSA block, improve the model's ability to focus on critical regions within an image, ensuring robust detection of visual attention toward the child, even under challenging real-world conditions.
 
-\subsubsection{Data Annotation and Preprocessing}\label{data-annotation-and-preprocessing}
+\subsubsection{Data Annotation and Preprocessing}\label{data-annotation-and-preprocessing-1}
 
 We defined gaze as being ``directed toward the child'' when a person's gaze was oriented toward the child's face, body, or general direction of the child. This included instances where the person was looking directly at the camera (worn by the child) or slightly upwards, allowing for an estimation of the likely position of the child's head. Each detected face was annotated as either ``gaze'' (gaze directed at the child) or ``no gaze'' (gaze directed elsewhere).
 
@@ -686,9 +889,9 @@ More advanced gaze estimation methods---such as incorporating temporal informati
 
 \subsection{Proximity Heuristic}\label{sup-proximity}
 
-Proximity between individuals is an important aspect of social interaction. Previous studies have shown that interpersonal distance can provide insights into the nature of relationships and social engagement (Hernández-Heredia, Reyes-Manzano, Flores-Hernández, Ramos-Fernández, \& Guzmán-Vargas, 2024; Janssen et al., 2024; Onnela et al., 2014). Since our dataset does not contain explicit proximity labels, we developed a heuristic approach to estimate the distance between the child and other individuals.
+Proximity between individuals is an important aspect of social interaction. Previous studies have shown that interpersonal distance can provide insights into the nature of relationships and social engagement (Hernández-Heredia et al., 2024; Janssen et al., 2024; Onnela et al., 2014). Since our dataset does not contain explicit proximity labels, we developed a heuristic approach to estimate the distance between the child and other individuals.
 
-\subsubsection{Formula for Proximity Estimation}\label{formula-for-proximity-estimation}
+\subsubsection{Formula for Proximity Estimation}\label{formula-for-proximity-estimation-1}
 
 We infer proximity from the size of the bounding boxes of detected faces, assuming that the size of these bounding boxes provides an implicit cue for proximity. Specifically, we infer that larger bounding boxes correspond to individuals closer to the camera, whereas smaller bounding boxes indicate individuals further away. The proximity value is calculated using the face area, defined as the product of the bounding box width and height. This computed size is then compared to predefined reference face sizes: one corresponding to a face very close to the camera (within arm's reach) and another representing a face further away (e.g., in the background or outdoors).
 
@@ -714,18 +917,18 @@ This logarithmic transformation ensures that proximity values are compressed for
 
 \begin{figure}
 
-{\centering \includegraphics{Quantex_interaction_paper_files/figure-latex/proximity-classifications-1} 
+{\centering \includegraphics{Quantex_interaction_paper_files/figure-latex/proximity-heuristic-1} 
 
 }
 
-\caption{Proximity Heuristic examples. Example \textbf{A} shows a face far away from the camera (proximity score = 0.07), example \textbf{B} depicts a face slighlty closer (proximity score = 0.2). Example \textbf{C} shows a face quite close to the camera (proximity score = 0.6), and example \textbf{D} illustrates a face extremely close to the camera (proximity score = 1).}\label{fig:proximity-classifications}
+\caption{Proximity Heuristic examples. Example \textbf{A} shows a face far away from the camera (proximity score = 0.07), example \textbf{B} depicts a face slighlty closer (proximity score = 0.2). Example \textbf{C} shows a face quite close to the camera (proximity score = 0.6), and example \textbf{D} illustrates a face extremely close to the camera (proximity score = 1).}\label{fig:proximity-heuristic}
 \end{figure}
 
-\subsubsection{Incorporating Width-to-Height Ratio}\label{incorporating-width-to-height-ratio}
+\subsubsection{Incorporating Width-to-Height Ratio}\label{incorporating-width-to-height-ratio-1}
 
-In addition to face size, we consider the width-to-height ratio of the detected face as a cue for proximity. For both adults and children/infants, we defined an expected aspect ratio based on reference images of full, front-facing faces. If a detected face's aspect ratio deviates significantly from the expected ratio, we infer that the face is extremely close to the camera, causing partial cropping of the bounding box.
+Along with face size, we use the width-to-height ratio of the detected face as a proximity cue. Reference aspect ratios for adults and children are based on front-facing images. If a detected face's aspect ratio deviates significantly from the expected ratio, we infer that the face is extremely close to the camera, causing partial cropping of the bounding box.
 
-If the deviation exceeds a defined threshold (\(\epsilon\)), we set the proximity score to 1:
+If the deviation exceeds a set threshold (\(\epsilon\)), the proximity score is set to 1:
 
 \[
 r_{\text{expected}} = \frac{w_{\text{expected}}}{h_{\text{expected}}}
@@ -735,13 +938,11 @@ r_{\text{expected}} = \frac{w_{\text{expected}}}{h_{\text{expected}}}
 \text{If} \quad |r_{\text{detected}} - r_{\text{expected}}| > \epsilon, \quad P = 1
 \]
 
-Where \(\epsilon\) is a fixed threshold (\(\epsilon\)=0.5) that determines the degree of deviation considered significant for extreme proximity.
-
-This heuristic approach, which combines face area and aspect ratio, provides an efficient and interpretable method for estimating proximity without requiring additional sensors or depth information. It enables us to examine the spatial dynamics of social interactions in egocentric recordings, offering insights into the relationships between children and others during everyday experiences. Examples of proximity estimation are shown in Figure \ref{fig:proximity-classifications}, illustrating the range of proximity scores from 0 (far away) to 1 (extremely close).
+With (\(\epsilon\)=0.5), this heuristic efficiently estimates proximity using only image-based cues, avoiding the need for additional sensors. It helps analyze social interactions in egocentric recordings, offering insights into children's spatial relationships. Figure \ref{fig:proximity-heuristic} illustrates proximity scores from 0 (far) to 1 (very close).
 
 \subsection{Voice Type Classification}\label{sup-voice-type}
 
-Regarding the audio component of our interaction analysis, we aimed to use a model that does not only detect the presence of speech but also distinguishes between the key child wearing the camera and other speakers. This distinction is crucial for understanding the dynamics of the interactions and the role of the key child in the social context. To achieve this, we applied the Voice Type Classifier (Lavechin, Bousbib, Bredin, Dupoux, \& Cristia, 2020), an open-source model designed to identify five different voice types: key child (KCHI), other child (OCH), female adult (FEM), male adult (MAL), and speech in general (SPEECH). This multi-label classification enables the detection of multiple classes simultaneously, which is particularly useful when faced with overlapping speech segments, which frequently occurs in natural interactions.
+Regarding the audio component of our interaction analysis, we aimed to use a model that does not only detect the presence of speech but also distinguishes between the key child wearing the camera and other speakers. This distinction is crucial for understanding the dynamics of the interactions and the role of the key child in the social context. To achieve this, we applied the Voice Type Classifier (Lavechin et al., 2020), an open-source model designed to identify five different voice types: key child (KCHI), other child (OCH), female adult (FEM), male adult (MAL), and speech in general (SPEECH). This multi-label classification enables the detection of multiple classes simultaneously, which is particularly useful when faced with overlapping speech segments, which frequently occurs in natural interactions.
 
 The model, as described by Lavechin et al. (2020), is based on a convolutional neural network (CNN) architecture that includes SincNet components. These components are designed to extract meaningful frequency representations, which are then processed by a stack of bi-directional long short-term memory (LSTM) and fully connected layers. The final layer applies a sigmoid activation function to output a score between 0 and 1 for each class, representing the probability of that voice type being present in the audio segment. The network is trained using binary cross-entropy loss, optimizing each class independently.
 
