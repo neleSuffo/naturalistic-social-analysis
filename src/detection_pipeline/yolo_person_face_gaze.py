@@ -149,24 +149,36 @@ def insert_video_record(video_path, cursor) -> int:
     else:
         # Extract child_id and recording_date from filename
         child_id, recording_date = extract_video_info(video_path_str)
-        
+                
         # Calculate age at recording using birthday from Subjects table
         age_at_recording = None
         if child_id and recording_date:
+            # First get the birthday from Subjects table
             cursor.execute('''
-                SELECT ROUND((julianday(?) - julianday(birthday))/365.25, 2)
+                SELECT birthday 
                 FROM Subjects 
-                WHERE ID = ?
-            ''', (recording_date, child_id))
+                WHERE id = ?
+            ''', (child_id,))
             result = cursor.fetchone()
         
+            if result:
+                birthday = result[0]
+                # Now calculate age at recording
+                cursor.execute('''
+                    SELECT ROUND((julianday(?) - julianday(?))/365.25, 2)
+                ''', (recording_date, birthday))
+                age_result = cursor.fetchone()
+                if age_result:
+                    age_at_recording = age_result[0]
+                else:
+                    logging.warning(f"Could not calculate age for child ID {child_id}")
+            else:
+                logging.warning(f"No birthday found for child ID {child_id}")
+            
         cursor.execute('''
             INSERT INTO Videos (video_path, child_id, recording_date, age_at_recording) 
             VALUES (?, ?, ?, ?)
         ''', (video_path_str, child_id, recording_date, age_at_recording))
-        
-        if age_at_recording is None:
-            logging.warning(f"Could not calculate age at recording for video {video_path_str}")
         
         cursor.execute('SELECT video_id FROM Videos WHERE video_path = ?', (video_path_str,))
         return cursor.fetchone()[0]
