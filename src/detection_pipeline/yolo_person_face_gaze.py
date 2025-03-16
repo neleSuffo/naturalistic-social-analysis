@@ -255,7 +255,12 @@ def process_frame(frame: np.ndarray, frame_idx: int, video_id: int, detection_mo
 
     return detection_counts
 
-def process_video(video_path: Path, detection_model: YOLO, gaze_model: YOLO, cursor: sqlite3.Cursor, conn: sqlite3.Connection):
+def process_video(video_path: Path, 
+                  detection_model: YOLO, 
+                  gaze_model: YOLO, 
+                  cursor: sqlite3.Cursor, 
+                  conn: sqlite3.Connection,
+                  frame_skip: int):
     """
     This function processes a video frame by frame. It inserts the video record, processes each frame, and commits the changes.
     The steps are as follows:
@@ -277,6 +282,8 @@ def process_video(video_path: Path, detection_model: YOLO, gaze_model: YOLO, cur
         SQLite cursor object
     conn : sqlite3.Connection
         SQLite connection object
+    frame_skip : int, optional
+        Number of frames to skip between processing (default: 5)
     """
     logging.info(f"Processing video: {video_path.name}")
     video_id = insert_video_record(video_path.name, cursor)
@@ -296,7 +303,7 @@ def process_video(video_path: Path, detection_model: YOLO, gaze_model: YOLO, cur
         if not ret:
             break
 
-        if frame_idx % 10 == 0:
+        if frame_idx % frame_skip == 0:
             detection_counts = process_frame(
                 frame, frame_idx, video_id, detection_model, gaze_model, cursor
             )
@@ -570,7 +577,8 @@ def update_detection_summary(cursor: sqlite3.Cursor, conn: sqlite3.Connection):
     cursor.execute(summary_query)
     conn.commit()
           
-def main(num_videos_to_process: int = None):
+def main(num_videos_to_process: int = None,
+        frame_skip: int = 5):
     """
     This function processes videos using YOLO models for person and face detection and gaze classification.
     It loads the age group data and processes either all videos or a balanced subset from each age group.
@@ -579,6 +587,8 @@ def main(num_videos_to_process: int = None):
     ----------
     num_videos_to_process : int, optional
         Number of videos to process per age group. If None, processes all available videos.
+    frame_skip : int, optional
+        Number of frames to skip between processing (default: 5)
     """
     logging.basicConfig(level=logging.INFO,
                        format='%(asctime)s - %(levelname)s - %(message)s')
@@ -610,7 +620,7 @@ def main(num_videos_to_process: int = None):
     # Process videos
     processed_children = set()
     for video_path in videos_to_process:
-        process_video(video_path, detection_model, gaze_model, cursor, conn)
+        process_video(video_path, detection_model, gaze_model, cursor, conn, frame_skip)
         #run_voice_type_classifier(video_path.name)
 
         # Get child_id from the video that was just processed
@@ -626,6 +636,8 @@ def main(num_videos_to_process: int = None):
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser(description="Process a set of videos using YOLO models for person and face detection and gaze classification.")
     argparser.add_argument("--num_videos", type=int, help="Number of videos to process")
+    argparse.add_argument("--frame_skip", type=int, default=5, help="Number of frames to skip between processing (default: 5)")
     args = argparser.parse_args()
     num_videos_to_process = args.num_videos_to_process
-    main()
+    frame_skip = args.frame_skip
+    main(num_videos_to_process, frame_skip)
