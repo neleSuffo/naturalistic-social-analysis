@@ -291,28 +291,6 @@ def process_video(video_path: Path, detection_model: YOLO, gaze_model: YOLO, cur
         total_counts['kitchenware'], total_counts['screen'],
         total_counts['food'], total_counts['other_object']
     ))
-    # Create output directory if it doesn't exist
-    output_dir = Path(DetectionPaths.detection_results_dir) / "stats"
-    output_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Create statistics file
-    output_file = output_dir / f"{video_path.stem}_stats.txt"
-    with open(output_file, 'w') as f:
-        f.write(f"Video Statistics for: {video_path.name}\n")
-        f.write("=" * 50 + "\n")
-        f.write(f"Video ID: {video_id}\n")
-        f.write(f"Total Video Frames: {frame_idx}\n")
-        f.write(f"Processed Frames: {processed_frames} (every 10th frame)\n")
-        f.write("\nDetection Counts:\n")
-        f.write("-" * 20 + "\n")
-    
-        # Write counts for all object classes
-        for class_id, class_name in YoloConfig.detection_mapping.items():
-            formatted_name = class_name.replace('_', ' ').title()
-            count = total_counts[class_name]
-            f.write(f"{formatted_name}: {count}\n")
-            
-    logging.info(f"Statistics written to: {output_file}")
     conn.commit()
 
 def store_voice_detections(video_file_name: str, results_file: Path, fps: int = 30):
@@ -455,17 +433,16 @@ def register_model(cursor: sqlite3.Cursor, model_name: str, model: YOLO) -> int:
         
     return model_id
        
-def main(num_videos_to_process: int):
+def main(num_videos_to_process: int = None):
     """
-    This function processes a set of videos using YOLO models for person and face detection and gaze classification.
-    It loads the age group data, selects a balanced number of videos from each age group, and processes each video.
+    This function processes videos using YOLO models for person and face detection and gaze classification.
+    It loads the age group data and processes either all videos or a balanced subset from each age group.
     
     Parameters:
     ----------
-    num_videos_to_process : int
-        Number of videos to process
+    num_videos_to_process : int, optional
+        Number of videos to process per age group. If None, processes all available videos.
     """
-    videos_per_group = num_videos_to_process // 3
     logging.basicConfig(level=logging.INFO,
                        format='%(asctime)s - %(levelname)s - %(message)s')
     
@@ -483,11 +460,18 @@ def main(num_videos_to_process: int):
     detection_model_id = register_model(cursor, "detection", detection_model)
     gaze_model_id = register_model(cursor, "gaze", gaze_model)
 
-    # Get balanced videos across age groups (20 from each group)
-    selected_videos = get_balanced_videos(videos_input_dir, age_df, videos_per_group=videos_per_group)
+    if num_videos_to_process is None:
+        # Process all videos in the directory
+        videos_to_process = list(videos_input_dir.glob("*.MP4"))
+        logging.info(f"Processing all {len(videos_to_process)} videos found in directory")
+    else:
+        # Get balanced videos across age groups
+        videos_per_group = num_videos_to_process // 3
+        videos_to_process = get_balanced_videos(videos_input_dir, age_df, videos_per_group=videos_per_group)
+        logging.info(f"Processing {len(videos_to_process)} videos ({videos_per_group} per age group)")
     
-    # Process only the selected videos
-    for video_path in selected_videos:
+    # Process videos
+    for video_path in videos_to_process:
         process_video(video_path, detection_model, gaze_model, cursor, conn)
         #run_voice_type_classifier(video_path.name)
     
