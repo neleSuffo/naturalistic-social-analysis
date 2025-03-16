@@ -125,6 +125,7 @@ def classify_gaze(gaze_model: YOLO, face_image: np.ndarray) -> Tuple[int, int]:
 def insert_video_record(video_path, cursor) -> int:
     """
     This function inserts a video record into the database if it doesn't already exist.
+    It calculates the age at recording using the child's birthday from Subjects table.
     
     Parameters:
     ----------
@@ -138,14 +139,36 @@ def insert_video_record(video_path, cursor) -> int:
     video_id : int
         Video ID
     """
-    cursor.execute('SELECT video_id FROM Videos WHERE video_path = ?', (str(video_path),))
+    video_path_str = str(video_path)
+    cursor.execute('SELECT video_id FROM Videos WHERE video_path = ?', (video_path_str,))
     existing_video = cursor.fetchone()
+    
     if existing_video:
         logging.info(f"Video {Path(video_path).name} already processed. Skipping.")
         return None
     else:
-        cursor.execute('INSERT INTO Videos (video_path) VALUES (?)', (str(video_path),))
-        cursor.execute('SELECT video_id FROM Videos WHERE video_path = ?', (str(video_path),))
+        # Extract child_id and recording_date from filename
+        child_id, recording_date = extract_video_info(video_path_str)
+        
+        # Calculate age at recording using birthday from Subjects table
+        age_at_recording = None
+        if child_id and recording_date:
+            cursor.execute('''
+                SELECT ROUND((julianday(?) - julianday(birthday))/365.25, 2)
+                FROM Subjects 
+                WHERE ID = ?
+            ''', (recording_date, child_id))
+            result = cursor.fetchone()
+        
+        cursor.execute('''
+            INSERT INTO Videos (video_path, child_id, recording_date, age_at_recording) 
+            VALUES (?, ?, ?, ?)
+        ''', (video_path_str, child_id, recording_date, age_at_recording))
+        
+        if age_at_recording is None:
+            logging.warning(f"Could not calculate age at recording for video {video_path_str}")
+        
+        cursor.execute('SELECT video_id FROM Videos WHERE video_path = ?', (video_path_str,))
         return cursor.fetchone()[0]
 
 def process_frame(frame: np.ndarray, frame_idx: int, video_id: int, detection_model: YOLO, gaze_model: YOLO, cursor: sqlite3.Cursor) -> Tuple[int, int]:
@@ -293,6 +316,40 @@ def process_video(video_path: Path, detection_model: YOLO, gaze_model: YOLO, cur
     ))
     conn.commit()
 
+def extract_video_info(video_path: str) -> Tuple[int, str]:
+    """
+    Extracts child ID and recording date from video filename.
+    Expected format: *id{number}_{YYYY_MM_DD}*.MP4
+    
+    Parameters:
+    ----------
+    video_path : str
+        Video file path or name
+        
+    Returns:
+    -------
+    tuple : (child_id, recording_date)
+        child_id : int or None
+        recording_date : str or None
+    """
+    try:
+        # Extract ID
+        id_start = video_path.find('id') + 2
+        if id_start < 2:  # if 'id' not found
+            return None, None
+        id_end = video_path[id_start:].find('_') + id_start
+        child_id = int(video_path[id_start:id_end])
+        
+        # Extract date
+        date_start = video_path.find('_20') + 1
+        if date_start < 1:  # if '_20' not found
+            return child_id, None
+        recording_date = video_path[date_start:date_start+10].replace('_', '-')
+        
+        return child_id, recording_date
+    except (ValueError, IndexError):
+        return None, None
+    
 def store_voice_detections(video_file_name: str, results_file: Path, fps: int = 30):
     """
     Reads the voice type classifier RTTM output and stores detections per video frame.
@@ -311,7 +368,11 @@ def store_voice_detections(video_file_name: str, results_file: Path, fps: int = 
     cursor = conn.cursor()
     
     # Insert video record if it does not exist
-    cursor.execute("INSERT OR IGNORE INTO Videos (video_path) VALUES (?)", (video_file_name,))
+    child_id, recording_date = extract_video_info(video_file_name)
+    cursor.execute('''
+        INSERT OR IGNORE INTO Videos (video_path, child_id, recording_date) 
+        VALUES (?, ?, ?)
+    ''', (video_file_name, child_id, recording_date))
     cursor.execute("SELECT video_id FROM Videos WHERE video_path = ?", (video_file_name,))
     video_id = cursor.fetchone()[0]
     
@@ -432,7 +493,71 @@ def register_model(cursor: sqlite3.Cursor, model_name: str, model: YOLO) -> int:
         ''', (class_id, model_id, class_name))
         
     return model_id
-       
+ 
+def update_detection_summary(cursor: sqlite3.Cursor, conn: sqlite3.Connection):
+    """
+    Updates the DetectionSummary table with aggregated detection statistics.
+    """
+    summary_query = '''
+    WITH FramesWithDetections AS (
+        SELECT 
+            v.child_id as id,
+            v.video_id,
+            d.frame_number,
+            MAX(CASE WHEN d.object_class = 1.0 THEN 1 ELSE 0 END) as has_adult,
+            MAX(CASE WHEN d.object_class = 0.0 THEN 1 ELSE 0 END) as has_child,
+            MAX(CASE WHEN d.object_class = 3.0 THEN 1 ELSE 0 END) as has_adult_face,
+            MAX(CASE WHEN d.object_class = 2.0 THEN 1 ELSE 0 END) as has_child_face,
+            MAX(CASE WHEN d.object_class = 5.0 THEN 1 ELSE 0 END) as has_book,
+            MAX(CASE WHEN d.object_class = 6.0 THEN 1 ELSE 0 END) as has_toy,
+            MAX(CASE WHEN d.object_class = 7.0 THEN 1 ELSE 0 END) as has_kitchenware,
+            MAX(CASE WHEN d.object_class = 8.0 THEN 1 ELSE 0 END) as has_screen,
+            MAX(CASE WHEN d.object_class = 9.0 THEN 1 ELSE 0 END) as has_food,
+            MAX(CASE WHEN d.object_class = 10.0 THEN 1 ELSE 0 END) as has_other_object
+        FROM Videos v
+        JOIN Detections d ON v.video_id = d.video_id
+        GROUP BY v.child_id, v.video_id, d.frame_number
+    ),
+    TotalFramesPerChild AS (
+        SELECT 
+            v.child_id as id,
+            SUM(vs.total_frames) as total_frames
+        FROM Videos v
+        JOIN VideoStatistics vs ON v.video_id = vs.video_id
+        GROUP BY v.child_id
+    )
+    INSERT OR REPLACE INTO DetectionSummary
+    SELECT 
+        f.id,
+        COUNT(DISTINCT f.video_id) as video_count,
+        t.total_frames,
+        SUM(f.has_adult) as frames_with_adult,
+        SUM(f.has_child) as frames_with_child,
+        SUM(f.has_adult_face) as frames_with_adult_face,
+        SUM(f.has_child_face) as frames_with_child_face,
+        SUM(f.has_book) as frames_with_book,
+        SUM(f.has_toy) as frames_with_toy,
+        SUM(f.has_kitchenware) as frames_with_kitchenware,
+        SUM(f.has_screen) as frames_with_screen,
+        SUM(f.has_food) as frames_with_food,
+        SUM(f.has_other_object) as frames_with_other_object,
+        ROUND(SUM(f.has_adult) * 100.0 / t.total_frames, 2) as adult_percent,
+        ROUND(SUM(f.has_child) * 100.0 / t.total_frames, 2) as child_percent,
+        ROUND(SUM(f.has_adult_face) * 100.0 / t.total_frames, 2) as adult_face_percent,
+        ROUND(SUM(f.has_child_face) * 100.0 / t.total_frames, 2) as child_face_percent,
+        ROUND(SUM(f.has_book) * 100.0 / t.total_frames, 2) as book_percent,
+        ROUND(SUM(f.has_toy) * 100.0 / t.total_frames, 2) as toy_percent,
+        ROUND(SUM(f.has_kitchenware) * 100.0 / t.total_frames, 2) as kitchenware_percent,
+        ROUND(SUM(f.has_screen) * 100.0 / t.total_frames, 2) as screen_percent,
+        ROUND(SUM(f.has_food) * 100.0 / t.total_frames, 2) as food_percent,
+        ROUND(SUM(f.has_other_object) * 100.0 / t.total_frames, 2) as other_object_percent
+    FROM FramesWithDetections f
+    JOIN TotalFramesPerChild t ON f.id = t.id
+    GROUP BY f.id, t.total_frames;
+    '''
+    cursor.execute(summary_query)
+    conn.commit()
+          
 def main(num_videos_to_process: int = None):
     """
     This function processes videos using YOLO models for person and face detection and gaze classification.
@@ -471,9 +596,18 @@ def main(num_videos_to_process: int = None):
         logging.info(f"Processing {len(videos_to_process)} videos ({videos_per_group} per age group)")
     
     # Process videos
+    processed_children = set()
     for video_path in videos_to_process:
         process_video(video_path, detection_model, gaze_model, cursor, conn)
         #run_voice_type_classifier(video_path.name)
+
+        # Get child_id from the video that was just processed
+        child_id, _ = extract_video_info(video_path.name)
+        if child_id and child_id not in processed_children:
+            # Update summary only for this child's data
+            update_detection_summary(cursor, conn)
+            processed_children.add(child_id)
+            logging.info(f"Updated detection summary for child {child_id}")
     
     conn.close()
 
