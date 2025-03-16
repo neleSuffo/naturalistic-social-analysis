@@ -1,7 +1,8 @@
 import sqlite3
 import logging
+import pandas as pd
 from pathlib import Path
-from constants import DetectionPaths
+from constants import DetectionPaths, DetectionPipeline
 
 logging.basicConfig(level=logging.INFO)
 
@@ -31,7 +32,10 @@ def setup_detection_database(db_path: Path = DetectionPaths.detection_db_path):
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS Videos (
             video_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            video_path TEXT UNIQUE
+            video_path TEXT UNIQUE,
+            child_id INTEGER,
+            recording_date DATE,
+            age_at_recording FLOAT
         )
     ''')
 
@@ -44,7 +48,6 @@ def setup_detection_database(db_path: Path = DetectionPaths.detection_db_path):
             FOREIGN KEY (video_id) REFERENCES Videos(video_id)
         )
     ''')
-
 
     cursor.execute('''
         CREATE TABLE Models (
@@ -100,6 +103,44 @@ def setup_detection_database(db_path: Path = DetectionPaths.detection_db_path):
         )
     ''')
 
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS DetectionSummary (
+            id INTEGER PRIMARY KEY,
+            video_count INTEGER,
+            total_frames INTEGER,
+            frames_with_adult INTEGER,
+            frames_with_child INTEGER,
+            frames_with_adult_face INTEGER,
+            frames_with_child_face INTEGER,
+            frames_with_book INTEGER,
+            frames_with_toy INTEGER,
+            frames_with_kitchenware INTEGER,
+            frames_with_screen INTEGER,
+            frames_with_food INTEGER,
+            frames_with_other_object INTEGER,
+            adult_percent REAL,
+            child_percent REAL,
+            adult_face_percent REAL,
+            child_face_percent REAL,
+            book_percent REAL,
+            toy_percent REAL,
+            kitchenware_percent REAL,
+            screen_percent REAL,
+            food_percent REAL,
+            other_object_percent REAL
+        )
+    ''')
+
+    # Load subjects data from Excel and add to database
+    quantex_subjects_df = pd.read_excel(DetectionPipeline.quantex_subjects)
+    quantex_subjects_df.to_sql('Subjects', conn, if_exists='replace', index=False)
+    
+    # Convert birthday column to DATE format
+    cursor.execute('''
+        UPDATE Subjects
+        SET birthday = DATE(birthday)
+    ''')
+    
     conn.commit()
     conn.close()
     logging.info(f"Detection database created at {db_path}")
