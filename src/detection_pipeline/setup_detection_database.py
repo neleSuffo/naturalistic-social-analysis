@@ -131,10 +131,15 @@ def setup_detection_database(db_path: Path = DetectionPaths.detection_db_path):
         )
     ''')
 
-    # Load subjects data from Excel and add to database
-    quantex_subjects_df = pd.read_excel(DetectionPipeline.quantex_subjects)
-    quantex_subjects_df.to_sql('Subjects', conn, if_exists='replace', index=False)
-    
+    # Load subjects data from CSV with header row
+    quantex_subjects_df = pd.read_csv(
+        DetectionPipeline.quantex_subjects.with_suffix('.csv'),
+        header=0,  # Use first row as column names
+        sep=';',   # Specify semicolon as separator
+        encoding='utf-8'  # Specify encoding explicitly
+    )
+    quantex_subjects_df['birthday'] = pd.to_datetime(quantex_subjects_df['birthday'])
+    quantex_subjects_df.to_sql('Subjects', conn, if_exists='replace', index=False)    
     # Convert birthday column to DATE format
     cursor.execute('''
         UPDATE Subjects
