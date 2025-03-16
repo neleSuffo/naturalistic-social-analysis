@@ -125,3 +125,6 @@ class ModelNames:
     gaze_estimation_model = "gaze_estimation"
     vtc_model = "vtc"
     openpose_model = "openpose"
+    
+class DetectionPipeline:
+    quantex_subjects = Path("/home/nele_pauline_suffo/ProcessedData/quantex_subjects.xlsx")
