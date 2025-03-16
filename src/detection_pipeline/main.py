@@ -3,7 +3,7 @@ import argparse
 import yolo_person_face_gaze
 from setup_detection_database import setup_detection_database
 
-def main(num_videos_to_process: int):
+def main(num_videos_to_process: int = None):
     """
     This function runs the detection pipeline. It first sets up the detection database and then runs the detection pipeline.
     
@@ -19,6 +19,6 @@ def main(num_videos_to_process: int):
     
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Run the detection pipeline')
-    parser.add_argument('--num_videos', type=int, help='The number of videos to process')
+    parser.add_argument('--num_videos', type=int, help='The number of videos to process. If not specified, processes all videos.', default=None)
     args = parser.parse_args()
     main(args.num_videos)
