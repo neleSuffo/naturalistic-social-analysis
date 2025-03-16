@@ -320,13 +320,11 @@ quantex_1_plot <- ggplot(quantex_unique_data, aes(x = Minutes_per_ID)) +
 ```
 
 ## Annotation Strategy {#annotation-strategy}
-The dataset annotations cover four key elements: persons, faces, gaze direction, and objects the child interacts with. For each detected person (or reflection of a person, such as in a mirror) and face, additional attributes are recorded, including a unique identifier, age (infant, child, teen, adult, unknown), and gender (female, male, unknown). Gaze information indicates whether a detected person’s gaze is directed toward the child or not. Faces are annotated even when occluded or blurry to ensure comprehensive coverage of interactions. Partially visible faces are also annotated if key facial features, such as the nose, eyes, or mouth, remain identifiable. 
+The dataset annotations cover four key elements: persons, faces, gaze direction, and objects. Each detected person (or reflection) and face includes attributes like a unique ID, age, and gender. Gaze annotations indicate whether a person is looking at the child. Faces are annotated even if occluded or blurry, as long as key features remain visible.
 
-The egocentric nature of our video data, recorded from a chest-mounted camera, posed additional challenges such as motion blur and oblique viewing angles, which made gaze classification difficult, even for human annotators. These factors contributed to occlusion or distortion of gaze information in many frames, making accurate gaze direction annotation particularly challenging.
+The egocentric chest-mounted camera introduced challenges like motion blur and oblique angles, making gaze classification difficult, even for human annotators. Many frames had occluded or distorted gaze information. Objects are annotated only when actively interacted with and categorized into seven groups: book, screen, animal, food, toy, kitchenware, and other. The annotation strategy is summarized in Figure \@ref(fig:camera-cvat-activity-classes).
 
-Objects are annotated only when the child is actively interacting with them, either by holding them in their own hands or when another person in the interaction is holding the object in their hands. These objects are categorized into six distinct groups: book, screen, animal, food, toy, and kitchenware, with an additional category for other objects. The annotation strategy is summarized in Figure \@ref(fig:camera-cvat-activity-classes).
-
-The Quantex dataset consists of a total of `r quantex_num_videos` videos. However, only a subset of `r det_total_num_videos` videos was annotated, totaling `r det_total_num_frames` frames. To balance workload while still obtaining meaningful annotations, we applied a frame sampling strategy, annotating every 30th frame, which corresponds to one frame per second. The goal of these annotations was to create ground truth data for training a model that can later be used to analyze the remaining videos in the dataset. While the video data was subject to structured annotation and validation, the audio data was used in its raw form without preprocessing for analysis.
+The Quantex dataset includes `r quantex_num_videos` videos, with `r det_total_num_videos` annotated, totaling `r det_total_num_frames` frames. Every 30th frame (one per second) was annotated to balance workload while ensuring meaningful data. These annotations serve as ground truth for training a model to analyze the remaining videos. While video data underwent structured annotation and validation, audio data was analyzed in raw form.
 
 ```{r camera-cvat-activity-classes, echo=FALSE, dpi=600, fig.align='center', fig.cap="\\textbf{A} – Vest with the embedded camera worn by the children, \\textbf{B} – CVAT platform utilized for video annotation, \\textbf{C} – Annotation Strategy in the Quantex dataset."}
 img1 <- ggdraw() + draw_image("images/camera_worn_close.png", scale = 0.8)
@@ -362,9 +360,7 @@ By integrating these modules, our pipeline enables a comprehensive analysis of c
 In the following sections, we describe each module in detail, including training data, model architecture, and evaluation metrics. A full technical analysis of each algorithm is provided in the [Supplementary Material].
 
 ## Yolo11x: Multi-Class Detection of Persons, Faces, and Objects {#yolo11x}
-We used Ultralytics’ YOLO11, the "latest iteration in the YOLO series of real-time object detectors" [@jocherUltralyticsYOLO112024], pretrained on the COCO dataset [@linMicrosoftCOCOCommon2014], which contains labeled images for 80 everyday object categories. COCO is widely used for object detection and segmentation tasks.
-
-Released in October 2024, YOLO11 introduces architectural improvements like the C2PSA block for enhanced spatial attention and the C3K2 block for faster, more efficient feature aggregation [@khanamYOLOv11OverviewKey2024]. These advancements make it well-suited for our egocentric dataset, which captures dynamic movements from a chest-mounted camera.
+We used Ultralytics’ YOLO11, the "latest iteration in the YOLO series of real-time object detectors" [@jocherUltralyticsYOLO112024], pretrained on the COCO dataset [@linMicrosoftCOCOCommon2014], which contains labeled images for 80 everyday object categories. COCO is widely used for object detection and segmentation tasks. Released in October 2024, YOLO11 introduces architectural improvements like the C2PSA block for enhanced spatial attention and the C3K2 block for faster, more efficient feature aggregation [@khanamYOLOv11OverviewKey2024]. These advancements make it well-suited for our egocentric dataset, which captures dynamic movements from a chest-mounted camera.
 
 We selected YOLO11x, the largest model in the series, with 56.9M parameters and 194.9 GFLOPs. With the highest accuracy (mAP$^{val}_{50-95}$ = 54.7) among YOLO11 variants, it was the best choice for our task, given our available computational resources.
 
@@ -534,7 +530,7 @@ row.names(df) <- NULL
 # Print the updated table
 apa_table(
   df,
-  caption = "Evaluation metrics for the YOLO11x gaze classification model trained on the Quantex dataset to classify whether a person is looking into the direction of the child wearing the camera or not. Precision, recall, and F1-score are given for the testing set.",
+  caption = "Evaluation metrics for the YOLO11x-cls gaze classification model, showing precision, recall, and F1-score for detecting if a person is looking at the key child.",
   escape = TRUE
 )
 ```
