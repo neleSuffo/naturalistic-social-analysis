@@ -9,7 +9,7 @@ from typing import Tuple
 from pathlib import Path
 from ultralytics import YOLO
 from constants import YoloPaths, DetectionPaths, VTCPaths
-from config import YoloConfig
+from config import YoloConfig, DetectionPipelineConfig
 from estimate_proximity import get_proximity
 
 def extract_id_from_filename(filename: str) -> str:
@@ -607,15 +607,26 @@ def main(num_videos_to_process: int = None,
     detection_model_id = register_model(cursor, "detection", detection_model)
     gaze_model_id = register_model(cursor, "gaze", gaze_model)
 
+    videos_to_not_process = DetectionPipelineConfig.videos_to_not_process
     if num_videos_to_process is None:
-        # Process all videos in the directory
-        videos_to_process = list(videos_input_dir.glob("*.MP4"))
-        logging.info(f"Processing all {len(videos_to_process)} videos found in directory")
+        # Process all videos in the directory except those in videos_to_not_process
+        all_videos = list(videos_input_dir.glob("*.MP4"))
+        videos_to_process = [v for v in all_videos if v.name not in videos_to_not_process]
+
+        skipped = len(all_videos) - len(videos_to_process)
+        logging.info(f"Found {len(all_videos)} videos")
+        logging.info(f"Skipping {skipped} videos from exclusion list")
+        logging.info(f"Processing {len(videos_to_process)} videos")
     else:
         # Get balanced videos across age groups
         videos_per_group = num_videos_to_process // 3
-        videos_to_process = get_balanced_videos(videos_input_dir, age_df, videos_per_group=videos_per_group)
-        logging.info(f"Processing {len(videos_to_process)} videos ({videos_per_group} per age group)")
+        all_videos = get_balanced_videos(videos_input_dir, age_df, videos_per_group=videos_per_group)
+        videos_to_process = [v for v in all_videos if v.name not in videos_to_not_process]
+        
+        skipped = len(all_videos) - len(videos_to_process)
+        logging.info(f"Selected {len(all_videos)} balanced videos")
+        logging.info(f"Skipping {skipped} videos from exclusion list")
+        logging.info(f"Processing {len(videos_to_process)} videos")
     
     # Process videos
     processed_children = set()
