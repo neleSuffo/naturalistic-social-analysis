@@ -126,5 +126,12 @@ class ModelNames:
     vtc_model = "vtc"
     openpose_model = "openpose"
     
+class Proximity:
+    reference_file = Path("/home/nele_pauline_suffo/outputs/reference_proximity.json")
+    child_close_image_path = Path("/home/nele_pauline_suffo/outputs/proximity_sampled_frames/child_reference_proximity_value_1.jpg")
+    child_far_image_path = Path("/home/nele_pauline_suffo/outputs/proximity_sampled_frames/child_reference_proximity_value_0.jpg")
+    adult_close_image_path = Path("/home/nele_pauline_suffo/outputs/proximity_sampled_frames/adult_reference_proximity_value_1.jpg")
+    adult_far_image_path = Path("/home/nele_pauline_suffo/outputs/proximity_sampled_frames/adult_reference_proximity_value_0.jpg")
+
 class DetectionPipeline:
     quantex_subjects = Path("/home/nele_pauline_suffo/ProcessedData/quantex_subjects.xlsx")
