@@ -132,3 +132,15 @@ class LabelToCategoryMapping:
                                       ]
     unknown_label_id = -1
     unknown_supercategory = "unknown"
+
+class DetectionPipelineConfig:
+    videos_to_not_process = [
+        "quantex_at_home_id260694_2022_06_29_01",
+        "quantex_at_home_id260694_2022_06_29_02",
+        "quantex_at_home_id260694_2022_06_29_03",
+        "quantex_at_home_id260694_2022_05_21_01",
+        "quantex_at_home_id260694_2022_05_21_02",
+        "quantex_at_home_id254922_2022_06_29_01",
+        "quantex_at_home_id254922_2022_06_29_02",
+        "quantex_at_home_id254922_2022_06_29_03",
+    ]
