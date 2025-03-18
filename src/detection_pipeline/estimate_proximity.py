@@ -149,31 +149,43 @@ def get_reference_proximity_metrics(model, child_close_image_path, child_far_ima
     _, _, child_face_far, _ = extract_bounding_boxes(results_child_far)
     _, _, _, adult_face_close = extract_bounding_boxes(results_adult_close)
     _, _, _, adult_face_far = extract_bounding_boxes(results_adult_far)
-
-    def compute_average_area(faces, label):
+    
+    def compute_largest_face_area_and_ratio(faces, label):
+        """Find the area and aspect ratio of the largest face in the detected faces."""
         if not faces:
             logging.warning(f"No {label} faces detected in reference images.")
-            return None
-        return sum([face[2] * face[3] for face in faces]) / len(faces)
+            return None, None
+        
+        # Calculate area for each face
+        face_areas = [(face[2] * face[3], face) for face in faces]  # (area, face)
+        largest_area, largest_face = max(face_areas, key=lambda x: x[0])
+        
+        # Calculate aspect ratio for largest face
+        aspect_ratio = float(largest_face[2]) / float(largest_face[3])  # width / height
+        
+        logging.info(f"Largest {label} face area: {largest_area}, aspect ratio: {aspect_ratio:.2f}")
+        return largest_area, aspect_ratio
 
-    def compute_average_aspect_ratio(faces, label):
+    def compute_smallest_face_area_and_ratio(faces, label):
+        """Find the area and aspect ratio of the smallest face in the detected faces."""
         if not faces:
             logging.warning(f"No {label} faces detected in reference images.")
-            return None
-        aspect_ratios = [float(face[2]) / float(face[3]) for face in faces]  # width / height
-        return sum(aspect_ratios) / len(aspect_ratios)
+            return None, None
+        
+        # Calculate area for each face
+        face_areas = [(face[2] * face[3], face) for face in faces]  # (area, face)
+        smallest_area, smallest_face = min(face_areas, key=lambda x: x[0])
+        
+        # Calculate aspect ratio for smallest face
+        aspect_ratio = float(smallest_face[2]) / float(smallest_face[3])  # width / height
+        
+        logging.info(f"Smallest {label} face area: {smallest_area}, aspect ratio: {aspect_ratio:.2f}")
+        return smallest_area, aspect_ratio
 
-    child_ref_close = compute_average_area(child_face_close, "child close")
-    child_ref_far = compute_average_area(child_face_far, "child far")
-    adult_ref_close = compute_average_area(adult_face_close, "adult close")
-    adult_ref_far = compute_average_area(adult_face_far, "adult far")
-
-    child_ref_aspect_ratio = compute_average_aspect_ratio(child_face_close, "child close")
-    adult_ref_aspect_ratio = compute_average_aspect_ratio(adult_face_close, "adult close")
-
-    logging.info(f"Child Ref Close: {child_ref_close}, Child Ref Far: {child_ref_far}")
-    logging.info(f"Adult Ref Close: {adult_ref_close}, Adult Ref Far: {adult_ref_far}")
-    logging.info(f"Child Ref Aspect Ratio: {child_ref_aspect_ratio}, Adult Ref Aspect Ratio: {adult_ref_aspect_ratio}")
+    child_ref_close, child_ref_aspect_ratio = compute_largest_face_area_and_ratio(child_face_close, "child close")
+    child_ref_far, _ = compute_smallest_face_area_and_ratio(child_face_far, "child far")
+    adult_ref_close, adult_ref_aspect_ratio = compute_largest_face_area_and_ratio(adult_face_close, "adult close")
+    adult_ref_far, _ = compute_smallest_face_area_and_ratio(adult_face_far, "adult far")
 
     # Save computed references for future runs
     metrics = {
