@@ -4,7 +4,9 @@ import argparse
 import os
 import json
 import numpy as np
+from pathlib import Path
 from ultralytics import YOLO
+from constants import Proximity, YoloPaths
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -103,17 +105,15 @@ def calculate_proximity(face_bbox, min_ref_area, max_ref_area, ref_aspect_ratio,
     return proximity
 
 # File to store reference values
-REFERENCE_FILE = "/home/nele_pauline_suffo/outputs/reference_proximity.json"
-
-def save_reference_metrics(metrics):
+def save_reference_metrics(metrics: dict, reference_file: Path = Proximity.reference_file):
     """Save reference metrics to a JSON file."""
-    with open(REFERENCE_FILE, "w") as f:
+    with open(reference_file, "w") as f:
         json.dump(metrics, f)
 
-def load_reference_metrics():
+def load_reference_metrics(reference_file: Path = Proximity.reference_file):
     """Load reference metrics from a JSON file if available."""
-    if os.path.exists(REFERENCE_FILE):
-        with open(REFERENCE_FILE, "r") as f:
+    if os.path.exists(reference_file):
+        with open(reference_file, "r") as f:
             data = json.load(f)
         # Ensure all keys are present for backward compatibility
         if not all(k in data for k in ("child_ref_close", "child_ref_far", "adult_ref_close", "adult_ref_far", "child_ref_aspect_ratio", "adult_ref_aspect_ratio")):
@@ -121,7 +121,6 @@ def load_reference_metrics():
             return None
         return data
     return None
-
 
 def get_reference_proximity_metrics(model, child_close_image_path, child_far_image_path, adult_close_image_path, adult_far_image_path):
     """Retrieve or compute reference proximity metrics and aspect ratios separately for child and adult faces."""
@@ -310,11 +309,11 @@ def main():
                        help='Path to the input image')
     args = parser.parse_args()
 
-    model_path = "/home/nele_pauline_suffo/models/yolo11_all_detection.pt"
-    child_close_image_path = "/home/nele_pauline_suffo/ProcessedData/quantex_videos_processed/quantex_at_home_id264041_2023_05_22_07/quantex_at_home_id264041_2023_05_22_07_041970.jpg"
-    child_far_image_path = "/home/nele_pauline_suffo/ProcessedData/quantex_videos_processed/quantex_at_home_id255944_2022_03_25_01/quantex_at_home_id255944_2022_03_25_01_052500.jpg"
-    adult_close_image_path = "/home/nele_pauline_suffo/ProcessedData/quantex_videos_processed/quantex_at_home_id264368_2024_10_18_01/quantex_at_home_id264368_2024_10_18_01_000060.jpg"
-    adult_far_image_path = "/home/nele_pauline_suffo/ProcessedData/quantex_videos_processed/quantex_at_home_id264683_2024_09_28_01/quantex_at_home_id264683_2024_09_28_01_001620.jpg"
+    model_path = YoloPaths.all_trained_weights_path
+    child_close_image_path = Proximity.child_close_image_path
+    child_far_image_path = Proximity.child_far_image_path
+    adult_close_image_path = Proximity.adult_close_image_path
+    adult_far_image_path = Proximity.adult_far_image_path
 
     model = YOLO(model_path)
     (child_ref_close, child_ref_far, adult_ref_close, adult_ref_far,
