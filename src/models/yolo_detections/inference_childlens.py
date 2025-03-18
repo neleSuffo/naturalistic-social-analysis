@@ -6,10 +6,14 @@ from ultralytics import YOLO
 from estimate_proximity import get_proximity
 import logging
 
+def get_safe_filename(face_type: str) -> str:
+    """Convert face type to a safe filename by replacing slashes with underscores."""
+    return face_type.replace('/', '_')
+
 def analyze_videos_for_faces(video_folder: Path, 
                            detection_model: YOLO,
-                           num_videos: int = 10,
-                           frame_skip: int = 10):
+                           num_videos: int = 15,
+                           frame_skip: int = 30):
     """Analyze first 5 videos and store face detections with proximity values."""
     face_detections = {
         'adult face': [],  # for class 3.0
@@ -39,7 +43,7 @@ def analyze_videos_for_faces(video_folder: Path,
                         
                         # Calculate proximity
                         bbox = [x_min, y_min, x_max, y_max]
-                        proximity = get_proximity(bbox, f"{face_type} face")
+                        proximity = get_proximity(bbox, face_type)
                         
                         # Store detection info
                         face_detections[face_type].append({
@@ -93,6 +97,38 @@ def sample_faces_by_proximity(face_detections, bins=10, samples_per_bin=10):
     
     return sampled_faces
 
+def sample_faces_by_proximity(df: pd.DataFrame, bins=10, samples_per_bin=10):
+    """Sample faces evenly across proximity bins."""
+    sampled_faces = []
+    bin_edges = np.linspace(0, 1, bins+1)
+    
+    for i in range(len(bin_edges)-1):
+        bin_start = bin_edges[i]
+        bin_end = bin_edges[i+1]
+        
+        # Get faces in this bin
+        bin_faces = df[
+            (df['proximity'] >= bin_start) & 
+            (df['proximity'] < bin_end)
+        ]
+        
+        if len(bin_faces) > 0:
+            # Sample faces from this bin
+            sampled = bin_faces.sample(
+                n=min(samples_per_bin, len(bin_faces)),
+                replace=False
+            )
+            
+            for _, row in sampled.iterrows():
+                image_path = f"{row['video_name']}_{row['frame_number']:06d}"
+                sampled_faces.append({
+                    'image_path': image_path,
+                    'proximity': row['proximity'],
+                    'proximity_bin': f"{bin_start:.1f}-{bin_end:.1f}"
+                })
+    
+    return pd.DataFrame(sampled_faces)
+
 def main():
     logging.basicConfig(level=logging.INFO)
     
@@ -103,15 +139,45 @@ def main():
     video_folder = Path('/home/nele_pauline_suffo/ProcessedData/childlens_videos')
     face_detections = analyze_videos_for_faces(video_folder, model)
     
-    # Convert to DataFrames and save
+    # Create output directory
     output_dir = Path('/home/nele_pauline_suffo/outputs/proximity_sampled_frames')
-    output_dir.mkdir(exist_ok=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
     
+    # Convert to DataFrames and save
     for face_type in ['adult face', 'infant/child face']:
         df = pd.DataFrame(face_detections[face_type])
-        output_file = output_dir / f"{face_type}_detections.csv"
+        safe_name = get_safe_filename(face_type)
+        output_file = output_dir / f"{safe_name}_detections.csv"
         df.to_csv(output_file, index=False)
         print(f"Saved {len(df)} {face_type} detections to {output_file}")
 
+def main_two():
+    logging.basicConfig(level=logging.INFO)
+    
+    data_dir = Path('/home/nele_pauline_suffo/outputs/proximity_sampled_frames')
+    
+    # Process each face type
+    for face_type in ['adult face', 'infant/child face']:
+        # Load detections
+        input_file = data_dir / f"{face_type}_detections.csv"
+        df = pd.read_csv(input_file)
+        print(f"\nLoaded {len(df)} {face_type} detections")
+        
+        # Sample faces
+        sampled_df = sample_faces_by_proximity(df)
+        
+        if sampled_df.empty:
+            print(f"No {face_type}s were sampled!")
+            continue
+            
+        print("\nSamples per proximity bin:")
+        print(sampled_df.groupby('proximity_bin').size())
+        
+        # Save sampled faces
+        output_file = data_dir / f"{face_type}_samples.csv"
+        sampled_df.to_csv(output_file, index=False)
+        print(f"Saved {len(sampled_df)} samples to {output_file}")
+        
 if __name__ == "__main__":
     main()
+    #main_two()
