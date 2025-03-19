@@ -99,7 +99,7 @@ def main():
     output_dir.mkdir(parents=True, exist_ok=True)
     
     # Convert to DataFrames and save
-    for face_type in ['adult_face', 'infant_child_face']:
+    for face_type in ['adult face', 'infant/child face']:
         df = pd.DataFrame(face_detections[face_type])
         safe_name = get_safe_filename(face_type)
         output_file = output_dir / f"{safe_name}_detections.csv"
