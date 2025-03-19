@@ -183,7 +183,7 @@ def insert_video_record(video_path, cursor) -> int:
         cursor.execute('SELECT video_id FROM Videos WHERE video_path = ?', (video_path_str,))
         return cursor.fetchone()[0]
 
-def process_frame(frame: np.ndarray, frame_idx: int, video_id: int, detection_model: YOLO, gaze_model: YOLO, cursor: sqlite3.Cursor) -> Tuple[int, int]:
+def process_frame(frame: np.ndarray, frame_idx: int, video_id: int, detection_model: YOLO, gaze_model: YOLO, cursor: sqlite3.Cursor) -> dict:
     """
     This function processes a frame. It inserts the frame record and processes each object detected in the frame.
     The steps are as follows:
@@ -212,46 +212,47 @@ def process_frame(frame: np.ndarray, frame_idx: int, video_id: int, detection_mo
     """
     cursor.execute('INSERT INTO Frames (video_id, frame_number) VALUES (?, ?)', (video_id, frame_idx))
 
-    result = detection_model(frame)
-
-    # Initialize counts dictionary using the class mapping
+    results = detection_model.predict(frame, iou = 0.7)[0]
+    #results = detection_model(frame)[0]
     detection_counts = {name: 0 for name in YoloConfig.detection_mapping.values()}
 
-    results = result[0].boxes
     # Extract detection results
-    conf = results.conf  # Confidence scores
-    object_cls = results.cls  # Class labels
-    xyxy = results.xyxy  # Bounding boxes in xyxy format (x_min, y_min, x_max, y_max)
+    conf = results.boxes.conf  # Confidence scores
+    object_cls = results.boxes.cls  # Class labels
+    xyxy = results.boxes.xyxy  # Bounding boxes in xyxy format (x_min, y_min, x_max, y_max)
 
-    # Iterate over each detection
-    for i in range(len(conf)):
-        # Extract bounding box and class label
-        x_min, y_min, x_max, y_max = map(int, xyxy[i])  # Bounding box coordinates
-        bounding_box = [x_min, y_min, x_max, y_max]
-        confidence_score = conf[i].item()  # Confidence score
-        object_class = object_cls[i].item()  # Class label
+    # Process each detection
+    for box in results.boxes:
+        # Extract coordinates, class and confidence
+        x1, y1, x2, y2 = map(int, box.xyxy[0].cpu().numpy())  # Convert tensor to numpy
+        class_id = int(box.cls[0].cpu().numpy())  # Convert tensor to numpy
+        confidence_score = float(box.conf[0].cpu().numpy())  # Convert tensor to numpy
+        class_name = detection_model.names[class_id]
 
-        # Initialize variables
+        # Update detection count
+        if class_name in detection_counts:
+            detection_counts[class_name] += 1
+
+        # Initialize face-specific variables
         gaze_direction = None
         gaze_confidence = None
         proximity = None
-        
-        # Get class name from mapping
-        class_name = YoloConfig.detection_mapping[int(object_class)]
-        detection_counts[class_name] += 1
 
         # Process faces for gaze and proximity
-        if object_class in [2, 3]:  # child or adult face
-            face_image = frame[y_min:y_max, x_min:x_max]
+        if class_id in [2, 3]:  # child or adult face
+            bounding_box = [x1, y1, x2, y2]
+            face_image = frame[y1:y2, x1:x2]
             gaze_direction, gaze_confidence = classify_gaze(gaze_model, face_image)
             proximity = get_proximity(bounding_box, class_name)
 
         # Insert detection record
         cursor.execute('''
-            INSERT INTO Detections 
-            (video_id, frame_number, object_class, confidence_score, x_min, y_min, x_max, y_max, gaze_direction, gaze_confidence, proximity)
+            INSERT INTO Detections
+            (video_id, frame_number, object_class, confidence_score,
+            x_min, y_min, x_max, y_max, gaze_direction,
+            gaze_confidence, proximity)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (video_id, frame_idx, object_class, confidence_score, x_min, y_min, x_max, y_max, gaze_direction, gaze_confidence, proximity))
+        ''', (video_id, frame_idx, class_id, confidence_score, x1, y1, x2, y2, gaze_direction, gaze_confidence, proximity))
 
     return detection_counts
 
@@ -303,6 +304,15 @@ def process_video(video_path: Path,
         if not ret:
             break
 
+        if frame_idx == 2290:
+            print("TEEEST")
+            frame = cv2.imread('/home/nele_pauline_suffo/outputs/quantex_at_home_id254922_2022_04_12_01.MP4_frame_2290.jpg')
+            results1 = detection_model.predict(frame, iou = 0.7)[0]
+
+            boxes1 = results1[0].boxes
+
+            print(f"Regular inference detections: {(boxes1)}")
+            
         if frame_idx % frame_skip == 0:
             detection_counts = process_frame(
                 frame, frame_idx, video_id, detection_model, gaze_model, cursor
@@ -578,7 +588,7 @@ def update_detection_summary(cursor: sqlite3.Cursor, conn: sqlite3.Connection):
     conn.commit()
           
 def main(num_videos_to_process: int = None,
-        frame_skip: int = 5):
+        frame_skip: int = 10):
     """
     This function processes videos using YOLO models for person and face detection and gaze classification.
     It loads the age group data and processes either all videos or a balanced subset from each age group.
@@ -588,7 +598,7 @@ def main(num_videos_to_process: int = None,
     num_videos_to_process : int, optional
         Number of videos to process per age group. If None, processes all available videos.
     frame_skip : int, optional
-        Number of frames to skip between processing (default: 5)
+        Number of frames to skip between processing (default: 10)
     """
     logging.basicConfig(level=logging.INFO,
                        format='%(asctime)s - %(levelname)s - %(message)s')
@@ -647,7 +657,7 @@ def main(num_videos_to_process: int = None,
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser(description="Process a set of videos using YOLO models for person and face detection and gaze classification.")
     argparser.add_argument("--num_videos", type=int, help="Number of videos to process")
-    argparse.add_argument("--frame_skip", type=int, default=5, help="Number of frames to skip between processing (default: 5)")
+    argparse.add_argument("--frame_skip", type=int, default=10, help="Number of frames to skip between processing (default: 10)")
     args = argparser.parse_args()
     num_videos_to_process = args.num_videos_to_process
     frame_skip = args.frame_skip
