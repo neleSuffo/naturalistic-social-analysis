@@ -299,7 +299,7 @@ def get_proximity(bounding_box: list, face_type: str):
     bounding_box: list
         Bounding box coordinates for the detected face
     face_type: str
-        Type of the detected face (child or adult)
+        Type of the detected face (infant/child face or adult face)
     
     Returns:
     --------
