@@ -5,6 +5,7 @@ import random
 from ultralytics import YOLO
 from constants import YoloPaths
 from detection_pipeline.estimate_proximity import get_proximity
+from config import YoloConfig
 
 # Add this after the imports
 CLASS_COLORS = {
@@ -28,8 +29,7 @@ def run_inference(image_path):
     image = cv2.imread(image_path)
 
     # Run inference
-    #results = model.predict(image)
-    results = model(image)[0]
+    results = model.predict(image, iou=YoloConfig.best_iou)[0]
 
     # Generate random colors for each class
     class_colors = {}
