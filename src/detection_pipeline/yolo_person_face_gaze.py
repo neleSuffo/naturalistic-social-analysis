@@ -11,6 +11,11 @@ from ultralytics import YOLO
 from constants import YoloPaths, DetectionPaths, VTCPaths
 from config import YoloConfig, DetectionPipelineConfig
 from estimate_proximity import get_proximity
+from models.yolo_detections.inference import (
+    calculate_detection_scores,
+    is_face_inside_person,
+    custom_nms,
+)
 
 def extract_id_from_filename(filename: str) -> str:
     """
@@ -182,64 +187,6 @@ def insert_video_record(video_path, cursor) -> int:
         cursor.execute('SELECT video_id FROM Videos WHERE video_path = ?', (video_path,))
         return cursor.fetchone()[0]
 
-def custom_nms(results, iou_threshold):
-    """ 
-    This function performs a custom non-maximum suppression (NMS) on the detected boxes.
-    It filters out boxes that have an IoU greater than the threshold with any other box.
-    
-    Parameters:
-    ----------
-    results : List
-        A list of results from the YOLO model predictions.
-    iou_threshold : float
-        The threshold value for the Intersection over Union (IoU) metric.
-        
-    Returns:
-    -------
-    List
-        A list of filtered boxes after applying the custom
-        non-maximum suppression. (x1, y1, x2, y2, class_id, confidence_score)
-    """
-    # Collect all boxes into a single list
-    all_boxes = []
-    for result in results:
-        for box in result.boxes:
-            x1, y1, x2, y2 = map(int, box.xyxy[0])  # Convert to integers
-            class_id = int(box.cls[0])  # Class ID
-            confidence_score = float(box.conf[0])  # Confidence score
-            all_boxes.append((x1, y1, x2, y2, class_id, confidence_score))
-    
-    # Sort boxes by confidence score in descending order
-    all_boxes.sort(key=lambda x: x[5], reverse=True)
-    
-    # Initialize list to store filtered boxes
-    filtered_boxes = []
-    
-    for box in all_boxes:
-        x1, y1, x2, y2, class_id, confidence_score = box
-        overlaps = []
-        for existing_box in filtered_boxes:
-            existing_x1, existing_y1, existing_x2, existing_y2, _, _ = existing_box
-            overlap = calculate_iou((x1, y1, x2, y2), (existing_x1, existing_y1, existing_x2, existing_y2))
-            overlaps.append(overlap)
-        
-        if not any(overlap > iou_threshold for overlap in overlaps):
-            filtered_boxes.append(box)
-    # add logging about detection classes after NMS
-    logging.info(f"Detected classes after NMS: {[model.names[box[4]] for box in filtered_boxes]}")
-    return filtered_boxes
-
-def calculate_iou(box1, box2):
-    x1, y1, x2, y2 = box1
-    x3, y3, x4, y4 = box2
-
-    intersection_area = max(0, min(x2, x4) - max(x1, x3)) * max(0, min(y2, y4) - max(y1, y3))
-    box1_area = (x2 - x1) * (y2 - y1)
-    box2_area = (x4 - x3) * (y4 - y3)
-    union_area = box1_area + box2_area - intersection_area
-
-    return intersection_area / union_area
-
 def process_frame(frame: np.ndarray, frame_idx: int, video_id: int, detection_model: YOLO, gaze_model: YOLO, cursor: sqlite3.Cursor) -> dict:
     """
     This function processes a frame. It inserts the frame record and processes each object detected in the frame.
@@ -269,21 +216,65 @@ def process_frame(frame: np.ndarray, frame_idx: int, video_id: int, detection_mo
     """
     cursor.execute('INSERT INTO Frames (video_id, frame_number) VALUES (?, ?)', (video_id, frame_idx))
 
-    results = detection_model.predict(frame, iou=YoloConfig.best_iou)
-    # add non maximum suppression between classes with high iou threshold
-    filtered_boxes = custom_nms(results, iou_threshold=YoloConfig.between_classes_iou)
-
+    # Initialize detection counts
     detection_counts = {name: 0 for name in YoloConfig.detection_mapping.values()}
     
-    # Process filtered_boxes for drawing or further analysis
+    # run detections and NMS
+    results = detection_model.predict(frame, iou=YoloConfig.best_iou)
+    filtered_boxes = custom_nms(results, iou_threshold=YoloConfig.between_classes_iou)
+    
+    # Categorize detections
+    people_boxes, face_boxes, other_boxes = [], [], []
+    # First pass: categorize detections
     for box in filtered_boxes:
         x1, y1, x2, y2, class_id, confidence_score = box
-        class_name = detection_model.names[class_id]
+        detection = {
+            'box': (x1, y1, x2, y2),
+            'class_id': class_id,
+            'confidence': confidence_score,
+            'class_name': detection_model.names[class_id]
+        }
+        
+        if class_id in [0, 1]:  # Child or Adult
+            people_boxes.append(detection)
+        elif class_id in [2, 3]:  # Child or Adult face
+            face_boxes.append(detection)
+        else:
+            other_boxes.append(detection)       
+
+# Process face-person pairs
+    for face in face_boxes:
+        for person in people_boxes:
+            if is_face_inside_person(face['box'], person['box']):
+                scores = calculate_detection_scores(face, person, YoloConfig.ap_values)
+                
+                # Log scores for debugging
+                for key, value in scores.items():
+                    logging.debug(f"{key}: {value:.3f}")
+                
+                # Update classes based on combined scores
+                if scores['adult_combined'] > scores['child_combined']:
+                    face['class_id'] = 3  # Adult face
+                    face['class_name'] = detection_model.names[3]
+                    person['class_id'] = 1  # Adult
+                    person['class_name'] = detection_model.names[1]
+                else:
+                    face['class_id'] = 2  # Child face
+                    face['class_name'] = detection_model.names[2]
+                    person['class_id'] = 0  # Child
+                    person['class_name'] = detection_model.names[0]
+    
+    # Process all detections
+    all_detections = people_boxes + face_boxes + other_boxes
+    for detection in all_detections:
+        x1, y1, x2, y2 = detection['box']
+        class_id = detection['class_id']
+        class_name = detection['class_name']
         
         # Update detection count
         if class_name in detection_counts:
-            detection_counts[class_name] += 1          
-
+            detection_counts[class_name] += 1
+        
         # Initialize face-specific variables
         gaze_direction = None
         gaze_confidence = None
@@ -291,10 +282,9 @@ def process_frame(frame: np.ndarray, frame_idx: int, video_id: int, detection_mo
             
         # Process faces for gaze and proximity
         if class_id in [2, 3]:  # child or adult face
-            bounding_box = [x1, y1, x2, y2]
             face_image = frame[y1:y2, x1:x2]
             gaze_direction, gaze_confidence = classify_gaze(gaze_model, face_image)
-            proximity = get_proximity(bounding_box, class_name)
+            proximity = get_proximity([x1, y1, x2, y2], class_name)
 
         # Insert detection record
         cursor.execute('''
@@ -303,7 +293,8 @@ def process_frame(frame: np.ndarray, frame_idx: int, video_id: int, detection_mo
             x_min, y_min, x_max, y_max, gaze_direction,
             gaze_confidence, proximity)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (video_id, frame_idx, class_id, confidence_score, x1, y1, x2, y2, gaze_direction, gaze_confidence, proximity))
+        ''', (video_id, frame_idx, class_id, detection['confidence'], 
+              x1, y1, x2, y2, gaze_direction, gaze_confidence, proximity))
 
     return detection_counts
 
