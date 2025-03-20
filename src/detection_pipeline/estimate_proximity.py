@@ -100,7 +100,6 @@ def calculate_proximity(face_bbox, min_ref_area, max_ref_area, ref_aspect_ratio,
         return 1.0  # Largest possible proximity (very close)
 
     # Scale the face area between min_ref_area and max_ref_area
-    #proximity = (face_area - max_ref_area) / (min_ref_area - max_ref_area)  
     proximity = (np.log(face_area) - np.log(max_ref_area)) / (np.log(min_ref_area) - np.log(max_ref_area)) 
     return proximity
 
@@ -231,6 +230,7 @@ def compute_proximity(image_path, model, ref_metrics):
         Reference metrics for proximity calculation.
     """
     image = cv2.imread(image_path)
+        
     if image is None:
         logging.error(f"Failed to load image from {image_path}")
         return {}
@@ -329,7 +329,7 @@ def main():
 
     model = YOLO(model_path)
     (child_ref_close, child_ref_far, adult_ref_close, adult_ref_far,
-     child_ref_aspect_ratio, adult_ref_aspect_ratio) = get_reference_proximity_metrics(model, child_close_image_path, child_far_image_path, adult_close_image_path, adult_far_image_path)
+    child_ref_aspect_ratio, adult_ref_aspect_ratio) = get_reference_proximity_metrics(model, child_close_image_path, child_far_image_path, adult_close_image_path, adult_far_image_path)
     ref_metrics = (child_ref_close, child_ref_far, adult_ref_close, adult_ref_far, child_ref_aspect_ratio, adult_ref_aspect_ratio)
     compute_proximity(args.image_path, model, ref_metrics)
 
