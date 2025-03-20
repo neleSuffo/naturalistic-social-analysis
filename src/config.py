@@ -53,6 +53,12 @@ class YoloConfig:
     }
     best_iou = 0.5
     between_classes_iou = 0.9
+    ap_values = {
+        'adult_face': 0.956,
+        'adult': 0.947,
+        'child_face': 0.856,
+        'child': 0.863
+    }
     
 class VTCConfig:
     audio_file_suffix = Path("_16kHz.wav")
