@@ -52,6 +52,7 @@ class YoloConfig:
         10: 'other_object'
     }
     best_iou = 0.5
+    between_classes_iou = 0.9
     
 class VTCConfig:
     audio_file_suffix = Path("_16kHz.wav")
