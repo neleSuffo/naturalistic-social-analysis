@@ -211,7 +211,7 @@ def process_frame(frame: np.ndarray, frame_idx: int, video_id: int, detection_mo
     """
     cursor.execute('INSERT INTO Frames (video_id, frame_number) VALUES (?, ?)', (video_id, frame_idx))
 
-    results = detection_model(frame)[0]
+    results = detection_model.predict(frame, iou=YoloConfig.best_iou)[0]
     detection_counts = {name: 0 for name in YoloConfig.detection_mapping.values()}
 
     # Extract detection results
