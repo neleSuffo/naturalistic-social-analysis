@@ -19,7 +19,7 @@ class DetectionParameters:
     # the video file extension
     video_file_extension = ".mp4"
     # Every frame_step-th frame is processed
-    frame_step_interval = 30
+    frame_step_interval = 10
     # The class of the object to detect
     yolo_detection_target = "person"
     mtcnn_detection_target = "face"
