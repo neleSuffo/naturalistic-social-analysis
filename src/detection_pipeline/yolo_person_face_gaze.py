@@ -139,16 +139,15 @@ def insert_video_record(video_path, cursor) -> int:
     video_id : int
         Video ID
     """
-    video_path_str = str(video_path)
-    cursor.execute('SELECT video_id FROM Videos WHERE video_path = ?', (video_path_str,))
+    cursor.execute('SELECT video_id FROM Videos WHERE video_path = ?', (str(video_path),))
     existing_video = cursor.fetchone()
     
     if existing_video:
-        logging.info(f"Video {Path(video_path).name} already processed. Skipping.")
+        logging.info(f"Video {Path(video_path)} already processed. Skipping.")
         return None
     else:
         # Extract child_id and recording_date from filename
-        child_id, recording_date = extract_video_info(video_path_str)
+        child_id, recording_date = extract_video_info(video_path)
                 
         # Calculate age at recording using birthday from Subjects table
         age_at_recording = None
@@ -178,9 +177,9 @@ def insert_video_record(video_path, cursor) -> int:
         cursor.execute('''
             INSERT INTO Videos (video_path, child_id, recording_date, age_at_recording) 
             VALUES (?, ?, ?, ?)
-        ''', (video_path_str, child_id, recording_date, age_at_recording))
+        ''', (video_path, child_id, recording_date, age_at_recording))
         
-        cursor.execute('SELECT video_id FROM Videos WHERE video_path = ?', (video_path_str,))
+        cursor.execute('SELECT video_id FROM Videos WHERE video_path = ?', (video_path,))
         return cursor.fetchone()[0]
 
 def process_frame(frame: np.ndarray, frame_idx: int, video_id: int, detection_model: YOLO, gaze_model: YOLO, cursor: sqlite3.Cursor) -> dict:
@@ -212,8 +211,7 @@ def process_frame(frame: np.ndarray, frame_idx: int, video_id: int, detection_mo
     """
     cursor.execute('INSERT INTO Frames (video_id, frame_number) VALUES (?, ?)', (video_id, frame_idx))
 
-    results = detection_model.predict(frame, iou = 0.7)[0]
-    #results = detection_model(frame)[0]
+    results = detection_model(frame)[0]
     detection_counts = {name: 0 for name in YoloConfig.detection_mapping.values()}
 
     # Extract detection results
@@ -256,7 +254,7 @@ def process_frame(frame: np.ndarray, frame_idx: int, video_id: int, detection_mo
 
     return detection_counts
 
-def process_video(video_path: Path, 
+def process_video(video_folder: Path, 
                   detection_model: YOLO, 
                   gaze_model: YOLO, 
                   cursor: sqlite3.Cursor, 
@@ -265,16 +263,33 @@ def process_video(video_path: Path,
     """
     Process frames from saved image files instead of video.
     """
-    logging.info(f"Processing video: {video_path.name}")
-    video_id = insert_video_record(video_path.name, cursor)
+    logging.info(f"Processing video: {video_folder}")
+    
+    # Convert Path to string for SQLite
+    video_folder_str = str(video_folder)
+    
+    # Check if video exists in VideoStatistics table
+    cursor.execute('''
+        SELECT v.video_id, vs.processed_frames 
+        FROM Videos v
+        LEFT JOIN VideoStatistics vs ON v.video_id = vs.video_id
+        WHERE v.video_path = ?
+    ''', (video_folder_str,))
+    result = cursor.fetchone()
+    
+    if result and result[1] is not None and result[1] > 0:  # Check if frames were actually processed
+        logging.info(f"Video {video_folder} already processed with {result[1]} frames. Skipping.")
+        return
+    
+    # Continue with video processing if not already processed
+    video_id = insert_video_record(video_folder_str, cursor)
     
     # Skip if video already processed
     if video_id is None:
         return
 
     # Get corresponding frames directory
-    video_name = video_path.stem
-    frames_dir = DetectionPaths.images_input_dir / video_name
+    frames_dir = DetectionPaths.images_input_dir / video_folder
     
     if not frames_dir.exists():
         logging.error(f"Frames directory not found: {frames_dir}")
@@ -287,8 +302,9 @@ def process_video(video_path: Path,
 
     for frame_file in frame_files:
         # Extract frame number from filename (last 6 digits before .jpg)
-        frame_idx = int(frame_file.stem[-6:])
-        
+        padded_frame_idx = frame_file.stem[-6:]  # e.g. "000533"
+        frame_idx = int(padded_frame_idx)  # automatically converts to 533
+
         # Skip frames according to frame_skip
         if frame_skip > 0 and frame_idx % frame_skip != 0:
             continue
@@ -348,8 +364,10 @@ def extract_video_info(video_path: str) -> Tuple[int, str]:
         recording_date : str or None
     """
     try:
+        # Convert Path to string if necessary
+        video_name = str(video_path)
         # Extract ID
-        id_start = video_path.find('id') + 2
+        id_start = video_name.find('id') + 2
         if id_start < 2:  # if 'id' not found
             return None, None
         id_end = video_path[id_start:].find('_') + id_start
@@ -379,72 +397,72 @@ def store_voice_detections(video_file_name: str, results_file: Path, fps: int = 
     fps : int
         Frames per second of the video (default: 30).
     """
-    conn = sqlite3.connect(DetectionPaths.detection_db_path)
-    cursor = conn.cursor()
+    with sqlite3.connect(DetectionPaths.detection_db_path) as conn:
+        cursor = conn.cursor()
     
-    # Insert video record if it does not exist
-    child_id, recording_date = extract_video_info(video_file_name)
-    cursor.execute('''
-        INSERT OR IGNORE INTO Videos (video_path, child_id, recording_date) 
-        VALUES (?, ?, ?)
-    ''', (video_file_name, child_id, recording_date))
-    cursor.execute("SELECT video_id FROM Videos WHERE video_path = ?", (video_file_name,))
-    video_id = cursor.fetchone()[0]
-    
-    with open(results_file, 'r') as f:
-        for line in f:
-            parts = line.strip().split()
-            if len(parts) < 8:
-                continue
-            # RTTM format:
-            # SPEAKER <audio_id> <channel> <start_time> <duration> <NA> <NA> <label> <NA> <NA>
-            try:
-                start_time = float(parts[3])
-                duration = float(parts[4])
-            except ValueError:
-                continue
-            end_time = start_time + duration
-            object_class_str = parts[7]  # e.g., "KCHI", "FEM", etc.
-            
-            # Map object class to integer and store into classes if not already present.
-            cursor.execute("SELECT class_id FROM Classes WHERE class_name = ?", (object_class_str,))
-            result_class = cursor.fetchone()
-            if result_class is None:
-                cursor.execute("INSERT INTO Classes (class_name) VALUES (?)", (object_class_str,))
-                class_id = cursor.lastrowid
-            else:
-                class_id = result_class[0]            
-            
-            # For example, if detection starts at frame 8:
-            start_frame = int(start_time * fps)
-            # And number of affected frames based on duration:
-            num_frames = int(duration * fps)
-            
-            for frame_offset in range(num_frames):
-                actual_frame = start_frame + frame_offset
-                # Insert frame record if it doesn't exist
-                cursor.execute('INSERT OR IGNORE INTO Frames (video_id, frame_number) VALUES (?, ?)', 
-                            (video_id, actual_frame))
-                                       
-                result = cursor.fetchone()
-                if result is None:
-                    cursor.execute("INSERT INTO Frames (video_id, frame_number) VALUES (?, ?)", (video_id, actual_frame))
-                    frame_number = cursor.lastrowid
-                else:
-                    frame_number = result[0]
+        # Insert video record if it does not exist
+        child_id, recording_date = extract_video_info(video_file_name)
+        cursor.execute('''
+            INSERT OR IGNORE INTO Videos (video_path, child_id, recording_date) 
+            VALUES (?, ?, ?)
+        ''', (video_file_name, child_id, recording_date))
+        cursor.execute("SELECT video_id FROM Videos WHERE video_path = ?", (video_file_name,))
+        video_id = cursor.fetchone()[0]
+        
+        with open(results_file, 'r') as f:
+            for line in f:
+                parts = line.strip().split()
+                if len(parts) < 8:
+                    continue
+                # RTTM format:
+                # SPEAKER <audio_id> <channel> <start_time> <duration> <NA> <NA> <label> <NA> <NA>
+                try:
+                    start_time = float(parts[3])
+                    duration = float(parts[4])
+                except ValueError:
+                    continue
+                end_time = start_time + duration
+                object_class_str = parts[7]  # e.g., "KCHI", "FEM", etc.
                 
-                # Insert a detection for this specific frame.
-                # For audio there are no spatial coordinates, so we set them to 0.
-                # Insert detection record
-                cursor.execute('''
-                    INSERT INTO Detections 
-                    (video_id, frame_number, object_class, confidence_score, x_min, y_min, x_max, y_max, gaze_direction, gaze_confidence)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (video_id, actual_frame, object_class_str, None, None, None, None, None, None, None))
-    
-    conn.commit()
-    conn.close()
-    logging.info("Voice detections stored in the database.")
+                # Map object class to integer and store into classes if not already present.
+                cursor.execute("SELECT class_id FROM Classes WHERE class_name = ?", (object_class_str,))
+                result_class = cursor.fetchone()
+                if result_class is None:
+                    cursor.execute("INSERT INTO Classes (class_name) VALUES (?)", (object_class_str,))
+                    class_id = cursor.lastrowid
+                else:
+                    class_id = result_class[0]            
+                
+                # For example, if detection starts at frame 8:
+                start_frame = int(start_time * fps)
+                # And number of affected frames based on duration:
+                num_frames = int(duration * fps)
+                
+                for frame_offset in range(num_frames):
+                    actual_frame = start_frame + frame_offset
+                    # Insert frame record if it doesn't exist
+                    cursor.execute('INSERT OR IGNORE INTO Frames (video_id, frame_number) VALUES (?, ?)', 
+                                (video_id, actual_frame))
+                                        
+                    result = cursor.fetchone()
+                    if result is None:
+                        cursor.execute("INSERT INTO Frames (video_id, frame_number) VALUES (?, ?)", (video_id, actual_frame))
+                        frame_number = cursor.lastrowid
+                    else:
+                        frame_number = result[0]
+                    
+                    # Insert a detection for this specific frame.
+                    # For audio there are no spatial coordinates, so we set them to 0.
+                    # Insert detection record
+                    cursor.execute('''
+                        INSERT INTO Detections 
+                        (video_id, frame_number, object_class, confidence_score, x_min, y_min, x_max, y_max, gaze_direction, gaze_confidence)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ''', (video_id, actual_frame, object_class_str, None, None, None, None, None, None, None))
+        
+        conn.commit()
+        conn.close()
+        logging.info("Voice detections stored in the database.")
     
     
 def run_voice_type_classifier(video_file_name):
@@ -592,7 +610,7 @@ def main(num_videos_to_process: int = None,
     # Load the age group data
     age_df = pd.read_csv('/home/nele_pauline_suffo/ProcessedData/age_group.csv')
     
-    videos_input_dir = DetectionPaths.quantex_videos_input_dir
+    videos_input_dir = DetectionPaths.images_input_dir
     conn = sqlite3.connect(DetectionPaths.detection_db_path)
     cursor = conn.cursor()
     
@@ -605,12 +623,12 @@ def main(num_videos_to_process: int = None,
 
     videos_to_not_process = DetectionPipelineConfig.videos_to_not_process
     if num_videos_to_process is None:
-        # Process all videos in the directory except those in videos_to_not_process
-        all_videos = list(videos_input_dir.glob("*.MP4"))
+        # Process all video folders
+        all_videos = [p for p in videos_input_dir.iterdir() if p.is_dir()]
         videos_to_process = [v for v in all_videos if v.name not in videos_to_not_process]
 
         skipped = len(all_videos) - len(videos_to_process)
-        logging.info(f"Found {len(all_videos)} videos")
+        logging.info(f"Found {len(all_videos)} video folders")
         logging.info(f"Skipping {skipped} videos from exclusion list")
         logging.info(f"Processing {len(videos_to_process)} videos")
     else:
@@ -626,12 +644,12 @@ def main(num_videos_to_process: int = None,
     
     # Process videos
     processed_children = set()
-    for video_path in videos_to_process:
-        process_video(video_path, detection_model, gaze_model, cursor, conn, frame_skip)
+    for video in videos_to_process:
+        process_video(video, detection_model, gaze_model, cursor, conn, frame_skip)
         #run_voice_type_classifier(video_path.name)
 
         # Get child_id from the video that was just processed
-        child_id, _ = extract_video_info(video_path.name)
+        child_id, _ = extract_video_info(video)
         if child_id and child_id not in processed_children:
             # Update summary only for this child's data
             update_detection_summary(cursor, conn)
@@ -645,6 +663,6 @@ if __name__ == "__main__":
     argparser.add_argument("--num_videos", type=int, help="Number of videos to process")
     argparse.add_argument("--frame_skip", type=int, default=10, help="Number of frames to skip between processing (default: 10)")
     args = argparser.parse_args()
-    num_videos_to_process = args.num_videos_to_process
+    num_videos_to_process = args.num_videos
     frame_skip = args.frame_skip
     main(num_videos_to_process, frame_skip)
