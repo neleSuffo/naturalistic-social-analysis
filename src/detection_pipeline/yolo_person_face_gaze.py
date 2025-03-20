@@ -366,18 +366,23 @@ def extract_video_info(video_path: str) -> Tuple[int, str]:
     try:
         # Convert Path to string if necessary
         video_name = str(video_path)
+        if isinstance(video_path, Path):
+            video_name = video_path.name
+            
         # Extract ID
         id_start = video_name.find('id') + 2
         if id_start < 2:  # if 'id' not found
             return None, None
-        id_end = video_path[id_start:].find('_') + id_start
-        child_id = int(video_path[id_start:id_end])
+            
+        id_end = video_name[id_start:].find('_') + id_start
+        child_id = int(video_name[id_start:id_end])
         
         # Extract date
-        date_start = video_path.find('_20') + 1
+        date_start = video_name.find('_20') + 1
         if date_start < 1:  # if '_20' not found
             return child_id, None
-        recording_date = video_path[date_start:date_start+10].replace('_', '-')
+            
+        recording_date = video_name[date_start:date_start+10].replace('_', '-')
         
         return child_id, recording_date
     except (ValueError, IndexError):
