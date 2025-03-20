@@ -429,7 +429,7 @@ def extract_every_nth_frame(video_path: Path, output_folder: Path, frame_interva
         return f"{video_path.stem}_{frame_idx:06d}.jpg"
 
     saved_frames = 0
-
+    skipped_existing = 0
     with Path(error_log_file).open('a') as error_log, tqdm(total=total_frames // frame_interval, desc="Extracting frames") as pbar:
         frame_idx = 0
         while frame_idx < total_frames:
@@ -463,8 +463,8 @@ def extract_every_nth_frame(video_path: Path, output_folder: Path, frame_interva
 
     cap.release()
     logging.info(f"Extraction complete for {video_path}:")
-    logging.info(f"- Saved {saved_frames} new frames")
-    logging.info(f"- Skipped {skipped_existing} existing frames")
+    logging.info(f"Saved {saved_frames} new frames")
+    logging.info(f"Skipped {skipped_existing} existing frames")
 
 
 def process_video_strong_sort(video_file: Path, output_subdir: Path) -> None:
