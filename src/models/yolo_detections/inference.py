@@ -80,26 +80,88 @@ def calculate_iou(box1, box2):
 
     return intersection_area / union_area
 
+def calculate_detection_scores(face_detection, person_detection, AP_values):
+    """Calculate detection scores for face-person pair."""
+    face_confidence = face_detection['confidence']
+    person_confidence = person_detection['confidence']
+    
+    scores = {
+        'adult_face': AP_values['adult_face'] * face_confidence,
+        'child_face': AP_values['child_face'] * face_confidence,
+        'adult_person': AP_values['adult'] * person_confidence,
+        'child_person': AP_values['child'] * person_confidence
+    }
+    
+    scores['adult_combined'] = scores['adult_face'] + scores['adult_person']
+    scores['child_combined'] = scores['child_face'] + scores['child_person']
+    
+    return scores
+
+def update_detection_classes(face_detection, person_detection, scores, model_names):
+    """Update detection classes based on scores."""
+    if scores['adult_combined'] > scores['child_combined']:
+        face_detection.update({'class_id': 3, 'class_name': model_names[3]})
+        person_detection.update({'class_id': 1, 'class_name': model_names[1]})
+    else:
+        face_detection.update({'class_id': 2, 'class_name': model_names[2]})
+        person_detection.update({'class_id': 0, 'class_name': model_names[0]})
+
+def is_face_inside_person(face_box, person_box):
+    """Check if face bounding box is inside person bounding box."""
+    face_x1, face_y1, face_x2, face_y2 = face_box
+    person_x1, person_y1, person_x2, person_y2 = person_box
+    return (person_x1 <= face_x1 and person_y1 <= face_y1 and
+            person_x2 >= face_x2 and person_y2 >= face_y2)
+
+def draw_detection(image, detection, proximity=None):
+    """Draw bounding box and label for a detection."""
+    x1, y1, x2, y2 = detection['box']
+    class_id = detection['class_id']
+    confidence = detection['confidence']
+    class_name = detection['class_name']
+    color = CLASS_COLORS[class_id]
+    
+    # Draw bounding box
+    cv2.rectangle(image, (x1, y1), (x2, y2), color, 4)
+    
+    # Create label
+    label = (f"{class_name} {confidence:.2f}, Proximity: {proximity:.2f}" 
+            if proximity is not None else f"{class_name} {confidence:.2f}")
+    
+    # Draw label background and text
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    text_size = cv2.getTextSize(label, font, 0.5, 1)[0]
+    text_x = x1
+    text_y = y1 - 5 if y1 - 5 > 10 else y1 + 15
+    
+    cv2.rectangle(image, (text_x, text_y - text_size[1] - 2),
+                 (text_x + text_size[0], text_y + 2), color, -1)
+    cv2.putText(image, label, (text_x, text_y), font, 0.5,
+                (255, 255, 255), 1, cv2.LINE_AA)
+
 def run_inference(image_path):
-    # Load an image
+    """Run object detection inference on an image."""
+    # Load and verify image
     image = cv2.imread(image_path)
+    if image is None:
+        logging.error(f"Failed to read image: {image_path}")
+        return
+    
+    # Define AP values
+    AP_values = {
+        'adult_face': 0.956,
+        'adult': 0.947,
+        'child_face': 0.856,
+        'child': 0.863
+    }
+    
+    # Run detection and NMS
     results = model.predict(image, iou=YoloConfig.best_iou)
     filtered_boxes = custom_nms(results, iou_threshold=YoloConfig.between_classes_iou)
-
-    # add logging about the detections
     logging.info(f"Detected classes after NMS: {[model.names[box[4]] for box in filtered_boxes]}")
-    # Define Average Precision values
-    AP_adult_face = 0.956
-    AP_adult = 0.947
-    AP_child_face = 0.856
-    AP_child = 0.863
     
-    # Lists to store people and face detections
-    people_boxes = []
-    face_boxes = []
-    other_boxes = []
-
-    # Separate filtered boxes into people and face detections
+    # Categorize detections
+    people_boxes, face_boxes, other_boxes = [], [], []
     for box in filtered_boxes:
         x1, y1, x2, y2, class_id, confidence = box
         detection = {
@@ -115,103 +177,35 @@ def run_inference(image_path):
             face_boxes.append(detection)
         else:
             other_boxes.append(detection)
-
+    
+    # Process face-person pairs
     for face in face_boxes:
-        face_x1, face_y1, face_x2, face_y2 = face['box']
-        face_class_id = face['class_id']
-        face_confidence = face['confidence']
-
         for person in people_boxes:
-            person_x1, person_y1, person_x2, person_y2 = person['box']
-            person_class_id = person['class_id']
-            person_confidence = person['confidence']
-
-            # Check if face is completely inside person bounding box
-            if (person_x1 <= face_x1 and person_y1 <= face_y1 and
-                    person_x2 >= face_x2 and person_y2 >= face_y2):
+            if is_face_inside_person(face['box'], person['box']):
+                scores = calculate_detection_scores(face, person, AP_values)
+                update_detection_classes(face, person, scores, model.names)
                 
-                # Calculate all possible scores
-                adult_face_score = AP_adult_face * face_confidence if face_class_id == 3 else 0
-                adult_person_score = AP_adult * person_confidence if person_class_id == 1 else 0
-                child_face_score = AP_child_face * face_confidence if face_class_id == 2 else 0
-                child_person_score = AP_child * person_confidence if person_class_id == 0 else 0
-                print(f"Adult face score: {adult_face_score}")
-                print(f"Adult person score: {adult_person_score}")
-                print(f"Child face score: {child_face_score}")
-                print(f"Child person score: {child_person_score}")
-                
-                # First priority: If either detection is adult with high confidence
-                if adult_face_score > 0 or adult_person_score > 0:
-                    # Compare adult scores against child scores
-                    adult_combined_score = adult_face_score + adult_person_score
-                    child_combined_score = child_face_score + child_person_score
-                    print(f"Adult combined score: {adult_combined_score}")
-                    print(f"Child combined score: {child_face_score + child_person_score}")
-                    if adult_combined_score > child_combined_score:
-                        # Change both to adult class
-                        face['class_id'] = 3  # Adult face
-                        face['class_name'] = model.names[3]
-                        person['class_id'] = 1  # Adult
-                        person['class_name'] = model.names[1]
-                    else:
-                        # Change both to child class
-                        face['class_id'] = 2  # Child face
-                        face['class_name'] = model.names[2]
-                        person['class_id'] = 0  # Child
-                        person['class_name'] = model.names[0]
-                else:
-                    # If no adult detection, keep as child
-                    face['class_id'] = 2  # Child face
-                    face['class_name'] = model.names[2]
-                    person['class_id'] = 0  # Child
-                    person['class_name'] = model.names[0]
-                    
-    # Combine corrected detections for drawing
+                # Log scores for debugging
+                for key, value in scores.items():
+                    logging.debug(f"{key}: {value:.3f}")
+    
+    # Draw all detections
     detections = people_boxes + face_boxes + other_boxes
-
-    # add logging about the detections
-    logging.info(f"Detected classes after NMS and correction: {[detection['class_name'] for detection in detections]}")
-
-    # Draw detections
     for detection in detections:
-        x1, y1, x2, y2 = detection['box']
-        class_id = detection['class_id']
-        confidence = detection['confidence']
-        class_name = detection['class_name']
-
-        # Get proximity only for detected faces
         proximity = None
-        if class_id in [2, 3]:
-            bounding_box = [x1, y1, x2, y2]
-            proximity = get_proximity(bounding_box, class_name)
-
-        # Assign a unique color to each class
-        color = CLASS_COLORS[class_id]
-
-        # Draw bounding box
-        cv2.rectangle(image, (x1, y1), (x2, y2), color, 4)
-
-        # Display class name and confidence score
-        if proximity is not None:
-            label = f"{class_name} {confidence:.2f}, Proximity: {proximity:.2f}"
-        else:
-            label = f"{class_name} {confidence:.2f}"
-        font = cv2.FONT_HERSHEY_SIMPLEX
-        text_size = cv2.getTextSize(label, font, 0.5, 1)[0]
-        text_x, text_y = x1, y1 - 5 if y1 - 5 > 10 else y1 + 15
-
-        # Draw background rectangle for text
-        cv2.rectangle(image, (text_x, text_y - text_size[1] - 2), (text_x + text_size[0], text_y + 2), color, -1)
-
-        # Put the label text
-        cv2.putText(image, label, (text_x, text_y), font, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
-                            
-    # Save the image with detections
-    output_name = image_path.split("/")[-1]
-    output_path = f"/home/nele_pauline_suffo/outputs/yolo_all_detections/{output_name}"
-    cv2.imwrite(output_path, image)
-
-    logging.info(f"Output saved at {output_path}")
+        if detection['class_id'] in [2, 3]:
+            proximity = get_proximity(detection['box'], detection['class_name'])
+        draw_detection(image, detection, proximity)
+    
+    # Save output
+    output_dir = "/home/nele_pauline_suffo/outputs/yolo_all_detections"
+    os.makedirs(output_dir, exist_ok=True)
+    output_path = os.path.join(output_dir, os.path.basename(image_path))
+    
+    if cv2.imwrite(output_path, image):
+        logging.info(f"Output saved at {output_path}")
+    else:
+        logging.error(f"Failed to save output image to {output_path}")
     
 def main():
     parser = argparse.ArgumentParser(description="Run YOLO inference on an image")
