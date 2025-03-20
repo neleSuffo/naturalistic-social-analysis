@@ -263,28 +263,7 @@ def process_video(video_path: Path,
                   conn: sqlite3.Connection,
                   frame_skip: int):
     """
-    This function processes a video frame by frame. It inserts the video record, processes each frame, and commits the changes.
-    The steps are as follows:
-    1. Insert video record
-    2. Open video capture
-    3. Process each frame
-    4. Commit changes
-    5. Close video capture
-    
-    Parameters:
-    ----------
-    video_path : Path
-        Path to the video file
-    detection_model : YOLO
-        YOLO model for person and face detection
-    gaze_model : YOLO
-        YOLO model for gaze classification
-    cursor : sqlite3.Cursor
-        SQLite cursor object
-    conn : sqlite3.Connection
-        SQLite connection object
-    frame_skip : int, optional
-        Number of frames to skip between processing (default: 5)
+    Process frames from saved image files instead of video.
     """
     logging.info(f"Processing video: {video_path.name}")
     video_id = insert_video_record(video_path.name, cursor)
@@ -292,41 +271,46 @@ def process_video(video_path: Path,
     # Skip if video already processed
     if video_id is None:
         return
-        
-    cap = cv2.VideoCapture(str(video_path))
-    frame_idx = 0
+
+    # Get corresponding frames directory
+    video_name = video_path.stem
+    frames_dir = DetectionPaths.images_input_dir / video_name
+    
+    if not frames_dir.exists():
+        logging.error(f"Frames directory not found: {frames_dir}")
+        return
+
+    # Get all frame images sorted by frame number
+    frame_files = sorted(frames_dir.glob('*.jpg'))
     processed_frames = 0
-    # Initialize totals dictionary using the class mapping
     total_counts = {name: 0 for name in YoloConfig.detection_mapping.values()}
 
-    while cap.isOpened():
-        ret, frame = cap.read()
-        if not ret:
-            break
-
-        if frame_idx == 2290:
-            print("TEEEST")
-            frame = cv2.imread('/home/nele_pauline_suffo/outputs/quantex_at_home_id254922_2022_04_12_01.MP4_frame_2290.jpg')
-            results1 = detection_model.predict(frame, iou = 0.7)[0]
-
-            boxes1 = results1[0].boxes
-
-            print(f"Regular inference detections: {(boxes1)}")
-            
-        if frame_idx % frame_skip == 0:
-            detection_counts = process_frame(
-                frame, frame_idx, video_id, detection_model, gaze_model, cursor
-            )
-            # Update total counts for each class
-            for class_name, count in detection_counts.items():
-                total_counts[class_name] += count
-            conn.commit()
-            processed_frames += 1
+    for frame_file in frame_files:
+        # Extract frame number from filename (last 6 digits before .jpg)
+        frame_idx = int(frame_file.stem[-6:])
         
-        frame_idx += 1
+        # Skip frames according to frame_skip
+        if frame_skip > 0 and frame_idx % frame_skip != 0:
+            continue
+            
+        # Read frame
+        frame = cv2.imread(str(frame_file))
+        if frame is None:
+            logging.warning(f"Failed to read frame: {frame_file}")
+            continue
 
-    cap.release()
-    
+        # Process frame
+        detection_counts = process_frame(
+            frame, frame_idx, video_id, detection_model, gaze_model, cursor
+        )
+        
+        # Update total counts
+        for class_name, count in detection_counts.items():
+            total_counts[class_name] += count
+            
+        conn.commit()
+        processed_frames += 1
+
     # Store statistics in database
     cursor.execute('''
         INSERT INTO VideoStatistics (
@@ -336,7 +320,7 @@ def process_video(video_path: Path,
             food_count, other_object_count
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ''', (
-        video_id, frame_idx, processed_frames,
+        video_id, len(frame_files), processed_frames,
         total_counts['infant/child'], total_counts['adult'],
         total_counts['infant/child face'], total_counts['adult face'],
         total_counts['book'], total_counts['toy'],
@@ -344,6 +328,8 @@ def process_video(video_path: Path,
         total_counts['food'], total_counts['other_object']
     ))
     conn.commit()
+    
+    logging.info(f"Processed {processed_frames} frames out of {len(frame_files)} total frames")
 
 def extract_video_info(video_path: str) -> Tuple[int, str]:
     """
