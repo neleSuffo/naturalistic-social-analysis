@@ -122,6 +122,14 @@ def save_annotations(
         
         # define mapping for the category_id
         gaze_mapping = {'No': 0, 'Yes': 1}
+        child_person_face_mapping =   {(1, 'Inf'): 0, (1, 'Child'): 0, (1, 'Teen'): 99, (10, 'Adult'): 99, 
+                        (2, 'Inf'): 0, (2, 'Child'): 0, (2, 'Teen'): 99, (2, 'Adult'): 99, 
+                        (10, 'infant'): 1, (10, 'child'): 1, (10, 'teen'): 99, (10, 'adult'): 99,
+                        11: 2, 3: 99, 4: 99, 5: 99, 6: 99, 7: 99, 8: 99, 12: 99}
+        adult_person_face_mapping =   {(1, 'Inf'): 99, (1, 'Child'): 99, (1, 'Teen'): 0, (10, 'Adult'): 0, 
+                (2, 'Inf'): 99, (2, 'Child'): 99, (2, 'Teen'): 0, (2, 'Adult'): 0, 
+                (10, 'infant'): 99, (10, 'child'): 99, (10, 'teen'): 1, (10, 'adult'): 1,
+                11: 2, 3: 99, 4: 99, 5: 99, 6: 99, 7: 99, 8: 99, 12: 99}
         person_face_mapping = {1: 0, 2: 0, 10: 1, 11:2}
         person_face_object_mapping = {1: 0, 2: 0, 10: 1, 11:2, 3:3, 4:9, 5:4, 6:5, 7:6, 8:7, 12:8} #map class 4 (animal) to 9, to be able to exclude it later
         all_mapping =   {(1, 'Inf'): 0, (1, 'Child'): 0, (1, 'Teen'): 1, (10, 'Adult'): 1, 
@@ -141,6 +149,12 @@ def save_annotations(
         elif target == "person_face_object":
             # Map the category_id to the YOLO format (treat person, reflection, face all as category "person")
             category_id = person_face_object_mapping.get(category_id, category_id)
+        elif target == "adult_person_face":
+            # Map the category_id to the YOLO format 
+            category_id = adult_person_face_mapping.get((category_id, person_age), category_id)
+        elif target == "child_person_face":
+            # Map the category_id to the YOLO format 
+            category_id = child_person_face_mapping.get((category_id, person_age), category_id)
         # YOLO format: category_id x_center y_center width height
         try:
             yolo_bbox = convert_to_yolo_format(image_file_path, bbox)               
@@ -170,6 +184,8 @@ def main(target: str) -> None:
     logging.info(f"Starting the conversion process for Yolo {target} detection.")
     try:
         category_ids = {
+            "adult_person_face": YoloConfig.person_target_class_ids,
+            "child_person_face": YoloConfig.person_target_class_ids,
             "person_face": YoloConfig.person_target_class_ids,
             "person_face_object": YoloConfig.person_object_target_class_ids,
             "gaze": YoloConfig.face_target_class_ids,
