@@ -51,39 +51,6 @@ def convert_to_yolo_format(
     # Return in YOLO format
     return (x_center, y_center, width, height)
 
-
-def find_alternative_image(
-    image_file_name: str,
-    video_name: str
-) -> Path:
-    """ 
-    This function searches for an alternative image file with the same quantex_at_home_id.
-    
-    Parameters
-    ----------
-    image_file_name : str
-        The original image file name.
-    video_name: str
-        the name of the video the image belongs to
-
-    Returns
-    -------
-    Path
-        The path to the alternative image file, or None if not found.
-    """
-    # Split the string by underscores
-    parts = image_file_name.split('_')
-    # Join the relevant parts (up to the 5th underscore)
-    quantex_id = "_".join(parts[:8])
-    
-    # Search for alternative images in the directory with the same quantex_at_home_id
-    for image_path in DetectionPaths.images_input_dir/video_name.glob(f"{quantex_id}*"):
-        if image_path.name != image_file_name:
-            return image_path
-    
-    return None
-
-
 def save_annotations(
     annotations: list,
     target: str
