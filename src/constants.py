@@ -25,7 +25,7 @@ class DetectionPaths:
     annotations_xml_path = Path(quantex_annotations_dir/"annotations.xml")
     annotations_individual_dir = Path(BasePaths.data_dir/"quantex_annotations_individual/")
     annotations_json_path = Path(quantex_annotations_dir/"annotations.json")
-    annotations_db_path = Path(quantex_annotations_dir/"annotations.db")
+    quantex_annotations_db_path = Path(quantex_annotations_dir/"quantex_annotations.db")
     detection_results_dir = Path(BasePaths.output_dir/"detection_pipeline_results/")
     detection_db_path = Path(detection_results_dir/'detection_results.db')
     # The file that is used to map the file names to the file ids
@@ -46,6 +46,18 @@ class YoloPaths:
     person_face_data_input_dir = Path(BasePaths.data_dir/"yolo_person_face_input")
     person_face_output_dir = Path(BasePaths.output_dir/"yolo_person_face_detections/")
     
+    adult_person_face_trained_weights_path = Path(BasePaths.models_dir/'yolo11_adult_person_face_detection.pt')
+    adult_person_face_data_config_path = yolo_detections_dir/"adult_person_face_dataset.yaml"
+    adult_person_face_labels_input_dir = Path(BasePaths.data_dir/"yolo_adult_person_face_labels")
+    adult_person_face_data_input_dir = Path(BasePaths.data_dir/"yolo_adult_person_face_input")
+    adult_person_face_output_dir = Path(BasePaths.output_dir/"yolo_adult_person_face_detections/")
+    
+    child_person_face_trained_weights_path = Path(BasePaths.models_dir/'yolo11_child_person_face_detection.pt')
+    child_person_face_data_config_path = yolo_detections_dir/"childperson_face_dataset.yaml"
+    child_person_face_labels_input_dir = Path(BasePaths.data_dir/"yolo_child_person_face_labels")
+    child_person_face_data_input_dir = Path(BasePaths.data_dir/"yolo_child_person_face_input")
+    child_person_face_output_dir = Path(BasePaths.output_dir/"yolo_child_person_face_detections/")
+        
     person_face_object_trained_weights_path = Path(BasePaths.models_dir/'yolo11_detections.pt')
     person_face_object_data_config_path = yolo_detections_dir/"yolo_detections_dataset.yaml"
     person_face_object_labels_input_dir = Path(BasePaths.data_dir/"yolo_detections_labels")
