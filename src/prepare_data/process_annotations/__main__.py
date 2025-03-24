@@ -3,7 +3,6 @@ import argparse
 from prepare_data.process_annotations.create_database import (
     write_xml_to_database,
     create_db_table_video_name_id_mapping,
-    correct_erronous_videos_in_db,
     create_child_class_in_db,
 )
 from prepare_data.process_annotations.create_file_name_id_dict import create_file_name_id_dict
@@ -26,7 +25,7 @@ def main(model: str, yolo_target: str, setup_db: bool = False) -> None:
     """
     # Validate arguments
     valid_models = {"yolo", "all"}
-    valid_targets = {"all", "person_face", "person_face_object", "gaze"}
+    valid_targets = {"all", "person_face", "person_face_object", "gaze", "adult_person_face", "child_person_face"}
     
     if model not in valid_models:
         raise ValueError(f"Invalid model '{model}'. Must be one of: {valid_models}")
@@ -35,12 +34,11 @@ def main(model: str, yolo_target: str, setup_db: bool = False) -> None:
         raise ValueError(f"Invalid yolo_target '{yolo_target}'. Must be one of: {valid_targets}")
     
     try:
-        os.environ['OMP_NUM_THREADS'] = '10'
+        os.environ['OMP_NUM_THREADS'] = '20'
         if setup_db:
             task_file_id_dict = create_file_name_id_dict(DetectionPaths.file_name_id_mapping_path)
             create_db_table_video_name_id_mapping(task_file_id_dict)
             write_xml_to_database()
-            correct_erronous_videos_in_db()
             create_child_class_in_db()
 
         if model in ["yolo", "all"]:
