@@ -146,4 +146,4 @@ class Proximity:
     adult_far_image_path = Path("/home/nele_pauline_suffo/outputs/proximity_sampled_frames/adult_reference_proximity_value_0.jpg")
 
 class DetectionPipeline:
-    quantex_subjects = Path("/home/nele_pauline_suffo/ProcessedData/quantex_subjects.xlsx")
+    quantex_subjects = Path("/home/nele_pauline_suffo/ProcessedData/quantex_subjects.csv")
