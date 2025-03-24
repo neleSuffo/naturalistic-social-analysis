@@ -223,7 +223,7 @@ def get_pfo_class_distribution(total_images: list, annotation_folder: Path, yolo
     return images_only_person, images_only_face, images_multiple, images_neither, image_objects
 
 
-def get_pf_class_distribution(total_images: list, annotation_folder: Path) -> tuple:
+def get_pf_class_distribution(total_images: list, annotation_folder: Path, target_type: str = "person_face") -> tuple:
     """
     Reads label files and groups images based on their person/face class distribution.
 
@@ -233,18 +233,33 @@ def get_pf_class_distribution(total_images: list, annotation_folder: Path) -> tu
         List of image names.
     annotation_folder: Path
         Path to the directory containing label files.
-
+    target_type: str
+        The target type for YOLO (e.g., "person_face" or "gaze").
+        
     Returns:
     -------
     df: pd.DataFrame
         DataFrame containing image filenames and their corresponding one-hot encoded class labels.
     """
-    # Define the classes we're interested in
-    class_mapping = {
-        0: "person",  # mapped from original class 1
-        1: "face",    # mapped from original class 10
-        2: "child_body_parts"  # original class 11
-    }
+    # Define the classes based on target type
+    if target_type == "adult_person_face":
+        class_mapping = {
+            0: "adult_person",
+            1: "adult_face",
+            2: "child_body_parts"
+        }
+    elif target_type == "child_person_face":
+        class_mapping = {
+            0: "child_person",
+            1: "child_face",
+            2: "child_body_parts"
+        }
+    else:
+        class_mapping = {
+            0: "person",
+            1: "face",
+            2: "child_body_parts"
+        }
 
     image_class_mapping = []
 
@@ -730,11 +745,11 @@ def split_yolo_data(label_path: Path, yolo_target: str):
     """
     total_images = get_total_number_of_annotated_frames(label_path)
     
-     # Mapping of target type to corresponding distribution function.
+    # Mapping of target type to corresponding distribution function.
     distribution_funcs = {
         "all": get_all_class_distribution,
         "person_face": get_pf_class_distribution,
-        "person_face_object": get_pf_class_distribution,
+        "person_face_object": get_pfo_class_distribution,
         "gaze": get_gaze_class_distribution,
         "adult_person_face": get_pf_class_distribution,
         "child_person_face": get_pf_class_distribution
@@ -758,14 +773,15 @@ def split_yolo_data(label_path: Path, yolo_target: str):
             for split_name, split_set in (("train", train), ("val", val), ("test", test)):
                 move_images(yolo_target, split_set, split_name, label_path)
         elif yolo_target in ["all", "person_face", "adult_person_face", "child_person_face"]:
-            df = distribution_funcs[yolo_target](total_images, label_path)
+            df = distribution_funcs[yolo_target](total_images, label_path, yolo_target)
             train, val, test, train_df, val_df, test_df = stratified_split_all(df)
             log_all_split_distributions(train_df, val_df, test_df)
             for split_name, split_set in (("train", train), ("val", val), ("test", test)):
                 move_images(yolo_target, split_set, split_name, label_path)
     except KeyError:
+        logging.error(f"Distribution function not found for target: {yolo_target}")
         raise ValueError(f"Invalid yolo_target: {yolo_target}")
-        
+            
 def main(model_target: str, yolo_target: str):
     """
     Main function to prepare the dataset for model training.
