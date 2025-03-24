@@ -65,8 +65,8 @@ def get_balanced_videos(videos_dir: Path, age_df: pd.DataFrame, videos_per_group
         if video_id:
             try:
                 # Check if ID exists in age_df and has a valid age group
-                age_row = age_df[age_df['ID'] == int(video_id)]
-                if not age_row.empty and pd.notna(age_row['Age Group'].iloc[0]):
+                age_row = age_df[age_df['child_id'] == int(video_id)]
+                if not age_row.empty and pd.notna(age_row['age_group'].iloc[0]):
                     available_videos.append((video_path, video_id))
                 else:
                     skipped_videos.append(video_path.name)
@@ -80,7 +80,7 @@ def get_balanced_videos(videos_dir: Path, age_df: pd.DataFrame, videos_per_group
     # Group videos by age
     videos_by_age = {3: [], 4: [], 5: []}
     for video_path, video_id in available_videos:
-        age_group = age_df[age_df['ID'] == int(video_id)]['Age Group'].iloc[0]
+        age_group = age_df[age_df['ID'] == int(video_id)]['age_group'].iloc[0]
         if age_group in videos_by_age:
             videos_by_age[age_group].append(video_path)
     
