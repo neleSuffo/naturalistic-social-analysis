@@ -57,7 +57,7 @@ def fetch_all_annotations(
         the list of annotations
         (image_id, video_id, category_id, bbox, image_file_name, video_file_name)
     """
-    conn = sqlite3.connect(DetectionPaths.annotations_db_path)
+    conn = sqlite3.connect(DetectionPaths.quantex_annotations_db_path)
     cursor = conn.cursor()
 
     if category_ids:
