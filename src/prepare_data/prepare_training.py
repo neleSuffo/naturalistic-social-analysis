@@ -223,7 +223,7 @@ def get_pfo_class_distribution(total_images: list, annotation_folder: Path, yolo
     return images_only_person, images_only_face, images_multiple, images_neither, image_objects
 
 
-def get_pf_class_distribution(total_images: list, annotation_folder: Path, target_type: str = "person_face") -> tuple:
+def get_pf_class_distribution(total_images: list, annotation_folder: Path, target_type: str) -> pd.DataFrame:
     """
     Reads label files and groups images based on their person/face class distribution.
 
@@ -234,7 +234,7 @@ def get_pf_class_distribution(total_images: list, annotation_folder: Path, targe
     annotation_folder: Path
         Path to the directory containing label files.
     target_type: str
-        The target type for YOLO (e.g., "person_face" or "gaze").
+        The target type for YOLO (e.g., "person_face" or "adult_person_face").
         
     Returns:
     -------
@@ -246,19 +246,16 @@ def get_pf_class_distribution(total_images: list, annotation_folder: Path, targe
         class_mapping = {
             0: "adult_person",
             1: "adult_face",
-            2: "child_body_parts"
         }
     elif target_type == "child_person_face":
         class_mapping = {
             0: "child_person",
             1: "child_face",
-            2: "child_body_parts"
         }
     else:
         class_mapping = {
             0: "person",
             1: "face",
-            2: "child_body_parts"
         }
 
     image_class_mapping = []
@@ -269,23 +266,14 @@ def get_pf_class_distribution(total_images: list, annotation_folder: Path, targe
 
         if annotation_file.exists() and annotation_file.stat().st_size > 0:
             with open(annotation_file, 'r') as f:
-                class_ids = set()
-                for line in f:
-                    if line.strip():
-                        # Map the original class IDs to new ones
-                        orig_class = int(line.split()[0])
-                        if orig_class in [1, 2]:  # person and reflection -> 0
-                            class_ids.add(0)
-                        elif orig_class == 10:    # face -> 1
-                            class_ids.add(1)
-                        elif orig_class == 11:    # child body parts -> 2
-                            class_ids.add(2)
+                class_ids = {int(line.split()[0]) for line in f if line.split()}
 
             # Convert class IDs to names
             labels = [class_mapping[cid] for cid in class_ids if cid in class_mapping]
         else:
             labels = []
 
+        # Create one-hot encoded dictionary
         image_class_mapping.append({
             "filename": image_file.stem,
             **{class_name: (1 if class_name in labels else 0) for class_name in class_mapping.values()}
@@ -293,14 +281,6 @@ def get_pf_class_distribution(total_images: list, annotation_folder: Path, targe
 
     # Convert to DataFrame
     df = pd.DataFrame(image_class_mapping)
-    
-    # Calculate and log class distributions
-    total_images = len(df)
-    for class_name in class_mapping.values():
-        count = df[class_name].sum()
-        ratio = count / total_images
-        logging.info(f"{class_name}: {count} images ({ratio:.2%})")
-
     return df
 
 def get_all_class_distribution(total_images: list, annotation_folder: Path):
@@ -617,16 +597,33 @@ def log_split_distributions(train, val, test, image_objects, image_sets):
         total = train_count + val_count + test_count
         logging.info(f"{obj:<12} {train_count:<8} {val_count:<8} {test_count:<8} {total:<8}")
  
-def log_all_split_distributions(train_df, val_df, test_df):
-    """Log detailed distribution of images across splits."""
+def log_all_split_distributions(train_df, val_df, test_df, yolo_target):
+    """Log detailed distribution of images across splits.
+    
+    Parameters:
+    ----------
+    train_df: pd.DataFrame
+        DataFrame containing training split.
+    val_df: pd.DataFrame
+        DataFrame containing validation split.
+    test_df: pd.DataFrame
+        DataFrame containing testing split.
+    yolo_target: str
+        The target type for YOLO (e.g., "adult_person_face", "child_person_face" or "all").
+    """
 
     splits = {'Train': train_df, 'Val': val_df, 'Test': test_df}
 
     # All class categories
-    all_categories = [
-        "adult_person", "child_person", "adult_face", "child_face",
-        "book", "toy", "kitchenware", "screen", "food", "other_object"
-    ]
+    if yolo_target == "adult_person_face":
+        all_categories = ["adult_person", "adult_face"]
+    elif yolo_target == "child_person_face":
+        all_categories = ["child_person", "child_face"]
+    else:
+        all_categories = [
+            "adult_person", "child_person", "adult_face", "child_face",
+            "book", "toy", "kitchenware", "screen", "food", "other_object"
+        ]
 
     logging.info("\nImage Distribution by Category:")
     logging.info(f"{'Category':<20} {'Train':<8} {'Val':<8} {'Test':<8} {'Total':<8}")
@@ -638,13 +635,6 @@ def log_all_split_distributions(train_df, val_df, test_df):
         test_count = test_df[cat_name].sum()
         total = train_count + val_count + test_count
         logging.info(f"{cat_name:<20} {train_count:<8} {val_count:<8} {test_count:<8} {total:<8}")
-
-    # Log "Neither" category (images that contain none of the above)
-    neither_train = (train_df[all_categories].sum(axis=1) == 0).sum()
-    neither_val = (val_df[all_categories].sum(axis=1) == 0).sum()
-    neither_test = (test_df[all_categories].sum(axis=1) == 0).sum()
-    neither_total = neither_train + neither_val + neither_test
-    logging.info(f"{'Neither':<20} {neither_train:<8} {neither_val:<8} {neither_test:<8} {neither_total:<8}")
     
     # log number of images per split
     logging.info(f"Total number of images: {len(train_df) + len(val_df) + len(test_df)}")
@@ -708,7 +698,7 @@ def move_images(yolo_target: str, image_names: list, split_type: str, label_path
     label_dst_dir.mkdir(parents=True, exist_ok=True)
     
     for image_name in image_names:
-        if yolo_target == "person_face" or yolo_target == "person_face_object" or yolo_target == "all":
+        if yolo_target in ["person_face", "person_face_object", "all", "child_person_face", "adult_person_face"]:
             # construct full image path
             image_parts = image_name.split("_")[:8]
             image_folder = "_".join(image_parts)
@@ -775,7 +765,7 @@ def split_yolo_data(label_path: Path, yolo_target: str):
         elif yolo_target in ["all", "person_face", "adult_person_face", "child_person_face"]:
             df = distribution_funcs[yolo_target](total_images, label_path, yolo_target)
             train, val, test, train_df, val_df, test_df = stratified_split_all(df)
-            log_all_split_distributions(train_df, val_df, test_df)
+            log_all_split_distributions(train_df, val_df, test_df, yolo_target)
             for split_name, split_set in (("train", train), ("val", val), ("test", test)):
                 move_images(yolo_target, split_set, split_name, label_path)
     except KeyError:
