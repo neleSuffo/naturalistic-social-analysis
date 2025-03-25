@@ -4,7 +4,7 @@ import cv2
 from pathlib import Path
 from utils import fetch_all_annotations
 from constants import YoloPaths, DetectionPaths
-from config import YoloConfig
+from config import YoloConfig, CategoryMappings
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -51,6 +51,35 @@ def convert_to_yolo_format(
     # Return in YOLO format
     return (x_center, y_center, width, height)
 
+def map_category_id(target: str, category_id: int, person_age: str = None, gaze_directed_at_child: str = None) -> int:
+    """
+    Maps category ID based on target type and additional attributes using CategoryMappings class.
+    
+    Parameters
+    ----------
+    target : str
+        Target type for the mapping
+    category_id : int
+        Original category ID
+    person_age : str, optional
+        Age group for person categories
+    gaze_directed_at_child : str, optional
+        Gaze direction for gaze detection
+        
+    Returns
+    -------
+    int
+        Mapped category ID
+    """
+    if target == "gaze":
+        return CategoryMappings.gaze.get(gaze_directed_at_child, 99)
+    
+    mapping = getattr(CategoryMappings, target.upper(), {})
+    if person_age and category_id in [1, 2, 10]:
+        return mapping.get((category_id, person_age), mapping.get(category_id, 99))
+    
+    return mapping.get(category_id, 99)
+
 def save_annotations(
     annotations: list,
     target: str
@@ -68,21 +97,25 @@ def save_annotations(
     logging.info("Saving annotations in YOLO format.")
     output_dirs = {
         "all": YoloPaths.all_labels_input_dir,
-        "person_face": YoloPaths.person_face_labels_input_dir,
-        "person_face_object": YoloPaths.person_face_object_labels_input_dir,
         "adult_person_face": YoloPaths.adult_person_face_labels_input_dir,
-        "child_person_face": YoloPaths.child_person_face_labels_input_dir
+        "child_person_face": YoloPaths.child_person_face_labels_input_dir,
+        "object": YoloPaths.object_labels_input_dir,
+        "gaze": YoloPaths.gaze_labels_input_dir,
     }
-    output_dir = output_dirs.get(target, YoloPaths.gaze_labels_input_dir)
+    # Remove default fallback and add error handling
+    if target not in output_dirs:
+        raise ValueError(f"Invalid target: {target}. Must be one of: {', '.join(output_dirs.keys())}")
+    
+    output_dir = output_dirs[target]
     output_dir.mkdir(parents=True, exist_ok=True)
     
     file_contents = {}
     skipped_count = 0
     processed_count = 0
-    #(image_id, video_id, category_id, bbox, image_file_name, video_file_name, gaze_directed_at_child, person_age)
+    #(category_id, bbox, image_file_name, gaze_directed_at_child, person_age)
 
     for annotation in annotations:           
-        _, _, category_id, bbox, image_file_name, _, gaze_directed_at_child, person_age = annotation
+        category_id, bbox, image_file_name, gaze_directed_at_child, person_age = annotation
         video_name = image_file_name[:-11]
         image_file_path = DetectionPaths.images_input_dir / video_name / image_file_name
 
@@ -94,43 +127,8 @@ def save_annotations(
         
         bbox = json.loads(bbox)
         
-        # define mapping for the category_id
-        gaze_mapping = {'No': 0, 'Yes': 1}
-        child_person_face_mapping =   {(1, 'Inf'): 0, (1, 'Child'): 0, (1, 'Teen'): 99, (1, 'Adult'): 99, 
-                        (2, 'Inf'): 0, (2, 'Child'): 0, (2, 'Teen'): 99, (2, 'Adult'): 99, 
-                        (10, 'infant'): 1, (10, 'child'): 1, (10, 'teen'): 99, (10, 'adult'): 99,
-                        11: 2, 3: 99, 4: 99, 5: 99, 6: 99, 7: 99, 8: 99, 12: 99}
-        adult_person_face_mapping =   {(1, 'Inf'): 99, (1, 'Child'): 99, (1, 'Teen'): 0, (1, 'Adult'): 0, 
-                (2, 'Inf'): 99, (2, 'Child'): 99, (2, 'Teen'): 0, (2, 'Adult'): 0, 
-                (10, 'infant'): 99, (10, 'child'): 99, (10, 'teen'): 1, (10, 'adult'): 1,
-                11: 2, 3: 99, 4: 99, 5: 99, 6: 99, 7: 99, 8: 99, 12: 99}
-        person_face_mapping = {1: 0, 2: 0, 10: 1, 11:2}
-        person_face_object_mapping = {1: 0, 2: 0, 10: 1, 11:2, 3:3, 4:9, 5:4, 6:5, 7:6, 8:7, 12:8} #map class 4 (animal) to 9, to be able to exclude it later
-        all_mapping =   {(1, 'Inf'): 0, (1, 'Child'): 0, (1, 'Teen'): 1, (10, 'Adult'): 1, 
-                        (2, 'Inf'): 0, (2, 'Child'): 0, (2, 'Teen'): 1, (2, 'Adult'): 1, 
-                        (10, 'infant'): 2, (10, 'child'): 2, (10, 'teen'): 3, (10, 'adult'): 3,
-                        11: 4, 3: 5, 4: 11, 5: 6, 6: 7, 7: 8, 8: 9, 12: 10}
+        category_id = map_category_id(target, category_id, person_age, gaze_directed_at_child)
         
-        if target == "gaze":
-            # category id is replaced with gaze_directed_at_child (No: 0, Yes: 1)
-            category_id = gaze_mapping.get(gaze_directed_at_child, gaze_directed_at_child)
-        elif target == "all":
-            # map person based on age group
-            category_id = all_mapping.get((category_id, person_age), all_mapping.get(category_id, category_id))            
-        elif target == "person_face":
-            # Map the category_id to the YOLO format (treat person, reflection, face all as category "person")
-            category_id = person_face_mapping.get(category_id, category_id)
-        elif target == "person_face_object":
-            # Map the category_id to the YOLO format (treat person, reflection, face all as category "person")
-            category_id = person_face_object_mapping.get(category_id, category_id)
-        elif target == "adult_person_face":
-            # Map the category_id to the YOLO format 
-            category_id = adult_person_face_mapping.get((category_id, person_age), 
-                        adult_person_face_mapping.get(category_id, 99))
-        elif target == "child_person_face":
-            # Map the category_id to the YOLO format 
-            category_id = child_person_face_mapping.get((category_id, person_age), 
-                        child_person_face_mapping.get(category_id, 99))
         # YOLO format: category_id x_center y_center width height
         try:
             yolo_bbox = convert_to_yolo_format(image_file_path, bbox)               
@@ -162,20 +160,21 @@ def main(target: str) -> None:
         category_ids = {
             "adult_person_face": YoloConfig.person_target_class_ids,
             "child_person_face": YoloConfig.person_target_class_ids,
-            "person_face": YoloConfig.person_target_class_ids,
-            "person_face_object": YoloConfig.person_object_target_class_ids,
+            "object": YoloConfig.object_target_class_ids,
             "gaze": YoloConfig.face_target_class_ids,
-            "all": YoloConfig.person_object_target_class_ids,
+            "all": YoloConfig.all_target_class_ids,
         }.get(target)
 
         if category_ids is None:
-            logging.error(f"Invalid target: {target}. Expected 'all', 'person_face', 'person_face_object' or 'gaze'.")
+            logging.error(f"Invalid target: {target}. Expected 'all', 'adult_person_face', 'child_person_face', 'object' or 'gaze'.")
             return
 
-        if target == "person_face_object" or target == "all":
-            annotations = fetch_all_annotations(category_ids=category_ids, objects=True)
-        else:
-            annotations = fetch_all_annotations(category_ids=category_ids)
+        if target == "all":
+            annotations = fetch_all_annotations(category_ids=category_ids, persons = True, objects=True)
+        elif target in ["adult_person_face", "child_person_face", "gaze"]:
+            annotations = fetch_all_annotations(category_ids=category_ids, persons = True, objects=False)
+        elif target == "object":
+            annotations = fetch_all_annotations(category_ids=category_ids, persons = False, objects=True)
         logging.info(f"Fetched {len(annotations)} {target} annotations.")
         save_annotations(annotations, target)
         logging.info(f"Successfully saved all {target} annotations.")
