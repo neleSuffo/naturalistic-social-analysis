@@ -66,6 +66,37 @@ class YoloPaths:
     gaze_labels_input_dir = Path(BasePaths.data_dir/"yolo_gaze_labels")
     gaze_data_input_dir = Path(BasePaths.data_dir/"yolo_gaze_input_balanced")
     gaze_output_dir = Path(BasePaths.output_dir/"yolo_gaze_classification/")
+    
+    @classmethod
+    def get_target_paths(cls, yolo_target: str, split_type: str) -> Optional[Tuple[Path, Path]]:
+        """Get image and label destination paths for a given target and split type."""
+        path_mapping = {
+            "child_person_face": (
+                cls.child_person_face_data_input_dir / "images" / split_type,
+                cls.child_person_face_data_input_dir / "labels" / split_type
+            ),
+            "adult_person_face": (
+                cls.adult_person_face_data_input_dir / "images" / split_type,
+                cls.adult_person_face_data_input_dir / "labels" / split_type
+            ),
+            "gaze": (
+                cls.gaze_data_input_dir / split_type / "gaze",
+                cls.gaze_data_input_dir / split_type / "gaze"
+            ),
+            "no_gaze": (
+                cls.gaze_data_input_dir / split_type / "no_gaze",
+                cls.gaze_data_input_dir / split_type / "no_gaze"
+            ),
+            "object": (
+                cls.object_data_input_dir / "images" / split_type,
+                cls.object_data_input_dir / "labels" / split_type
+            ),
+            "all": (
+                cls.all_data_input_dir / "images" / split_type,
+                cls.all_data_input_dir / "labels" / split_type
+            )
+        }
+        return path_mapping.get(yolo_target)
 
 class ResNetPaths:
     trained_weights_path = Path(BasePaths.models_dir/"resnet_gaze_classification.pth")
