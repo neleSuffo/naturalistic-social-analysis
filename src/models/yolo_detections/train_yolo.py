@@ -33,11 +33,11 @@ def main():
     torch.set_num_threads(10)  # PyTorch threads
 
     # Get appropriate paths based on yolo_target
-    data_config_path = getattr(YoloPaths, f"{yolo_target}_data_config_path")
-    base_output_dir = getattr(YoloPaths, f"{yolo_target}_output_dir")
+    data_config_path = getattr(YoloPaths, f"{args.yolo_target}_data_config_path")
+    base_output_dir = getattr(YoloPaths, f"{args.yolo_target}_output_dir")
     
     # Load the YOLO model
-    model = YOLO("yolo11m.pt")
+    model = YOLO("yolo11x.pt")
 
     # Define experiment name and output directory
     experiment_name = f"{timestamp}_yolo_{args.yolo_target}_finetune_with_augment_and_earlystop"
