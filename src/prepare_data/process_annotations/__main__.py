@@ -25,7 +25,7 @@ def main(model: str, yolo_target: str, setup_db: bool = False) -> None:
     """
     # Validate arguments
     valid_models = {"yolo", "all"}
-    valid_targets = {"all", "person_face", "person_face_object", "gaze", "adult_person_face", "child_person_face"}
+    valid_targets = {"all", "gaze", "adult_person_face", "child_person_face", "object"}
     
     if model not in valid_models:
         raise ValueError(f"Invalid model '{model}'. Must be one of: {valid_models}")
@@ -51,7 +51,7 @@ def main(model: str, yolo_target: str, setup_db: bool = False) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process annotations")
     parser.add_argument('model_target', type=str, help='Model to convert to (e.g., "yolo", "all")')
-    parser.add_argument('yolo_target', type=str, help='Target YOLO label ("person_face", "person_face_object" or "gaze")')
+    parser.add_argument('yolo_target', type=str, help='Target YOLO label ("all", "adult_person_face" or "gaze")')
     parser.add_argument('--setup_db', action='store_true', help='Whether to set up the database')
 
     args = parser.parse_args()
