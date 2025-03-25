@@ -131,98 +131,6 @@ def get_total_number_of_annotated_frames(label_path: Path, image_folder: Path = 
             total_images.extend([str(p.resolve()) for p in video_path.iterdir() if p.is_file()])
     return total_images   
 
-def get_pfo_class_distribution(total_images: list, annotation_folder: Path, yolo_target: str) -> tuple:
-    """
-    This function reads the label files and groups images based on their class distribution.
-    
-    For each label file, all class_ids in the file are examined at once.
-    Class 2 is ignored in the grouping so that:
-      - Images with only 0s (or 0s and 2s) are considered as "only persons".
-      - Images with only 1s (or 1s and 2s) are considered as "only faces".
-      - Images with both 0 and 1 (with or without 2) are "multiple classes".
-      - Otherwise, if the file is empty or contains no 0 or 1, it's "neither".
-      
-    Parameters:
-    ----------
-    total_images: list
-        List of image names.
-    annotation_folder: Path
-        Path to the directory containing label files.
-    yolo_target: str
-        The target type for YOLO (e.g., "person_face" or "person_face_object").
-    Returns:
-    -------
-    images_only_person: set
-        Set of image names with only class 0.
-    images_only_face: set
-        Set of image names with only class 1.
-    images_multiple: set
-        Set of image names with both classes 0 and 1.
-    images_neither: set
-        Set of image names with no classes or only class 2.
-    """
-    object_counts = {
-        3: "book",
-        4: "toy", 
-        5: "kitchenware",
-        6: "screen",
-        7: "food",
-        8: "other_object",
-        9: "animal",
-
-    }
-        
-    images_only_person = set()
-    images_only_face = set()
-    images_multiple = set()
-    images_neither = set()
-    image_objects = {}  # Stores object presence per image
-                    
-    for image_file in total_images:
-        image_file = Path(image_file)
-        annotation_file = annotation_folder / image_file.with_suffix('.txt').name
-        present_objects = set()
-        
-        if annotation_file.exists() and annotation_file.stat().st_size > 0:
-            with open(annotation_file, 'r') as f:
-                labels = f.readlines()    
-        
-            # Get all class_ids from the file.
-            class_ids = {int(line.split()[0]) for line in labels if line.split()}
-            
-            # Ignore class 2
-            reduced_ids = class_ids - {2}
-            
-            if reduced_ids == {0}: # Only person
-                images_only_person.add(image_file.stem)
-            elif reduced_ids == {1}: # Only face
-                images_only_face.add(image_file.stem)
-            elif reduced_ids == {0, 1}: # only person and face
-                images_multiple.add(image_file.stem)
-            else:
-                images_neither.add(image_file.stem)
-        else:
-            images_neither.add(image_file.stem)
-        
-    # log number of each object type
-    for object_type in object_counts.values():
-        object_count = sum(1 for objects in image_objects.values() if object_type in objects)
-        logging.info(f"Number of images with {object_type}: {object_count}")
-    
-    # Store object labels for this image
-    total_num_images = len(total_images)
-    only_person_ratio = len(images_only_person) / total_num_images
-    only_face_ratio = len(images_only_face) / total_num_images
-    multiple_ratio = len(images_multiple) / total_num_images
-    neither_ratio = len(images_neither) / total_num_images
-    logging.info(f"Total number of annotated frames: {total_num_images}")
-    logging.info(f"Class distribution: {len(images_only_person)} only person {only_person_ratio:.2f}, {len(images_only_face)} only face {only_face_ratio:.2f}, {len(images_multiple)} multiple {multiple_ratio:.2f}, {len(images_neither)} neither {neither_ratio:.2f}")
-
-    image_objects[image_file.stem] = list(present_objects)    
-
-    return images_only_person, images_only_face, images_multiple, images_neither, image_objects
-
-
 def get_pf_class_distribution(total_images: list, annotation_folder: Path, target_type: str) -> pd.DataFrame:
     """
     Reads label files and groups images based on their person/face class distribution.
@@ -343,7 +251,58 @@ def get_all_class_distribution(total_images: list, annotation_folder: Path):
     df = pd.DataFrame(image_class_mapping)
 
     # save df
-    df.to_csv("/home/nele_pauline_suffo/outputs/yolo_all_detections/all_class_distribution.csv", index=False)
+    return df
+
+def get_object_class_distribution(total_images: list, annotation_folder: Path):
+    """
+    Reads label files and groups images based on their refined class distribution.
+
+    Parameters:
+    ----------
+    total_images: list
+        List of image names.
+    annotation_folder: Path
+        Path to the directory containing label files.
+
+    Returns:
+    -------
+    df: pd.DataFrame
+        DataFrame containing image filenames and their corresponding one-hot encoded class labels.
+    """
+    object_counts = {
+        0: "book",
+        1: "toy", 
+        2: "kitchenware",
+        3: "screen",
+        4: "other_object",
+        5: "animal",
+        6: "food"
+    }
+
+    image_class_mapping = []
+
+    for image_file in total_images:
+        image_file = Path(image_file)
+        annotation_file = annotation_folder / image_file.with_suffix('.txt').name
+
+        if annotation_file.exists() and annotation_file.stat().st_size > 0:
+            with open(annotation_file, 'r') as f:
+                class_ids = {int(line.split()[0]) for line in f if line.split()}
+
+            # Convert class IDs to names
+            labels = [id_to_name[cid] for cid in class_ids if cid in id_to_name]
+        else:
+            labels = []
+
+        image_class_mapping.append({
+            "filename": image_file.stem,
+            **{class_name: (1 if class_name in labels else 0) for class_name in id_to_name.values()}
+        })
+
+    # Convert to DataFrame
+    df = pd.DataFrame(image_class_mapping)
+
+    # save df
     return df
 
 def get_gaze_class_distribution(total_images: list, annotation_folder: Path) -> tuple:
@@ -619,6 +578,8 @@ def log_all_split_distributions(train_df, val_df, test_df, yolo_target):
         all_categories = ["adult_person", "adult_face"]
     elif yolo_target == "child_person_face":
         all_categories = ["child_person", "child_face"]
+    elif yolo_target == "object":
+        all_categories = ["book", "toy", "kitchenware", "screen", "other_object", "animal", "food"]
     else:
         all_categories = [
             "adult_person", "child_person", "adult_face", "child_face",
@@ -672,56 +633,65 @@ def move_images(yolo_target: str, image_names: list, split_type: str, label_path
         The split type (train, val, or test).
     label_path: Path
         Path to the directory containing
+        
+    Raises
+    ------
+    ValueError
+        If yolo_target is invalid or paths cannot be determined
     """
-    logging.info(f"Moving {len(image_names)} images to {split_type} split...")
-    if yolo_target == "person_face":
-        image_dst_dir = YoloPaths.person_face_data_input_dir / "images" / split_type
-        label_dst_dir = YoloPaths.person_face_data_input_dir / "labels" / split_type
-    elif yolo_target == "child_person_face":
-        image_dst_dir = YoloPaths.child_person_face_data_input_dir / "images" / split_type
-        label_dst_dir = YoloPaths.child_person_face_data_input_dir / "labels" / split_type
-    elif yolo_target == "adult_person_face":
-        image_dst_dir = YoloPaths.adult_person_face_data_input_dir / "images" / split_type
-        label_dst_dir = YoloPaths.adult_person_face_data_input_dir / "labels" / split_type
-    elif yolo_target == "gaze" or yolo_target == "no_gaze":
-        image_dst_dir = YoloPaths.gaze_data_input_dir / split_type / yolo_target
-        label_dst_dir = YoloPaths.gaze_data_input_dir /  split_type / yolo_target
-    elif yolo_target == "person_face_object":
-        image_dst_dir = YoloPaths.person_face_object_data_input_dir / "images" / split_type
-        label_dst_dir = YoloPaths.person_face_object_data_input_dir / "labels" / split_type
-    elif yolo_target == "all":
-        image_dst_dir = YoloPaths.all_data_input_dir / "images" / split_type
-        label_dst_dir = YoloPaths.all_data_input_dir / "labels" / split_type
+    if not image_names:
+        logging.info(f"No images to move for {yolo_target} {split_type}")
+        return
     
+    # Get destination paths from configuration
+    paths = YOLOPaths.get_target_paths(yolo_target, split_type)
+    if not paths:
+        raise ValueError(f"Invalid yolo_target: {yolo_target}")
+    
+    image_dst_dir, label_dst_dir = paths
+
     # Create directories if they don't exist
     image_dst_dir.mkdir(parents=True, exist_ok=True)
     label_dst_dir.mkdir(parents=True, exist_ok=True)
     
+    logging.info(f"Moving {len(image_names)} images to {split_type} split...")
+    
     for image_name in image_names:
-        if yolo_target in ["person_face", "person_face_object", "all", "child_person_face", "adult_person_face"]:
-            # construct full image path
-            image_parts = image_name.split("_")[:8]
-            image_folder = "_".join(image_parts)
-            image_src = DetectionPaths.images_input_dir / image_folder / f"{image_name}.jpg"
-            label_src = label_path / f"{image_name}.txt"
-            image_dst = image_dst_dir / f"{image_name}.jpg"
-            label_dst = label_dst_dir / f"{image_name}.txt"
-            # check if label file exists and create it if not
-            if not label_src.exists():
-                label_dst.touch()  # Create an empty destination label file if the source does not exist
-            else:
-                shutil.copy(label_src, label_dst)
-            shutil.copy(image_src, image_dst)
+        try:
+            if yolo_target in ["all", "child_person_face", "adult_person_face", "object"]:
+                # construct full image path
+                image_parts = image_name.split("_")[:8]
+                image_folder = "_".join(image_parts)
+                image_src = DetectionPaths.images_input_dir / image_folder / f"{image_name}.jpg"
+                label_src = label_path / f"{image_name}.txt"
+                image_dst = image_dst_dir / f"{image_name}.jpg"
+                label_dst = label_dst_dir / f"{image_name}.txt"
+                # check if label file exists and create it if not
+                if not label_src.exists():
+                    label_dst.touch()  # Create an empty destination label file if the source does not exist
+                else:
+                    shutil.copy2(label_src, label_dst)
+                    # Copy image if it exists
+                if image_src.exists():
+                    shutil.copy2(image_src, image_dst)
+                else:
+                    logging.warning(f"Image {image_src} does not exist. Skipping...")
+                    continue    
+                    
+            elif yolo_target == "gaze" or yolo_target == "no_gaze":
+                image_src = DetectionPaths.gaze_images_input_dir  / image_name
+                image_dst = image_dst_dir / image_name
+
+                if not image_src.exists():
+                    logging.warning(f"Image {image_src} does not exist. Skipping...")
+                    continue
+                
+                shutil.copy2(image_src, image_dst)
+                
+        except Exception as e:
+        logging.error(f"Error processing {image_name}: {str(e)}")
+        continue
         
-        elif yolo_target == "gaze" or yolo_target == "no_gaze":
-            image_src = DetectionPaths.gaze_images_input_dir  / image_name
-            image_dst = image_dst_dir / image_name
-
-            if not image_src.exists():
-                logging.warning(f"Image {image_src} does not exist. Skipping...")
-                continue
-            shutil.copy(image_src, image_dst)
-
 def split_yolo_data(label_path: Path, yolo_target: str):
     """
     This function prepares the dataset for YOLO training by splitting the images into train, val, and test sets.
@@ -738,11 +708,10 @@ def split_yolo_data(label_path: Path, yolo_target: str):
     # Mapping of target type to corresponding distribution function.
     distribution_funcs = {
         "all": get_all_class_distribution,
-        "person_face": get_pf_class_distribution,
-        "person_face_object": get_pfo_class_distribution,
         "gaze": get_gaze_class_distribution,
         "adult_person_face": get_pf_class_distribution,
-        "child_person_face": get_pf_class_distribution
+        "child_person_face": get_pf_class_distribution,
+        "object": get_object_class_distribution,
     }
     try:
         if yolo_target == "gaze":
@@ -752,17 +721,7 @@ def split_yolo_data(label_path: Path, yolo_target: str):
                 train, val, test = splits_dict[gaze_class]
                 for split_name, split_set in (("train", train), ("val", val), ("test", test)):
                     move_images(gaze_class, split_set, split_name, label_path)
-        elif yolo_target == "person_face_object":
-            images_only_person, images_only_face, images_multiple, images_neither, image_objects = distribution_funcs[yolo_target](total_images, label_path)
-            train, val, test = stratified_split_with_objects(
-                (images_only_person, images_only_face, images_multiple, images_neither), 
-                image_objects
-            )        
-            image_sets = (images_only_person, images_only_face, images_multiple, images_neither)
-            log_split_distributions(train, val, test, image_objects, image_sets)
-            for split_name, split_set in (("train", train), ("val", val), ("test", test)):
-                move_images(yolo_target, split_set, split_name, label_path)
-        elif yolo_target in ["all", "person_face", "adult_person_face", "child_person_face"]:
+        elif yolo_target in ["all", "person_face", "adult_person_face", "child_person_face", "object"]:
             df = distribution_funcs[yolo_target](total_images, label_path, yolo_target)
             train, val, test, train_df, val_df, test_df = stratified_split_all(df)
             log_all_split_distributions(train_df, val_df, test_df, yolo_target)
@@ -786,12 +745,12 @@ def main(model_target: str, yolo_target: str):
     if model_target == "yolo":
         path_mapping = {
             "all": YoloPaths.all_labels_input_dir,
-            "person_face": YoloPaths.person_face_labels_input_dir,
-            "person_face_object": YoloPaths.person_face_object_labels_input_dir,
             "child_person_face": YoloPaths.child_person_face_labels_input_dir,
-            "adult_person_face": YoloPaths.adult_person_face_labels_input_dir
+            "adult_person_face": YoloPaths.adult_person_face_labels_input_dir,
+            "object": YoloPaths.object_labels_input_dir,
+            "gaze": YoloPaths.gaze_labels_input_dir
         }
-        label_path = path_mapping.get(yolo_target, YoloPaths.gaze_labels_input_dir)
+        label_path = path_mapping[yolo_target]
         split_yolo_data(label_path, yolo_target)
         logging.info("Dataset preparation for YOLO completed.")
     elif model_target == "other_model":
@@ -802,7 +761,7 @@ def main(model_target: str, yolo_target: str):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Prepare dataset for model training.")
     parser.add_argument("--model_target", choices=["yolo", "other_model"], required=True, help="Specify the model type")
-    parser.add_argument("--yolo_target", choices=["all", "person_face", "person_face_object", "gaze", "adult_person_face", "child_person_face"], required=True, help="Specify the YOLO target type")
+    parser.add_argument("--yolo_target", choices=["all", "gaze", "adult_person_face", "child_person_face", "object"], required=True, help="Specify the YOLO target type")
     
     args = parser.parse_args()
     main(args.model_target, args.yolo_target)
