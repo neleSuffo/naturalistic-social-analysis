@@ -153,3 +153,36 @@ class DetectionPipelineConfig:
         "quantex_at_home_id254922_2022_06_29_02.MP4",
         "quantex_at_home_id254922_2022_06_29_03.MP4",
     ]
+    
+class CategoryMappings:
+    gaze = {
+        'No': 0, 
+        'Yes': 1
+    }
+    
+    child_person_face = {
+        (1, 'Inf'): 0,   (1, 'Child'): 0,  (1, 'Teen'): 99,  (1, 'Adult'): 99,
+        (2, 'Inf'): 0,   (2, 'Child'): 0,  (2, 'Teen'): 99,  (2, 'Adult'): 99,
+        (10, 'infant'): 1, (10, 'child'): 1, (10, 'teen'): 99, (10, 'adult'): 99,
+        11: 2,
+        3: 99, 4: 99, 5: 99, 6: 99, 7: 99, 8: 99, 12: 99
+    }
+    
+    adult_person_face = {
+        (1, 'Inf'): 99,  (1, 'Child'): 99,  (1, 'Teen'): 0,  (1, 'Adult'): 0,
+        (2, 'Inf'): 99,  (2, 'Child'): 99,  (2, 'Teen'): 0,  (2, 'Adult'): 0,
+        (10, 'infant'): 99, (10, 'child'): 99, (10, 'teen'): 1, (10, 'adult'): 1,
+        11: 2,
+        3: 99, 4: 99, 5: 99, 6: 99, 7: 99, 8: 99, 12: 99
+    }
+    
+    all = {
+        (1, 'Inf'): 0,   (1, 'Child'): 0,   (1, 'Teen'): 1,   (10, 'Adult'): 1,
+        (2, 'Inf'): 0,   (2, 'Child'): 0,   (2, 'Teen'): 1,   (2, 'Adult'): 1,
+        (10, 'infant'): 2, (10, 'child'): 2, (10, 'teen'): 3, (10, 'adult'): 3,
+        11: 4, 3: 5, 4: 11, 5: 6, 6: 7, 7: 8, 8: 9, 12: 10
+    }
+    
+    object = {
+        3: 0, 4: 6, 5: 1, 6: 2, 7: 3, 8: 5, 12: 4  # map class 4 (animal) to 6 and class 8 (food) to 5
+    }
