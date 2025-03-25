@@ -44,34 +44,39 @@ def get_balanced_videos(videos_dir: Path, age_df: pd.DataFrame, videos_per_group
     Parameters:
     ----------
     videos_dir : Path
-        Directory containing the videos
+        Directory containing the video folders
     age_df : pd.DataFrame
-        DataFrame with columns 'id' and 'age_group'
+        DataFrame with columns 'child_id' and 'age_group'
     videos_per_group : int
         Number of videos to select from each age group
         
     Returns:
     -------
     list
-        List of selected video paths
+        List of selected video folder paths
     """
     selected_videos = []
     
-    # Convert videos to a list with their IDs
+    # Convert video folders to a list with their IDs
     available_videos = []
     skipped_videos = []
-    for video_path in videos_dir.glob("*.MP4"):
-        video_id = extract_id_from_filename(video_path.stem)
+    
+    # Look for folders (video directories) instead of MP4 files
+    for video_folder in videos_dir.iterdir():
+        if not video_folder.is_dir():
+            continue
+            
+        video_id = extract_id_from_filename(video_folder.name)
         if video_id:
             try:
                 # Check if ID exists in age_df and has a valid age group
                 age_row = age_df[age_df['child_id'] == int(video_id)]
                 if not age_row.empty and pd.notna(age_row['age_group'].iloc[0]):
-                    available_videos.append((video_path, video_id))
+                    available_videos.append((video_folder, video_id))
                 else:
-                    skipped_videos.append(video_path.name)
+                    skipped_videos.append(video_folder.name)
             except (ValueError, KeyError):
-                skipped_videos.append(video_path.name)
+                skipped_videos.append(video_folder.name)
     
     if skipped_videos:
         logging.info(f"Skipped {len(skipped_videos)} videos without age data")
@@ -79,10 +84,10 @@ def get_balanced_videos(videos_dir: Path, age_df: pd.DataFrame, videos_per_group
     
     # Group videos by age
     videos_by_age = {3: [], 4: [], 5: []}
-    for video_path, video_id in available_videos:
-        age_group = age_df[age_df['ID'] == int(video_id)]['age_group'].iloc[0]
+    for video_folder, video_id in available_videos:
+        age_group = age_df[age_df['child_id'] == int(video_id)]['age_group'].iloc[0]
         if age_group in videos_by_age:
-            videos_by_age[age_group].append(video_path)
+            videos_by_age[age_group].append(video_folder)
     
     # Log available videos per age group
     for age_group, videos in videos_by_age.items():
@@ -673,8 +678,9 @@ def main(num_videos_to_process: int = None,
     videos_to_not_process = DetectionPipelineConfig.videos_to_not_process
     if num_videos_to_process is None:
         # Process all video folders
-        all_videos = [p for p in videos_input_dir.iterdir() if p.is_dir()]
-        videos_to_process = [v for v in all_videos if v.name not in videos_to_not_process]
+    all_videos = [p for p in videos_input_dir.iterdir() 
+                 if p.is_dir() and extract_id_from_filename(p.name) is not None]
+    videos_to_process = [v for v in all_videos if v.name not in videos_to_not_process]
 
         skipped = len(all_videos) - len(videos_to_process)
         logging.info(f"Found {len(all_videos)} video folders")
@@ -682,9 +688,8 @@ def main(num_videos_to_process: int = None,
         logging.info(f"Processing {len(videos_to_process)} videos")
     else:
         # Get balanced videos across age groups
-        videos_per_group = num_videos_to_process // 3
-        all_videos = get_balanced_videos(videos_input_dir, age_df, videos_per_group=videos_per_group)
-        videos_to_process = [v for v in all_videos if v.name not in videos_to_not_process]
+        available_videos = get_balanced_videos(videos_input_dir, age_df, videos_per_group=num_videos_to_process // 3)
+        videos_to_process = [v for v in available_videos if v.name not in videos_to_not_process]
         
         skipped = len(all_videos) - len(videos_to_process)
         logging.info(f"Selected {len(all_videos)} balanced videos")
