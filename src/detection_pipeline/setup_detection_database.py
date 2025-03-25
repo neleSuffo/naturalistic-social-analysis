@@ -1,6 +1,7 @@
 import sqlite3
 import logging
 import pandas as pd
+from dateutil.relativedelta import relativedelta
 from pathlib import Path
 from constants import DetectionPaths, DetectionPipeline, BasePaths
 
@@ -33,7 +34,6 @@ def store_subject_data(subjects_df: pd.DataFrame, video_paths: list, conn):
     Logs video information in a tabular format.
     """
     cursor = conn.cursor()
-    # Create list to store video data
     video_data = []
 
     for video_path in video_paths:
@@ -52,10 +52,14 @@ def store_subject_data(subjects_df: pd.DataFrame, video_paths: list, conn):
                 if child_id not in subjects_df['id'].values:
                     logging.warning(f"Child ID {child_id} not found in subjects data for video {video_name}")
                     continue
-
+                
                 child_birthday = subjects_df.loc[subjects_df['id'] == child_id, 'birthday'].iloc[0]
                 gender = subjects_df.loc[subjects_df['id'] == child_id, 'gender'].iloc[0]
-                age_at_recording = (recording_date - child_birthday).days / 365.25
+                
+                # Calculate age at recording
+                delta = relativedelta(recording_date, child_birthday)
+                age_at_recording = round(delta.years + (delta.months / 12) + (delta.days / 365.25),2)
+
                 age_group = get_age_group(age_at_recording)
 
                 # Add data to video_data list
@@ -63,6 +67,7 @@ def store_subject_data(subjects_df: pd.DataFrame, video_paths: list, conn):
                     'video_name': video_name,
                     'child_id': child_id,
                     'birthday': child_birthday.strftime('%Y-%m-%d'),
+                    'recording_date': recording_date.strftime('%Y-%m-%d'),
                     'gender': gender,
                     'age_at_recording': f"{age_at_recording:.2f}",
                     'age_group': age_group
@@ -70,14 +75,17 @@ def store_subject_data(subjects_df: pd.DataFrame, video_paths: list, conn):
 
                 # Insert or update subject data
                 cursor.execute('''
-                    INSERT INTO Subjects (child_id, video_name, birthday, gender, age_at_recording, age_group)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                    ON CONFLICT(child_id) DO UPDATE SET
-                    birthday=excluded.birthday,
-                    gender=excluded.gender,
-                    age_at_recording=excluded.age_at_recording,
-                    age_group=excluded.age_group
-                ''', (child_id, video_name, child_birthday.strftime('%Y-%m-%d'), gender, round(age_at_recording, 2), age_group))
+                    INSERT INTO Subjects (video_name, child_id, birthday, recording_date, gender, age_at_recording, age_group)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                        ON CONFLICT(video_name) DO UPDATE SET
+                        child_id=excluded.child_id,
+                        birthday=excluded.birthday,
+                        recording_date=excluded.recording_date,
+                        gender=excluded.gender,
+                        age_at_recording=excluded.age_at_recording,
+                        age_group=excluded.age_group
+                    ''', (video_name, child_id, child_birthday.strftime('%Y-%m-%d'), 
+                        recording_date.strftime('%Y-%m-%d'), gender, age_at_recording, age_group))
 
             except Exception as e:
                 logging.error(f"Error processing video {video_name}: {str(e)}")
@@ -190,13 +198,14 @@ def setup_detection_database(db_path: Path = DetectionPaths.detection_db_path):
     ''')
     
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS Subjects (
-            child_id INTEGER PRIMARY KEY,
-            video_name TEXT,
-            birthday DATE,
-            gender TEXT,
-            age_at_recording FLOAT,
-            age_group INTEGER
+    CREATE TABLE IF NOT EXISTS Subjects (
+        video_name TEXT PRIMARY KEY,
+        child_id INTEGER,  
+        birthday DATE,
+        recording_date DATE,
+        gender TEXT,
+        age_at_recording FLOAT,
+        age_group INTEGER
         )
     ''')
 
