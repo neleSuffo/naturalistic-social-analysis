@@ -20,9 +20,9 @@ def get_age_group(age: float) -> int:
     int
         Age group (3, 4, or 5)
     """
-    if age <= 3:
+    if age < 4:
         return 3
-    elif age <= 4:
+    elif age < 5:
         return 4
     else:
         return 5
