@@ -135,7 +135,7 @@ def classify_gaze(gaze_model: YOLO, face_image: np.ndarray) -> Tuple[int, int]:
 def insert_video_record(video_path, cursor) -> int:
     """
     This function inserts a video record into the database if it doesn't already exist.
-    It calculates the age at recording using the child's birthday from Subjects table.
+    It retrieves child information from the Subjects table using the video name.
     
     Parameters:
     ----------
@@ -149,48 +149,37 @@ def insert_video_record(video_path, cursor) -> int:
     video_id : int
         Video ID
     """
-    cursor.execute('SELECT video_id FROM Videos WHERE video_path = ?', (str(video_path),))
+    # Extract just the video name from the path
+    video_name = Path(video_path).name
+    
+    cursor.execute('SELECT video_id FROM Videos WHERE video_path = ?', (video_name,))
     existing_video = cursor.fetchone()
     
     if existing_video:
-        logging.info(f"Video {Path(video_path)} already processed. Skipping.")
+        logging.info(f"Video {video_name} already processed. Skipping.")
         return None
     else:
-        # Extract child_id and recording_date from filename
-        child_id, recording_date = extract_video_info(video_path)
-                
-        # Calculate age at recording using birthday from Subjects table
-        age_at_recording = None
-        if child_id and recording_date:
-            # First get the birthday from Subjects table
-            cursor.execute('''
-                SELECT birthday 
-                FROM Subjects 
-                WHERE id = ?
-            ''', (child_id,))
-            result = cursor.fetchone()
-        
-            if result:
-                birthday = result[0]
-                # Now calculate age at recording
-                cursor.execute('''
-                    SELECT ROUND((julianday(?) - julianday(?))/365.25, 2)
-                ''', (recording_date, birthday))
-                age_result = cursor.fetchone()
-                if age_result:
-                    age_at_recording = age_result[0]
-                else:
-                    logging.warning(f"Could not calculate age for child ID {child_id}")
-            else:
-                logging.warning(f"No birthday found for child ID {child_id}")
-            
+        # Get child information from Subjects table using video name
         cursor.execute('''
-            INSERT INTO Videos (video_path, child_id, recording_date, age_at_recording) 
-            VALUES (?, ?, ?, ?)
-        ''', (video_path, child_id, recording_date, age_at_recording))
+            SELECT child_id, birthday, age_at_recording, recording_date
+            FROM Subjects 
+            WHERE video_name = ?
+        ''', (video_name,))
+        result = cursor.fetchone()
         
-        cursor.execute('SELECT video_id FROM Videos WHERE video_path = ?', (video_path,))
-        return cursor.fetchone()[0]
+        if result:
+            child_id, birthday, age_at_recording, recording_date = result
+            # Insert video record
+            cursor.execute('''
+                INSERT INTO Videos (video_path, child_id, recording_date, age_at_recording) 
+                VALUES (?, ?, ?, ?)
+            ''', (video_name, child_id, recording_date, age_at_recording))
+            
+            cursor.execute('SELECT video_id FROM Videos WHERE video_path = ?', (video_name,))
+            return cursor.fetchone()[0]
+        else:
+            logging.error(f"No subject data found for video {video_name}")
+            return None
 
 def process_frame(frame: np.ndarray, frame_idx: int, video_id: int, detection_model: YOLO, gaze_model: YOLO, cursor: sqlite3.Cursor) -> dict:
     """
@@ -395,47 +384,6 @@ def process_video(video_folder: Path,
     conn.commit()
     
     logging.info(f"Processed {processed_frames} frames out of {len(frame_files)} total frames")
-
-def extract_video_info(video_path: str) -> Tuple[int, str]:
-    """
-    Extracts child ID and recording date from video filename.
-    Expected format: *id{number}_{YYYY_MM_DD}*.MP4
-    
-    Parameters:
-    ----------
-    video_path : str
-        Video file path or name
-        
-    Returns:
-    -------
-    tuple : (child_id, recording_date)
-        child_id : int or None
-        recording_date : str or None
-    """
-    try:
-        # Convert Path to string if necessary
-        video_name = str(video_path)
-        if isinstance(video_path, Path):
-            video_name = video_path.name
-            
-        # Extract ID
-        id_start = video_name.find('id') + 2
-        if id_start < 2:  # if 'id' not found
-            return None, None
-            
-        id_end = video_name[id_start:].find('_') + id_start
-        child_id = int(video_name[id_start:id_end])
-        
-        # Extract date
-        date_start = video_name.find('_20') + 1
-        if date_start < 1:  # if '_20' not found
-            return child_id, None
-            
-        recording_date = video_name[date_start:date_start+10].replace('_', '-')
-        
-        return child_id, recording_date
-    except (ValueError, IndexError):
-        return None, None
     
 def store_voice_detections(video_file_name: str, results_file: Path, fps: int = 30):
     """
@@ -580,70 +528,6 @@ def register_model(cursor: sqlite3.Cursor, model_name: str, model: YOLO) -> int:
         ''', (class_id, model_id, class_name))
         
     return model_id
- 
-def update_detection_summary(cursor: sqlite3.Cursor, conn: sqlite3.Connection):
-    """
-    Updates the DetectionSummary table with aggregated detection statistics.
-    """
-    summary_query = '''
-    WITH FramesWithDetections AS (
-        SELECT 
-            v.child_id as id,
-            v.video_id,
-            d.frame_number,
-            MAX(CASE WHEN d.object_class = 1.0 THEN 1 ELSE 0 END) as has_adult,
-            MAX(CASE WHEN d.object_class = 0.0 THEN 1 ELSE 0 END) as has_child,
-            MAX(CASE WHEN d.object_class = 3.0 THEN 1 ELSE 0 END) as has_adult_face,
-            MAX(CASE WHEN d.object_class = 2.0 THEN 1 ELSE 0 END) as has_child_face,
-            MAX(CASE WHEN d.object_class = 5.0 THEN 1 ELSE 0 END) as has_book,
-            MAX(CASE WHEN d.object_class = 6.0 THEN 1 ELSE 0 END) as has_toy,
-            MAX(CASE WHEN d.object_class = 7.0 THEN 1 ELSE 0 END) as has_kitchenware,
-            MAX(CASE WHEN d.object_class = 8.0 THEN 1 ELSE 0 END) as has_screen,
-            MAX(CASE WHEN d.object_class = 9.0 THEN 1 ELSE 0 END) as has_food,
-            MAX(CASE WHEN d.object_class = 10.0 THEN 1 ELSE 0 END) as has_other_object
-        FROM Videos v
-        JOIN Detections d ON v.video_id = d.video_id
-        GROUP BY v.child_id, v.video_id, d.frame_number
-    ),
-    TotalFramesPerChild AS (
-        SELECT 
-            v.child_id as id,
-            SUM(vs.total_frames) as total_frames
-        FROM Videos v
-        JOIN VideoStatistics vs ON v.video_id = vs.video_id
-        GROUP BY v.child_id
-    )
-    INSERT OR REPLACE INTO DetectionSummary
-    SELECT 
-        f.id,
-        COUNT(DISTINCT f.video_id) as video_count,
-        t.total_frames,
-        SUM(f.has_adult) as frames_with_adult,
-        SUM(f.has_child) as frames_with_child,
-        SUM(f.has_adult_face) as frames_with_adult_face,
-        SUM(f.has_child_face) as frames_with_child_face,
-        SUM(f.has_book) as frames_with_book,
-        SUM(f.has_toy) as frames_with_toy,
-        SUM(f.has_kitchenware) as frames_with_kitchenware,
-        SUM(f.has_screen) as frames_with_screen,
-        SUM(f.has_food) as frames_with_food,
-        SUM(f.has_other_object) as frames_with_other_object,
-        ROUND(SUM(f.has_adult) * 100.0 / t.total_frames, 2) as adult_percent,
-        ROUND(SUM(f.has_child) * 100.0 / t.total_frames, 2) as child_percent,
-        ROUND(SUM(f.has_adult_face) * 100.0 / t.total_frames, 2) as adult_face_percent,
-        ROUND(SUM(f.has_child_face) * 100.0 / t.total_frames, 2) as child_face_percent,
-        ROUND(SUM(f.has_book) * 100.0 / t.total_frames, 2) as book_percent,
-        ROUND(SUM(f.has_toy) * 100.0 / t.total_frames, 2) as toy_percent,
-        ROUND(SUM(f.has_kitchenware) * 100.0 / t.total_frames, 2) as kitchenware_percent,
-        ROUND(SUM(f.has_screen) * 100.0 / t.total_frames, 2) as screen_percent,
-        ROUND(SUM(f.has_food) * 100.0 / t.total_frames, 2) as food_percent,
-        ROUND(SUM(f.has_other_object) * 100.0 / t.total_frames, 2) as other_object_percent
-    FROM FramesWithDetections f
-    JOIN TotalFramesPerChild t ON f.id = t.id
-    GROUP BY f.id, t.total_frames;
-    '''
-    cursor.execute(summary_query)
-    conn.commit()
           
 def main(num_videos_to_process: int = None,
         frame_skip: int = 10):
@@ -684,7 +568,6 @@ def main(num_videos_to_process: int = None,
 
         skipped = len(all_videos) - len(videos_to_process)
         logging.info(f"Found {len(all_videos)} video folders")
-        logging.info(f"Videos to process: {', '.join(v.name for v in videos_to_process)}")
         logging.info(f"Skipping {skipped} videos from exclusion list")
         logging.info(f"Processing {len(videos_to_process)} videos")
     else:
@@ -694,23 +577,13 @@ def main(num_videos_to_process: int = None,
         
         skipped = len(available_videos) - len(videos_to_process)
         logging.info(f"Selected {len(available_videos)} balanced videos")
-        logging.info(f"Videos to process: {', '.join(v.name for v in videos_to_process)}")
         logging.info(f"Skipping {skipped} videos from exclusion list")
         logging.info(f"Processing {len(videos_to_process)} videos")
     
     # Process videos
-    processed_children = set()
     for video in videos_to_process:
         process_video(video, detection_model, gaze_model, cursor, conn, frame_skip)
         #run_voice_type_classifier(video_path.name)
-
-        # Get child_id from the video that was just processed
-        child_id, _ = extract_video_info(video)
-        if child_id and child_id not in processed_children:
-            # Update summary only for this child's data
-            update_detection_summary(cursor, conn)
-            processed_children.add(child_id)
-            logging.info(f"Updated detection summary for child {child_id}")
     
     conn.close()
 
