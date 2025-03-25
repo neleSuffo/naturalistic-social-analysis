@@ -27,76 +27,51 @@ def get_age_group(age: float) -> int:
     else:
         return 5
     
-def create_age_group_file(subjects_df: pd.DataFrame, video_paths: list) -> None:
+def store_subject_data(subjects_df: pd.DataFrame, video_paths: list, conn):
     """
-    Creates age_group.csv file containing video names and corresponding ages at recording.
-    
-    Parameters:
-    ----------
-    subjects_df : pd.DataFrame
-        DataFrame containing subject information including birthdays
-    video_paths : list
-        List of video paths to process
+    Stores subject information (ID, birthday, gender, age at recording, age group) in the Subjects table.
     """
-    # Initialize empty lists to store data
-    video_data = []
-    
-    # First, log the DataFrame columns to verify column names
-    logging.info(f"Available columns in subjects_df: {subjects_df.columns.tolist()}")
-    
+    cursor = conn.cursor()
+
     for video_path in video_paths:
-        # Extract video name without extension
         video_name = Path(video_path).stem
-        
-        # Extract child ID and recording date using regex
+
         import re
         id_match = re.search(r'(?<=id)\d{6}', video_name)
         date_match = re.search(r'(\d{4})_(\d{2})_(\d{2})', video_name)
-        
+
         if id_match and date_match:
             try:
-                # Get child ID
                 child_id = int(id_match.group(0))
-                
-                # Convert recording date string to datetime
                 year, month, day = map(int, date_match.groups())
                 recording_date = pd.to_datetime(f"{day}.{month}.{year}", format="%d.%m.%Y")
-                
-                # Check if child_id exists in the DataFrame
-                if child_id not in subjects_df['id'].values:  # Changed from 'id' to 'child_id'
+
+                if child_id not in subjects_df['id'].values:
                     logging.warning(f"Child ID {child_id} not found in subjects data for video {video_name}")
                     continue
-                
-                # Get birthday for this child ID
-                child_birthday = subjects_df.loc[subjects_df['id'] == child_id, 'birthday'].iloc[0]  # Changed from 'id' to 'child_id'
-                
-                # Calculate age at recording
+
+                child_birthday = subjects_df.loc[subjects_df['id'] == child_id, 'birthday'].iloc[0]
+                gender = subjects_df.loc[subjects_df['id'] == child_id, 'gender'].iloc[0]
                 age_at_recording = (recording_date - child_birthday).days / 365.25
-                
-                # Determine age group
                 age_group = get_age_group(age_at_recording)
-                
-                video_data.append({
-                    'video_name': video_name,
-                    'child_id': child_id,
-                    'recording_date': recording_date.strftime('%d.%m.%Y'),
-                    'age_at_recording': round(age_at_recording, 2),
-                    'age_group': age_group
-                })
-                
+
+                # Insert or update subject data
+                cursor.execute('''
+                    INSERT INTO Subjects (id, birthday, gender, age_at_recording, age_group)
+                    VALUES (?, ?, ?, ?, ?)
+                    ON CONFLICT(id) DO UPDATE SET
+                    birthday=excluded.birthday,
+                    gender=excluded.gender,
+                    age_at_recording=excluded.age_at_recording,
+                    age_group=excluded.age_group
+                ''', (child_id, child_birthday.strftime('%Y-%m-%d'), gender, round(age_at_recording, 2), age_group))
+
             except Exception as e:
                 logging.error(f"Error processing video {video_name}: {str(e)}")
                 continue
     
-    if not video_data:
-        logging.warning("No video data was processed successfully!")
-        return
-        
-    # Create DataFrame and save to CSV
-    age_group_df = pd.DataFrame(video_data)
-    output_path = BasePaths.data_dir / 'age_group.csv'
-    age_group_df.to_csv(output_path, index=False)
-    logging.info(f"Age group file created at {output_path} with {len(age_group_df)} entries")
+    conn.commit()
+    logging.info("Stored subject data in the database.")
     
 def setup_detection_database(db_path: Path = DetectionPaths.detection_db_path):
     """
@@ -194,56 +169,29 @@ def setup_detection_database(db_path: Path = DetectionPaths.detection_db_path):
             FOREIGN KEY (video_id) REFERENCES Videos(video_id)
         )
     ''')
-
+    
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS DetectionSummary (
+        CREATE TABLE IF NOT EXISTS Subjects (
             id INTEGER PRIMARY KEY,
-            video_count INTEGER,
-            total_frames INTEGER,
-            frames_with_adult INTEGER,
-            frames_with_child INTEGER,
-            frames_with_adult_face INTEGER,
-            frames_with_child_face INTEGER,
-            frames_with_book INTEGER,
-            frames_with_toy INTEGER,
-            frames_with_kitchenware INTEGER,
-            frames_with_screen INTEGER,
-            frames_with_food INTEGER,
-            frames_with_other_object INTEGER,
-            adult_percent REAL,
-            child_percent REAL,
-            adult_face_percent REAL,
-            child_face_percent REAL,
-            book_percent REAL,
-            toy_percent REAL,
-            kitchenware_percent REAL,
-            screen_percent REAL,
-            food_percent REAL,
-            other_object_percent REAL
+            birthday DATE,
+            gender TEXT,
+            age_at_recording FLOAT,
+            age_group INTEGER
         )
     ''')
 
-    # Get list of video paths from your video directory
+    # Get list of video paths
     video_paths = list(Path(DetectionPaths.quantex_videos_input_dir).rglob("*.MP4"))
     logging.info(f"Found {len(video_paths)} video files.")
        
-    # Load subjects data from CSV with header row
+    # Load subjects data from CSV
     quantex_subjects_df = pd.read_csv(
         DetectionPipeline.quantex_subjects,
-        header=0,  # Use first row as column names
-        sep=';',   # Specify semicolon as separator
-        encoding='utf-8',  # Specify encoding explicitly
-        parse_dates=['birthday'],  # Specify which columns contain dates
-        dayfirst=True  # Specify that dates are in DD.MM.YYYY format
+        header=0, sep=';', encoding='utf-8', parse_dates=['birthday'], dayfirst=True
     )
-    # Create age group file
-    create_age_group_file(quantex_subjects_df, video_paths)
-    quantex_subjects_df.to_sql('Subjects', conn, if_exists='replace', index=False)
-    # Convert birthday column to DATE format
-    cursor.execute('''
-        UPDATE Subjects
-        SET birthday = DATE(birthday)
-    ''')
+    
+    # Store subject data in the database
+    store_subject_data(quantex_subjects_df, video_paths, conn)
     
     conn.commit()
     conn.close()
