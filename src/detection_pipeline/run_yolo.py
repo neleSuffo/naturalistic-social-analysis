@@ -679,11 +679,12 @@ def main(num_videos_to_process: int = None,
     if num_videos_to_process is None:
         # Process all video folders
         all_videos = [p for p in videos_input_dir.iterdir() 
-                 if p.is_dir() and extract_id_from_filename(p.name) is not None]
+                if p.is_dir() and extract_id_from_filename(p.name) is not None]
         videos_to_process = [v for v in all_videos if v.name not in videos_to_not_process]
 
         skipped = len(all_videos) - len(videos_to_process)
         logging.info(f"Found {len(all_videos)} video folders")
+        logging.info(f"Videos to process: {', '.join(v.name for v in videos_to_process)}")
         logging.info(f"Skipping {skipped} videos from exclusion list")
         logging.info(f"Processing {len(videos_to_process)} videos")
     else:
@@ -692,7 +693,8 @@ def main(num_videos_to_process: int = None,
         videos_to_process = [v for v in available_videos if v.name not in videos_to_not_process]
         
         skipped = len(available_videos) - len(videos_to_process)
-        logging.info(f"Selected {len(all_videos)} balanced videos")
+        logging.info(f"Selected {len(available_videos)} balanced videos")
+        logging.info(f"Videos to process: {', '.join(v.name for v in videos_to_process)}")
         logging.info(f"Skipping {skipped} videos from exclusion list")
         logging.info(f"Processing {len(videos_to_process)} videos")
     
