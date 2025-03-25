@@ -40,29 +40,23 @@ class YoloPaths:
     all_data_input_dir = Path(BasePaths.data_dir/"yolo_all_input")
     all_output_dir = Path(BasePaths.output_dir/"yolo_all_detections/")
     
-    person_face_trained_weights_path = Path(BasePaths.models_dir/'yolo11_person_face_detection.pt')
-    person_face_data_config_path = yolo_detections_dir/"person_face_dataset.yaml"
-    person_face_labels_input_dir = Path(BasePaths.data_dir/"yolo_person_face_labels")
-    person_face_data_input_dir = Path(BasePaths.data_dir/"yolo_person_face_input")
-    person_face_output_dir = Path(BasePaths.output_dir/"yolo_person_face_detections/")
+    object_trained_weights_path = Path(BasePaths.models_dir/'yolo11_object_detection.pt')
+    object_data_config_path = yolo_detections_dir/"yolo_object_dataset.yaml"
+    object_labels_input_dir = Path(BasePaths.data_dir/"yolo_object_labels")
+    object_data_input_dir = Path(BasePaths.data_dir/"yolo_object_input")
+    objectoutput_dir = Path(BasePaths.output_dir/"yolo_object_detections/")
     
     adult_person_face_trained_weights_path = Path(BasePaths.models_dir/'yolo11_adult_person_face_detection.pt')
-    adult_person_face_data_config_path = yolo_detections_dir/"adult_person_face_dataset.yaml"
+    adult_person_face_data_config_path = yolo_detections_dir/"yolo_adult_person_face_dataset.yaml"
     adult_person_face_labels_input_dir = Path(BasePaths.data_dir/"yolo_adult_person_face_labels")
     adult_person_face_data_input_dir = Path(BasePaths.data_dir/"yolo_adult_person_face_input")
     adult_person_face_output_dir = Path(BasePaths.output_dir/"yolo_adult_person_face_detections/")
     
     child_person_face_trained_weights_path = Path(BasePaths.models_dir/'yolo11_child_person_face_detection.pt')
-    child_person_face_data_config_path = yolo_detections_dir/"child_person_face_dataset.yaml"
+    child_person_face_data_config_path = yolo_detections_dir/"<olo_child_person_face_dataset.yaml"
     child_person_face_labels_input_dir = Path(BasePaths.data_dir/"yolo_child_person_face_labels")
     child_person_face_data_input_dir = Path(BasePaths.data_dir/"yolo_child_person_face_input")
     child_person_face_output_dir = Path(BasePaths.output_dir/"yolo_child_person_face_detections/")
-        
-    person_face_object_trained_weights_path = Path(BasePaths.models_dir/'yolo11_detections.pt')
-    person_face_object_data_config_path = yolo_detections_dir/"yolo_detections_dataset.yaml"
-    person_face_object_labels_input_dir = Path(BasePaths.data_dir/"yolo_detections_labels")
-    person_face_object_data_input_dir = Path(BasePaths.data_dir/"yolo_detections_input")
-    person_face_object_output_dir = Path(BasePaths.output_dir/"yolo_detections/")
 
     gaze_extracted_faces_dir = Path(BasePaths.data_dir/"quantex_gaze_input")
     gaze_trained_weights_path = Path(BasePaths.models_dir/'yolo11_gaze_classification.pt')
