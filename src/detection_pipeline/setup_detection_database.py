@@ -30,8 +30,11 @@ def get_age_group(age: float) -> int:
 def store_subject_data(subjects_df: pd.DataFrame, video_paths: list, conn):
     """
     Stores subject information (ID, birthday, gender, age at recording, age group) in the Subjects table.
+    Logs video information in a tabular format.
     """
     cursor = conn.cursor()
+    # Create list to store video data
+    video_data = []
 
     for video_path in video_paths:
         video_name = Path(video_path).stem
@@ -55,22 +58,38 @@ def store_subject_data(subjects_df: pd.DataFrame, video_paths: list, conn):
                 age_at_recording = (recording_date - child_birthday).days / 365.25
                 age_group = get_age_group(age_at_recording)
 
+                # Add data to video_data list
+                video_data.append({
+                    'video_name': video_name,
+                    'child_id': child_id,
+                    'birthday': child_birthday.strftime('%Y-%m-%d'),
+                    'gender': gender,
+                    'age_at_recording': f"{age_at_recording:.2f}",
+                    'age_group': age_group
+                })
+
                 # Insert or update subject data
                 cursor.execute('''
-                    INSERT INTO Subjects (id, birthday, gender, age_at_recording, age_group)
-                    VALUES (?, ?, ?, ?, ?)
-                    ON CONFLICT(id) DO UPDATE SET
+                    INSERT INTO Subjects (child_id, video_name, birthday, gender, age_at_recording, age_group)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(child_id) DO UPDATE SET
                     birthday=excluded.birthday,
                     gender=excluded.gender,
                     age_at_recording=excluded.age_at_recording,
                     age_group=excluded.age_group
-                ''', (child_id, child_birthday.strftime('%Y-%m-%d'), gender, round(age_at_recording, 2), age_group))
+                ''', (child_id, video_name, child_birthday.strftime('%Y-%m-%d'), gender, round(age_at_recording, 2), age_group))
 
             except Exception as e:
                 logging.error(f"Error processing video {video_name}: {str(e)}")
                 continue
     
     conn.commit()
+    
+    # Create DataFrame and log it
+    if video_data:
+        df = pd.DataFrame(video_data)
+        logging.info("\nVideo and Subject Information:\n" + df.to_string())
+    
     logging.info("Stored subject data in the database.")
     
 def setup_detection_database(db_path: Path = DetectionPaths.detection_db_path):
@@ -172,7 +191,8 @@ def setup_detection_database(db_path: Path = DetectionPaths.detection_db_path):
     
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS Subjects (
-            id INTEGER PRIMARY KEY,
+            child_id INTEGER PRIMARY KEY,
+            video_name TEXT,
             birthday DATE,
             gender TEXT,
             age_at_recording FLOAT,
