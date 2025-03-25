@@ -29,8 +29,8 @@ def main():
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
     # Set thread limits
-    os.environ['OMP_NUM_THREADS'] = '10'  # OpenMP threads
-    torch.set_num_threads(10)  # PyTorch threads
+    os.environ['OMP_NUM_THREADS'] = '4'  # OpenMP threads
+    torch.set_num_threads(4)  # PyTorch threads
 
     # Get appropriate paths based on yolo_target
     data_config_path = getattr(YoloPaths, f"{args.yolo_target}_data_config_path")
