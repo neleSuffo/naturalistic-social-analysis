@@ -36,78 +36,64 @@ logging.basicConfig(
 )
 
 def fetch_all_annotations(
-    category_ids: Optional[List[int]] = None,
+    category_ids: List[int],
+    persons: bool = False,
     objects: bool = False,
 ) -> List[tuple]:
     """
-    This function fetches all annotations from the database (excluding the -1 category id)
-    Categories with id -1 are labeled as "ignore" and are not included in the annotations.
+    This function fetches annotations from the database for specific category IDs.
+    Supports fetching person annotations, object annotations, or both.
 
     Parameters
     ----------
-    category_ids : list, optional
-        the list of category ids to filter the annotations,
-        by default None
-    objects : bool, optional
-        whether to include object interactions, by default False
+    category_ids : List[int]
+        The list of category IDs to filter the annotations
+    persons : bool
+        Whether to include person annotations with gaze and age info
+    objects : bool
+        Whether to include object annotations with interaction info
     
     Returns
     -------
     list of tuple
-        the list of annotations
-        (image_id, video_id, category_id, bbox, image_file_name, video_file_name)
+        The list of annotations. For persons includes extra fields (gaze, age)
     """
+    if not (persons or objects):
+        raise ValueError("At least one of persons or objects must be True")
+
     conn = sqlite3.connect(DetectionPaths.quantex_annotations_db_path)
     cursor = conn.cursor()
+    
+    placeholders = ", ".join("?" for _ in category_ids)
+    
+    # Always include all fields, use COALESCE for person-specific fields
+    query = f"""
+    SELECT DISTINCT 
+        a.category_id, 
+        a.bbox, 
+        i.file_name,
+        CASE WHEN {persons} THEN a.gaze_directed_at_child ELSE NULL END as gaze_directed_at_child,
+        CASE WHEN {persons} THEN a.person_age ELSE NULL END as person_age
+    FROM annotations a
+    JOIN images i ON a.image_id = i.frame_id AND a.video_id = i.video_id
+    JOIN videos v ON a.video_id = v.id
+    WHERE a.category_id IN ({placeholders}) 
+        AND a.outside = 0 
+        AND v.file_name NOT LIKE '%id255237_2022_05_08_04%'
+    """
 
-    if category_ids:
-        placeholders = ", ".join("?" for _ in category_ids)
-        query = f"""
-        SELECT DISTINCT 
-            a.image_id, 
-            a.video_id, 
-            a.category_id, 
-            a.bbox, 
-            i.file_name, 
-            v.file_name as video_file_name,
-            a.gaze_directed_at_child,
-            a.person_age
-        FROM annotations a
-        JOIN images i ON a.image_id = i.frame_id AND a.video_id = i.video_id
-        JOIN videos v ON a.video_id = v.id
-        WHERE a.category_id IN ({placeholders}) 
-            AND a.outside = 0 
-            AND v.file_name NOT LIKE '%id255237_2022_05_08_04%'
+    # Add object interaction filter if objects is True
+    if objects:
+        query += """
+        AND (
+            (a.category_id IN (3,4,5,6,7,8,12) AND a.object_interaction = 'Yes')
+            OR a.category_id NOT IN (3,4,5,6,7,8,12)
+        )
         """
-        
-        if objects:
-            query += """
-            AND (
-                (a.category_id IN (3,4,5,6,7,8,12) AND a.object_interaction = 'Yes')
-                OR a.category_id NOT IN (3,4,5,6,7,8,12)
-            )
-            """
-            
-        query += " ORDER BY a.video_id, a.image_id"
-        cursor.execute(query, category_ids)
-    else:
-        query = f"""
-        SELECT DISTINCT 
-            a.image_id, 
-            a.video_id, 
-            a.category_id, 
-            a.bbox, 
-            i.file_name, 
-            v.file_name as video_file_name
-        FROM annotations a
-        JOIN images i ON a.image_id = i.frame_id AND a.video_id = i.video_id
-        JOIN videos v ON a.video_id = v.id
-        WHERE a.outside = 0
-            AND v.file_name NOT LIKE '%id255237_2022_05_08_04%'
-        ORDER BY a.video_id, a.image_id
-        """
-        cursor.execute(query)
-    # video id255237_2022_05_08_04 is the video cut into a smaller chunk because of nudity, but children take camera off as well, so annotations are excluded
+    
+    query += " ORDER BY a.video_id, a.image_id"
+    cursor.execute(query, category_ids)
+    
     annotations = cursor.fetchall()
     conn.close()
     return annotations
