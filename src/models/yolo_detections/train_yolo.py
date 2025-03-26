@@ -20,7 +20,7 @@ def parse_args():
                       help='Batch size for training')
     parser.add_argument('--img_size', type=int, default=640,
                       help='Image size for training')
-    parser.add_argument('--device', type=str, default='0',
+    parser.add_argument('--device', type=str, default='0,1',
                       help='Device to use (e.g., "0" for GPU, "cpu" for CPU)')
     return parser.parse_args()
 
@@ -29,8 +29,8 @@ def main():
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
     # Set thread limits
-    os.environ['OMP_NUM_THREADS'] = '4'  # OpenMP threads
-    torch.set_num_threads(4)  # PyTorch threads
+    os.environ['OMP_NUM_THREADS'] = '24'  # OpenMP threads
+    torch.set_num_threads(24)  # PyTorch threads
 
     # Get appropriate paths based on yolo_target
     data_config_path = getattr(YoloPaths, f"{args.yolo_target}_data_config_path")
