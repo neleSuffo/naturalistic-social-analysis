@@ -5,7 +5,7 @@ import sqlite3
 import pandas as pd
 import numpy as np
 import subprocess
-from typing import Tuple
+from typing import Tuple, List, Dict, Optional
 from pathlib import Path
 from ultralytics import YOLO
 from constants import YoloPaths, DetectionPaths, VTCPaths
