@@ -37,7 +37,7 @@ def main():
     base_output_dir = getattr(YoloPaths, f"{args.yolo_target}_output_dir")
     
     # Load the YOLO model
-    model = YOLO("yolo11x.pt")
+    model = YOLO("/home/nele_pauline_suffo/projects/leuphana-IPE/src/yolo11x.pt")
 
     # Define experiment name and output directory
     experiment_name = f"{timestamp}_yolo_{args.yolo_target}_finetune_with_augment_and_earlystop"
