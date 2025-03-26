@@ -11,8 +11,8 @@ from constants import YoloPaths
 def parse_args():
     parser = argparse.ArgumentParser(description='Train YOLO model for different detection tasks')
     parser.add_argument('--yolo_target', type=str, required=True,
-                      choices=['person_face', 'adult_person_face', 'child_person_face', 
-                              'person_face_object', 'all'],
+                      choices=['adult_person_face', 'child_person_face',
+                              'object', 'all'],
                       help='Target detection task')
     parser.add_argument('--epochs', type=int, default=200,
                       help='Number of training epochs')
