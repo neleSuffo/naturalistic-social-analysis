@@ -35,10 +35,11 @@ class YoloConfig:
     num_epochs = 100
     iou_threshold = 0.35 # the intersection over union threshold
     img_size = (320, 640) # multi scale training
-    person_target_class_ids = [1,2,10,11]
+    child_target_class_ids = [1,2,10,11]
+    adult_target_class_ids = [1,2,10]
     all_target_class_ids = [1,2,3,4,5,6,7,8,10,11,12]
     face_target_class_ids = [10]
-    object_target_class_ids = [3,4,5,6,7,8,9,12]
+    object_target_class_ids = [3,4,5,6,7,8,12]
     detection_mapping = {
         0: 'infant/child',
         1: 'adult',
@@ -161,24 +162,21 @@ class CategoryMappings:
     }
     
     child_person_face = {
-        (1, 'Inf'): 0,   (1, 'Child'): 0,  (1, 'Teen'): 99,  (1, 'Adult'): 99,
-        (2, 'Inf'): 0,   (2, 'Child'): 0,  (2, 'Teen'): 99,  (2, 'Adult'): 99,
-        (10, 'infant'): 1, (10, 'child'): 1, (10, 'teen'): 99, (10, 'adult'): 99,
+        (1, 'inf'): 0,   (1, 'child'): 0,
+        (2, 'inf'): 0,   (2, 'child'): 0,
+        (10, 'infant'): 1, (10, 'child'): 1,
         11: 2,
-        3: 99, 4: 99, 5: 99, 6: 99, 7: 99, 8: 99, 12: 99
     }
     
     adult_person_face = {
-        (1, 'Inf'): 99,  (1, 'Child'): 99,  (1, 'Teen'): 0,  (1, 'Adult'): 0,
-        (2, 'Inf'): 99,  (2, 'Child'): 99,  (2, 'Teen'): 0,  (2, 'Adult'): 0,
-        (10, 'infant'): 99, (10, 'child'): 99, (10, 'teen'): 1, (10, 'adult'): 1,
-        11: 2,
-        3: 99, 4: 99, 5: 99, 6: 99, 7: 99, 8: 99, 12: 99
+        (1, 'teen'): 0,  (1, 'adult'): 0,
+        (2, 'teen'): 0,  (2, 'adult'): 0,
+        (10, 'teen'): 1, (10, 'adult'): 1,
     }
     
     all = {
-        (1, 'Inf'): 0,   (1, 'Child'): 0,   (1, 'Teen'): 1,   (10, 'Adult'): 1,
-        (2, 'Inf'): 0,   (2, 'Child'): 0,   (2, 'Teen'): 1,   (2, 'Adult'): 1,
+        (1, 'inf'): 0,   (1, 'child'): 0,   (1, 'teen'): 1,   (10, 'adult'): 1,
+        (2, 'inf'): 0,   (2, 'child'): 0,   (2, 'teen'): 1,   (2, 'adult'): 1,
         (10, 'infant'): 2, (10, 'child'): 2, (10, 'teen'): 3, (10, 'adult'): 3,
         11: 4, 3: 5, 4: 11, 5: 6, 6: 7, 7: 8, 8: 9, 12: 10
     }
