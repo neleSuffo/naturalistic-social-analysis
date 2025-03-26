@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Optional, Tuple
 
 class BasePaths:
     home_dir = Path("/home/nele_pauline_suffo")
