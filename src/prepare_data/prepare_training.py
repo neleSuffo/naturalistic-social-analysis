@@ -12,7 +12,93 @@ from iterstrat.ml_stratifiers import MultilabelStratifiedShuffleSplit
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-    
+
+def balance_dataset(model_target: str, yolo_target: str):
+     """
+     Balances a dataset by randomly selecting an equal number of images with and without faces.
+     Parameters:
+     ----------
+     model_target : str
+         The target model for preparation (e.g., "yolo").
+     yolo_target : str
+         The target type for YOLO (e.g., "person_face" or "gaze").
+     """
+     # Define paths based on model and YOLO target
+     paths = {
+         ("yolo", "person_face"): YoloPaths.person_face_data_input_dir,
+         ("yolo", "gaze"): YoloPaths.gaze_data_input_dir
+     }
+ 
+     data_input_dir = paths.get((model_target, yolo_target))
+ 
+     if data_input_dir is None:
+         logging.error(f"Invalid combination of model_target='{model_target}' and yolo_target='{yolo_target}'.")
+         return
+ 
+     annotation_dir = data_input_dir / "labels/train"
+     images_dir = data_input_dir / "images/train"
+     balanced_annotations_dir = data_input_dir / "labels/train_balanced"
+     balanced_images_dir = data_input_dir / "images/train_balanced"
+ 
+     logging.info(f"Balancing dataset in {images_dir} and {annotation_dir}...")
+ 
+     # Ensure directories exist
+     if not annotation_dir.exists() or not images_dir.exists():
+         logging.error(f"Missing input directories: {annotation_dir} or {images_dir}")
+         return
+ 
+     images_with_class = []
+     images_without_class = []
+ 
+     # Iterate over annotation files to classify images
+     for annotation_path in annotation_dir.iterdir():
+         if annotation_path.suffix == ".txt":
+             image_path = images_dir / f"{annotation_path.stem}.jpg"
+ 
+             # Check if the annotation file is not empty
+             if yolo_target == "face":
+                 if annotation_path.stat().st_size > 0:
+                     images_with_class.append((image_path, annotation_path))
+                 else:
+                     images_without_class.append((image_path, annotation_path))
+             elif yolo_target == "person":
+                 with open(annotation_path, 'r') as file:
+                     lines = file.readlines()
+                     # Check if any annotation has class 0
+                     has_class_0 = any(line.strip().split()[0] == "0" for line in lines)
+                     if has_class_0:
+                         images_with_class.append((image_path, annotation_path))
+                     else:
+                         images_without_class.append((image_path, annotation_path))
+ 
+     num_img_with_classes = len(images_with_class)
+ 
+     if num_img_with_classes == 0:
+         logging.warning(f"No images with {yolo_target}s found. Skipping dataset balancing.")
+         return
+ 
+     logging.info(f"Found {num_img_with_classes} images with {yolo_target}.")
+ 
+     if len(images_without_class) < num_img_with_classes:
+         logging.warning(f"Not enough images without {yolo_target}s to balance the dataset. Using all available.")
+ 
+     # Randomly select an equal number of images without class (person or face)
+     images_without_class_sample = random.sample(images_without_class, min(num_img_with_classes, len(images_without_class)))
+ 
+     # Combine the lists to form the balanced dataset
+     balanced_dataset = images_with_class + images_without_class_sample
+ 
+     # Ensure balanced dataset directories exist
+     balanced_images_dir.mkdir(parents=True, exist_ok=True)
+     balanced_annotations_dir.mkdir(parents=True, exist_ok=True)
+ 
+     # Copy the selected files to the balanced dataset directories
+     for image_path, annotation_path in balanced_dataset:
+         shutil.copy(image_path, balanced_images_dir / image_path.name)
+         shutil.copy(annotation_path, balanced_annotations_dir / annotation_path.name)
+ 
+     logging.info(f"Balanced dataset created with {len(images_with_class)} images with {yolo_target}s and {len(images_without_class_sample)} images without {yolo_target}s.")
+     
 def get_total_number_of_annotated_frames(label_path: Path, image_folder: Path = DetectionPaths.images_input_dir, target_type: str = None) -> list:
     """
     This function returns the total number of annotated frames in the dataset.
@@ -146,7 +232,7 @@ def get_all_class_distribution(total_images: list, annotation_folder: Path):
     df: pd.DataFrame
         DataFrame containing image filenames and their corresponding one-hot encoded class labels.
     """
-    object_counts = {
+    object_mapping = {
         5: "book",
         6: "toy", 
         7: "kitchenware",
@@ -156,7 +242,7 @@ def get_all_class_distribution(total_images: list, annotation_folder: Path):
     }
 
     # Class mapping
-    class_mapping = {
+    person_mapping = {
         0: "adult_person",
         1: "child_person",
         2: "adult_face",
@@ -164,7 +250,7 @@ def get_all_class_distribution(total_images: list, annotation_folder: Path):
     }
 
     # Combine all class mappings
-    id_to_name = {**class_mapping, **object_counts}
+    id_to_name = {**person_mapping, **object_mapping}
 
     image_class_mapping = []
 
@@ -192,7 +278,7 @@ def get_all_class_distribution(total_images: list, annotation_folder: Path):
     # save df
     return df
 
-def get_object_class_distribution(total_images: list, annotation_folder: Path):
+def get_object_class_distribution(total_images: list, annotation_folder: Path, target_type: bool = None) -> pd.DataFrame:
     """
     Reads label files and groups images based on their refined class distribution.
 
@@ -208,7 +294,7 @@ def get_object_class_distribution(total_images: list, annotation_folder: Path):
     df: pd.DataFrame
         DataFrame containing image filenames and their corresponding one-hot encoded class labels.
     """
-    object_counts = {
+    object_mapping = {
         0: "book",
         1: "toy", 
         2: "kitchenware",
@@ -229,13 +315,13 @@ def get_object_class_distribution(total_images: list, annotation_folder: Path):
                 class_ids = {int(line.split()[0]) for line in f if line.split()}
 
             # Convert class IDs to names
-            labels = [id_to_name[cid] for cid in class_ids if cid in id_to_name]
+            labels = [object_mapping[cid] for cid in class_ids if cid in object_mapping]
         else:
             labels = []
 
         image_class_mapping.append({
             "filename": image_file.stem,
-            **{class_name: (1 if class_name in labels else 0) for class_name in id_to_name.values()}
+            **{class_name: (1 if class_name in labels else 0) for class_name in object_mapping.values()}
         })
 
     # Convert to DataFrame
@@ -613,7 +699,7 @@ def move_images(yolo_target: str, image_names: list, split_type: str, label_path
         return
     
     # Get destination paths from configuration
-    paths = YOLOPaths.get_target_paths(yolo_target, split_type)
+    paths = YoloPaths.get_target_paths(yolo_target, split_type)
     if not paths:
         raise ValueError(f"Invalid yolo_target: {yolo_target}")
     
