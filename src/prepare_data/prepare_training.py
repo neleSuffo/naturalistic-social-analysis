@@ -429,77 +429,6 @@ def gaze_stratified_split(image_sets: list, train_ratio: float = TrainingConfig.
         logging.info(f"Class '{label}': {len(train)} train, {len(val)} val, {len(test)} test images.")
         result[label] = (train, val, test)
     return result
-
-def stratified_split_with_objects(image_sets, image_objects, train_ratio=TrainingConfig.train_test_split_ratio):
-    """
-    Perform a two-stage split:
-    1. Split person/face presence groups normally.
-    2. Within the "neither" group, balance object categories using multi-label stratification.
-    """
-    train, val, test = [], [], []
-    val_ratio = (1 - train_ratio) / 2
-    
-    # First split the three sets (only person, only face, both person & face) normally
-    for image_set in image_sets[:-1]:  # Exclude "neither" for now
-        image_list = list(image_set)
-        random.shuffle(image_list)
-        total = len(image_list)
-        train_split = int(total * train_ratio)
-        val_split = int(total * val_ratio)
-        
-        train.extend(image_list[:train_split])
-        val.extend(image_list[train_split:train_split + val_split])
-        test.extend(image_list[train_split + val_split:])
-    
-    # Now handle "neither" set using Multi-Label Stratified Sampling
-    object_categories = ["book", "toy", "kitchenware", "screen", "food", "other_object", "animal"]
-    images_neither = list(image_sets[-1])  # The "neither" set (last in list)
-    
-    # Create binary matrix (multi-label representation)
-    y = np.zeros((len(images_neither), len(object_categories)), dtype=int)
-    for i, img in enumerate(images_neither):
-        for j, category in enumerate(object_categories):
-            if category in image_objects.get(img, []):
-                y[i, j] = 1  # Mark object presence
-
-    # First split (train vs rest)
-    msss = MultilabelStratifiedShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
-    train_idx, temp_idx = next(msss.split(images_neither, y))
-
-    # Second split (val vs test) - split the remaining 20% equally
-    test_val_images = np.array(images_neither)[temp_idx]
-    test_val_labels = y[temp_idx]
-    msss_second = MultilabelStratifiedShuffleSplit(n_splits=1, test_size=0.5, random_state=42)
-    val_idx, test_idx = next(msss_second.split(test_val_images, test_val_labels))
-
-    # Convert indices back to original space
-    val_idx = temp_idx[val_idx]
-    test_idx = temp_idx[test_idx]
-    
-    # After splits are created, count and log object distributions
-    def count_objects(image_list):
-        counts = {cat: 0 for cat in object_categories}
-        for img in image_list:
-            for obj in image_objects.get(img, []):
-                counts[obj] += 1
-        return counts
-    
-    # Get neither-set images for each split
-    neither_train = [images_neither[i] for i in train_idx]
-    neither_val = [images_neither[i] for i in val_idx]
-    neither_test = [images_neither[i] for i in test_idx]
-
-    # Count objects in each split
-    train_counts = count_objects(neither_train)
-    val_counts = count_objects(neither_val)
-    test_counts = count_objects(neither_test)
-    
-    # Assign final splits
-    train.extend([images_neither[i] for i in train_idx])
-    val.extend([images_neither[i] for i in val_idx])
-    test.extend([images_neither[i] for i in test_idx])
-
-    return train, val, test
     
 def stratified_split_all(df: pd.DataFrame, train_ratio=TrainingConfig.train_test_split_ratio, random_seed=TrainingConfig.random_seed, yolo_target=None):
     """
@@ -534,12 +463,14 @@ def stratified_split_all(df: pd.DataFrame, train_ratio=TrainingConfig.train_test
     train_df = df.iloc[train_idx].copy()
     
     # Balance training set only for person face detection
-    if yolo_target in ['adult_person_face', 'child_person_face']:
+    if yolo_target in ['adult_person_face', 'child_person_face', "object"]:
         # Sum relevant columns based on target type
         if yolo_target == 'adult_person_face':
             train_df['has_annotation'] = (train_df['adult_person'] + train_df['adult_face']) > 0
-        else:  # child_person_face
+        elif yolo_target == "child_person_face":
             train_df['has_annotation'] = (train_df['child_person'] + train_df['child_face'] + train_df['child_body_parts']) > 0
+        else:  # object
+            train_df['has_annotation'] = train_df['book'] + train_df['toy'] + train_df['kitchenware'] + train_df['screen'] + train_df['food'] + train_df['other_object'] + train_df['animal'] > 0
         
         positive_samples = train_df[train_df['has_annotation']].copy()
         negative_samples = train_df[~train_df['has_annotation']].copy()
