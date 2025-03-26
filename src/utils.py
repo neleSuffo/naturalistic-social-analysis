@@ -101,10 +101,7 @@ def fetch_all_annotations(
     # Add object interaction filter if objects is True
     if objects:
         query += """
-        AND (
-            (a.category_id IN (3,4,5,6,7,8,12) AND a.object_interaction = 'Yes')
-            OR a.category_id NOT IN (3,4,5,6,7,8,12)
-        )
+        AND a.object_interaction = 'Yes'
         """
     
     query += " ORDER BY a.video_id, a.image_id"
