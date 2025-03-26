@@ -45,7 +45,7 @@ class YoloPaths:
     object_data_config_path = yolo_detections_dir/"yolo_object_dataset.yaml"
     object_labels_input_dir = Path(BasePaths.data_dir/"yolo_object_labels")
     object_data_input_dir = Path(BasePaths.data_dir/"yolo_object_input")
-    objectoutput_dir = Path(BasePaths.output_dir/"yolo_object_detections/")
+    object_output_dir = Path(BasePaths.output_dir/"yolo_object_detections/")
     
     adult_person_face_trained_weights_path = Path(BasePaths.models_dir/'yolo11_adult_person_face_detection.pt')
     adult_person_face_data_config_path = yolo_detections_dir/"yolo_adult_person_face_dataset.yaml"
