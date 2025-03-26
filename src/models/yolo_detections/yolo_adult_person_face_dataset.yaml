@@ -5,10 +5,9 @@ test: /home/nele_pauline_suffo/ProcessedData/yolo_adult_person_face_input/images
 
 
 # Number of classes
-nc: 3
+nc: 2
 
 # Class names
 names:
   0: "adult"
   1: "adult face"
-  2: "child body parts"
