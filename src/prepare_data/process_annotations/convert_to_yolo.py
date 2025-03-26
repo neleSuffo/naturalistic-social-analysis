@@ -74,10 +74,24 @@ def map_category_id(target: str, category_id: int, person_age: str = None, gaze_
     if target == "gaze":
         return CategoryMappings.gaze.get(gaze_directed_at_child, 99)
     
-    mapping = getattr(CategoryMappings, target.upper(), {})
-    if person_age and category_id in [1, 2, 10]:
-        return mapping.get((category_id, person_age), mapping.get(category_id, 99))
+    # Get the appropriate mapping based on target
+    if target == "adult_person_face":
+        mapping = CategoryMappings.adult_person_face
+    elif target == "child_person_face":
+        mapping = CategoryMappings.child_person_face
+    elif target == "object":
+        mapping = CategoryMappings.object
+    elif target == "all":
+        mapping = CategoryMappings.all
+    else:
+        logging.error(f"Invalid target: {target}")
+        return 99
     
+    # For person categories in adult/child detection, consider age
+    if target in ["adult_person_face", "child_person_face", "all"] and person_age and category_id in [1, 2, 10]:
+        return mapping.get((category_id, person_age.lower()), 99)
+    
+    # For all other cases, use direct mapping
     return mapping.get(category_id, 99)
 
 def save_annotations(
@@ -158,8 +172,8 @@ def main(target: str) -> None:
     logging.info(f"Starting the conversion process for Yolo {target} detection.")
     try:
         category_ids = {
-            "adult_person_face": YoloConfig.person_target_class_ids,
-            "child_person_face": YoloConfig.person_target_class_ids,
+            "adult_person_face": YoloConfig.adult_target_class_ids,
+            "child_person_face": YoloConfig.child_target_class_ids,
             "object": YoloConfig.object_target_class_ids,
             "gaze": YoloConfig.face_target_class_ids,
             "all": YoloConfig.all_target_class_ids,
