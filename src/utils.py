@@ -39,6 +39,7 @@ def fetch_all_annotations(
     category_ids: List[int],
     persons: bool = False,
     objects: bool = False,
+    yolo_target: str = None,
 ) -> List[tuple]:
     """
     This function fetches annotations from the database for specific category IDs.
@@ -52,6 +53,8 @@ def fetch_all_annotations(
         Whether to include person annotations with gaze and age info
     objects : bool
         Whether to include object annotations with interaction info
+    yolo_target : str
+        The target for YOLO annotations (e.g., 'person', 'object')
     
     Returns
     -------
@@ -82,6 +85,19 @@ def fetch_all_annotations(
         AND v.file_name NOT LIKE '%id255237_2022_05_08_04%'
     """
 
+    # Add age filtering and person_id filtering for adult_person_face target
+    if yolo_target == 'adult_person_face':
+        logging.info("Filtering for adult_person_face target")
+        query += """
+        AND LOWER(a.person_age) IN ('teen', 'adult')
+        AND (a.person_ID != 1 OR a.person_ID IS NULL)
+        """
+    elif yolo_target == 'child_person_face':
+        logging.info("Filtering for child_person_face target")
+        query += """
+        AND LOWER(a.person_age) IN ('child', 'infant', 'inf')
+        """
+        
     # Add object interaction filter if objects is True
     if objects:
         query += """
