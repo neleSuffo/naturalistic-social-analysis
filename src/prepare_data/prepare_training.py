@@ -12,94 +12,8 @@ from iterstrat.ml_stratifiers import MultilabelStratifiedShuffleSplit
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
-def balance_dataset(model_target: str, yolo_target: str):
-    """
-    Balances a dataset by randomly selecting an equal number of images with and without faces.
-    Parameters:
-    ----------
-    model_target : str
-        The target model for preparation (e.g., "yolo").
-    yolo_target : str
-        The target type for YOLO (e.g., "person_face" or "gaze").
-    """
-    # Define paths based on model and YOLO target
-    paths = {
-        ("yolo", "person_face"): YoloPaths.person_face_data_input_dir,
-        ("yolo", "gaze"): YoloPaths.gaze_data_input_dir
-    }
-
-    data_input_dir = paths.get((model_target, yolo_target))
-
-    if data_input_dir is None:
-        logging.error(f"Invalid combination of model_target='{model_target}' and yolo_target='{yolo_target}'.")
-        return
-
-    annotation_dir = data_input_dir / "labels/train"
-    images_dir = data_input_dir / "images/train"
-    balanced_annotations_dir = data_input_dir / "labels/train_balanced"
-    balanced_images_dir = data_input_dir / "images/train_balanced"
-
-    logging.info(f"Balancing dataset in {images_dir} and {annotation_dir}...")
-
-    # Ensure directories exist
-    if not annotation_dir.exists() or not images_dir.exists():
-        logging.error(f"Missing input directories: {annotation_dir} or {images_dir}")
-        return
-
-    images_with_class = []
-    images_without_class = []
-
-    # Iterate over annotation files to classify images
-    for annotation_path in annotation_dir.iterdir():
-        if annotation_path.suffix == ".txt":
-            image_path = images_dir / f"{annotation_path.stem}.jpg"
-
-            # Check if the annotation file is not empty
-            if yolo_target == "face":
-                if annotation_path.stat().st_size > 0:
-                    images_with_class.append((image_path, annotation_path))
-                else:
-                    images_without_class.append((image_path, annotation_path))
-            elif yolo_target == "person":
-                with open(annotation_path, 'r') as file:
-                    lines = file.readlines()
-                    # Check if any annotation has class 0
-                    has_class_0 = any(line.strip().split()[0] == "0" for line in lines)
-                    if has_class_0:
-                        images_with_class.append((image_path, annotation_path))
-                    else:
-                        images_without_class.append((image_path, annotation_path))
-
-    num_img_with_classes = len(images_with_class)
-
-    if num_img_with_classes == 0:
-        logging.warning(f"No images with {yolo_target}s found. Skipping dataset balancing.")
-        return
-
-    logging.info(f"Found {num_img_with_classes} images with {yolo_target}.")
-
-    if len(images_without_class) < num_img_with_classes:
-        logging.warning(f"Not enough images without {yolo_target}s to balance the dataset. Using all available.")
-
-    # Randomly select an equal number of images without class (person or face)
-    images_without_class_sample = random.sample(images_without_class, min(num_img_with_classes, len(images_without_class)))
-
-    # Combine the lists to form the balanced dataset
-    balanced_dataset = images_with_class + images_without_class_sample
-
-    # Ensure balanced dataset directories exist
-    balanced_images_dir.mkdir(parents=True, exist_ok=True)
-    balanced_annotations_dir.mkdir(parents=True, exist_ok=True)
-
-    # Copy the selected files to the balanced dataset directories
-    for image_path, annotation_path in balanced_dataset:
-        shutil.copy(image_path, balanced_images_dir / image_path.name)
-        shutil.copy(annotation_path, balanced_annotations_dir / annotation_path.name)
-
-    logging.info(f"Balanced dataset created with {len(images_with_class)} images with {yolo_target}s and {len(images_without_class_sample)} images without {yolo_target}s.")
     
-def get_total_number_of_annotated_frames(label_path: Path, image_folder: Path = DetectionPaths.images_input_dir) -> list:
+def get_total_number_of_annotated_frames(label_path: Path, image_folder: Path = DetectionPaths.images_input_dir, target_type: str = None) -> list:
     """
     This function returns the total number of annotated frames in the dataset.
     
@@ -109,21 +23,45 @@ def get_total_number_of_annotated_frames(label_path: Path, image_folder: Path = 
         the path to the label files
     image_folder : Path
         the path to the image folder
+    target_type : str
+        the target type for YOLO (e.g., "child_person_face" or "adult_person_face")
         
     Returns
     -------
     list
         the total number of images
     """
+    positive_frames = set()  # Frames with target annotations
+    negative_frames = set()  # Frames without target annotations
     video_names = set()
     total_images = []
+    
     # Step 1: Get unique video names
     for annotation_file in label_path.glob('*.txt'):
         parts = annotation_file.stem.split('_')
         video_name = "_".join(parts[:8])
         video_names.add(video_name)
+
+        # Read the annotation file
+        with open(annotation_file, 'r') as f:
+            annotations = f.readlines()
+            
+        has_target = False
+        if target_type in ["child_person_face", "adult_person_face"]:
+            # Check if file contains adult/child annotations (class 0 or 1)
+            has_target = any(line.startswith(('0', '1')) for line in annotations)
+        elif target_type == 'child_person_face':
+            # Check if file contains child annotations (class 2 or 3)
+            has_target = any(line.startswith(('0', '1', '2')) for line in annotations)
+            
+        if has_target:
+            positive_frames.add(annotation_file.stem)
+        else:
+            negative_frames.add(annotation_file.stem)
+    
     logging.info(f"Found {len(video_names)} unique video names")
 
+    
     # Step 2: Count total images
     for video_name in video_names:
         video_path = image_folder / video_name
@@ -159,6 +97,7 @@ def get_pf_class_distribution(total_images: list, annotation_folder: Path, targe
         class_mapping = {
             0: "child_person",
             1: "child_face",
+            2: "child_body_parts"
         }
     else:
         class_mapping = {
@@ -476,7 +415,7 @@ def stratified_split_with_objects(image_sets, image_objects, train_ratio=Trainin
 
     return train, val, test
     
-def stratified_split_all(df: pd.DataFrame, train_ratio=TrainingConfig.train_test_split_ratio, random_seed=TrainingConfig.random_seed):
+def stratified_split_all(df: pd.DataFrame, train_ratio=TrainingConfig.train_test_split_ratio, random_seed=TrainingConfig.random_seed, yolo_target=None):
     """
     Splits the dataset into training, validation, and testing while preserving class distribution.
 
@@ -488,6 +427,8 @@ def stratified_split_all(df: pd.DataFrame, train_ratio=TrainingConfig.train_test
         Ratio of the dataset to allocate for training (default from TrainingConfig).
     random_seed: int
         Random seed for reproducibility.
+    yolo_target: str
+        The target type for YOLO (e.g., "adult_person_face", "object", "all").
 
     Returns:
     -------
@@ -503,12 +444,40 @@ def stratified_split_all(df: pd.DataFrame, train_ratio=TrainingConfig.train_test
     msss = MultilabelStratifiedShuffleSplit(n_splits=1, test_size=(1 - train_ratio), random_state=random_seed)
     train_idx, temp_idx = next(msss.split(df, y))
 
+    # Get initial training data
+    train_df = df.iloc[train_idx].copy()
+    
+    # Balance training set only for person face detection
+    if yolo_target in ['adult_person_face', 'child_person_face']:
+        # Sum relevant columns based on target type
+        if yolo_target == 'adult_person_face':
+            train_df['has_annotation'] = (train_df['adult_person'] + train_df['adult_face']) > 0
+        else:  # child_person_face
+            train_df['has_annotation'] = (train_df['child_person'] + train_df['child_face'] + train_df['child_body_parts']) > 0
+        
+        positive_samples = train_df[train_df['has_annotation']].copy()
+        negative_samples = train_df[~train_df['has_annotation']].copy()
+        
+        n_positive = len(positive_samples)
+        logging.info(f"Initial training set distribution for {yolo_target}:")
+        logging.info(f"Positive samples: {n_positive}")
+        logging.info(f"Negative samples: {len(negative_samples)}")
+        
+        # Subsample negative samples to match positive samples
+        if len(negative_samples) > n_positive:
+            negative_samples = negative_samples.sample(n=n_positive, random_state=random_seed)
+            logging.info(f"Downsampled negative samples to {n_positive}")
+        
+        # Combine balanced samples
+        train_df = pd.concat([positive_samples, negative_samples])
+        train_df = train_df.drop('has_annotation', axis=1)
+        logging.info(f"Final balanced training set size: {len(train_df)}")
+        
     # Second split (val vs test) - split remaining 20% equally
     msss_second = MultilabelStratifiedShuffleSplit(n_splits=1, test_size=0.5, random_state=random_seed)
     val_idx, test_idx = next(msss_second.split(df.iloc[temp_idx], y[temp_idx]))
 
     # Get final DataFrames
-    train_df = df.iloc[train_idx]
     val_df = df.iloc[temp_idx[val_idx]]
     test_df = df.iloc[temp_idx[test_idx]]
     
@@ -689,8 +658,8 @@ def move_images(yolo_target: str, image_names: list, split_type: str, label_path
                 shutil.copy2(image_src, image_dst)
                 
         except Exception as e:
-        logging.error(f"Error processing {image_name}: {str(e)}")
-        continue
+            logging.error(f"Error processing {image_name}: {str(e)}")
+            continue
         
 def split_yolo_data(label_path: Path, yolo_target: str):
     """
@@ -721,9 +690,9 @@ def split_yolo_data(label_path: Path, yolo_target: str):
                 train, val, test = splits_dict[gaze_class]
                 for split_name, split_set in (("train", train), ("val", val), ("test", test)):
                     move_images(gaze_class, split_set, split_name, label_path)
-        elif yolo_target in ["all", "person_face", "adult_person_face", "child_person_face", "object"]:
+        elif yolo_target in ["all", "adult_person_face", "child_person_face", "object"]:
             df = distribution_funcs[yolo_target](total_images, label_path, yolo_target)
-            train, val, test, train_df, val_df, test_df = stratified_split_all(df)
+            train, val, test, train_df, val_df, test_df = stratified_split_all(df, yolo_target=yolo_target)
             log_all_split_distributions(train_df, val_df, test_df, yolo_target)
             for split_name, split_set in (("train", train), ("val", val), ("test", test)):
                 move_images(yolo_target, split_set, split_name, label_path)
