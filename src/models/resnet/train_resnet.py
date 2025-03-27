@@ -9,7 +9,9 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 import matplotlib.pyplot as plt
 import numpy as np
 import time
-from constants import ResNetPaths
+import argparse
+import os
+from constants import BasePaths
 
 # Limit GPU memory usage
 torch.cuda.set_per_process_memory_fraction(0.5, device=0)
@@ -17,8 +19,15 @@ torch.cuda.set_per_process_memory_fraction(0.5, device=0)
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
-# Load Pretrained ResNet-50
-logging.info("Loading pre-trained ResNet-50 model...")
+# Parse command-line arguments
+parser = argparse.ArgumentParser(description="Train ResNet for classification")
+parser.add_argument("--target", type=str, required=True, choices=["gaze", "person", "face"],
+                    help="Target classification task: 'gaze', 'person', or 'face'")
+args = parser.parse_args()
+target = args.target
+
+# Load Pretrained ResNet-152
+logging.info(f"Loading pre-trained ResNet-152 model for {target} classification...")
 resnet152 = models.resnet152(weights=models.ResNet152_Weights.IMAGENET1K_V2)
 
 # Modify the last FC layer for binary classification
@@ -26,7 +35,7 @@ num_ftrs = resnet152.fc.in_features
 resnet152.fc = nn.Linear(num_ftrs, 1)  # Single neuron for binary classification
 logging.info(f"Modified last layer: {resnet152.fc}")
 
-# Use Sigmoid activation
+# Use Sigmoid activation implicitly via BCEWithLogitsLoss
 model = resnet152
 
 # Move model to GPU if available
@@ -48,18 +57,43 @@ transform = transforms.Compose([
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 ])
 
+# Define paths based on target
+base_data_path = BasePaths.data_dir
+val_path = f"{base_data_path}/yolo_{target}_input/val"
+output_dir = f"{BasePaths.output_dir}/resnet_{target}_classification"
+model_save_path = f"{BasePaths.models_dir}/resnet_{target}.pth"
+
+# Ensure output directory exists
+os.makedirs(output_dir, exist_ok=True)
+
 # Load datasets
-train_path = "/home/nele_pauline_suffo/ProcessedData/yolo_gaze_input/train"
-val_path = "/home/nele_pauline_suffo/ProcessedData/yolo_gaze_input/val"
 train_dataset = datasets.ImageFolder(train_path, transform=transform)
 val_dataset = datasets.ImageFolder(val_path, transform=transform)
 
-# Set class-to-index mapping
-train_dataset.class_to_idx = {"gaze": 1, "no_gaze": 0}
-val_dataset.class_to_idx = {"gaze": 1, "no_gaze": 0}
+# Define positive class for each target
+positive_classes = {
+    "gaze": "gaze",
+    "person": "adult",
+    "face": "adult"
+}
+positive_class = positive_classes[target]
+
+# Adjust class_to_idx to map positive_class to 1 and the other to 0
+auto_class_to_idx = train_dataset.class_to_idx
+for class_name, idx in auto_class_to_idx.items():
+    if class_name == positive_class:
+        positive_idx = idx
+        break
+else:
+    raise ValueError(f"Positive class '{positive_class}' not found in dataset classes: {auto_class_to_idx.keys()}")
+
+new_class_to_idx = {class_name: 1 if idx == positive_idx else 0 for class_name, idx in auto_class_to_idx.items()}
+train_dataset.class_to_idx = new_class_to_idx
+val_dataset.class_to_idx = new_class_to_idx
 
 logging.info(f"Training dataset size: {len(train_dataset)} images")
 logging.info(f"Validation dataset size: {len(val_dataset)} images")
+logging.info(f"Class mapping for {target}: {new_class_to_idx}")
 
 # Create DataLoaders
 train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
@@ -70,13 +104,12 @@ num_epochs = 100
 patience = 10
 best_val_loss = float("inf")
 early_stop_counter = 0
-model_save_path = ResNetPaths.trained_weights_path
 
 # Store metrics for visualization
 train_losses, val_losses = [], []
 accuracies, precisions, recalls, f1_scores = [], [], [], []
 
-logging.info(f"Starting training for {num_epochs} epochs...")
+logging.info(f"Starting training for {target} classification for {num_epochs} epochs...")
 
 for epoch in range(num_epochs):
     model.train()
@@ -143,8 +176,8 @@ for epoch in range(num_epochs):
     f1_scores.append(f1)
 
     elapsed_time = time.time() - start_time
-    logging.info(f"Epoch [{epoch+1}/{num_epochs}] - Train Loss: {avg_train_loss:.4f}, Val Loss: {avg_val_loss:.4f} (Time: {elapsed_time:.2f}s)")
-    logging.info(f"Validation Metrics - Accuracy: {acc:.4f}, Precision: {prec:.4f}, Recall: {rec:.4f}, F1 Score: {f1:.4f}")
+    logging.info(f"Epoch [{epoch+1}/{num_epochs}] - {target} Train Loss: {avg_train_loss:.4f}, Val Loss: {avg_val_loss:.4f} (Time: {elapsed_time:.2f}s)")
+    logging.info(f"{target} Validation Metrics - Accuracy: {acc:.4f}, Precision: {prec:.4f}, Recall: {rec:.4f}, F1 Score: {f1:.4f}")
 
     # Adjust learning rate
     scheduler.step(avg_val_loss)
@@ -154,16 +187,16 @@ for epoch in range(num_epochs):
         best_val_loss = avg_val_loss
         early_stop_counter = 0
         torch.save(model.state_dict(), model_save_path)
-        logging.info(f"New best model saved with Val Loss: {best_val_loss:.4f}")
+        logging.info(f"New best model for {target} saved with Val Loss: {best_val_loss:.4f}")
     else:
         early_stop_counter += 1
-        logging.info(f"No improvement. Early stop counter: {early_stop_counter}/{patience}")
+        logging.info(f"No improvement in {target} model. Early stop counter: {early_stop_counter}/{patience}")
 
     if early_stop_counter >= patience:
-        logging.info("Early stopping triggered. Training stopped.")
+        logging.info(f"Early stopping triggered for {target}. Training stopped.")
         break
 
-logging.info(f"Training complete! Best model saved at: {model_save_path}")
+logging.info(f"Training complete for {target}! Best model saved at: {model_save_path}")
 
 # Plot Loss Curves
 plt.figure(figsize=(10, 5))
@@ -172,9 +205,9 @@ plt.plot(val_losses, label="Validation Loss", marker="o")
 plt.xlabel("Epochs")
 plt.ylabel("Loss")
 plt.legend()
-plt.title("Training & Validation Loss")
+plt.title(f"Training & Validation Loss for {target} Classification")
 plt.grid()
-plt.savefig("/home/nele_pauline_suffo/outputs/resnet_gaze_classification/loss_curve.png")
+plt.savefig(f"{output_dir}/loss_curve.png")
 plt.show()
 
 # Plot Accuracy, Precision, Recall, and F1-Score
@@ -189,7 +222,7 @@ plt.plot(epochs, f1_scores, label="F1 Score", marker="o")
 plt.xlabel("Epochs")
 plt.ylabel("Metric Value")
 plt.legend()
-plt.title("Model Performance Metrics")
+plt.title(f"Model Performance Metrics for {target} Classification")
 plt.grid()
-plt.savefig("metrics_curve.png")
+plt.savefig(f"{output_dir}/metrics_curve.png")
 plt.show()
