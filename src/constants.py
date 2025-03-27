@@ -66,8 +66,8 @@ class YoloPaths:
     child_person_face_data_input_dir = Path(BasePaths.data_dir/"yolo_child_person_face_input")
     child_person_face_output_dir = Path(BasePaths.output_dir/"yolo_child_person_face_detections/")
 
-    person_extracted_faces_dir = Path(BasePaths.data_dir/"quantex_person_input")
-    person_trained_weights_path = Path(BasePaths.models_dir/'yolo11_person_classification.pt')
+    person_extracted_faces_dir = Path(BasePaths.data_dir/"resnet_person_input")
+    person_trained_weights_path = Path(BasePaths.models_dir/'resnet_person_classification.pt')
     person_extraction_progress_file_path = Path(BasePaths.data_dir/"person_extraction_progress.txt")
     person_missing_frames_file_path = Path(BasePaths.data_dir/"person_missing_frames.txt")
     person_data_config_path = Path(BasePaths.leuphana_ipe_dir/"src/models/resnet/person_dataset.yaml")
@@ -75,10 +75,8 @@ class YoloPaths:
     person_data_input_dir = Path(BasePaths.data_dir/"resnet_person_input")
     person_output_dir = Path(BasePaths.output_dir/"resnet_person_classification/")
     
-    face_extracted_faces_dir = Path(BasePaths.data_dir/"yolo_face_input")
-    face_trained_weights_path = Path(BasePaths.models_dir/'yolo11_face_classification.pt')
-    face_extraction_progress_file_path = Path(BasePaths.data_dir/"face_extraction_progress.txt")
-    face_missing_frames_file_path = Path(BasePaths.data_dir/"face_missing_frames.txt")
+    face_extracted_faces_dir = Path(BasePaths.data_dir/"resnet_face_input")
+    face_trained_weights_path = Path(BasePaths.models_dir/'resnet_face_classification.pt')
     face_data_config_path = Path(BasePaths.leuphana_ipe_dir/"src/models/resnet/face_dataset.yaml")
     face_labels_input_dir = Path(BasePaths.data_dir/"resnet_face_labels")
     face_data_input_dir = Path(BasePaths.data_dir/"resnet_face_input")
