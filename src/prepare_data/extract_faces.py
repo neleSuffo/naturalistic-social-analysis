@@ -27,11 +27,6 @@ def crop_faces_from_labels(
         File to track progress
     missing_frames_file : Path
         File to log missing frames
-        
-    Returns
-    -------
-    None
-    
     """
     cv2.setNumThreads(1)
     
