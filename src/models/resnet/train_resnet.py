@@ -19,210 +19,188 @@ torch.cuda.set_per_process_memory_fraction(0.5, device=0)
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
-# Parse command-line arguments
-parser = argparse.ArgumentParser(description="Train ResNet for classification")
-parser.add_argument("--target", type=str, required=True, choices=["gaze", "person", "face"],
-                    help="Target classification task: 'gaze', 'person', or 'face'")
-args = parser.parse_args()
-target = args.target
+### Function Definitions
 
-# Load Pretrained ResNet-152
-logging.info(f"Loading pre-trained ResNet-152 model for {target} classification...")
-resnet152 = models.resnet152(weights=models.ResNet152_Weights.IMAGENET1K_V2)
+def parse_args():
+    """Parse command-line arguments."""
+    parser = argparse.ArgumentParser(description="Train ResNet for classification")
+    parser.add_argument("--target", type=str, required=True, choices=["gaze", "person", "face"],
+                        help="Target classification task: 'gaze', 'person', or 'face'")
+    return parser.parse_args()
 
-# Modify the last FC layer for binary classification
-num_ftrs = resnet152.fc.in_features
-resnet152.fc = nn.Linear(num_ftrs, 1)  # Single neuron for binary classification
-logging.info(f"Modified last layer: {resnet152.fc}")
+def setup_model(target):
+    """Set up the ResNet-152 model for binary classification."""
+    logging.info(f"Loading pre-trained ResNet-152 model for {target} classification...")
+    model = models.resnet152(weights=models.ResNet152_Weights.IMAGENET1K_V2)
+    num_ftrs = model.fc.in_features
+    model.fc = nn.Linear(num_ftrs, 1)  # Binary classification
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = model.to(device)
+    logging.info(f"Model moved to {device}")
+    return model, device
 
-# Use Sigmoid activation implicitly via BCEWithLogitsLoss
-model = resnet152
+def prepare_data(target, transform):
+    """Prepare datasets and dataloaders for training and validation."""
+    base_data_path = BasePaths.data_dir
+    if target == "gaze":
+        train_path = f"{base_data_path}/yolo_{target}_input/train"
+        val_path = f"{base_data_path}/yolo_{target}_input/val"
+    else:
+        train_path = f"{base_data_path}/resnet_{target}_input/train"
+        val_path = f"{base_data_path}/resnet_{target}_input/val"
+    
+    train_dataset = datasets.ImageFolder(train_path, transform=transform)
+    val_dataset = datasets.ImageFolder(val_path, transform=transform)
+    
+    # Map classes to binary labels (1 for positive class, 0 for others)
+    positive_classes = {"gaze": "gaze", "person": "adult", "face": "adult"}
+    positive_class = positive_classes[target]
+    auto_class_to_idx = train_dataset.class_to_idx
+    positive_idx = auto_class_to_idx.get(positive_class)
+    if positive_idx is None:
+        raise ValueError(f"Positive class '{positive_class}' not found in {auto_class_to_idx.keys()}")
+    new_class_to_idx = {class_name: 1 if idx == positive_idx else 0 for class_name, idx in auto_class_to_idx.items()}
+    train_dataset.class_to_idx = new_class_to_idx
+    val_dataset.class_to_idx = new_class_to_idx
+    
+    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
+    
+    logging.info(f"Prepared data for {target}: Train size={len(train_dataset)}, Val size={len(val_dataset)}")
+    return train_loader, val_loader
 
-# Move model to GPU if available
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = model.to(device)
-
-# Loss function and optimizer
-criterion = nn.BCEWithLogitsLoss()  # Combines sigmoid + BCELoss safely
-optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
-scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10)
-
-# Enable Automatic Mixed Precision (AMP)
-scaler = torch.amp.GradScaler()
-
-# Define transforms for input images
-transform = transforms.Compose([
-    transforms.Resize((224, 224)),
-    transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-])
-
-# Define paths based on target
-base_data_path = BasePaths.data_dir
-val_path = f"{base_data_path}/yolo_{target}_input/val"
-output_dir = f"{BasePaths.output_dir}/resnet_{target}_classification"
-model_save_path = f"{BasePaths.models_dir}/resnet_{target}.pth"
-
-# Ensure output directory exists
-os.makedirs(output_dir, exist_ok=True)
-
-# Load datasets
-train_dataset = datasets.ImageFolder(train_path, transform=transform)
-val_dataset = datasets.ImageFolder(val_path, transform=transform)
-
-# Define positive class for each target
-positive_classes = {
-    "gaze": "gaze",
-    "person": "adult",
-    "face": "adult"
-}
-positive_class = positive_classes[target]
-
-# Adjust class_to_idx to map positive_class to 1 and the other to 0
-auto_class_to_idx = train_dataset.class_to_idx
-for class_name, idx in auto_class_to_idx.items():
-    if class_name == positive_class:
-        positive_idx = idx
-        break
-else:
-    raise ValueError(f"Positive class '{positive_class}' not found in dataset classes: {auto_class_to_idx.keys()}")
-
-new_class_to_idx = {class_name: 1 if idx == positive_idx else 0 for class_name, idx in auto_class_to_idx.items()}
-train_dataset.class_to_idx = new_class_to_idx
-val_dataset.class_to_idx = new_class_to_idx
-
-logging.info(f"Training dataset size: {len(train_dataset)} images")
-logging.info(f"Validation dataset size: {len(val_dataset)} images")
-logging.info(f"Class mapping for {target}: {new_class_to_idx}")
-
-# Create DataLoaders
-train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
-
-# Training setup
-num_epochs = 100
-patience = 10
-best_val_loss = float("inf")
-early_stop_counter = 0
-
-# Store metrics for visualization
-train_losses, val_losses = [], []
-accuracies, precisions, recalls, f1_scores = [], [], [], []
-
-logging.info(f"Starting training for {target} classification for {num_epochs} epochs...")
-
-for epoch in range(num_epochs):
+def train_epoch(model, train_loader, criterion, optimizer, scaler, device):
+    """Train the model for one epoch and return the average loss."""
     model.train()
     running_loss = 0.0
-    start_time = time.time()  # Track epoch time
-
-    for batch_idx, (images, labels) in enumerate(train_loader):
-        images, labels = images.to(device), labels.to(device).float().unsqueeze(1)  # Reshape labels
-
+    for images, labels in train_loader:
+        images, labels = images.to(device), labels.to(device).float().unsqueeze(1)
         optimizer.zero_grad()
-        with torch.cuda.amp.autocast():  # Enable mixed precision
+        with torch.cuda.amp.autocast():
             outputs = model(images)
             loss = criterion(outputs, labels)
-
         scaler.scale(loss).backward()
         scaler.step(optimizer)
         scaler.update()
-
         running_loss += loss.item()
+    return running_loss / len(train_loader)
 
-        # Print loss every 10 steps
-        if (batch_idx + 1) % 10 == 0:
-            elapsed_time = time.time() - start_time
-            avg_time_per_batch = elapsed_time / (batch_idx + 1)
-            remaining_batches = len(train_loader) - (batch_idx + 1)
-            eta = avg_time_per_batch * remaining_batches
-            logging.info(
-                f"Epoch [{epoch+1}/{num_epochs}], Step [{batch_idx+1}/{len(train_loader)}], "
-                f"Loss: {loss.item():.4f}, ETA: {eta:.2f}s"
-            )
-
-    avg_train_loss = running_loss / len(train_loader)
-    train_losses.append(avg_train_loss)
-
-    # Validation Phase
+def validate_epoch(model, val_loader, criterion, device):
+    """Validate the model for one epoch and return loss and predictions."""
     model.eval()
     val_loss = 0.0
     y_true, y_pred = [], []
-
     with torch.no_grad():
         for images, labels in val_loader:
-            images, labels = images.to(device), labels.float().unsqueeze(1).to(device)
-
+            images, labels = images.to(device), labels.to(device).float().unsqueeze(1)
             outputs = model(images)
             loss = criterion(outputs, labels)
             val_loss += loss.item()
-
             preds = (torch.sigmoid(outputs).cpu().numpy() > 0.5).astype(int)
             y_true.extend(labels.cpu().numpy())
             y_pred.extend(preds)
+    return val_loss / len(val_loader), y_true, y_pred
 
-    avg_val_loss = val_loss / len(val_loader)
-    val_losses.append(avg_val_loss)
-
-    # Compute metrics
+def calculate_metrics(y_true, y_pred):
+    """Calculate and return evaluation metrics."""
     acc = accuracy_score(y_true, y_pred)
     prec = precision_score(y_true, y_pred, pos_label=1)
     rec = recall_score(y_true, y_pred, pos_label=1)
     f1 = f1_score(y_true, y_pred, pos_label=1)
+    return acc, prec, rec, f1
 
-    accuracies.append(acc)
-    precisions.append(prec)
-    recalls.append(rec)
-    f1_scores.append(f1)
+def plot_results(train_losses, val_losses, accuracies, precisions, recalls, f1_scores, output_dir, target):
+    """Plot and save training/validation loss and metric curves."""
+    plt.figure(figsize=(10, 5))
+    plt.plot(train_losses, label="Train Loss", marker="o")
+    plt.plot(val_losses, label="Validation Loss", marker="o")
+    plt.xlabel("Epochs")
+    plt.ylabel("Loss")
+    plt.legend()
+    plt.title(f"Loss Curves for {target} Classification")
+    plt.grid()
+    plt.savefig(f"{output_dir}/loss_curve.png")
+    plt.close()
 
-    elapsed_time = time.time() - start_time
-    logging.info(f"Epoch [{epoch+1}/{num_epochs}] - {target} Train Loss: {avg_train_loss:.4f}, Val Loss: {avg_val_loss:.4f} (Time: {elapsed_time:.2f}s)")
-    logging.info(f"{target} Validation Metrics - Accuracy: {acc:.4f}, Precision: {prec:.4f}, Recall: {rec:.4f}, F1 Score: {f1:.4f}")
+    plt.figure(figsize=(12, 6))
+    epochs = np.arange(1, len(accuracies) + 1)
+    plt.plot(epochs, accuracies, label="Accuracy", marker="o")
+    plt.plot(epochs, precisions, label="Precision", marker="o")
+    plt.plot(epochs, recalls, label="Recall", marker="o")
+    plt.plot(epochs, f1_scores, label="F1 Score", marker="o")
+    plt.xlabel("Epochs")
+    plt.ylabel("Metric Value")
+    plt.legend()
+    plt.title(f"Metrics for {target} Classification")
+    plt.grid()
+    plt.savefig(f"{output_dir}/metrics_curve.png")
+    plt.close()
 
-    # Adjust learning rate
-    scheduler.step(avg_val_loss)
+def main():
+    """Orchestrate the training process."""
+    # Parse arguments and set up paths
+    args = parse_args()
+    target = args.target
+    output_dir = f"{BasePaths.output_dir}/resnet_{target}_classification"
+    model_save_path = f"{BasePaths.models_dir}/resnet_{target}.pth"
+    os.makedirs(output_dir, exist_ok=True)
 
-    # Early Stopping & Checkpointing
-    if avg_val_loss < best_val_loss:
-        best_val_loss = avg_val_loss
-        early_stop_counter = 0
-        torch.save(model.state_dict(), model_save_path)
-        logging.info(f"New best model for {target} saved with Val Loss: {best_val_loss:.4f}")
-    else:
-        early_stop_counter += 1
-        logging.info(f"No improvement in {target} model. Early stop counter: {early_stop_counter}/{patience}")
+    # Initialize model and data
+    model, device = setup_model(target)
+    transform = transforms.Compose([
+        transforms.Resize((224, 224)),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    ])
+    train_loader, val_loader = prepare_data(target, transform)
 
-    if early_stop_counter >= patience:
-        logging.info(f"Early stopping triggered for {target}. Training stopped.")
-        break
+    # Set up training components
+    criterion = nn.BCEWithLogitsLoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10)
+    scaler = torch.amp.GradScaler()
 
-logging.info(f"Training complete for {target}! Best model saved at: {model_save_path}")
+    # Training loop
+    num_epochs = 100
+    patience = 10
+    best_val_loss = float("inf")
+    early_stop_counter = 0
+    train_losses, val_losses = [], []
+    accuracies, precisions, recalls, f1_scores = [], [], []
 
-# Plot Loss Curves
-plt.figure(figsize=(10, 5))
-plt.plot(train_losses, label="Train Loss", marker="o")
-plt.plot(val_losses, label="Validation Loss", marker="o")
-plt.xlabel("Epochs")
-plt.ylabel("Loss")
-plt.legend()
-plt.title(f"Training & Validation Loss for {target} Classification")
-plt.grid()
-plt.savefig(f"{output_dir}/loss_curve.png")
-plt.show()
+    for epoch in range(num_epochs):
+        start_time = time.time()
 
-# Plot Accuracy, Precision, Recall, and F1-Score
-plt.figure(figsize=(12, 6))
-epochs = np.arange(1, len(accuracies) + 1)
+        avg_train_loss = train_epoch(model, train_loader, criterion, optimizer, scaler, device)
+        train_losses.append(avg_train_loss)
 
-plt.plot(epochs, accuracies, label="Accuracy", marker="o")
-plt.plot(epochs, precisions, label="Precision", marker="o")
-plt.plot(epochs, recalls, label="Recall", marker="o")
-plt.plot(epochs, f1_scores, label="F1 Score", marker="o")
+        avg_val_loss, y_true, y_pred = validate_epoch(model, val_loader, criterion, device)
+        val_losses.append(avg_val_loss)
 
-plt.xlabel("Epochs")
-plt.ylabel("Metric Value")
-plt.legend()
-plt.title(f"Model Performance Metrics for {target} Classification")
-plt.grid()
-plt.savefig(f"{output_dir}/metrics_curve.png")
-plt.show()
+        acc, prec, rec, f1 = calculate_metrics(y_true, y_pred)
+        accuracies.append(acc)
+        precisions.append(prec)
+        recalls.append(rec)
+        f1_scores.append(f1)
+
+        elapsed_time = time.time() - start_time
+        logging.info(f"Epoch [{epoch+1}/{num_epochs}] - {target} Train Loss: {avg_train_loss:.4f}, Val Loss: {avg_val_loss:.4f} (Time: {elapsed_time:.2f}s)")
+        logging.info(f"Metrics - Acc: {acc:.4f}, Prec: {prec:.4f}, Rec: {rec:.4f}, F1: {f1:.4f}")
+
+        scheduler.step(avg_val_loss)
+        if avg_val_loss < best_val_loss:
+            best_val_loss = avg_val_loss
+            early_stop_counter = 0
+            torch.save(model.state_dict(), model_save_path)
+            logging.info(f"Best model saved with Val Loss: {best_val_loss:.4f}")
+        else:
+            early_stop_counter += 1
+            if early_stop_counter >= patience:
+                logging.info(f"Early stopping triggered for {target}.")
+                break
+
+    logging.info(f"Training complete for {target}. Best model at: {model_save_path}")
+    plot_results(train_losses, val_losses, accuracies, precisions, recalls, f1_scores, output_dir, target)
+
+if __name__ == "__main__":
+    main()
