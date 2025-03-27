@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 from sklearn.model_selection import train_test_split
-from constants import DetectionPaths, YoloPaths
+from constants import DetectionPaths, YoloPaths, ResNetPaths
 from config import TrainingConfig
 from iterstrat.ml_stratifiers import MultilabelStratifiedShuffleSplit
 
@@ -185,6 +185,12 @@ def get_pf_class_distribution(total_images: list, annotation_folder: Path, targe
             1: "child_face",
             2: "child_body_parts"
         }
+    elif target_type == "person_face":
+        class_mapping = {
+            0: "person",
+            1: "face",
+            2: "child_body_parts"
+        }
     else:
         class_mapping = {
             0: "person",
@@ -330,16 +336,9 @@ def get_object_class_distribution(total_images: list, annotation_folder: Path, t
     # save df
     return df
 
-def get_gaze_class_distribution(total_images: list, annotation_folder: Path) -> tuple:
+def get_binary_class_distribution(total_images: list, annotation_folder: Path) -> tuple:
     """
-    This function reads the label files and groups images based on their class distribution.
-    
-    For each label file, all class_ids in the file are examined at once.
-    Class 2 is ignored in the grouping so that:
-      - Images with only 0s (or 0s and 2s) are considered as "only persons".
-      - Images with only 1s (or 1s and 2s) are considered as "only faces".
-      - Images with both 0 and 1 (with or without 2) are "multiple classes".
-      - Otherwise, if the file is empty or contains no 0 or 1, it's "neither".
+    This function reads label files and iterates over the detections and assign them to the correct class.
       
     Parameters:
     ----------
@@ -350,13 +349,13 @@ def get_gaze_class_distribution(total_images: list, annotation_folder: Path) -> 
     
     Returns:
     -------
-    images_no_gaze: set
+    images_class_0: set
         Set of image names with class 0.
-    images_gaze: set
+    images_class_1: set
         Set of image names with class 1.    
     """
-    images_no_gaze= set()
-    images_gaze = set()
+    images_class_0= set()
+    images_class_1 = set()
     
     for image_file in total_images:
         image_file = Path(image_file)
@@ -366,18 +365,20 @@ def get_gaze_class_distribution(total_images: list, annotation_folder: Path) -> 
                 lines = f.readlines()
                 for i, line in enumerate(lines):
                     class_id = line.strip().split()[0]
-                    if class_id == "0":  # 0 = no gaze
-                        images_no_gaze.add(f"{image_file.stem}_face_{i}.jpg")
-                    elif class_id == "1":  # 1 = gaze
-                        images_gaze.add(f"{image_file.stem}_face_{i}.jpg")
+                    if class_id == "0": 
+                        images_class_0.add(f"{image_file.stem}_class_0_{i}.jpg")
+                    elif class_id == "1":  
+                        images_class_1.add(f"{image_file.stem}_class_1_{i}.jpg")
     
-    total_gaze = len(images_gaze) + len(images_no_gaze)
-    ratio = len(images_gaze) / total_gaze if total_gaze > 0 else 0
-    logging.info(f"Gaze-to-No-Gaze Ratio: {ratio:.4f} ({len(images_gaze)}/{len(images_no_gaze)})")
+    total_gaze = len(images_class_1) + len(images_class_0)
+    # log class distribution
+    logging.info(f"Class 0: {len(images_class_0)} images")
+    logging.info(f"Class 1: {len(images_class_1)} images")
+    logging.info(f"Total: {total_gaze} images")
     
-    return images_gaze, images_no_gaze
+    return images_class_0, images_class_1
 
-def gaze_stratified_split(image_sets: list, train_ratio: float = TrainingConfig.train_test_split_ratio):
+def binary_stratified_split(image_sets: list, yolo_target: str, train_ratio: float = TrainingConfig.train_test_split_ratio):
     """
     This function splits the images into train, val, and test sets based on the class distribution.
     
@@ -393,28 +394,41 @@ def gaze_stratified_split(image_sets: list, train_ratio: float = TrainingConfig.
     Returns:
     -------
     dict: {
-        "gaze": (list of train, list of val, list of test),
-        "no_gaze": (list of train, list of val, list of test)
+        "class_0": (list of train, list of val, list of test),
+        "class_1": (list of train, list of val, list of test)
     }
     """
     val_ratio = (1 - train_ratio) / 2
     
-    # For gaze target, split each set separately
+    # Split each set separately
     if len(image_sets) != 2:
-        raise ValueError("For yolo_target 'gaze', image_sets must contain exactly two sets (no_gaze and gaze).")
+        raise ValueError("Image_sets must contain exactly two sets.")
     result = {}
-    class_labels = ["gaze", "no_gaze"]
+    if yolo_target == "gaze":
+        class_labels = ResnetPaths.gaze_classes
+    elif yolo_target == "person":
+        class_labels = ResnetPaths.person_classes
+    elif yolo_target == "face":
+        class_labels = ResnetPaths.face_classes
     
-    # Convert tuple elements to lists and undersample 'no_gaze' to match the number of 'gaze' images
-    gaze_images = list(image_sets[0])
-    no_gaze_images = list(image_sets[1])
-    total_gaze = len(gaze_images)
-    if len(no_gaze_images) >= total_gaze:
-        no_gaze_images_new = random.sample(no_gaze_images, total_gaze)
+    # Convert tuple elements to lists and undersample one class if necessary
+    
+    num_class_0_images = len(list(image_sets[0]))
+    num_class_1_images = len(list(image_sets[1]))
+    
+    # Undersample the larger class
+    if num_class_0_images > num_class_1_images:
+        class_0_images_new = random.sample(list(image_sets[0]), num_class_1_images)
+        class_1_images_new = list(image_sets[1])
+    elif num_class_1_images > num_class_0_images:
+        class_1_images_new = random.sample(list(image_sets[1]), num_class_0_images)
+        class_0_images_new = list(image_sets[0])
     else:
-        logging.warning("Not enough 'no_gaze' images; using all available.")
-        
-    new_image_sets = [gaze_images, no_gaze_images_new]
+        class_0_images_new = list(image_sets[0])
+        class_1_images_new = list(image_sets[1])
+    
+    # Create new image sets
+    new_image_sets = [class_0_images_new, class_1_images_new]
 
     for idx, label in enumerate(class_labels):
         image_list = list(new_image_sets[idx])
@@ -694,19 +708,27 @@ def split_yolo_data(label_path: Path, yolo_target: str):
     # Mapping of target type to corresponding distribution function.
     distribution_funcs = {
         "all": get_all_class_distribution,
-        "gaze": get_gaze_class_distribution,
+        "gaze": get_binary_class_distribution,
+        "person": get_binary_class_distribution,
+        "face": get_binary_class_distribution,
+        "person_face": get_pf_class_distribution,
         "adult_person_face": get_pf_class_distribution,
         "child_person_face": get_pf_class_distribution,
         "object": get_object_class_distribution,
     }
     try:
-        if yolo_target == "gaze":
+        if yolo_target in ["person", "face", "gaze"]:
+            class_mapping = {
+                "person": ["child_person", "adult_person"],
+                "face": ["child_face", "adult_face"],
+                "gaze": ["no_gaze", "gaze"]
+            }
             images_gaze, images_no_gaze = distribution_funcs[yolo_target](total_images, label_path)
-            splits_dict = gaze_stratified_split((images_gaze, images_no_gaze))
-            for gaze_class in ["gaze", "no_gaze"]:
+            splits_dict = binary_stratified_split((images_gaze, images_no_gaze))
+            for binary_class in class_mapping[yolo_target]:
                 train, val, test = splits_dict[gaze_class]
                 for split_name, split_set in (("train", train), ("val", val), ("test", test)):
-                    move_images(gaze_class, split_set, split_name, label_path)
+                    move_images(binary_class, split_set, split_name, label_path)
         elif yolo_target in ["all", "adult_person_face", "child_person_face", "object"]:
             df = distribution_funcs[yolo_target](total_images, label_path, yolo_target)
             train, val, test, train_df, val_df, test_df = stratified_split_all(df, yolo_target=yolo_target)
