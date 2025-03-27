@@ -336,7 +336,7 @@ def get_object_class_distribution(total_images: list, annotation_folder: Path, t
     # save df
     return df
 
-def get_binary_class_distribution(total_images: list, annotation_folder: Path) -> tuple:
+def get_binary_class_distribution(total_images: list, annotation_folder: Path, target: str) -> (set, set):
     """
     This function reads label files and iterates over the detections and assign them to the correct class.
       
@@ -346,6 +346,8 @@ def get_binary_class_distribution(total_images: list, annotation_folder: Path) -
         List of image names.
     annotation_folder: Path
         Path to the directory containing label files.
+    target: str
+        The target type for binary classification (e.g., "gaze" or "person" or "face").
     
     Returns:
     -------
@@ -357,6 +359,7 @@ def get_binary_class_distribution(total_images: list, annotation_folder: Path) -
     images_class_0= set()
     images_class_1 = set()
     
+    class_description = ["face" if yolo_target in ["gaze", "face"] else "person"]
     for image_file in total_images:
         image_file = Path(image_file)
         annotation_file = annotation_folder / image_file.with_suffix('.txt').name
@@ -366,9 +369,9 @@ def get_binary_class_distribution(total_images: list, annotation_folder: Path) -
                 for i, line in enumerate(lines):
                     class_id = line.strip().split()[0]
                     if class_id == "0": 
-                        images_class_0.add(f"{image_file.stem}_class_0_{i}.jpg")
+                        images_class_0.add(f"{image_file.stem}_{class_description}_{i}.jpg")
                     elif class_id == "1":  
-                        images_class_1.add(f"{image_file.stem}_class_1_{i}.jpg")
+                        images_class_1.add(f"{image_file.stem}_{class_description}_{i}.jpg")
     
     total_gaze = len(images_class_1) + len(images_class_0)
     # log class distribution
@@ -723,7 +726,7 @@ def split_yolo_data(label_path: Path, yolo_target: str):
                 "face": ["child_face", "adult_face"],
                 "gaze": ["no_gaze", "gaze"]
             }
-            images_gaze, images_no_gaze = distribution_funcs[yolo_target](total_images, label_path)
+            images_gaze, images_no_gaze = distribution_funcs[yolo_target](total_images, label_path, yolo_target)
             splits_dict = binary_stratified_split((images_gaze, images_no_gaze))
             for binary_class in class_mapping[yolo_target]:
                 train, val, test = splits_dict[gaze_class]
@@ -756,6 +759,8 @@ def main(model_target: str, yolo_target: str):
             "child_person_face": YoloPaths.child_person_face_labels_input_dir,
             "adult_person_face": YoloPaths.adult_person_face_labels_input_dir,
             "object": YoloPaths.object_labels_input_dir,
+            "person": YoloPaths.person_labels_input_dir,
+            "face": YoloPaths.face_labels_input_dir,
             "gaze": YoloPaths.gaze_labels_input_dir
         }
         label_path = path_mapping[yolo_target]
