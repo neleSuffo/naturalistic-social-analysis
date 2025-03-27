@@ -12,7 +12,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Train YOLO model for different detection tasks')
     parser.add_argument('--yolo_target', type=str, required=True,
                       choices=['adult_person_face', 'child_person_face',
-                              'object', 'all'],
+                              'object', 'all', 'person_face'],
                       help='Target detection task')
     parser.add_argument('--epochs', type=int, default=200,
                       help='Number of training epochs')
@@ -40,7 +40,7 @@ def main():
     model = YOLO("/home/nele_pauline_suffo/models/yolo11x.pt")
 
     # Define experiment name and output directory
-    experiment_name = f"{timestamp}_yolo_{args.yolo_target}_finetune_with_augment_and_earlystop"
+    experiment_name = f"{timestamp}_yolo_{args.yolo_target}"
     output_dir = base_output_dir / experiment_name
 
     # Train the model with a cosine annealing learning rate scheduler
