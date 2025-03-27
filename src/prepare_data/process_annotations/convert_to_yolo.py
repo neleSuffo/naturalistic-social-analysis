@@ -73,6 +73,8 @@ def map_category_id(target: str, category_id: int, person_age: str = None, gaze_
     """
     if target == "gaze":
         return CategoryMappings.gaze.get(gaze_directed_at_child, 99)
+    if target in ["person", "face"]:
+        return CategoryMappings.person_face.get(person_age, 99)
     
     # Get the appropriate mapping based on target
     if target == "adult_person_face":
@@ -114,6 +116,8 @@ def save_annotations(
         "adult_person_face": YoloPaths.adult_person_face_labels_input_dir,
         "child_person_face": YoloPaths.child_person_face_labels_input_dir,
         "object": YoloPaths.object_labels_input_dir,
+        "person": YoloPaths.person_labels_input_dir,
+        "face": YoloPaths.face_labels_input_dir,
         "gaze": YoloPaths.gaze_labels_input_dir,
     }
     # Remove default fallback and add error handling
@@ -172,20 +176,23 @@ def main(target: str) -> None:
     logging.info(f"Starting the conversion process for Yolo {target} detection.")
     try:
         category_ids = {
+            "all": YoloConfig.all_target_class_ids,
+            "person_face": YoloConfig.child_target_class_ids,
             "adult_person_face": YoloConfig.adult_target_class_ids,
             "child_person_face": YoloConfig.child_target_class_ids,
             "object": YoloConfig.object_target_class_ids,
+            "person": YoloConfig.person_target_class_ids,
+            "face": YoloConfig.face_target_class_ids,
             "gaze": YoloConfig.face_target_class_ids,
-            "all": YoloConfig.all_target_class_ids,
         }.get(target)
 
         if category_ids is None:
-            logging.error(f"Invalid target: {target}. Expected 'all', 'adult_person_face', 'child_person_face', 'object' or 'gaze'.")
+            logging.error(f"Invalid target: {target}. Expected 'all', 'adult_person_face', 'child_person_face', 'object', 'person', 'face', 'gaze'.")
             return
 
         if target == "all":
             annotations = fetch_all_annotations(category_ids=category_ids, persons = True, objects=True)
-        elif target in ["adult_person_face", "child_person_face", "gaze"]:
+        elif target in ["adult_person_face", "child_person_face", "gaze", "person", "face"]:
             annotations = fetch_all_annotations(category_ids=category_ids, persons = True, objects=False, yolo_target=target)
         elif target == "object":
             annotations = fetch_all_annotations(category_ids=category_ids, persons = False, objects=True, yolo_target=target)
