@@ -35,10 +35,11 @@ class YoloConfig:
     num_epochs = 100
     iou_threshold = 0.35 # the intersection over union threshold
     img_size = (320, 640) # multi scale training
+    all_target_class_ids = [1,2,3,4,5,6,7,8,10,11,12]
     child_target_class_ids = [1,2,10,11]
     adult_target_class_ids = [1,2,10]
-    all_target_class_ids = [1,2,3,4,5,6,7,8,10,11,12]
     face_target_class_ids = [10]
+    person_target_class_ids = [1,2]
     object_target_class_ids = [3,4,5,6,7,8,12]
     detection_mapping = {
         0: 'infant/child',
@@ -78,6 +79,10 @@ class FastReIDConfig:
 class ResNetConfig:
     num_epochs = 10
     batch_size = 32
+    
+    gaze_classes = ['no_gaze', 'gaze']
+    person_classes = ['child_person', 'adult_person']
+    face_classes = ['child_face', 'adult_face']
     
 class MtcnnConfig:
     class_ids = [1,2]
@@ -159,6 +164,15 @@ class CategoryMappings:
     gaze = {
         'No': 0, 
         'Yes': 1
+    }
+    
+    person_face = {
+        'Inf': 0,
+        'infant': 0,
+        'Child': 0,
+        'child': 0,
+        'adult': 1,
+        'Adult': 1
     }
     
     child_person_face = {
