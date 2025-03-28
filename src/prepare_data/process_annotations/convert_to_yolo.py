@@ -3,7 +3,7 @@ import logging
 import cv2
 from pathlib import Path
 from utils import fetch_all_annotations
-from constants import YoloPaths, DetectionPaths
+from constants import YoloPaths, DetectionPaths, ResNetPaths
 from config import YoloConfig, CategoryMappings
 
 # Configure logging
@@ -51,7 +51,7 @@ def convert_to_yolo_format(
     # Return in YOLO format
     return (x_center, y_center, width, height)
 
-def map_category_id(target: str, category_id: int, person_age: str = None, gaze_directed_at_child: str = None) -> int:
+def map_category_id(target: str, category_id: int, person_age: str = None, gaze_directed_at_child: str = None, object_interaction: str = None) -> int:
     """
     Maps category ID based on target type and additional attributes using CategoryMappings class.
     
@@ -65,6 +65,8 @@ def map_category_id(target: str, category_id: int, person_age: str = None, gaze_
         Age group for person categories
     gaze_directed_at_child : str, optional
         Gaze direction for gaze detection
+    object_interaction : str, optional
+        Interaction type for object detection
         
     Returns
     -------
@@ -73,6 +75,8 @@ def map_category_id(target: str, category_id: int, person_age: str = None, gaze_
     """
     if target == "gaze":
         return CategoryMappings.gaze.get(gaze_directed_at_child, 99)
+    if target == "object":
+        return CategoryMappings.object.get(object_interaction, 99)
     if target in ["person", "face"]:
         return CategoryMappings.person_face.get(person_age, 99)
     
@@ -83,6 +87,7 @@ def map_category_id(target: str, category_id: int, person_age: str = None, gaze_
         mapping = CategoryMappings.child_person_face
     elif target == "object":
         mapping = CategoryMappings.object
+        return mapping.get((category_id, object_interaction), 99)
     elif target == "all":
         mapping = CategoryMappings.all
     else:
@@ -116,8 +121,8 @@ def save_annotations(
         "adult_person_face": YoloPaths.adult_person_face_labels_input_dir,
         "child_person_face": YoloPaths.child_person_face_labels_input_dir,
         "object": YoloPaths.object_labels_input_dir,
-        "person": YoloPaths.person_labels_input_dir,
-        "face": YoloPaths.face_labels_input_dir,
+        "person": ResNetPaths.person_labels_input_dir,
+        "face": ResNetPaths.face_labels_input_dir,
         "gaze": YoloPaths.gaze_labels_input_dir,
     }
     # Remove default fallback and add error handling
@@ -132,8 +137,8 @@ def save_annotations(
     processed_count = 0
     #(category_id, bbox, image_file_name, gaze_directed_at_child, person_age)
 
-    for annotation in annotations:           
-        category_id, bbox, image_file_name, gaze_directed_at_child, person_age = annotation
+    for annotation in annotations:    
+        category_id, bbox, object_interaction, image_file_name, gaze_directed_at_child, person_age = annotation
         video_name = image_file_name[:-11]
         image_file_path = DetectionPaths.images_input_dir / video_name / image_file_name
 
@@ -145,7 +150,7 @@ def save_annotations(
         
         bbox = json.loads(bbox)
         
-        category_id = map_category_id(target, category_id, person_age, gaze_directed_at_child)
+        category_id = map_category_id(target, category_id, person_age, gaze_directed_at_child, object_interaction)
         
         # YOLO format: category_id x_center y_center width height
         try:
