@@ -53,12 +53,18 @@ def prepare_data(target, transform):
     val_dataset = datasets.ImageFolder(val_path, transform=transform)
     
     # Map classes to binary labels (1 for positive class, 0 for others)
-    positive_classes = {"gaze": "gaze", "person": "adult", "face": "adult"}
+    positive_classes = {
+        "gaze": "gaze",
+        "person": "adult_person",
+        "face": "adult_face" 
+    }    
     positive_class = positive_classes[target]
+        
     auto_class_to_idx = train_dataset.class_to_idx
     positive_idx = auto_class_to_idx.get(positive_class)
     if positive_idx is None:
         raise ValueError(f"Positive class '{positive_class}' not found in {auto_class_to_idx.keys()}")
+   
     new_class_to_idx = {class_name: 1 if idx == positive_idx else 0 for class_name, idx in auto_class_to_idx.items()}
     train_dataset.class_to_idx = new_class_to_idx
     val_dataset.class_to_idx = new_class_to_idx
@@ -67,6 +73,8 @@ def prepare_data(target, transform):
     val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
     
     logging.info(f"Prepared data for {target}: Train size={len(train_dataset)}, Val size={len(val_dataset)}")
+    logging.info(f"Class mapping: {new_class_to_idx}")
+
     return train_loader, val_loader
 
 def train_epoch(model, train_loader, criterion, optimizer, scaler, device):
@@ -141,8 +149,8 @@ def main():
     # Parse arguments and set up paths
     args = parse_args()
     target = args.target
-    output_dir = f"{BasePaths.output_dir}/resnet_{target}_classification"
-    model_save_path = f"{BasePaths.models_dir}/resnet_{target}.pth"
+    output_dir = getattr(ResNetPaths, f"{args.target}_output_dir")
+    model_save_path = getattr(ResNetPaths, f"{args.target}_trained_weights_path")
     os.makedirs(output_dir, exist_ok=True)
 
     # Initialize model and data
@@ -166,7 +174,7 @@ def main():
     best_val_loss = float("inf")
     early_stop_counter = 0
     train_losses, val_losses = [], []
-    accuracies, precisions, recalls, f1_scores = [], [], []
+    accuracies, precisions, recalls, f1_scores = [], [], [], []
 
     for epoch in range(num_epochs):
         start_time = time.time()
