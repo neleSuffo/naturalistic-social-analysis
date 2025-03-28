@@ -75,7 +75,7 @@ class YoloPaths:
     gaze_labels_input_dir = Path(BasePaths.data_dir/"yolo_gaze_labels")
     gaze_data_input_dir = Path(BasePaths.data_dir/"yolo_gaze_input_balanced")
     gaze_output_dir = Path(BasePaths.output_dir/"yolo_gaze_classification/")
-
+    
     gaze_classes = ['no_gaze', 'gaze']
     person_face_classes = ['child_person_face', 'adult_person_face']
     object_classes = ['object']
