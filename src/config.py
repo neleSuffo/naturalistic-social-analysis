@@ -80,10 +80,6 @@ class ResNetConfig:
     num_epochs = 10
     batch_size = 32
     
-    gaze_classes = ['no_gaze', 'gaze']
-    person_classes = ['child_person', 'adult_person']
-    face_classes = ['child_face', 'adult_face']
-    
 class MtcnnConfig:
     class_ids = [1,2]
 
