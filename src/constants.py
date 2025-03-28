@@ -21,6 +21,7 @@ class DetectionPaths:
     childlens_images_input_dir = Path(BasePaths.data_dir/"childlens_videos_processed/")
     gaze_images_input_dir = Path(BasePaths.data_dir/"quantex_rawframes_face/")
     face_images_input_dir = gaze_images_input_dir
+    person_images_input_dir = Path(BasePaths.data_dir/"quantex_rawframes_person/")
     # Path variable to the annotation xml files
     quantex_annotations_dir = Path(BasePaths.data_dir/"quantex_annotations/")
     childlens_annotations_dir = Path(BasePaths.data_dir/"childlens_annotations/")
@@ -66,22 +67,6 @@ class YoloPaths:
     child_person_face_data_input_dir = Path(BasePaths.data_dir/"yolo_child_person_face_input")
     child_person_face_output_dir = Path(BasePaths.output_dir/"yolo_child_person_face_detections/")
 
-    person_extracted_faces_dir = Path(BasePaths.data_dir/"resnet_person_input")
-    person_trained_weights_path = Path(BasePaths.models_dir/'resnet_person_classification.pt')
-    person_extraction_progress_file_path = Path(BasePaths.data_dir/"person_extraction_progress.txt")
-    person_missing_frames_file_path = Path(BasePaths.data_dir/"person_missing_frames.txt")
-    person_data_config_path = Path(BasePaths.leuphana_ipe_dir/"src/models/resnet/person_dataset.yaml")
-    person_labels_input_dir = Path(BasePaths.data_dir/"resnet_person_labels")
-    person_data_input_dir = Path(BasePaths.data_dir/"resnet_person_input")
-    person_output_dir = Path(BasePaths.output_dir/"resnet_person_classification/")
-    
-    face_extracted_faces_dir = Path(BasePaths.data_dir/"resnet_face_input")
-    face_trained_weights_path = Path(BasePaths.models_dir/'resnet_face_classification.pt')
-    face_data_config_path = Path(BasePaths.leuphana_ipe_dir/"src/models/resnet/face_dataset.yaml")
-    face_labels_input_dir = Path(BasePaths.data_dir/"resnet_face_labels")
-    face_data_input_dir = Path(BasePaths.data_dir/"resnet_face_input")
-    face_output_dir = Path(BasePaths.output_dir/"resnet_face_classification/")
-
     gaze_extracted_faces_dir = Path(BasePaths.data_dir/"yolo_gaze_input")
     gaze_trained_weights_path = Path(BasePaths.models_dir/'yolo11_gaze_classification.pt')
     gaze_extraction_progress_file_path = Path(BasePaths.data_dir/"gaze_extraction_progress.txt")
@@ -90,43 +75,121 @@ class YoloPaths:
     gaze_labels_input_dir = Path(BasePaths.data_dir/"yolo_gaze_labels")
     gaze_data_input_dir = Path(BasePaths.data_dir/"yolo_gaze_input_balanced")
     gaze_output_dir = Path(BasePaths.output_dir/"yolo_gaze_classification/")
-    
+
+    gaze_classes = ['no_gaze', 'gaze']
+    person_face_classes = ['child_person_face', 'adult_person_face']
+    object_classes = ['object']
+    all_classes = ['all']
     
     @classmethod
     def get_target_paths(cls, yolo_target: str, split_type: str) -> Optional[Tuple[Path, Path]]:
-        """Get image and label destination paths for a given target and split type."""
-        path_mapping = {
-            "child_person_face": (
-                cls.child_person_face_data_input_dir / "images" / split_type,
-                cls.child_person_face_data_input_dir / "labels" / split_type
-            ),
-            "adult_person_face": (
-                cls.adult_person_face_data_input_dir / "images" / split_type,
-                cls.adult_person_face_data_input_dir / "labels" / split_type
-            ),
-            "gaze": (
-                cls.gaze_data_input_dir / split_type / "gaze",
-                cls.gaze_data_input_dir / split_type / "gaze"
-            ),
-            "no_gaze": (
-                cls.gaze_data_input_dir / split_type / "no_gaze",
-                cls.gaze_data_input_dir / split_type / "no_gaze"
-            ),
-            "object": (
+        """
+        Get image and label destination paths for a given target and split type.
+        
+        Parameters
+        ----------
+        yolo_target : str 
+            The specific class to get paths for (e.g., 'gaze', 'child_person_face', 'object')
+        split_type : str
+            The dataset split ('train', 'val', or 'test')
+            
+        Returns
+        -------
+        Optional[Tuple[Path, Path]]
+            Tuple of (input_path, output_path) for the requested target class
+        """
+        # Handle gaze classes
+        if yolo_target in cls.gaze_classes:
+            return (
+                cls.gaze_data_input_dir / split_type / yolo_target,
+                cls.gaze_data_input_dir / split_type / yolo_target
+            )
+        
+        # Handle person-face classes
+        if yolo_target in cls.person_face_classes:
+            if yolo_target == 'child_person_face':
+                return (
+                    cls.child_person_face_data_input_dir / "images" / split_type,
+                    cls.child_person_face_data_input_dir / "labels" / split_type
+                )
+            else:  # adult_person_face
+                return (
+                    cls.adult_person_face_data_input_dir / "images" / split_type,
+                    cls.adult_person_face_data_input_dir / "labels" / split_type
+                )
+        
+        # Handle object detection
+        if yolo_target in cls.object_classes:
+            return (
                 cls.object_data_input_dir / "images" / split_type,
                 cls.object_data_input_dir / "labels" / split_type
-            ),
-            "all": (
+            )
+            
+        # Handle all classes detection
+        if yolo_target in cls.all_classes:
+            return (
                 cls.all_data_input_dir / "images" / split_type,
                 cls.all_data_input_dir / "labels" / split_type
             )
-        }
-        return path_mapping.get(yolo_target)
+            
+        return None  # Return None if target is not found
 
 class ResNetPaths:
-    trained_weights_path = Path(BasePaths.models_dir/"resnet_gaze_classification.pth")
-    out_dir = Path(BasePaths.output_dir/"resnet_gaze_classification/")
-    confusion_matrix_path = Path(out_dir/"confusion_matrix.png")
+    person_extracted_faces_dir = Path(BasePaths.data_dir/"resnet_person_input")
+    person_trained_weights_path = Path(BasePaths.models_dir/'resnet_person_classification.pt')
+    person_extraction_progress_file_path = Path(BasePaths.data_dir/"person_extraction_progress.txt")
+    person_missing_frames_file_path = Path(BasePaths.data_dir/"person_missing_frames.txt")
+    person_data_config_path = Path(BasePaths.leuphana_ipe_dir/"src/models/resnet/person_dataset.yaml")
+    person_labels_input_dir = Path(BasePaths.data_dir/"resnet_person_labels")
+    person_data_input_dir = Path(BasePaths.data_dir/"resnet_person_input")
+    person_output_dir = Path(BasePaths.output_dir/"resnet_person_classification/")
+    person_trained_weights_path = Path(BasePaths.models_dir/"resnet_person_classification.pth")
+
+    face_extracted_faces_dir = Path(BasePaths.data_dir/"resnet_face_input")
+    face_trained_weights_path = Path(BasePaths.models_dir/'resnet_face_classification.pt')
+    face_data_config_path = Path(BasePaths.leuphana_ipe_dir/"src/models/resnet/face_dataset.yaml")
+    face_labels_input_dir = Path(BasePaths.data_dir/"resnet_face_labels")
+    face_data_input_dir = Path(BasePaths.data_dir/"resnet_face_input")
+    face_output_dir = Path(BasePaths.output_dir/"resnet_face_classification/")
+    face_trained_weights_path = Path(BasePaths.models_dir/"resnet_face_classification.pth")
+
+    person_classes = ['child_person', 'adult_person']
+    face_classes = ['child_face', 'adult_face']
+    
+    @classmethod
+    def get_target_paths(cls, target: str, split_type: str) -> Optional[Tuple[Path, Path]]:
+        """
+        Get image and label destination paths for a given target and split type.
+        
+        Parameters
+        ----------
+        target : str 
+            The specific class to get paths for (e.g., 'child_face', 'adult_person', 'gaze')
+        split_type : str
+            The dataset split ('train', 'val', or 'test')
+            
+        Returns
+        -------
+        Optional[Tuple[Path, Path]]
+            Tuple of (input_path, output_path) for the requested target class
+        """
+        path_mapping = {}
+        
+        # Add face class paths if target is face-related
+        if target in cls.face_classes:
+            return (
+                cls.face_data_input_dir / split_type / target,
+                cls.face_data_input_dir / split_type / target
+            )
+                
+        # Add person class paths if target is person-related
+        if target in cls.person_classes:
+            return (
+                cls.person_data_input_dir / split_type / target,
+                cls.person_data_input_dir / split_type / target
+            )
+
+        return None  # Return None if target is not found
     
 class VTCPaths:
     childlens_audio_dir = Path(BasePaths.data_dir/"childlens_audio")
