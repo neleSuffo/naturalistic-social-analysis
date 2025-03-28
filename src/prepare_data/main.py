@@ -4,7 +4,7 @@ import logging
 import os
 from pathlib import Path
 from typing import Optional
-from prepare_data.prepare_training import main as prepare_training, balance_dataset
+from prepare_data.prepare_training import main as prepare_training
 from prepare_data.process_videos import main as process_videos
 from prepare_data.extract_faces import main as extract_faces
 from prepare_data.extract_persons import main as extract_persons
@@ -59,10 +59,9 @@ class DataPipeline:
             raise
             
     def prepare_dataset(self):
-        """Prepare and balance training dataset."""
+        """Prepare training dataset."""
         logging.info("Preparing training dataset...")
         prepare_training(self.model_target, self.yolo_target)
-        balance_dataset(self.model_target, self.yolo_target)
         
     def run_pipeline(self, steps: list):
         """Run specified pipeline steps in order."""
