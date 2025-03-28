@@ -2,10 +2,8 @@ import torch
 import logging
 import torch.nn as nn
 import torchvision.models as models
-from torchvision import transforms
-from torch.utils.data import DataLoader
+import torch.nn as nn
 import torchvision.datasets as datasets
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 import matplotlib.pyplot as plt
 import numpy as np
 import time
@@ -15,6 +13,9 @@ import datetime
 import pandas as pd
 from pathlib import Path
 from constants import BasePaths, ResNetPaths
+from torchvision import transforms
+from torch.utils.data import DataLoader
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
 # Limit GPU memory usage
 torch.cuda.set_per_process_memory_fraction(0.5, device=0)
@@ -50,8 +51,10 @@ def setup_model(target):
     
     # Modify the fully connected layer for binary classification
     num_ftrs = model.fc.in_features
-    model.fc = nn.Linear(num_ftrs, 1)  # Output 1 for binary classification
-    
+    model.fc = nn.Sequential(
+        nn.Dropout(0.5),
+        nn.Linear(model.fc.in_features, 1)
+    )    
     # Move model to the appropriate device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)
@@ -220,7 +223,7 @@ def main():
 
     # Training loop
     num_epochs = 100
-    patience = 10
+    patience = 7
     best_val_loss = float("inf")
     early_stop_counter = 0
     train_losses, val_losses = [], []
