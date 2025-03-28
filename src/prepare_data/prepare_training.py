@@ -23,7 +23,7 @@ def get_total_number_of_annotated_frames(label_path: Path, image_folder: Path = 
         the path to the label files
     image_folder : Path
         the path to the image folder
-    target_type : str
+    target_type : str, optional
         the target type for YOLO (e.g., "child_person_face" or "adult_person_face")
         
     Returns
