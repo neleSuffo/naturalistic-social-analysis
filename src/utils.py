@@ -74,6 +74,7 @@ def fetch_all_annotations(
     SELECT DISTINCT 
         a.category_id, 
         a.bbox, 
+        a.object_interaction,
         i.file_name,
         CASE WHEN {persons} THEN a.gaze_directed_at_child ELSE NULL END as gaze_directed_at_child,
         CASE WHEN {persons} THEN a.person_age ELSE NULL END as person_age
@@ -99,10 +100,10 @@ def fetch_all_annotations(
         """
         
     # Add object interaction filter if objects is True
-    if objects:
-        query += """
-        AND a.object_interaction = 'Yes'
-        """
+    #if objects:
+    #    query += """
+    #    AND a.object_interaction = 'Yes'
+    #    """
     
     query += " ORDER BY a.video_id, a.image_id"
     cursor.execute(query, category_ids)
