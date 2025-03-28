@@ -11,6 +11,9 @@ import numpy as np
 import time
 import argparse
 import os
+import datetime
+import pandas as pd
+from pathlib import Path
 from constants import BasePaths, ResNetPaths
 
 # Limit GPU memory usage
@@ -32,7 +35,8 @@ def setup_model(target):
     """Set up the ResNet-152 model for binary classification."""
     logging.info(f"Loading pre-trained ResNet-152 model for {target} classification...")
     # Initialize the pre-trained ResNet-152 model
-    model = models.resnet152(weights=models.ResNet152_Weights.IMAGENET1K_V2)
+    #model = models.resnet152(weights=models.ResNet152_Weights.IMAGENET1K_V2)
+    model = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V2)
     
     # Freeze all layers initially
     for param in model.parameters():
@@ -131,8 +135,17 @@ def calculate_metrics(y_true, y_pred):
     f1 = f1_score(y_true, y_pred, pos_label=1)
     return acc, prec, rec, f1
 
+def create_output_dir(base_output_dir: Path, target: str) -> Path:
+    """Create timestamped output directory for storing metrics."""
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_dir = base_output_dir / f"run_{timestamp}"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    logging.info(f"Created output directory: {output_dir}")
+    return output_dir
+
 def plot_results(train_losses, val_losses, accuracies, precisions, recalls, f1_scores, output_dir, target):
     """Plot and save training/validation loss and metric curves."""
+    # Loss curve
     plt.figure(figsize=(10, 5))
     plt.plot(train_losses, label="Train Loss", marker="o")
     plt.plot(val_losses, label="Validation Loss", marker="o")
@@ -141,9 +154,10 @@ def plot_results(train_losses, val_losses, accuracies, precisions, recalls, f1_s
     plt.legend()
     plt.title(f"Loss Curves for {target} Classification")
     plt.grid()
-    plt.savefig(f"{output_dir}/loss_curve.png")
+    plt.savefig(output_dir / "loss_curve.png")
     plt.close()
 
+    # Metrics curve
     plt.figure(figsize=(12, 6))
     epochs = np.arange(1, len(accuracies) + 1)
     plt.plot(epochs, accuracies, label="Accuracy", marker="o")
@@ -155,18 +169,38 @@ def plot_results(train_losses, val_losses, accuracies, precisions, recalls, f1_s
     plt.legend()
     plt.title(f"Metrics for {target} Classification")
     plt.grid()
-    plt.savefig(f"{output_dir}/metrics_curve.png")
+    plt.savefig(output_dir / "metrics_curve.png")
     plt.close()
 
+    # Save metrics to CSV
+    metrics_df = pd.DataFrame({
+        'epoch': range(1, len(accuracies) + 1),
+        'train_loss': train_losses,
+        'val_loss': val_losses,
+        'accuracy': accuracies,
+        'precision': precisions,
+        'recall': recalls,
+        'f1_score': f1_scores
+    })
+    metrics_df.to_csv(output_dir / "metrics.csv", index=False)
+    
 def main():
     """Orchestrate the training process."""
     # Parse arguments and set up paths
     args = parse_args()
     target = args.target
-    output_dir = getattr(ResNetPaths, f"{args.target}_output_dir")
+    base_output_dir = getattr(ResNetPaths, f"{args.target}_output_dir")
     model_save_path = getattr(ResNetPaths, f"{args.target}_trained_weights_path")
-    os.makedirs(output_dir, exist_ok=True)
 
+    # Create timestamped output directory
+    output_dir = create_output_dir(Path(base_output_dir), target)
+    
+    # Save training configuration
+    with open(output_dir / "config.txt", "w") as f:
+        f.write(f"Target: {target}\n")
+        f.write(f"Training started: {datetime.datetime.now()}\n")
+        f.write(f"Model save path: {model_save_path}\n")
+        
     # Initialize model and data
     model, device = setup_model(target)
     transform = transforms.Compose([
@@ -223,6 +257,20 @@ def main():
                 logging.info(f"Early stopping triggered for {target}.")
                 break
 
+    # Save final metrics
+    final_metrics = {
+        'best_val_loss': best_val_loss,
+        'final_accuracy': accuracies[-1],
+        'final_precision': precisions[-1],
+        'final_recall': recalls[-1],
+        'final_f1': f1_scores[-1],
+        'epochs_trained': epoch + 1
+    }
+    
+    with open(output_dir / "final_metrics.txt", "w") as f:
+        for metric, value in final_metrics.items():
+            f.write(f"{metric}: {value:.4f}\n")
+            
     logging.info(f"Training complete for {target}. Best model at: {model_save_path}")
     plot_results(train_losses, val_losses, accuracies, precisions, recalls, f1_scores, output_dir, target)
 
