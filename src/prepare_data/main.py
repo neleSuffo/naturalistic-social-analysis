@@ -68,7 +68,8 @@ class DataPipeline:
         step_mapping = {
             'videos': self.process_videos,
             'detections': self.extract_detections,
-            'annotations': lambda: self.process_annotations(setup_db=True),
+            'annotations': lambda: self.process_annotations(setup_db=False),
+            'annotations_db': lambda: self.process_annotations(setup_db=True),
             'dataset': self.prepare_dataset
         }
         
@@ -85,9 +86,10 @@ def main():
     parser.add_argument('--videos', action='store_true', help='Process videos into frames')
     parser.add_argument('--detections', action='store_true', help='Extract person/face detections')
     parser.add_argument('--annotations', action='store_true', help='Process annotations')
+    parser.add_argument('--annotations_db', action='store_true', help='Setup annotations database')
     parser.add_argument('--dataset', action='store_true', help='Prepare training dataset')
     parser.add_argument('--model_target', type=str, choices=['yolo', 'mtcnn', 'all'], help='Model target')
-    parser.add_argument('--yolo_target', type=str, choices=['person_face', 'person_face_object', 'gaze', 'all', 'person', 'face'], help='YOLO target')
+    parser.add_argument('--yolo_target', type=str, choices=['person_face', 'person_face_object', 'gaze', 'all', 'person', 'face', 'object'], help='YOLO target')
     parser.add_argument('--all', action='store_true', help='Run full pipeline')
     parser.add_argument('--threads', type=int, default=2, help='Number of threads')
     
@@ -96,7 +98,7 @@ def main():
     pipeline = DataPipeline(args.model_target, args.yolo_target, args.threads)
     
     if args.all:
-        pipeline.run_pipeline(['videos', 'detections', 'annotations', 'dataset'])
+        pipeline.run_pipeline(['videos', 'detections', 'annotations', 'annotations_db', 'dataset'])
     else:
         steps = []
         if args.videos:
@@ -105,6 +107,8 @@ def main():
             steps.append('detections')
         if args.annotations:
             steps.append('annotations')
+        if args.annotations_db:
+            steps.append('annotations_db')
         if args.dataset:
             steps.append('dataset')
         
