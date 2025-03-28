@@ -141,7 +141,7 @@ def calculate_metrics(y_true, y_pred):
 def create_output_dir(base_output_dir: Path, target: str) -> Path:
     """Create timestamped output directory for storing metrics."""
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = base_output_dir / f"run_{timestamp}"
+    output_dir = base_output_dir / f"{timestamp}_run"
     output_dir.mkdir(parents=True, exist_ok=True)
     logging.info(f"Created output directory: {output_dir}")
     return output_dir
@@ -193,11 +193,11 @@ def main():
     args = parse_args()
     target = args.target
     base_output_dir = getattr(ResNetPaths, f"{args.target}_output_dir")
-    model_save_path = getattr(ResNetPaths, f"{args.target}_trained_weights_path")
 
     # Create timestamped output directory
     output_dir = create_output_dir(Path(base_output_dir), target)
-    
+    model_save_path = output_dir / f"best_{target}:model.pth"
+
     # Save training configuration
     with open(output_dir / "config.txt", "w") as f:
         f.write(f"Target: {target}\n")
