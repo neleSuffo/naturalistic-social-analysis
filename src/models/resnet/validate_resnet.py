@@ -12,6 +12,12 @@ import seaborn as sns
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
 from constants import ResNetPaths
 from pathlib import Path
+import argparse
+
+# Parse command-line arguments
+parser = argparse.ArgumentParser(description="Evaluate ResNet model for a specific target.")
+parser.add_argument("--target", choices=["person", "face", "gaze"], required=True, help="Target category: person, face, or gaze.")
+args = parser.parse_args()
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -26,11 +32,10 @@ num_ftrs = resnet152.fc.in_features
 resnet152.fc = nn.Linear(num_ftrs, 1)
 
 # Load trained weights
-model_path = ResNetPaths.trained_weights_path
+model_path = getattr(ResNetPaths, f"{args.target}_trained_weights_path")
 if os.path.exists(model_path):
     state_dict = torch.load(model_path, map_location=device)
     model = resnet152
-    
     try:
         model.load_state_dict(state_dict)
         logging.info(f"Model loaded from {model_path}")
@@ -42,9 +47,9 @@ else:
     exit()
 
 # Add Sigmoid to model for evaluation
-model = nn.Sequential(model, nn.Sigmoid())  # Ensures sigmoid is applied to the output
+model = nn.Sequential(model, nn.Sigmoid())
 model = model.to(device)
-model.eval()  # Set model to evaluation mode
+model.eval()
 
 # Define transformations for input images
 transform = transforms.Compose([
@@ -54,7 +59,7 @@ transform = transforms.Compose([
 ])
 
 # Load the validation dataset
-val_path = "/home/nele_pauline_suffo/ProcessedData/yolo_gaze_input/test"  # Adjust path if necessary
+val_path = f"/home/nele_pauline_suffo/ProcessedData/resnet_{args.target}_input/test"
 val_dataset = datasets.ImageFolder(val_path, transform=transform)
 val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
 
@@ -70,11 +75,10 @@ with torch.no_grad():
         labels = labels.to(device)
         
         outputs = model(images)
-        predictions = (outputs.squeeze() >= 0.5).float()  # Add squeeze() here
+        predictions = (outputs.squeeze() >= 0.5).float()
         
-        # Move to CPU and convert to numpy arrays immediately
-        y_true.extend(labels.cpu().numpy().flatten())  # Add flatten()
-        y_pred.extend(predictions.cpu().numpy().flatten())  # Add flatten()
+        y_true.extend(labels.cpu().numpy().flatten())
+        y_pred.extend(predictions.cpu().numpy().flatten())
 
 # Convert lists to numpy arrays
 y_true = np.array(y_true)
@@ -87,25 +91,26 @@ recall = recall_score(y_true, y_pred)
 f1 = f1_score(y_true, y_pred)
 
 logging.info(f"Validation Accuracy: {accuracy:.4f}")
-logging.info(f"Precision (Gaze): {precision:.4f}, Recall (Gaze): {recall:.4f}, F1 Score (Gaze): {f1:.4f}")
+logging.info(f"Precision ({args.target}): {precision:.4f}, Recall ({args.target}): {recall:.4f}, F1 Score ({args.target}): {f1:.4f}")
 
 # Compute the confusion matrix
 conf_matrix = confusion_matrix(y_true, y_pred)
 
 # Plot and save the confusion matrix
 plt.figure(figsize=(6, 5))
-sns.heatmap(conf_matrix, annot=True, fmt='d', cmap='Blues', xticklabels=["Gaze", "No Gaze"], yticklabels=["Gaze", "No Gaze"])
+sns.heatmap(conf_matrix, annot=True, fmt='d', cmap='Blues', xticklabels=["Positive", "Negative"], yticklabels=["Positive", "Negative"])
 plt.xlabel("Predicted Label")
 plt.ylabel("True Label")
-plt.title("Confusion Matrix")
+plt.title(f"Confusion Matrix - {args.target.capitalize()}")
 
 # Create output directory if it does not exist
-conf_matrix_path = Path(ResNetPaths.confusion_matrix_path)
+output_dir = getattr(ResNetPaths, f"{args.target}_output_dir")
+conf_matrix_path = output_dir / "confusion_matrix.png"
 conf_matrix_path.parent.mkdir(parents=True, exist_ok=True)
 
 # Save the confusion matrix to a file
 plt.savefig(conf_matrix_path)
 logging.info(f"Confusion matrix saved to {conf_matrix_path}")
 
-# Show the plot (optional, can be removed for headless execution)
+# Show the plot (optional)
 plt.show()
