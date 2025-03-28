@@ -93,15 +93,37 @@ f1 = f1_score(y_true, y_pred)
 logging.info(f"Validation Accuracy: {accuracy:.4f}")
 logging.info(f"Precision ({args.target}): {precision:.4f}, Recall ({args.target}): {recall:.4f}, F1 Score ({args.target}): {f1:.4f}")
 
+# Define class labels for each target type
+class_labels = {
+    'person': ['child_person', 'adult_person'],
+    'face': ['child_face', 'adult_face'],
+    'gaze': ['no_gaze', 'gaze']
+}
+
+# Get current target's labels
+target_labels = class_labels[args.target]
+
 # Compute the confusion matrix
 conf_matrix = confusion_matrix(y_true, y_pred)
 
 # Plot and save the confusion matrix
-plt.figure(figsize=(6, 5))
-sns.heatmap(conf_matrix, annot=True, fmt='d', cmap='Blues', xticklabels=["Positive", "Negative"], yticklabels=["Positive", "Negative"])
+plt.figure(figsize=(8, 6))
+sns.heatmap(
+    conf_matrix, 
+    annot=True, 
+    fmt='d', 
+    cmap='Blues',
+    xticklabels=target_labels,
+    yticklabels=target_labels
+)
 plt.xlabel("Predicted Label")
 plt.ylabel("True Label")
 plt.title(f"Confusion Matrix - {args.target.capitalize()}")
+
+# Adjust layout for better label visibility
+plt.xticks(rotation=45, ha='right')
+plt.yticks(rotation=0)
+plt.tight_layout()
 
 # Create output directory if it does not exist
 output_dir = getattr(ResNetPaths, f"{args.target}_output_dir")
