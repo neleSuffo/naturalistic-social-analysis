@@ -160,7 +160,7 @@ class ResNetPaths:
     gaze_data_config_path = Path(BasePaths.leuphana_ipe_dir/"src/models/yolo_gaze_classification/gaze_dataset.yaml")
     gaze_labels_input_dir = Path(BasePaths.data_dir/"yolo_gaze_labels")
     gaze_data_input_dir = Path(BasePaths.data_dir/"yolo_gaze_input_balanced")
-    gaze_output_dir = Path(BasePaths.output_dir/"yolo_gaze_classification/")
+    gaze_output_dir = Path(BasePaths.output_dir/"resnet_gaze_classification/")
     
     person_classes = ['child_person', 'adult_person']
     face_classes = ['child_face', 'adult_face']
