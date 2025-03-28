@@ -84,7 +84,7 @@ def train_epoch(model, train_loader, criterion, optimizer, scaler, device):
     for images, labels in train_loader:
         images, labels = images.to(device), labels.to(device).float().unsqueeze(1)
         optimizer.zero_grad()
-        with torch.cuda.amp.autocast():
+        with torch.amp.autocast(device_type='cuda'):
             outputs = model(images)
             loss = criterion(outputs, labels)
         scaler.scale(loss).backward()
@@ -195,7 +195,7 @@ def main():
         logging.info(f"Epoch [{epoch+1}/{num_epochs}] - {target} Train Loss: {avg_train_loss:.4f}, Val Loss: {avg_val_loss:.4f} (Time: {elapsed_time:.2f}s)")
         logging.info(f"Metrics - Acc: {acc:.4f}, Prec: {prec:.4f}, Rec: {rec:.4f}, F1: {f1:.4f}")
 
-        scheduler.step(avg_val_loss)
+        scheduler.step()
         if avg_val_loss < best_val_loss:
             best_val_loss = avg_val_loss
             early_stop_counter = 0
