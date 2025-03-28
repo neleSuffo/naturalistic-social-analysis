@@ -31,8 +31,7 @@ num_ftrs = resnet152.fc.in_features  # Get the number of input features to the f
 resnet152.fc = nn.Linear(num_ftrs, 1)  # Change output layer to 1 (binary classification)
 
 # Load trained weights dynamically based on the target
-#model_path = getattr(ResNetPaths, f"{args.target}_trained_weights_path")
-model_path = "/home/nele_pauline_suffo/models/resnet_face.pth"
+model_path = getattr(ResNetPaths, f"{args.target}_trained_weights_path")
 if os.path.exists(model_path):
     state_dict = torch.load(model_path, map_location=device, weights_only=True)
     
