@@ -30,22 +30,30 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 logging.info("Loading ResNet model...")
 resnet50 = models.resnet50(weights=None)
 num_ftrs = resnet50.fc.in_features
-resnet50.fc = nn.Linear(num_ftrs, 1)
+resnet50.fc = nn.Sequential(
+    nn.Dropout(0.5),
+    nn.Linear(num_ftrs, 1)
+)
 
 # Load Trained Weights
 model_path = getattr(ResNetPaths, f"{args.target}_trained_weights_path")
 if os.path.exists(model_path):
-    state_dict = torch.load(model_path, map_location=device)
-    model = resnet50
     try:
-        model.load_state_dict(state_dict)
+        state_dict = torch.load(model_path, map_location=device)
+        # Remove unexpected keys from state dict
+        for key in list(state_dict.keys()):
+            if key.startswith('fc.'):
+                state_dict.pop(key)
+        
+        model = resnet50
+        model.load_state_dict(state_dict, strict=False)
         logging.info(f"Model loaded from {model_path}")
-    except RuntimeError as e:
+    except Exception as e:
         logging.error(f"Failed to load model: {str(e)}")
-        exit()
+        exit(1)
 else:
     logging.error(f"Model file {model_path} not found!")
-    exit()
+    exit(1)
 
 # Prepare Model for Evaluation
 model = nn.Sequential(model, nn.Sigmoid())  # Add Sigmoid activation for binary classification
@@ -60,7 +68,10 @@ transform = transforms.Compose([
 ])
 
 # load Validation Dataset
-val_path = f"/home/nele_pauline_suffo/ProcessedData/resnet_{args.target}_input/test"
+if args.target == "gaze":
+    val_path = f"/home/nele_pauline_suffo/ProcessedData/yolo_{args.target}_input/test"
+else:
+    val_path = f"/home/nele_pauline_suffo/ProcessedData/resnet_{args.target}_input/test"
 val_dataset = datasets.ImageFolder(val_path, transform=transform)
 val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
 
