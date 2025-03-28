@@ -74,28 +74,10 @@ def prepare_data(target, transform):
     train_dataset = datasets.ImageFolder(train_path, transform=transform)
     val_dataset = datasets.ImageFolder(val_path, transform=transform)
     
-    # Map classes to binary labels (1 for positive class, 0 for others)
-    positive_classes = {
-        "gaze": "gaze",
-        "person": "adult_person",
-        "face": "adult_face" 
-    }    
-    positive_class = positive_classes[target]
-        
-    auto_class_to_idx = train_dataset.class_to_idx
-    positive_idx = auto_class_to_idx.get(positive_class)
-    if positive_idx is None:
-        raise ValueError(f"Positive class '{positive_class}' not found in {auto_class_to_idx.keys()}")
-   
-    new_class_to_idx = {class_name: 1 if idx == positive_idx else 0 for class_name, idx in auto_class_to_idx.items()}
-    train_dataset.class_to_idx = new_class_to_idx
-    val_dataset.class_to_idx = new_class_to_idx
-    
     train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
     
     logging.info(f"Prepared data for {target}: Train size={len(train_dataset)}, Val size={len(val_dataset)}")
-    logging.info(f"Class mapping: {new_class_to_idx}")
 
     return train_loader, val_loader
 
@@ -196,7 +178,7 @@ def main():
 
     # Create timestamped output directory
     output_dir = create_output_dir(Path(base_output_dir), target)
-    model_save_path = output_dir / f"best_{target}:model.pth"
+    model_save_path = output_dir / f"best_{target}_model.pth"
 
     # Save training configuration
     with open(output_dir / "config.txt", "w") as f:
