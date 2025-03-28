@@ -106,9 +106,9 @@ logging.info(f"Precision ({args.target}): {precision:.4f}, Recall ({args.target}
 
 # Define Class Labels
 class_labels = {
-    'person': ['child_person', 'adult_person'],
-    'face': ['child_face', 'adult_face'],
-    'gaze': ['no_gaze', 'gaze']
+    'person': ['adult_person' , 'child_person'],
+    'face': ['adult_face', 'child_face', ],
+    'gaze': ['gaze', 'no_gaze']
 }
 target_labels = class_labels[args.target]
 
