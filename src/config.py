@@ -191,6 +191,23 @@ class CategoryMappings:
         11: 4, 3: 5, 4: 11, 5: 6, 6: 7, 7: 8, 8: 9, 12: 10
     }
     
+
     object = {
-        3: 0, 4: 6, 5: 1, 6: 2, 7: 3, 8: 5, 12: 4  # map class 4 (animal) to 6 and class 8 (food) to 5
+        # With interaction (yes)
+        (3, 'Yes'): 0,  # interacted_book
+        (4, 'Yes'): 13,  # interacted_animal
+        (5, 'Yes'): 1,  # interacted_toy
+        (6, 'Yes'): 2,  # interacted_kitchenware
+        (7, 'Yes'): 3,  # interacted_screen
+        (8, 'Yes'): 11,  # interacted_food
+        (12, 'Yes'): 4, # interacted_other_object
+        
+        # Without interaction (no)
+        (3, 'No'): 5,   # book
+        (4, 'No'): 12,  # animal
+        (5, 'No'): 6,   # toy
+        (6, 'No'): 7,   # kitchenware
+        (7, 'No'): 8,  # screen
+        (8, 'No'): 10,  # food
+        (12, 'No'): 9  # other_object
     }
