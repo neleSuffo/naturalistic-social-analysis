@@ -31,13 +31,16 @@ num_ftrs = resnet152.fc.in_features  # Get the number of input features to the f
 resnet152.fc = nn.Linear(num_ftrs, 1)  # Change output layer to 1 (binary classification)
 
 # Load trained weights dynamically based on the target
-model_path = getattr(ResNetPaths, f"{args.target}_trained_weights_path")
+#model_path = getattr(ResNetPaths, f"{args.target}_trained_weights_path")
+model_path = "/home/nele_pauline_suffo/models/resnet_face.pth"
 if os.path.exists(model_path):
-    state_dict = torch.load(model_path, map_location=device)
+    state_dict = torch.load(model_path, map_location=device, weights_only=True)
+    
+    # Remove fc layer weights as they will be reinitialized
     state_dict.pop('fc.weight', None)
     state_dict.pop('fc.bias', None)
     resnet152.load_state_dict(state_dict, strict=False)
-    logging.info(f"Model loaded from {model_path}")
+    logging.info(f"Model weights loaded from {model_path}")
 else:
     logging.error(f"Model file {model_path} not found!")
     exit()
@@ -58,11 +61,21 @@ transform = transforms.Compose([
 image = Image.open(args.image_path).convert("RGB")
 image = transform(image).unsqueeze(0).to(device)  # Apply transformations and move to device
 
+# Define prediction labels for each target
+prediction_mapping = {
+    'person': {0: 'child person', 1: 'adult person'},
+    'face': {0: 'child face', 1: 'adult face'},
+    'gaze': {0: 'no gaze', 1: 'gaze'}
+}
+
+
 # Perform inference
 with torch.no_grad():
     output = model(image)
+    print(output)
     prediction = (output >= 0.5).float()
 
 # Convert the prediction to class label
-prediction_label = args.target if prediction.item() == 1 else f"no_{args.target}"
-logging.info(f"Predicted label: {prediction_label}")
+prediction_label = prediction_mapping[args.target][prediction.item()]
+confidence = output.item()
+logging.info(f"Predicted label: {prediction_label} (confidence: {confidence:.3f})")
