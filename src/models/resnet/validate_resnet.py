@@ -40,11 +40,6 @@ model_path = getattr(ResNetPaths, f"{args.target}_trained_weights_path")
 if os.path.exists(model_path):
     try:
         state_dict = torch.load(model_path, map_location=device)
-        # Remove unexpected keys from state dict
-        for key in list(state_dict.keys()):
-            if key.startswith('fc.'):
-                state_dict.pop(key)
-        
         model = resnet50
         model.load_state_dict(state_dict, strict=False)
         logging.info(f"Model loaded from {model_path}")
