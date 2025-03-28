@@ -11,7 +11,7 @@ import numpy as np
 import time
 import argparse
 import os
-from constants import BasePaths
+from constants import BasePaths, ResNetPaths
 
 # Limit GPU memory usage
 torch.cuda.set_per_process_memory_fraction(0.5, device=0)
@@ -31,9 +31,24 @@ def parse_args():
 def setup_model(target):
     """Set up the ResNet-152 model for binary classification."""
     logging.info(f"Loading pre-trained ResNet-152 model for {target} classification...")
+    # Initialize the pre-trained ResNet-152 model
     model = models.resnet152(weights=models.ResNet152_Weights.IMAGENET1K_V2)
+    
+    # Freeze all layers initially
+    for param in model.parameters():
+        param.requires_grad = False
+    
+    # Unfreeze specific layers (layer4 and fc)
+    for param in model.layer4.parameters():
+        param.requires_grad = True
+    for param in model.fc.parameters():
+        param.requires_grad = True
+    
+    # Modify the fully connected layer for binary classification
     num_ftrs = model.fc.in_features
-    model.fc = nn.Linear(num_ftrs, 1)  # Binary classification
+    model.fc = nn.Linear(num_ftrs, 1)  # Output 1 for binary classification
+    
+    # Move model to the appropriate device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)
     logging.info(f"Model moved to {device}")
@@ -94,7 +109,6 @@ def train_epoch(model, train_loader, criterion, optimizer, scaler, device):
     return running_loss / len(train_loader)
 
 def validate_epoch(model, val_loader, criterion, device):
-    """Validate the model for one epoch and return loss and predictions."""
     model.eval()
     val_loss = 0.0
     y_true, y_pred = [], []
@@ -105,8 +119,8 @@ def validate_epoch(model, val_loader, criterion, device):
             loss = criterion(outputs, labels)
             val_loss += loss.item()
             preds = (torch.sigmoid(outputs).cpu().numpy() > 0.5).astype(int)
-            y_true.extend(labels.cpu().numpy())
-            y_pred.extend(preds)
+            y_true.extend(labels.cpu().numpy().flatten())  # Flatten to scalars
+            y_pred.extend(preds.flatten())                 # Flatten to scalars
     return val_loss / len(val_loader), y_true, y_pred
 
 def calculate_metrics(y_true, y_pred):
@@ -157,6 +171,8 @@ def main():
     model, device = setup_model(target)
     transform = transforms.Compose([
         transforms.Resize((224, 224)),
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomRotation(10),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
@@ -164,8 +180,8 @@ def main():
 
     # Set up training components
     criterion = nn.BCEWithLogitsLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.0001, weight_decay=1e-4)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=50)
     scaler = torch.amp.GradScaler()
 
     # Training loop
