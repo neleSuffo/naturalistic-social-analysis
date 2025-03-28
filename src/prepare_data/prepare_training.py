@@ -13,92 +13,6 @@ from iterstrat.ml_stratifiers import MultilabelStratifiedShuffleSplit
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-def balance_dataset(model_target: str, yolo_target: str):
-     """
-     Balances a dataset by randomly selecting an equal number of images with and without faces.
-     Parameters:
-     ----------
-     model_target : str
-         The target model for preparation (e.g., "yolo").
-     yolo_target : str
-         The target type for YOLO (e.g., "person_face" or "gaze").
-     """
-     # Define paths based on model and YOLO target
-     paths = {
-         ("yolo", "person_face"): YoloPaths.person_face_data_input_dir,
-         ("yolo", "gaze"): YoloPaths.gaze_data_input_dir
-     }
- 
-     data_input_dir = paths.get((model_target, yolo_target))
- 
-     if data_input_dir is None:
-         logging.error(f"Invalid combination of model_target='{model_target}' and yolo_target='{yolo_target}'.")
-         return
- 
-     annotation_dir = data_input_dir / "labels/train"
-     images_dir = data_input_dir / "images/train"
-     balanced_annotations_dir = data_input_dir / "labels/train_balanced"
-     balanced_images_dir = data_input_dir / "images/train_balanced"
- 
-     logging.info(f"Balancing dataset in {images_dir} and {annotation_dir}...")
- 
-     # Ensure directories exist
-     if not annotation_dir.exists() or not images_dir.exists():
-         logging.error(f"Missing input directories: {annotation_dir} or {images_dir}")
-         return
- 
-     images_with_class = []
-     images_without_class = []
- 
-     # Iterate over annotation files to classify images
-     for annotation_path in annotation_dir.iterdir():
-         if annotation_path.suffix == ".txt":
-             image_path = images_dir / f"{annotation_path.stem}.jpg"
- 
-             # Check if the annotation file is not empty
-             if yolo_target == "face":
-                 if annotation_path.stat().st_size > 0:
-                     images_with_class.append((image_path, annotation_path))
-                 else:
-                     images_without_class.append((image_path, annotation_path))
-             elif yolo_target == "person":
-                 with open(annotation_path, 'r') as file:
-                     lines = file.readlines()
-                     # Check if any annotation has class 0
-                     has_class_0 = any(line.strip().split()[0] == "0" for line in lines)
-                     if has_class_0:
-                         images_with_class.append((image_path, annotation_path))
-                     else:
-                         images_without_class.append((image_path, annotation_path))
- 
-     num_img_with_classes = len(images_with_class)
- 
-     if num_img_with_classes == 0:
-         logging.warning(f"No images with {yolo_target}s found. Skipping dataset balancing.")
-         return
- 
-     logging.info(f"Found {num_img_with_classes} images with {yolo_target}.")
- 
-     if len(images_without_class) < num_img_with_classes:
-         logging.warning(f"Not enough images without {yolo_target}s to balance the dataset. Using all available.")
- 
-     # Randomly select an equal number of images without class (person or face)
-     images_without_class_sample = random.sample(images_without_class, min(num_img_with_classes, len(images_without_class)))
- 
-     # Combine the lists to form the balanced dataset
-     balanced_dataset = images_with_class + images_without_class_sample
- 
-     # Ensure balanced dataset directories exist
-     balanced_images_dir.mkdir(parents=True, exist_ok=True)
-     balanced_annotations_dir.mkdir(parents=True, exist_ok=True)
- 
-     # Copy the selected files to the balanced dataset directories
-     for image_path, annotation_path in balanced_dataset:
-         shutil.copy(image_path, balanced_images_dir / image_path.name)
-         shutil.copy(annotation_path, balanced_annotations_dir / annotation_path.name)
- 
-     logging.info(f"Balanced dataset created with {len(images_with_class)} images with {yolo_target}s and {len(images_without_class_sample)} images without {yolo_target}s.")
-     
 def get_total_number_of_annotated_frames(label_path: Path, image_folder: Path = DetectionPaths.images_input_dir, target_type: str = None) -> list:
     """
     This function returns the total number of annotated frames in the dataset.
@@ -359,7 +273,7 @@ def get_binary_class_distribution(total_images: list, annotation_folder: Path, t
     images_class_0= set()
     images_class_1 = set()
     
-    class_description = ["face" if yolo_target in ["gaze", "face"] else "person"]
+    class_description = "face" if target in ["gaze", "face"] else "person"
     for image_file in total_images:
         image_file = Path(image_file)
         annotation_file = annotation_folder / image_file.with_suffix('.txt').name
@@ -383,7 +297,8 @@ def get_binary_class_distribution(total_images: list, annotation_folder: Path, t
 
 def binary_stratified_split(image_sets: list, yolo_target: str, train_ratio: float = TrainingConfig.train_test_split_ratio):
     """
-    This function splits the images into train, val, and test sets based on the class distribution.
+    This function splits the images into train, val, and test sets based on the class distribution. 
+    It also balances the train set.
     
     Parameters:
     ----------
@@ -408,11 +323,11 @@ def binary_stratified_split(image_sets: list, yolo_target: str, train_ratio: flo
         raise ValueError("Image_sets must contain exactly two sets.")
     result = {}
     if yolo_target == "gaze":
-        class_labels = ResnetPaths.gaze_classes
+        class_labels = YoloPaths.gaze_classes
     elif yolo_target == "person":
-        class_labels = ResnetPaths.person_classes
+        class_labels = ResNetPaths.person_classes
     elif yolo_target == "face":
-        class_labels = ResnetPaths.face_classes
+        class_labels = ResNetPaths.face_classes
     
     # Convert tuple elements to lists and undersample one class if necessary
     
@@ -421,12 +336,15 @@ def binary_stratified_split(image_sets: list, yolo_target: str, train_ratio: flo
     
     # Undersample the larger class
     if num_class_0_images > num_class_1_images:
+        logging.info(f"Undersampling class 0 to match class 1")
         class_0_images_new = random.sample(list(image_sets[0]), num_class_1_images)
         class_1_images_new = list(image_sets[1])
     elif num_class_1_images > num_class_0_images:
+        logging.info(f"Undersampling class 1 to match class 0")
         class_1_images_new = random.sample(list(image_sets[1]), num_class_0_images)
         class_0_images_new = list(image_sets[0])
     else:
+        logging.info(f"Class 0 and class 1 have the same number of images")
         class_0_images_new = list(image_sets[0])
         class_1_images_new = list(image_sets[1])
     
@@ -647,7 +565,10 @@ def move_images(yolo_target: str, image_names: list, split_type: str, label_path
         return
     
     # Get destination paths from configuration
-    paths = YoloPaths.get_target_paths(yolo_target, split_type)
+    if yolo_target in ["child_face", "adult_face", "adult_person", "child_person"]:
+        paths = ResNetPaths.get_target_paths(yolo_target, split_type)
+    else:
+        paths = YoloPaths.get_target_paths(yolo_target, split_type)
     if not paths:
         raise ValueError(f"Invalid yolo_target: {yolo_target}")
     
@@ -681,8 +602,16 @@ def move_images(yolo_target: str, image_names: list, split_type: str, label_path
                     logging.warning(f"Image {image_src} does not exist. Skipping...")
                     continue    
                     
-            elif yolo_target == "gaze" or yolo_target == "no_gaze":
-                image_src = DetectionPaths.gaze_images_input_dir  / image_name
+            elif yolo_target in ["gaze", "no_gaze", "child_face", "adult_face", "adult_person", "child_person"]:
+                # Get correct input directory based on target
+                if yolo_target in ["gaze", "no_gaze"]:
+                    input_dir = DetectionPaths.gaze_images_input_dir
+                elif yolo_target in ["child_face", "adult_face"]:
+                    input_dir = DetectionPaths.face_images_input_dir
+                elif yolo_target in ["adult_person", "child_person"]:
+                    input_dir = DetectionPaths.person_images_input_dir
+                    
+                image_src = input_dir / image_name
                 image_dst = image_dst_dir / image_name
 
                 if not image_src.exists():
@@ -726,10 +655,10 @@ def split_yolo_data(label_path: Path, yolo_target: str):
                 "face": ["child_face", "adult_face"],
                 "gaze": ["no_gaze", "gaze"]
             }
-            images_gaze, images_no_gaze = distribution_funcs[yolo_target](total_images, label_path, yolo_target)
-            splits_dict = binary_stratified_split((images_gaze, images_no_gaze))
+            images_class_0, images_class_1 = distribution_funcs[yolo_target](total_images, label_path, yolo_target)
+            splits_dict = binary_stratified_split((images_class_0, images_class_1), yolo_target)
             for binary_class in class_mapping[yolo_target]:
-                train, val, test = splits_dict[gaze_class]
+                train, val, test = splits_dict[binary_class]
                 for split_name, split_set in (("train", train), ("val", val), ("test", test)):
                     move_images(binary_class, split_set, split_name, label_path)
         elif yolo_target in ["all", "adult_person_face", "child_person_face", "object"]:
@@ -759,8 +688,8 @@ def main(model_target: str, yolo_target: str):
             "child_person_face": YoloPaths.child_person_face_labels_input_dir,
             "adult_person_face": YoloPaths.adult_person_face_labels_input_dir,
             "object": YoloPaths.object_labels_input_dir,
-            "person": YoloPaths.person_labels_input_dir,
-            "face": YoloPaths.face_labels_input_dir,
+            "person": ResNetPaths.person_labels_input_dir,
+            "face": ResNetPaths.face_labels_input_dir,
             "gaze": YoloPaths.gaze_labels_input_dir
         }
         label_path = path_mapping[yolo_target]
