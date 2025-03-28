@@ -153,8 +153,18 @@ class ResNetPaths:
     face_output_dir = Path(BasePaths.output_dir/"resnet_face_classification/")
     face_trained_weights_path = Path(BasePaths.models_dir/"resnet_face_classification.pth")
 
+    gaze_extracted_faces_dir = Path(BasePaths.data_dir/"yolo_gaze_input")
+    gaze_trained_weights_path = Path(BasePaths.models_dir/'yolo11_gaze_classification.pt')
+    gaze_extraction_progress_file_path = Path(BasePaths.data_dir/"gaze_extraction_progress.txt")
+    gaze_missing_frames_file_path = Path(BasePaths.data_dir/"gaze_missing_frames.txt")
+    gaze_data_config_path = Path(BasePaths.leuphana_ipe_dir/"src/models/yolo_gaze_classification/gaze_dataset.yaml")
+    gaze_labels_input_dir = Path(BasePaths.data_dir/"yolo_gaze_labels")
+    gaze_data_input_dir = Path(BasePaths.data_dir/"yolo_gaze_input_balanced")
+    gaze_output_dir = Path(BasePaths.output_dir/"yolo_gaze_classification/")
+    
     person_classes = ['child_person', 'adult_person']
     face_classes = ['child_face', 'adult_face']
+    gaze_classes = ['no_gaze', 'gaze']
     
     @classmethod
     def get_target_paths(cls, target: str, split_type: str) -> Optional[Tuple[Path, Path]]:
@@ -187,6 +197,12 @@ class ResNetPaths:
             return (
                 cls.person_data_input_dir / split_type / target,
                 cls.person_data_input_dir / split_type / target
+            )
+        
+        if target in cls.gaze_classes:
+            return (
+                cls.gaze_data_input_dir / split_type / target,
+                cls.gaze_data_input_dir / split_type / target
             )
 
         return None  # Return None if target is not found
