@@ -32,6 +32,18 @@ def main():
         data_config = str(YoloPaths.gaze_data_config_path)
         project_folder = str(YoloPaths.gaze_output_dir)
         output_path = YoloPaths.gaze_output_dir / folder_name
+    elif args.yolo_target == "face":
+        model = YOLO(YoloPaths.face_trained_weights_path)
+        folder_name = "face_validation_" + datetime.now().strftime("%Y%m%d_%H%M%S")
+        data_config = str(YoloPaths.face_data_config_path)
+        project_folder = str(YoloPaths.face_output_dir)
+        output_path = YoloPaths.face_output_dir / folder_name
+    elif args.yolo_target == "person":
+        model = YOLO(YoloPaths.person_trained_weights_path)
+        folder_name = "person_validation_" + datetime.now().strftime("%Y%m%d_%H%M%S")
+        data_config = str(YoloPaths.person_data_config_path)
+        project_folder = str(YoloPaths.person_output_dir)
+        output_path = YoloPaths.person_output_dir / folder_name
     # Validate the model
     metrics = model.val(
         data=data_config,
