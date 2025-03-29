@@ -1,0 +1,12 @@
+path: /home/nele_pauline_suffo/ProcessedData/resnet_face_input
+train: /home/nele_pauline_suffo/ProcessedData/resnet_face_input/train
+val: /home/nele_pauline_suffo/ProcessedData/resnet_face_input/val
+test: /home/nele_pauline_suffo/ProcessedData/resnet_face_input/test
+
+# Number of classes
+nc: 2
+
+# Class names
+names: 
+ 0: "adult_face"
+ 1 : "child_face"
