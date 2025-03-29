@@ -36,8 +36,8 @@ def setup_model(target):
     """Set up the ResNet-152 model for binary classification."""
     logging.info(f"Loading pre-trained ResNet-152 model for {target} classification...")
     # Initialize the pre-trained ResNet-152 model
-    #model = models.resnet152(weights=models.ResNet152_Weights.IMAGENET1K_V2)
-    model = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V2)
+    model = models.resnet152(weights=models.ResNet152_Weights.IMAGENET1K_V2)
+    #model = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V2)
     
     # Freeze all layers initially
     for param in model.parameters():
