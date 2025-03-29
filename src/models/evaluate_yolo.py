@@ -71,7 +71,7 @@ def main():
             f.write(f"Recall: {recall}\n")
             f.write(f"F1 Score: {f1_score}\n")
 
-    elif args.yolo_target == "gaze":
+    elif args.yolo_target in ["gaze", "face", "person"]:
         accuracy_top1 = metrics.results_dict['metrics/accuracy_top1']
         accuracy_top5 = metrics.results_dict['metrics/accuracy_top5']
         fitness = metrics.results_dict['fitness']
