@@ -215,13 +215,20 @@ def get_object_class_distribution(total_images: list, annotation_folder: Path, t
         DataFrame containing image filenames and their corresponding one-hot encoded class labels.
     """
     object_mapping = {
-        0: "book",
-        1: "toy", 
-        2: "kitchenware",
-        3: "screen",
-        4: "other_object",
-        5: "animal",
-        6: "food"
+        0: "interacted_book"
+        1: "interacted_toy"
+        2: "interacted_kitchenware"
+        3: "interacted_screen"
+        4: "interacted_other_object"
+        5: "book"
+        6: "toy"
+        7: "kitchenware"
+        8: "screen"
+        9: "other_object"
+        10: "interacted_animal"
+        11: "interacted_food"
+        12: "animal"
+        13: "food"
     }
 
     image_class_mapping = []
