@@ -9,4 +9,4 @@ nc: 2
 # Class names
 names: 
  0: "no_gaze"
- 1 : "gaze"
+ 1: "gaze"
