@@ -171,6 +171,8 @@ def setup_detection_database(db_path: Path = DetectionPaths.detection_db_path):
             y_min INTEGER,
             x_max INTEGER,
             y_max INTEGER,
+            age_class INTEGER,
+            age_confidence REAL,
             gaze_direction INTEGER,
             gaze_confidence REAL,
             proximity REAL,
