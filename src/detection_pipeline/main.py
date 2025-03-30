@@ -1,6 +1,6 @@
 import subprocess
 import argparse
-import run_yolo
+import run_pipeline
 from setup_detection_database import setup_detection_database
 
 def main(num_videos_to_process: int = None):
@@ -15,7 +15,7 @@ def main(num_videos_to_process: int = None):
     # Setup the detection database which will hold the detection results (if it doesnt already exist)
     setup_detection_database()
     # Run the detection pipeline
-    run_yolo.main(num_videos_to_process)
+    run_pipeline.main(num_videos_to_process)
     
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Run the detection pipeline')
