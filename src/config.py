@@ -54,14 +54,30 @@ class YoloConfig:
         9: 'food',
         10: 'other_object'
     }
-    best_iou = 0.5
-    between_classes_iou = 0.9
-    ap_values = {
-        'adult_face': 0.956,
-        'adult': 0.947,
-        'child_face': 0.856,
-        'child': 0.863
+    
+    person_face_mapping = {
+        0: "person",
+        1: "face",
+        2: "child body parts"
     }
+    
+    person_cls_mapping = {
+        0: "adult_person",
+        1: "child_person"
+    }
+  
+    face_cls_mapping = {
+        0: "adult_face",
+        1: "child_face",
+
+    }
+    
+    gaze_cls_mapping = {
+        0: "no_gaze",
+        1: "gaze"
+    }
+    best_iou = 0.5
+
     
 class VTCConfig:
     audio_file_suffix = Path("_16kHz.wav")
