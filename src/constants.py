@@ -77,11 +77,11 @@ class YoloPaths:
     gaze_output_dir = Path(BasePaths.output_dir/"yolo_gaze_classification/")
     
     person_output_dir = Path(BasePaths.output_dir/"yolo_person_classification/")
-    person_trained_weights_path = Path(BasePaths.models_dir/'yolo_person_classification.pt')
+    person_trained_weights_path = Path(BasePaths.models_dir/'yolo11_person_classification.pt')
     person_data_config_path = Path(BasePaths.leuphana_ipe_dir/"src/models/yolo_classifications/person_dataset.yaml")
 
     face_output_dir = Path(BasePaths.output_dir/"yolo_face_classification/")
-    face_trained_weights_path = Path(BasePaths.models_dir/'yolo_face_classification.pt')
+    face_trained_weights_path = Path(BasePaths.models_dir/'yolo11_face_classification.pt')
     face_data_config_path = Path(BasePaths.leuphana_ipe_dir/"src/models/yolo_classifications/face_dataset.yaml")
 
     
