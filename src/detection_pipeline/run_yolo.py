@@ -553,7 +553,7 @@ def main(num_videos_to_process: int = None,
     cursor = conn.cursor()
     
     # Initialize models once
-    detection_model = YOLO(YoloPaths.all_trained_weights_path)
+    object_model = YOLO(YoloPaths.all_trained_weights_path)
     gaze_model = YOLO(YoloPaths.gaze_trained_weights_path)   
     
     detection_model_id = register_model(cursor, "detection", detection_model)
