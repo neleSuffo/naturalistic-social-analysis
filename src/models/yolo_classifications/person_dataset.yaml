@@ -9,4 +9,4 @@ nc: 2
 # Class names
 names: 
  0: "adult_person"
- 1 : "child_person"
+ 1: "child_person"
