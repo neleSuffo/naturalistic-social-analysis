@@ -9,4 +9,4 @@ nc: 2
 # Class names
 names: 
  0: "adult_face"
- 1 : "child_face"
+ 1: "child_face"
