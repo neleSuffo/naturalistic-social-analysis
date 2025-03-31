@@ -173,6 +173,7 @@ def setup_detection_database(db_path: Path = DetectionPaths.detection_db_path):
             y_max INTEGER,
             age_class INTEGER,
             age_confidence REAL,
+            face_adjusted BOOLEAN,
             gaze_direction INTEGER,
             gaze_confidence REAL,
             proximity REAL,
