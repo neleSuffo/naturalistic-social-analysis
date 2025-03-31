@@ -6,6 +6,24 @@ from ultralytics import YOLO
 from constants import YoloPaths
 from config import YoloConfig
 
+def is_face_inside_person(face_box, person_box):
+    """Check if face bounding box is completely inside person bounding box.
+    
+    Parameters:
+    ---------
+    face_box : list
+        Coordinates of the face bounding box [x1, y1, x2, y2].
+    person_box : list
+        Coordinates of the person bounding box [x1, y1, x2, y2].
+    
+    Returns:
+    -------
+    bool
+        True if face box is inside person box, False otherwise.
+    """
+    return (face_box[0] >= person_box[0] and face_box[1] >= person_box[1] and
+            face_box[2] <= person_box[2] and face_box[3] <= person_box[3])
+    
 # Color mapping for visualization
 CLASS_COLORS = {
     0: (215, 65, 117),    # Person
@@ -19,8 +37,35 @@ CLASS_COLORS = {
     10: (217, 218, 169),  # Other object
 }
 
-def draw_detection(image, box, cls_id, conf, age_cls=None, gaze_cls=None, age_conf=None, gaze_conf=None):
-    """Draw bounding box and label for a detection."""
+def draw_detection(image, box, cls_id, conf, age_cls=None, gaze_cls=None, 
+                  age_conf=None, gaze_conf=None, adjusted=False, adjusted_conf=None):
+    """
+    Draw bounding box and label for a detection.
+    If adjusted is True, use adjusted_conf for the label.
+    
+    Parameters:
+    ----------
+    image : numpy.ndarray
+        The image on which to draw the detection.
+    box : list
+        Coordinates of the bounding box [x1, y1, x2, y2].
+    cls_id : int
+        Class ID of the detection.
+    conf : float
+        Confidence score of the detection.
+    age_cls : int, optional
+        Age class of the detection (0 for adult, 1 for child).
+    gaze_cls : int, optional
+        Gaze class of the detection (0 for no gaze, 1 for gaze).
+    age_conf : float, optional
+        Confidence score for the age class.
+    gaze_conf : float, optional
+        Confidence score for the gaze class.
+    adjusted : bool, optional
+        Whether the detection is adjusted based on person detection.
+    adjusted_conf : float, optional
+        Confidence score for the adjusted detection.
+    """
     x1, y1, x2, y2 = map(int, box)
     color = CLASS_COLORS.get(cls_id, (255, 255, 255))
     
@@ -32,9 +77,13 @@ def draw_detection(image, box, cls_id, conf, age_cls=None, gaze_cls=None, age_co
         age_text = 'Adult' if age_cls == 0 else 'Child'
         label = f"Person ({age_text} {age_conf:.2f}) {conf:.2f}"
     elif cls_id == 1:  # Face
-        age_text = 'Adult' if age_cls == 0 else 'Child'
+        if adjusted:
+            age_text = 'Adult-adjusted' if age_cls == 0 else 'Child-adjusted'
+        else:
+            age_text = 'Adult' if age_cls == 0 else 'Child'
+        conf_to_use = adjusted_conf if adjusted else age_conf
         gaze_text = "Gaze" if gaze_cls == 1 else "No Gaze"
-        label = f"Face ({age_text} {age_conf:.2f}, {gaze_text} {gaze_conf:.2f}) {conf:.2f}"
+        label = f"Face ({age_text} {conf_to_use:.2f}, {gaze_text} {gaze_conf:.2f}) {conf:.2f}"
     elif cls_id == 2:  # Child body part
         label = f"Body Part {conf:.2f}"
     else:  # Objects
@@ -73,6 +122,10 @@ def run_inference(image_path):
     
     # Create visualization copy
     vis_image = image.copy()
+        
+    # Store person detections for later comparison
+    person_detections = []
+    face_detections = []
     
     # Run object detection model
     object_results = object_model(image)
@@ -83,7 +136,7 @@ def run_inference(image_path):
             conf = r.conf.item()
             draw_detection(vis_image, box, cls_id, conf)
     
-    # Run person/face detection model
+    # First pass: collect all detections
     person_face_results = person_face_model(image)
     for r in person_face_results[0].boxes:
         box = r.xyxy[0].cpu().numpy()
@@ -95,16 +148,17 @@ def run_inference(image_path):
         roi = image[y1:y2, x1:x2]
         
         if cls_id == 0:  # Person
-            # Run person age classification
             person_cls_results = person_cls_model(roi)
             person_age_cls = int(person_cls_results[0].probs.top1)
             person_age_conf = float(person_cls_results[0].probs.top1conf)
-            draw_detection(vis_image, box, cls_id, conf, 
-                         age_cls=person_age_cls, 
-                         age_conf=person_age_conf)
+            person_detections.append({
+                'box': box,
+                'age_cls': person_age_cls,
+                'age_conf': person_age_conf,
+                'conf': conf
+            })
             
         elif cls_id == 1:  # Face
-            # Run face age and gaze classification
             face_cls_results = face_cls_model(roi)
             face_age_cls = int(face_cls_results[0].probs.top1)
             face_age_conf = float(face_cls_results[0].probs.top1conf)
@@ -113,15 +167,46 @@ def run_inference(image_path):
             gaze_cls = int(gaze_results[0].probs.top1)
             gaze_conf = float(gaze_results[0].probs.top1conf)
             
-            draw_detection(vis_image, box, cls_id, conf, 
-                         age_cls=face_age_cls,
-                         age_conf=face_age_conf,
-                         gaze_cls=gaze_cls,
-                         gaze_conf=gaze_conf)
+            face_detections.append({
+                'box': box,
+                'age_cls': face_age_cls,
+                'age_conf': face_age_conf,
+                'gaze_cls': gaze_cls,
+                'gaze_conf': gaze_conf,
+                'conf': conf
+            })
             
         elif cls_id == 2:  # Child body part
             draw_detection(vis_image, box, cls_id, conf)
     
+    # Draw person detections
+    for person in person_detections:
+        draw_detection(vis_image, person['box'], 0, person['conf'],
+                      age_cls=person['age_cls'],
+                      age_conf=person['age_conf'])
+        
+    # Second pass: process and draw faces with potential adjustments
+    for face in face_detections:
+        adjusted = False
+        adjusted_conf = None
+        # Check if face is inside any person
+        for person in person_detections:
+            if is_face_inside_person(face['box'], person['box']):
+                # If age classes don't match, adjust face age class
+                if face['age_cls'] != person['age_cls']:
+                    face['age_cls'] = person['age_cls']
+                    adjusted = True
+                    adjusted_conf = person['age_conf']  # Use person's confidence
+                break
+        # Draw face with potentially adjusted age class
+        label_prefix = "Face (Adjusted)" if adjusted else "Face"
+        draw_detection(vis_image, face['box'], 1, face['conf'],
+                      age_cls=face['age_cls'],
+                      age_conf=face['age_conf'],
+                      gaze_cls=face['gaze_cls'],
+                      gaze_conf=face['gaze_conf'],
+                      adjusted=adjusted,
+                      adjusted_conf=adjusted_conf)  # Pass the person's confidence
     # Save output
     output_dir = "/home/nele_pauline_suffo/outputs/detection_pipeline_results/inference_images"
     os.makedirs(output_dir, exist_ok=True)
