@@ -11,11 +11,29 @@ from ultralytics import YOLO
 from constants import YoloPaths, DetectionPaths, VTCPaths
 from config import YoloConfig, DetectionPipelineConfig
 from estimate_proximity import get_proximity
-from models.yolo_detections.inference import (
-    calculate_detection_scores,
-    is_face_inside_person,
-    custom_nms,
-)
+from detection_pipeline.inference import is_face_inside_person
+
+class DetectionClassMapping:
+    # Final class IDs for database storage
+    CHILD = 0
+    ADULT = 1
+    CHILD_FACE = 2
+    ADULT_FACE = 3
+    CHILD_BODY_PART = 4
+    # Objects 5-10 remain unchanged
+
+def map_detection_to_final_class(cls_id: int, model_type: str, age_cls: int = None) -> int:
+    """Maps model-specific class IDs to final database class IDs."""
+    if model_type == "object":
+        return cls_id  # Object classes (5-10) remain unchanged
+    elif model_type == "person_face":
+        if cls_id == 0:  # Person
+            return DetectionClassMapping.ADULT if age_cls == 0 else DetectionClassMapping.CHILD
+        elif cls_id == 1:  # Face
+            return DetectionClassMapping.ADULT_FACE if age_cls == 0 else DetectionClassMapping.CHILD_FACE
+        elif cls_id == 2:  # Child body part
+            return DetectionClassMapping.CHILD_BODY_PART
+    return cls_id
 
 def extract_id_from_filename(filename: str) -> str:
     """
@@ -190,36 +208,33 @@ def process_frame(frame: np.ndarray,
                  face_cls_model: YOLO,
                  person_cls_model: YOLO,
                  cursor: sqlite3.Cursor) -> Dict[str, int]:
-    """
-    Process a frame with object and person/face detection models.
-    Only store object detections for classes 5-10.
-    For person and face detections, run additional classification models.
+    """Process a frame with object and person/face detection models.
     
     Parameters:
     ----------
     frame : np.ndarray
-        Frame to be processed
+        The image frame to process.
     frame_idx : int
-        Frame index
+        The index of the frame in the video.
     video_id : int
-        Video ID
+        The ID of the video in the database.
     object_model : YOLO
-        YOLO model for object detection (classes 5-10)
+        YOLO model for object detection.
     person_face_model : YOLO
-        YOLO model for person and face detection
+        YOLO model for person and face detection.
     gaze_cls_model : YOLO
-        YOLO model for gaze classification
+        YOLO model for gaze classification.
     face_cls_model : YOLO
-        YOLO model for face age classification
+        YOLO model for face classification.
     person_cls_model : YOLO
-        YOLO model for person age classification
+        YOLO model for person classification.
     cursor : sqlite3.Cursor
-        SQLite cursor object
+        SQLite cursor object.
     
     Returns:
     -------
-    detection_counts : dict
-        Dictionary containing counts of each object class detected
+    detection_counts : Dict[str, int]
+        A dictionary with counts of detected classes.
     """
     cursor.execute('INSERT INTO Frames (video_id, frame_number) VALUES (?, ?)', (video_id, frame_idx))
 
@@ -235,83 +250,130 @@ def process_frame(frame: np.ndarray,
             cls_id = int(r.cls.item())
             conf = r.conf.item()
             
+            final_cls_id = map_detection_to_final_class(cls_id, "object")
+            
             cursor.execute('''
                 INSERT INTO Detections
                 (video_id, frame_number, object_class, confidence_score,
                 x_min, y_min, x_max, y_max)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (video_id, frame_idx, cls_id, conf, 
+            ''', (video_id, frame_idx, final_cls_id, conf, 
                   box[0], box[1], box[2], box[3]))
                   
             class_name = object_model.names[cls_id]
             detection_counts[class_name] = detection_counts.get(class_name, 0) + 1
-
-    # Run person/face detection model
+    
+    # Collect person and face detections first
+    person_detections = []
+    face_detections = []
+    body_part_detections = []
+    
+    # First pass: collect all person/face/body part detections
     person_face_results = person_face_model(frame)
     for r in person_face_results[0].boxes:
         box = r.xyxy[0].cpu().numpy()
         cls_id = int(r.cls.item())
         conf = r.conf.item()
         
-        # Extract the region of interest
         x1, y1, x2, y2 = map(int, box)
         roi = frame[y1:y2, x1:x2]
         
-        if cls_id == 0:  # Person detection
-            # Run person age classification
+        if cls_id == 0:  # Person
             person_cls_results = person_cls_model(roi)
-            person_age_cls = int(person_cls_results[0].probs.top1)  # 0=adult, 1=child
+            person_age_cls = int(person_cls_results[0].probs.top1)
             person_age_conf = float(person_cls_results[0].probs.top1conf)
             
-            cursor.execute('''
-                INSERT INTO Detections
-                (video_id, frame_number, object_class, confidence_score,
-                x_min, y_min, x_max, y_max, age_class, age_confidence)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (video_id, frame_idx, cls_id, conf, 
-                  x1, y1, x2, y2, person_age_cls, person_age_conf))
-             
-            # Update person detection counts
-            class_name = 'adult' if person_age_cls == 0 else 'infant/child'
-            detection_counts[class_name] = detection_counts.get(class_name, 0) + 1 
-                
-        elif cls_id == 1:  # Face detection
-            # Run face age classification
+            person_detections.append({
+                'box': box,
+                'age_cls': person_age_cls,
+                'age_conf': person_age_conf,
+                'conf': conf
+            })
+            
+        elif cls_id == 1:  # Face
             face_cls_results = face_cls_model(roi)
-            face_age_cls = int(face_cls_results[0].probs.top1)  # 0=adult, 1=child
+            face_age_cls = int(face_cls_results[0].probs.top1)
             face_age_conf = float(face_cls_results[0].probs.top1conf)
             
-            # Run gaze classification
             gaze_results = gaze_cls_model(roi)
-            gaze_cls = int(gaze_results[0].probs.top1)  # 0=no_gaze, 1=gaze
+            gaze_cls = int(gaze_results[0].probs.top1)
             gaze_conf = float(gaze_results[0].probs.top1conf)
             
-            cursor.execute('''
-                INSERT INTO Detections
-                (video_id, frame_number, object_class, confidence_score,
-                x_min, y_min, x_max, y_max, age_class, age_confidence,
-                gaze_direction, gaze_confidence)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (video_id, frame_idx, cls_id, conf, 
-                  x1, y1, x2, y2, face_age_cls, face_age_conf,
-                  gaze_cls, gaze_conf))
-
-            # Update face detection counts  
-            class_name = 'adult face' if face_age_cls == 0 else 'infant/child face'
-            detection_counts[class_name] = detection_counts.get(class_name, 0) + 1
+            face_detections.append({
+                'box': box,
+                'age_cls': face_age_cls,
+                'age_conf': face_age_conf,
+                'gaze_cls': gaze_cls,
+                'gaze_conf': gaze_conf,
+                'conf': conf
+            })
             
-        elif cls_id == 2:  # Child body part detection
-            # Store child body part detection directly without additional classification
-            cursor.execute('''
-                INSERT INTO Detections
-                (video_id, frame_number, object_class, confidence_score,
-                x_min, y_min, x_max, y_max)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (video_id, frame_idx, cls_id, conf, 
-                  x1, y1, x2, y2))
-            
-            # Update child body part count
-            detection_counts['child body parts'] = detection_counts.get('child body parts', 0) + 1
+        elif cls_id == 2:  # Child body part
+            body_part_detections.append({
+                'box': box,
+                'conf': conf
+            })
+    
+    # Process and store person detections
+    for person in person_detections:
+        final_cls_id = map_detection_to_final_class(0, "person_face", person['age_cls'])
+        
+        cursor.execute('''
+            INSERT INTO Detections
+            (video_id, frame_number, object_class, confidence_score,
+            x_min, y_min, x_max, y_max, age_class, age_confidence)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (video_id, frame_idx, final_cls_id, person['conf'],
+              person['box'][0], person['box'][1], person['box'][2], person['box'][3],
+              person['age_cls'], person['age_conf']))
+        
+        class_name = 'adult' if person['age_cls'] == 0 else 'infant/child'
+        detection_counts[class_name] = detection_counts.get(class_name, 0) + 1
+    
+    # Process and store face detections with potential adjustments
+    for face in face_detections:
+        face_adjusted = False
+        
+        # Check if face is inside any person
+        for person in person_detections:
+            if is_face_inside_person(face['box'], person['box']):
+                # If age classes don't match, adjust face age class
+                if face['age_cls'] != person['age_cls']:
+                    face['age_cls'] = person['age_cls']
+                    face['age_conf'] = person['age_conf']  # Use person's confidence
+                    face_adjusted = True
+                break
+        
+        final_cls_id = map_detection_to_final_class(1, "person_face", face['age_cls'])
+        
+        cursor.execute('''
+            INSERT INTO Detections
+            (video_id, frame_number, object_class, confidence_score,
+            x_min, y_min, x_max, y_max, age_class, age_confidence,
+            gaze_direction, gaze_confidence, face_adjusted)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (video_id, frame_idx, final_cls_id, face['conf'],
+              face['box'][0], face['box'][1], face['box'][2], face['box'][3],
+              face['age_cls'], face['age_conf'],
+              face['gaze_cls'], face['gaze_conf'], face_adjusted))
+        
+        class_name = 'adult face' if face['age_cls'] == 0 else 'infant/child face'
+        detection_counts[class_name] = detection_counts.get(class_name, 0) + 1
+    
+    # Process and store child body part detections
+    for body_part in body_part_detections:
+        final_cls_id = map_detection_to_final_class(2, "person_face")  # Child body part is always class 4
+        
+        cursor.execute('''
+            INSERT INTO Detections
+            (video_id, frame_number, object_class, confidence_score,
+            x_min, y_min, x_max, y_max)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (video_id, frame_idx, final_cls_id, body_part['conf'],
+              body_part['box'][0], body_part['box'][1], 
+              body_part['box'][2], body_part['box'][3]))
+        
+        detection_counts['child body parts'] = detection_counts.get('child body parts', 0) + 1
 
     return detection_counts
 
