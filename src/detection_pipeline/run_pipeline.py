@@ -257,8 +257,8 @@ def process_frame(frame: np.ndarray,
                 (video_id, frame_number, object_class, confidence_score,
                 x_min, y_min, x_max, y_max)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (video_id, frame_idx, final_cls_id, conf, 
-                  box[0], box[1], box[2], box[3]))
+            ''', (video_id, frame_idx, final_cls_id, float(conf), 
+                float(box[0]), float(box[1]), float(box[2]), float(box[3])))
                   
             class_name = object_model.names[cls_id]
             detection_counts[class_name] = detection_counts.get(class_name, 0) + 1
@@ -323,9 +323,10 @@ def process_frame(frame: np.ndarray,
             (video_id, frame_number, object_class, confidence_score,
             x_min, y_min, x_max, y_max, age_class, age_confidence)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (video_id, frame_idx, final_cls_id, person['conf'],
-              person['box'][0], person['box'][1], person['box'][2], person['box'][3],
-              person['age_cls'], person['age_conf']))
+        ''', (video_id, frame_idx, final_cls_id, float(person['conf']),
+            float(person['box'][0]), float(person['box'][1]), 
+            float(person['box'][2]), float(person['box'][3]),
+            person['age_cls'], float(person['age_conf'])))
         
         class_name = 'adult' if person['age_cls'] == 0 else 'infant/child'
         detection_counts[class_name] = detection_counts.get(class_name, 0) + 1
@@ -357,11 +358,11 @@ def process_frame(frame: np.ndarray,
             x_min, y_min, x_max, y_max, age_class, age_confidence,
             gaze_direction, gaze_confidence, face_adjusted, proximity)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (video_id, frame_idx, final_cls_id, face['conf'],
-            x1, y1, x2, y2,
-            face['age_cls'], face['age_conf'],
-            face['gaze_cls'], face['gaze_conf'], 
-            face_adjusted, proximity))
+        ''', (video_id, frame_idx, final_cls_id, float(face['conf']),
+            float(x1), float(y1), float(x2), float(y2),
+            face['age_cls'], float(face['age_conf']),
+            face['gaze_cls'], float(face['gaze_conf']), 
+            face_adjusted, float(proximity)))
         
         detection_counts[class_name] = detection_counts.get(class_name, 0) + 1
     
@@ -374,9 +375,9 @@ def process_frame(frame: np.ndarray,
             (video_id, frame_number, object_class, confidence_score,
             x_min, y_min, x_max, y_max)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (video_id, frame_idx, final_cls_id, body_part['conf'],
-              body_part['box'][0], body_part['box'][1], 
-              body_part['box'][2], body_part['box'][3]))
+        ''', (video_id, frame_idx, final_cls_id, float(body_part['conf']),
+            float(body_part['box'][0]), float(body_part['box'][1]), 
+            float(body_part['box'][2]), float(body_part['box'][3])))
         
         detection_counts['child body parts'] = detection_counts.get('child body parts', 0) + 1
 
