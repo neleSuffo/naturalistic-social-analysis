@@ -343,21 +343,26 @@ def process_frame(frame: np.ndarray,
                     face['age_conf'] = person['age_conf']  # Use person's confidence
                     face_adjusted = True
                 break
-        
+            
         final_cls_id = map_detection_to_final_class(1, "person_face", face['age_cls'])
-        
+        class_name = 'adult face' if face['age_cls'] == 0 else 'infant/child face'
+            
+        # Calculate proximity after final class determination
+        x1, y1, x2, y2 = face['box']
+        proximity = get_proximity([x1, y1, x2, y2], class_name)
+     
         cursor.execute('''
             INSERT INTO Detections
             (video_id, frame_number, object_class, confidence_score,
             x_min, y_min, x_max, y_max, age_class, age_confidence,
-            gaze_direction, gaze_confidence, face_adjusted)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            gaze_direction, gaze_confidence, face_adjusted, proximity)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (video_id, frame_idx, final_cls_id, face['conf'],
-              face['box'][0], face['box'][1], face['box'][2], face['box'][3],
-              face['age_cls'], face['age_conf'],
-              face['gaze_cls'], face['gaze_conf'], face_adjusted))
+            x1, y1, x2, y2,
+            face['age_cls'], face['age_conf'],
+            face['gaze_cls'], face['gaze_conf'], 
+            face_adjusted, proximity))
         
-        class_name = 'adult face' if face['age_cls'] == 0 else 'infant/child face'
         detection_counts[class_name] = detection_counts.get(class_name, 0) + 1
     
     # Process and store child body part detections
