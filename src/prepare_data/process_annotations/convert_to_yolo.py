@@ -85,7 +85,7 @@ def map_category_id(target: str, category_id: int, person_age: str = None, gaze_
     elif target == "person_face":
         mapping = CategoryMappings.person_face_det
     elif target == "person_face_object":
-        mapping = CategoryMappings.person_face_object
+        return CategoryMappings.person_face_object.get(category_id, 99)
     elif target == "object":
         return CategoryMappings.objects.get((category_id, object_interaction), 99)
     elif target == "all":
