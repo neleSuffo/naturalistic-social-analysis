@@ -207,7 +207,7 @@ def main(target: str) -> None:
         elif target in ["adult_person_face", "child_person_face", "gaze", "person", "face", "person_face"]:
             annotations = fetch_all_annotations(category_ids=category_ids, persons = True, objects=False, yolo_target=target)
         elif target == "object":
-            annotations = fetch_all_annotations(category_ids=category_ids, persons = False, objects=True, yolo_target=target)
+            annotations = fetch_all_annotations(category_ids=category_ids, persons = False, objects=False, yolo_target=target)
         logging.info(f"Fetched {len(annotations)} {target} annotations.")
         save_annotations(annotations, target)
         logging.info(f"Successfully saved all {target} annotations.")
