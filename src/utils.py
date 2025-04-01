@@ -5,6 +5,7 @@ import subprocess
 import sqlite3
 import random
 import shutil
+import gc  # Garbage collection
 import concurrent.futures
 from pathlib import Path
 from typing import List, Optional, Union, Tuple
@@ -605,66 +606,73 @@ def create_video_to_id_mapping(video_names: list) -> dict:
     return video_id_dict
 
 
-def extract_audio_from_video(video: VideoFileClip, audio_output_path: Path) -> None:
+def extract_audio_from_video(video_path: Path, audio_output_path: Path) -> None:
     """
-    This function extracts the audio from a video file
-    and saves it as a 16kHz WAV file.
-
-    Parameters
-    ----------
-    video : VideoFileClip
-        the video file
-    audio_output_path: Path
-        the path to the output audio file
+    Extracts the audio from a video file and saves it as a 16kHz WAV file.
     """
-    # Create the parent directory if it doesnt exist already
+    print(f"Starting audio extraction for {video_path}")  # Debugging step
     parent_dir = audio_output_path.parent
-    if not parent_dir.exists():
-        parent_dir.mkdir(parents=True, exist_ok=True)
-    # Get the filename without extension
-    filename = audio_output_path.stem
-    
-    # Define output paths
-    intermediate_wav = parent_dir / f"{filename}_original.wav"
-    try:
-        # Extract audio directly to WAV
-        video.audio.write_audiofile(str(intermediate_wav), codec="pcm_s16le")
+    parent_dir.mkdir(parents=True, exist_ok=True)
 
-        # Convert to 16kHz using sox
-        subprocess.run(
+    filename = audio_output_path.stem
+    intermediate_wav = parent_dir / f"{filename}_original.wav"
+
+    try:
+        print("Opening video file...")  # Debugging step
+        with VideoFileClip(str(video_path)) as video:
+            print("Extracting audio...")  # Debugging step
+            video.audio.write_audiofile(str(intermediate_wav), codec="pcm_s16le")
+            
+            print("Closing video file...")  # Debugging step
+            video.reader.close()
+            video.audio.reader.close_proc()
+
+        # Force garbage collection to release any lingering file handles
+        gc.collect()
+
+        print(f"Running sox: {intermediate_wav} -> {audio_output_path}")  # Debugging step
+        process = subprocess.run(
             ["sox", str(intermediate_wav), "-r", "16000", str(audio_output_path)],
             check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=30  # Prevent hanging
         )
 
-        # Remove intermediate WAV file
+        if process.returncode != 0:
+            print(f"sox error: {process.stderr.decode()}")  # Debugging step
+            return
+
+        # Remove intermediate WAV file after successful processing
         intermediate_wav.unlink()
-        
-        logging.info(f"Successfully stored the file at {audio_output_path}")
+        print(f"Successfully stored the file at {audio_output_path}")  # Debugging step
+
+    except subprocess.TimeoutExpired:
+        print("sox process timed out!")  # Debugging step
     except Exception as e:
-        logging.error(f"Error extracting audio: {e}")
-        # Clean up intermediate file if it exists
+        print(f"Error extracting audio: {e}")  # Debugging step
         if intermediate_wav.exists():
             intermediate_wav.unlink()
         raise
 
-
-def extract_audio_from_videos_in_folder(videos_input_dir: Path,
-                                        output_dir: Path):
+def extract_audio_from_videos_in_folder(videos_input_dir: Path, output_dir: Path):
     """
     Extracts audio from all video files in the specified folder, if not already done.
     """
+    print(f"Scanning folder: {videos_input_dir}")  # Debugging step
+
     for video_file in videos_input_dir.iterdir():
+        print(f"Found file: {video_file}")  # Debugging step
+        
         if video_file.suffix.lower() not in ['.mp4', '.MP4']:
-            continue  # Skip non-video files
+            print(f"Skipping non-video file: {video_file}")  # Debugging step
+            continue
         
-        audio_output_path = output_dir / f"{video_file.stem}{VTCConfig.audio_file_suffix}"
-        
-        # Check if the audio file already exists
+        audio_output_path = output_dir / f"{video_file.stem}.wav"  # Removed VTCConfig for simplicity
+
         if not audio_output_path.exists():
-            # Create a VideoFileClip object
-            video_clip = VideoFileClip(str(video_file))  
-            # Extract audio from the video
-            extract_audio_from_video(video_clip, audio_output_path)  
-            logging.info(f"Extracted audio from {video_file.name}")
+            print(f"Extracting audio for: {video_file}")  # Debugging step
+            extract_audio_from_video(video_file, audio_output_path)
+            print(f"Finished processing: {video_file}")  # Debugging step
         else:
-            logging.info(f"Audio already exists for {video_file.name}")
+            print(f"Audio already exists for: {video_file}")  # Debugging step
