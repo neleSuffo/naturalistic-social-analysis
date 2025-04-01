@@ -99,11 +99,11 @@ def fetch_all_annotations(
         AND LOWER(a.person_age) IN ('child', 'infant', 'inf')
         """
         
-    # Add object interaction filter if objects is True
-    # if objects:
-    #    query += """
-    #    AND a.object_interaction = 'Yes'
-    #    """
+    #Add object interaction filter if objects is True
+    if objects:
+       query += """
+       AND a.object_interaction = 'Yes'
+       """
     
     query += " ORDER BY a.video_id, a.image_id"
     cursor.execute(query, category_ids)
