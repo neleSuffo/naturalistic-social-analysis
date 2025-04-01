@@ -605,7 +605,7 @@ def create_video_to_id_mapping(video_names: list) -> dict:
     return video_id_dict
 
 
-def extract_audio_from_video(video: VideoFileClip, filename: str) -> None:
+def extract_audio_from_video(video: VideoFileClip, audio_output_path: Path) -> None:
     """
     This function extracts the audio from a video file
     and saves it as a 16kHz WAV file.
@@ -614,49 +614,57 @@ def extract_audio_from_video(video: VideoFileClip, filename: str) -> None:
     ----------
     video : VideoFileClip
         the video file
-    filename : str
-        the filename of the video
+    audio_output_path: Path
+        the path to the output audio file
     """
-    # Create a temporary file
-    temp_file = tempfile.NamedTemporaryFile(delete=True)
-
-    # Extract the audio and save it to the temporary file
-    video.audio.write_audiofile(temp_file.name + ".wav", codec="pcm_s16le")
-
-    # Create the output directory if it doesn't exist
-    VTCPaths.output_dir.mkdir(parents=True, exist_ok=True)
-
-    # Convert the audio to 16kHz with sox and
-    # save it to the output file
-    output_file = VTCPaths.output_dir / f"{filename}{VTCConfig.audio_file_suffix}"
-
-    subprocess.run(
-        ["sox", temp_file.name + ".wav", "-r", "16000", output_file],
-        check=True,
-    )
+    # Create the parent directory if it doesnt exist already
+    parent_dir = audio_output_path.parent
+    if not parent_dir.exists():
+        parent_dir.mkdir(parents=True, exist_ok=True)
+    # Get the filename without extension
+    filename = audio_output_path.stem
     
-    # Delete the temporary file
-    temp_file.close()
-    
-    logging.info(f"Successfully stored the file at {output_file}")
+    # Define output paths
+    intermediate_wav = parent_dir / f"{filename}_original.wav"
+    try:
+        # Extract audio directly to WAV
+        video.audio.write_audiofile(str(intermediate_wav), codec="pcm_s16le")
+
+        # Convert to 16kHz using sox
+        subprocess.run(
+            ["sox", str(intermediate_wav), "-r", "16000", str(audio_output_path)],
+            check=True,
+        )
+
+        # Remove intermediate WAV file
+        intermediate_wav.unlink()
+        
+        logging.info(f"Successfully stored the file at {audio_output_path}")
+    except Exception as e:
+        logging.error(f"Error extracting audio: {e}")
+        # Clean up intermediate file if it exists
+        if intermediate_wav.exists():
+            intermediate_wav.unlink()
+        raise
 
 
-def extract_audio_from_videos_in_folder(folder_path: Path) -> None:
+def extract_audio_from_videos_in_folder(videos_input_dir: Path,
+                                        output_dir: Path):
     """
     Extracts audio from all video files in the specified folder, if not already done.
     """
-    for video_file in folder_path.iterdir():
+    for video_file in videos_input_dir.iterdir():
         if video_file.suffix.lower() not in ['.mp4', '.MP4']:
             continue  # Skip non-video files
         
-        audio_path = VTCPaths.output_dir / f"{video_file.stem}{VTCConfig.audio_file_suffix}"
+        audio_output_path = output_dir / f"{video_file.stem}{VTCConfig.audio_file_suffix}"
         
         # Check if the audio file already exists
-        if not audio_path.exists():
+        if not audio_output_path.exists():
             # Create a VideoFileClip object
             video_clip = VideoFileClip(str(video_file))  
             # Extract audio from the video
-            extract_audio_from_video(video_clip, video_file.stem)  
-            print(f"Extracted audio from {video_file.name}")
+            extract_audio_from_video(video_clip, audio_output_path)  
+            logging.info(f"Extracted audio from {video_file.name}")
         else:
-            print(f"Audio already exists for {video_file.name}")
+            logging.info(f"Audio already exists for {video_file.name}")
