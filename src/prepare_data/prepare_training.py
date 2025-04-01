@@ -9,6 +9,9 @@ from sklearn.model_selection import train_test_split
 from constants import DetectionPaths, YoloPaths, ResNetPaths, BasePaths
 from config import TrainingConfig
 from iterstrat.ml_stratifiers import MultilabelStratifiedShuffleSplit
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from tqdm import tqdm
+from typing import List, Optional, Tuple
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -317,78 +320,62 @@ def verify_split_distributions(train_df: pd.DataFrame,
     logging.info(f"Test: {len(test_df)} ({len(test_df)/total:.2%})")
      
 def multilabel_stratified_split(df: pd.DataFrame,
-                                train_ratio: float = TrainingConfig.train_test_split_ratio,
-                                random_seed: int = TrainingConfig.random_seed,
-                                yolo_target: str = None):
+                              train_ratio: float = 0.8,
+                              random_seed: int = TrainingConfig.random_seed,
+                              yolo_target: str = None):
     """
-    Performs stratified split for multi-label classification.
+    Performs stratified split maintaining 80/10/10 ratio.
     Only balances training set to preserve real-world distribution in val/test.
-    Maintains 80/10/10 split ratio after balancing.
     """
     if df.empty:
         raise ValueError("Empty DataFrame provided")
 
-    # Verify columns exist
     if 'filename' not in df.columns:
         raise ValueError("DataFrame must contain 'filename' column")
         
-    # Extract features and labels
     X = df['filename'].values
     y = df.iloc[:, 1:].values
-
-    val_test_size = 1- train_ratio
-    val_size = val_test_size / 2
-    test_size = val_size
-
-    # First split: train vs rest (80/20)
-    msss = MultilabelStratifiedShuffleSplit(
+    
+    test_size = (1-train_ratio)/2
+    val_size = test_size
+    
+    # First split off test set (10%)
+    msss_first = MultilabelStratifiedShuffleSplit(
         n_splits=1,
-        test_size=val_test_size,
+        test_size=test_size,  # 10% for test
         random_state=random_seed
     )
+    temp_idx, test_idx = next(msss_first.split(X, y))
     
-    try:
-        train_idx, temp_idx = next(msss.split(X, y))
-    except ValueError as e:
-        logging.error(f"Stratification failed: {e}")
-        raise
-
-    # Get initial splits
-    train_df = df.iloc[train_idx].copy()
+    # Create temporary and test dataframes
     temp_df = df.iloc[temp_idx].copy()
-
-    # Balance only training set
-    train_df = balance_training_set(train_df, yolo_target)
-
-    # Second split: val vs test (50/50 of remaining 20%)
+    test_df = df.iloc[test_idx].copy()
+    
+    # Split remaining 90% into train (8/9) and val (1/9)
     msss_second = MultilabelStratifiedShuffleSplit(
         n_splits=1,
-        test_size=0.5,  # Split remaining data equally
+        test_size=1/9,  # This gives us 80/10 split of remaining data
         random_state=random_seed
     )
     
-    val_idx, test_idx = next(msss_second.split(
+    train_idx, val_idx = next(msss_second.split(
         temp_df['filename'].values,
         temp_df.iloc[:, 1:].values
     ))
-
-    val_df = temp_df.iloc[val_idx]
-    test_df = temp_df.iloc[test_idx]
-
-    # Verify final split sizes match desired ratios
+    
+    # Create final dataframes
+    train_df = temp_df.iloc[train_idx].copy()
+    val_df = temp_df.iloc[val_idx].copy()
+    
+    # Balance only training set
+    train_df = balance_training_set(train_df, yolo_target)
+    
+    # Verify final split sizes
     total = len(train_df) + len(val_df) + len(test_df)
-    train_ratio = len(train_df) / total
-    val_ratio = len(val_df) / total
-    test_ratio = len(test_df) / total
-
-    if not (0.75 <= train_ratio <= 0.85 and 
-            0.05 <= val_ratio <= 0.15 and 
-            0.05 <= test_ratio <= 0.15):
-        logging.warning(f"Split ratios deviate from 80/10/10: "
-                      f"Train: {train_ratio:.2%}, Val: {val_ratio:.2%}, Test: {test_ratio:.2%}")
-
-    # Log final distributions
-    verify_split_distributions(train_df, val_df, test_df)
+    logging.info("\nFinal split ratios:")
+    logging.info(f"Train: {len(train_df)/total:.2%}")
+    logging.info(f"Val: {len(val_df)/total:.2%}")
+    logging.info(f"Test: {len(test_df)/total:.2%}")
 
     return (train_df['filename'].tolist(),
             val_df['filename'].tolist(),
@@ -483,21 +470,33 @@ def get_target_columns(yolo_target: str) -> list:
         
     return target_columns_map[yolo_target]
          
-def move_images(yolo_target: str, image_names: list, split_type: str, label_path: Path):
+def move_images(yolo_target: str, 
+                image_names: list, 
+                split_type: str, 
+                label_path: Path,
+                n_workers: int = 4) -> Tuple[int, int]:
     """
-    This function moves the images to the specified split directory.
+    Move images and their corresponding labels to the specified split directory.
+    Uses multithreading for faster processing.
     
-    Parameters:
+    Parameters
     ----------
     yolo_target: str
-        The target type for YOLO (e.g., "person_face","person_face_object", "gaze" or "no_gaze").
+        Target type for YOLO (e.g., "person_face", "person_face_object", "gaze")
     image_names: list
-        List of image names to be moved.
+        List of image names to process
     split_type: str
-        The split type (train, val, or test).
+        Split type (train, val, or test)
     label_path: Path
-        Path to the directory containing
+        Path to label directory
+    n_workers: int
+        Number of worker threads for parallel processing
         
+    Returns
+    -------
+    Tuple[int, int]
+        Number of successful and failed moves
+    
     Raises
     ------
     ValueError
@@ -505,67 +504,95 @@ def move_images(yolo_target: str, image_names: list, split_type: str, label_path
     """
     if not image_names:
         logging.info(f"No images to move for {yolo_target} {split_type}")
-        return
+        return (0, 0)
+
+    # Get destination paths
+    paths = (ResNetPaths.get_target_paths(yolo_target, split_type) 
+            if yolo_target in ["child_face", "adult_face", "adult_person", "child_person"]
+            else YoloPaths.get_target_paths(yolo_target, split_type))
     
-    # Get destination paths from configuration
-    if yolo_target in ["child_face", "adult_face", "adult_person", "child_person"]:
-        paths = ResNetPaths.get_target_paths(yolo_target, split_type)
-    else:
-        paths = YoloPaths.get_target_paths(yolo_target, split_type)
     if not paths:
         raise ValueError(f"Invalid yolo_target: {yolo_target}")
     
     image_dst_dir, label_dst_dir = paths
-
-    # Create directories if they don't exist
     image_dst_dir.mkdir(parents=True, exist_ok=True)
     label_dst_dir.mkdir(parents=True, exist_ok=True)
-    
-    logging.info(f"Moving {len(image_names)} images to {split_type} split...")
-    
-    for image_name in image_names:
+
+    # Define source directory mapping
+    input_dir_mapping = {
+        "gaze": DetectionPaths.gaze_images_input_dir,
+        "no_gaze": DetectionPaths.gaze_images_input_dir,
+        "child_face": DetectionPaths.face_images_input_dir,
+        "adult_face": DetectionPaths.face_images_input_dir,
+        "adult_person": DetectionPaths.person_images_input_dir,
+        "child_person": DetectionPaths.person_images_input_dir
+    }
+
+    def process_single_image(image_name: str) -> bool:
+        """Process a single image and its label."""
         try:
-            if yolo_target in ["all", "child_person_face", "adult_person_face", "object"]:
-                # construct full image path
+            if yolo_target in ["all", "child_person_face", "adult_person_face", 
+                             "object", "person_face", "person_face_object"]:
+                # Handle detection cases
                 image_parts = image_name.split("_")[:8]
                 image_folder = "_".join(image_parts)
                 image_src = DetectionPaths.images_input_dir / image_folder / f"{image_name}.jpg"
                 label_src = label_path / f"{image_name}.txt"
                 image_dst = image_dst_dir / f"{image_name}.jpg"
                 label_dst = label_dst_dir / f"{image_name}.txt"
-                # check if label file exists and create it if not
+
+                # Handle label file
                 if not label_src.exists():
-                    label_dst.touch()  # Create an empty destination label file if the source does not exist
+                    label_dst.touch()
                 else:
                     shutil.copy2(label_src, label_dst)
-                    # Copy image if it exists
-                if image_src.exists():
-                    shutil.copy2(image_src, image_dst)
-                else:
-                    logging.warning(f"Image {image_src} does not exist. Skipping...")
-                    continue    
-                    
-            elif yolo_target in ["gaze", "no_gaze", "child_face", "adult_face", "adult_person", "child_person"]:
-                # Get correct input directory based on target
-                if yolo_target in ["gaze", "no_gaze"]:
-                    input_dir = DetectionPaths.gaze_images_input_dir
-                elif yolo_target in ["child_face", "adult_face"]:
-                    input_dir = DetectionPaths.face_images_input_dir
-                elif yolo_target in ["adult_person", "child_person"]:
-                    input_dir = DetectionPaths.person_images_input_dir
-                    
+
+                # Handle image file
+                if not image_src.exists():
+                    logging.debug(f"Image not found: {image_src}")
+                    return False
+                shutil.copy2(image_src, image_dst)
+
+            else:
+                # Handle classification cases
+                input_dir = input_dir_mapping.get(yolo_target)
+                if not input_dir:
+                    logging.error(f"No input directory for target: {yolo_target}")
+                    return False
+
                 image_src = input_dir / image_name
                 image_dst = image_dst_dir / image_name
 
                 if not image_src.exists():
-                    logging.warning(f"Image {image_src} does not exist. Skipping...")
-                    continue
-                
+                    logging.debug(f"Image not found: {image_src}")
+                    return False
                 shutil.copy2(image_src, image_dst)
-                
+
+            return True
+
         except Exception as e:
             logging.error(f"Error processing {image_name}: {str(e)}")
-            continue
+            return False
+
+    # Process images in parallel with progress bar
+    successful = failed = 0
+    with ThreadPoolExecutor(max_workers=n_workers) as executor:
+        futures = [executor.submit(process_single_image, img) for img in image_names]
+        
+        with tqdm(total=len(image_names), desc=f"Moving {split_type} images") as pbar:
+            for future in as_completed(futures):
+                if future.result():
+                    successful += 1
+                else:
+                    failed += 1
+                pbar.update(1)
+
+    # Log results
+    logging.info(f"\nCompleted moving {split_type} images:")
+    logging.info(f"Successful: {successful}")
+    logging.info(f"Failed: {failed}")
+    
+    return successful, failed
         
 def split_yolo_data(label_path: Path, yolo_target: str):
     """
@@ -578,6 +605,7 @@ def split_yolo_data(label_path: Path, yolo_target: str):
     yolo_target: str
         The target object for YOLO detection.
     """
+    logging.info(f"Starting dataset preparation for {yolo_target}")
     total_images = get_total_number_of_annotated_frames(label_path)
 
     try:
@@ -591,26 +619,67 @@ def split_yolo_data(label_path: Path, yolo_target: str):
             images_class_0, images_class_1 = get_binary_class_distribution(
                 total_images, label_path, yolo_target
             )
+            
             splits_dict = binary_stratified_split(
                 (images_class_0, images_class_1), yolo_target
             )
+            
+            # Process each binary class
             for binary_class in class_mapping[yolo_target]:
                 train, val, test = splits_dict[binary_class]
-                for split_name, split_set in (("train", train), ("val", val), ("test", test)):
-                    move_images(binary_class, split_set, split_name, label_path)
+                logging.info(f"\nProcessing {binary_class}:")
+                
+                # Move images for each split using parallel processing
+                for split_name, split_set in [("train", train), ("val", val), ("test", test)]:
+                    if split_set:  # Only process if we have images
+                        successful, failed = move_images(
+                            yolo_target=binary_class,
+                            image_names=split_set,
+                            split_type=split_name,
+                            label_path=label_path,
+                            n_workers=4  # Adjust based on your system
+                        )
+                        logging.info(f"{split_name}: Moved {successful} images, Failed {failed}")
+                    else:
+                        logging.warning(f"No images for {binary_class} {split_name} split")
+                        
         else:
             # Handle multi-class cases
             df = get_class_distribution(total_images, label_path, yolo_target)
+            
             train, val, test, train_df, val_df, test_df = multilabel_stratified_split(
                 df, yolo_target=yolo_target
             )
+            
+            # Log distributions before moving
             log_all_split_distributions(train_df, val_df, test_df, yolo_target)
-            for split_name, split_set in (("train", train), ("val", val), ("test", test)):
-                move_images(yolo_target, split_set, split_name, label_path)
+            
+            # Move images for each split
+            total_successful = total_failed = 0
+            for split_name, split_set in [("train", train), ("val", val), ("test", test)]:
+                if split_set:  # Only process if we have images
+                    successful, failed = move_images(
+                        yolo_target=yolo_target,
+                        image_names=split_set,
+                        split_type=split_name,
+                        label_path=label_path,
+                        n_workers=4  # Adjust based on your system
+                    )
+                    total_successful += successful
+                    total_failed += failed
+                    logging.info(f"{split_name}: Moved {successful} images, Failed {failed}")
+                else:
+                    logging.warning(f"No images for {split_name} split")
+            
+            logging.info(f"\nTotal images processed: {total_successful + total_failed}")
+            logging.info(f"Successfully moved: {total_successful}")
+            logging.info(f"Failed to move: {total_failed}")
     except Exception as e:
         logging.error(f"Error processing target {yolo_target}: {str(e)}")
         raise
-            
+    
+    logging.info(f"\nCompleted dataset preparation for {yolo_target}")
+    
 def main(model_target: str, yolo_target: str):
     """
     Main function to prepare the dataset for model training.
