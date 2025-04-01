@@ -9,7 +9,7 @@ from typing import Tuple, List, Dict, Optional
 from pathlib import Path
 from ultralytics import YOLO
 from constants import YoloPaths, DetectionPaths, VTCPaths
-from config import YoloConfig, DetectionPipelineConfig
+from config import YoloConfig, DetectionPipelineConfig, VideoConfig
 from estimate_proximity import get_proximity
 from detection_pipeline.inference import is_face_inside_person
 
@@ -494,88 +494,104 @@ def process_video(video_folder: Path,
     conn.commit()
     
     logging.info(f"Processed {processed_frames} frames out of {len(frame_files)} total frames")
-    
-def store_voice_detections(video_file_name: str, results_file: Path, fps: int = 30):
+
+def load_rttm_results(rttm_file: Path) -> pd.DataFrame:
     """
-    Reads the voice type classifier RTTM output and stores detections per video frame.
-    For each detection, infers the corresponding frames (using fps) and inserts a row for each.
+    Loads and parses RTTM file into a DataFrame.
+    
+    Parameters:
+    ----------
+    rttm_file : Path
+        Path to the RTTM file containing all voice detection results
+        
+    Returns:
+    -------
+    pd.DataFrame
+        DataFrame with columns [audio_id, start_time, duration, label]
+    """
+    columns = ['type', 'audio_id', 'channel', 'start_time', 
+               'duration', 'na1', 'na2', 'label', 'na3', 'na4']
+    
+    rttm_data = []
+    with open(rttm_file, 'r') as f:
+        for line in f:
+            parts = line.strip().split()
+            if len(parts) >= 8:
+                rttm_data.append(parts)
+                
+    df = pd.DataFrame(rttm_data, columns=columns)
+    df['start_time'] = df['start_time'].astype(float)
+    df['duration'] = df['duration'].astype(float)
+    
+    return df[['audio_id', 'start_time', 'duration', 'label']]
+ 
+def store_voice_detections(video_file_name: str, 
+                           rttm_df: pd.DataFrame, 
+                           fps: int = VideoConfig.fps):
+    """
+    Stores voice detections for a specific video from pre-loaded RTTM results.
     
     Parameters:
     ----------
     video_file_name : str
         The video file name used as the video_path in the Videos table.
-    results_file : Path
-        Path to the RTTM results file.
+    rttm_df : pd.DataFrame
+        DataFrame containing all RTTM results with columns:
+        [audio_id, start_time, duration, label]
     fps : int
-        Frames per second of the video (default: 30).
+        Frames per second of the video (default: 30)
     """
-    with sqlite3.connect(DetectionPaths.detection_db_path) as conn:
-        cursor = conn.cursor()
+    # Get or create voice type classifier model ID
+    vtc_model_id = register_model(cursor, "voice_type_classifier")
     
-        # Insert video record if it does not exist
-        child_id, recording_date = extract_video_info(video_file_name)
-        cursor.execute('''
-            INSERT OR IGNORE INTO Videos (video_path, child_id, recording_date) 
-            VALUES (?, ?, ?)
-        ''', (video_file_name, child_id, recording_date))
-        cursor.execute("SELECT video_id FROM Videos WHERE video_path = ?", (video_file_name,))
-        video_id = cursor.fetchone()[0]
-        
-        with open(results_file, 'r') as f:
-            for line in f:
-                parts = line.strip().split()
-                if len(parts) < 8:
-                    continue
-                # RTTM format:
-                # SPEAKER <audio_id> <channel> <start_time> <duration> <NA> <NA> <label> <NA> <NA>
-                try:
-                    start_time = float(parts[3])
-                    duration = float(parts[4])
-                except ValueError:
-                    continue
-                end_time = start_time + duration
-                object_class_str = parts[7]  # e.g., "KCHI", "FEM", etc.
-                
-                # Map object class to integer and store into classes if not already present.
-                cursor.execute("SELECT class_id FROM Classes WHERE class_name = ?", (object_class_str,))
-                result_class = cursor.fetchone()
-                if result_class is None:
-                    cursor.execute("INSERT INTO Classes (class_name) VALUES (?)", (object_class_str,))
-                    class_id = cursor.lastrowid
-                else:
-                    class_id = result_class[0]            
-                
-                # For example, if detection starts at frame 8:
-                start_frame = int(start_time * fps)
-                # And number of affected frames based on duration:
-                num_frames = int(duration * fps)
-                
-                for frame_offset in range(num_frames):
-                    actual_frame = start_frame + frame_offset
-                    # Insert frame record if it doesn't exist
-                    cursor.execute('INSERT OR IGNORE INTO Frames (video_id, frame_number) VALUES (?, ?)', 
-                                (video_id, actual_frame))
-                                        
-                    result = cursor.fetchone()
-                    if result is None:
-                        cursor.execute("INSERT INTO Frames (video_id, frame_number) VALUES (?, ?)", (video_id, actual_frame))
-                        frame_number = cursor.lastrowid
-                    else:
-                        frame_number = result[0]
-                    
-                    # Insert a detection for this specific frame.
-                    # For audio there are no spatial coordinates, so we set them to 0.
-                    # Insert detection record
-                    cursor.execute('''
-                        INSERT INTO Detections 
-                        (video_id, frame_number, object_class, confidence_score, x_min, y_min, x_max, y_max, gaze_direction, gaze_confidence)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    ''', (video_id, actual_frame, object_class_str, None, None, None, None, None, None, None))
-        
-        conn.commit()
-        conn.close()
-        logging.info("Voice detections stored in the database.")
+    # Insert video record if it does not exist
+    cursor.execute("SELECT video_id FROM Videos WHERE video_path = ?", (video_file_name,))
+    result = cursor.fetchone()
+    if result:
+        video_id = result[0]
+    else:
+        logging.error(f"Video {video_file_name} not found in Videos table")
+        return
     
+    # Filter RTTM results for this video
+    video_rttm = rttm_df[rttm_df['audio_id'] == video_file_name]
+    
+    for _, row in video_rttm.iterrows():
+        start_time = float(row['start_time'])
+        duration = float(row['duration'])
+        class_name = row['label']
+        
+        # Register voice class if not already present
+        cursor.execute("""
+            INSERT OR IGNORE INTO Classes (model_id, class_name) 
+            VALUES (?, ?)
+        """, (vtc_model_id, class_name))
+        
+        # Get class_id
+        cursor.execute("SELECT class_id FROM Classes WHERE model_id = ? AND class_name = ?", 
+                      (vtc_model_id, class_name))
+        class_id = cursor.fetchone()[0]
+        
+        # Calculate frame range
+        start_frame = int(start_time * fps)
+        num_frames = int(duration * fps)
+        
+        for frame_offset in range(num_frames):
+            actual_frame = start_frame + frame_offset
+            # Insert frame record if it doesn't exist
+            cursor.execute('INSERT OR IGNORE INTO Frames (video_id, frame_number) VALUES (?, ?)', 
+                         (video_id, actual_frame))
+            
+            # Insert detection record
+            cursor.execute('''
+                INSERT INTO Detections 
+                (video_id, frame_number, object_class, confidence_score, 
+                 x_min, y_min, x_max, y_max)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (video_id, actual_frame, class_id, None, 
+                  None, None, None, None))
+    
+    logging.info(f"Stored voice detections for video {video_file_name}")
     
 def run_voice_type_classifier(video_file_name):
     """
@@ -607,9 +623,9 @@ def run_voice_type_classifier(video_file_name):
     else:
         logging.error(f"RTTM results file not found: {rttm_file}")
  
-def register_model(cursor: sqlite3.Cursor, model_name: str, model: YOLO) -> int:
+def register_model(cursor: sqlite3.Cursor, model_name: str, model: Optional[YOLO] = None) -> int:
     """
-    Registers a YOLO model and its classes in the database.
+    Registers a model and its classes in the database.
     
     Parameters:
     ----------
@@ -617,30 +633,32 @@ def register_model(cursor: sqlite3.Cursor, model_name: str, model: YOLO) -> int:
         The SQLite database cursor.
     model_name : str
         The name of the model.
-    model : YOLO
+    model : Optional[YOLO]
         The YOLO model instance which contains a `model.names` mapping.
+        If None, just registers the model without classes.
         
     Returns:
     -------
     model_id : int
         The model_id assigned in the database.
     """
-    # Insert model into Models table if not exists and retrieve its model_id
+    # Insert model into Models table if not exists
     cursor.execute("INSERT OR IGNORE INTO Models (model_name) VALUES (?)", (model_name,))
     cursor.execute("SELECT model_id FROM Models WHERE model_name = ?", (model_name,))
     model_id = cursor.fetchone()[0]
     
-    # Insert associated classes into the Classes table
-    for class_id, class_name in model.model.names.items():
-        cursor.execute('''
-            INSERT OR IGNORE INTO Classes (class_id, model_id, class_name)
-            VALUES (?, ?, ?)
-        ''', (class_id, model_id, class_name))
-        
+    # If model object provided, register its classes
+    if model is not None:
+        for class_id, class_name in model.model.names.items():
+            cursor.execute('''
+                INSERT OR IGNORE INTO Classes (class_id, model_id, class_name)
+                VALUES (?, ?, ?)
+            ''', (class_id, model_id, class_name))
+    
     return model_id
           
 def main(num_videos_to_process: int = None,
-        frame_skip: int = 10):
+         frame_skip: int = 10):
     """
     This function processes videos using YOLO models for person and face detection and gaze classification.
     It loads the age group data and processes either all videos or a balanced subset from each age group.
@@ -655,8 +673,15 @@ def main(num_videos_to_process: int = None,
     logging.basicConfig(level=logging.INFO,
                        format='%(asctime)s - %(levelname)s - %(message)s')
     
-    # Load the age group data
+    # Load the age group data and rttm file once
     age_df = pd.read_csv('/home/nele_pauline_suffo/ProcessedData/age_group.csv')
+    rttm_file = VTCPaths.vtc_results_dir / "quantex_audio/all.rttm"
+    if rttm_file.exists():
+        rttm_df = load_rttm_results(rttm_file)
+        logging.info(f"Loaded voice detection results for {rttm_df['audio_id'].nunique()} videos")
+    else:
+        rttm_df = None
+        logging.warning("No voice detection results found")
     
     videos_input_dir = DetectionPaths.images_input_dir
     conn = sqlite3.connect(DetectionPaths.detection_db_path)
@@ -707,7 +732,8 @@ def main(num_videos_to_process: int = None,
                       cursor, 
                       conn, 
                       frame_skip)
-        #run_voice_type_classifier(video_path.name)
+        if rttm_df is not None:
+            store_voice_detections(video.name, rttm_df, cursor)
     
     conn.close()
 
