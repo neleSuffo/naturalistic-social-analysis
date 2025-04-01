@@ -73,29 +73,33 @@ def map_category_id(target: str, category_id: int, person_age: str = None, gaze_
     int
         Mapped category ID
     """
+    # Get the mapping based on target
+    
+    # mapping for classification models
     if target == "gaze":
         return CategoryMappings.gaze.get(gaze_directed_at_child, 99)
-    if target == "object":
-        return CategoryMappings.object.get(object_interaction, 99)
-    if target in ["person", "face"]:
-        return CategoryMappings.person_face.get(person_age, 99)
+    elif target in ["person", "face"]:
+        mapping = CategoryMappings.person_face_cls
     
-    # Get the appropriate mapping based on target
-    if target == "adult_person_face":
+    # mapping for detection models
+    elif target == "person_face":
+        mapping = CategoryMappings.person_face_det
+    elif target == "person_face_object":
+        mapping = CategoryMappings.person_face_object
+    elif target == "object":
+        return CategoryMappings.objects.get((category_id, object_interaction), 99)
+    elif target == "all":
+        mapping = CategoryMappings.all_instances
+    elif target == "adult_person_face":
         mapping = CategoryMappings.adult_person_face
     elif target == "child_person_face":
         mapping = CategoryMappings.child_person_face
-    elif target == "object":
-        mapping = CategoryMappings.object
-        return mapping.get((category_id, object_interaction), 99)
-    elif target == "all":
-        mapping = CategoryMappings.all
     else:
         logging.error(f"Invalid target: {target}")
         return 99
     
     # For person categories in adult/child detection, consider age
-    if target in ["adult_person_face", "child_person_face", "all"] and person_age and category_id in [1, 2, 10]:
+    if target in ["adult_person_face", "child_person_face", "all", "person", "face"] and person_age and category_id in [1, 2, 10]:
         return mapping.get((category_id, person_age.lower()), 99)
     
     # For all other cases, use direct mapping
@@ -119,7 +123,7 @@ def save_annotations(
     output_dirs = {
         "all": YoloPaths.all_labels_input_dir,
         "person_face": YoloPaths.person_face_labels_input_dir,
-        "person_face_object": YoloPaths.person_face_object_labels_input_dir
+        "person_face_object": YoloPaths.person_face_object_labels_input_dir,
         "adult_person_face": YoloPaths.adult_person_face_labels_input_dir,
         "child_person_face": YoloPaths.child_person_face_labels_input_dir,
         "object": YoloPaths.object_labels_input_dir,
