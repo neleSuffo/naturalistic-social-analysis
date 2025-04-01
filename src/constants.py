@@ -92,10 +92,8 @@ class YoloPaths:
 
     
     gaze_classes = ['no_gaze', 'gaze']
-    person_face_classes = ['child_person_face', 'adult_person_face']
-    object_classes = ['object']
-    all_classes = ['all']
-    
+    person_face_cls_classes = ['child_person_face', 'adult_person_face']
+
     @classmethod
     def get_target_paths(cls, yolo_target: str, split_type: str) -> Optional[Tuple[Path, Path]]:
         """
@@ -107,47 +105,54 @@ class YoloPaths:
             The specific class to get paths for (e.g., 'gaze', 'child_person_face', 'object')
         split_type : str
             The dataset split ('train', 'val', or 'test')
-            
+                
         Returns
         -------
         Optional[Tuple[Path, Path]]
-            Tuple of (input_path, output_path) for the requested target class
+            Tuple of (images_path, labels_path) for the requested target class
+        
+        Raises
+        ------
+        ValueError
+            If split_type is not one of 'train', 'val', 'test'
         """
-        # Handle gaze classes
-        if yolo_target in cls.gaze_classes:
-            return (
-                cls.gaze_data_input_dir / split_type / yolo_target,
-                cls.gaze_data_input_dir / split_type / yolo_target
-            )
-        
-        # Handle person-face classes
-        if yolo_target in cls.person_face_classes:
-            if yolo_target == 'child_person_face':
-                return (
-                    cls.child_person_face_data_input_dir / "images" / split_type,
-                    cls.child_person_face_data_input_dir / "labels" / split_type
-                )
-            else:  # adult_person_face
-                return (
-                    cls.adult_person_face_data_input_dir / "images" / split_type,
-                    cls.adult_person_face_data_input_dir / "labels" / split_type
-                )
-        
-        # Handle object detection
-        if yolo_target in cls.object_classes:
-            return (
-                cls.object_data_input_dir / "images" / split_type,
-                cls.object_data_input_dir / "labels" / split_type
-            )
+        # Validate split type
+        valid_splits = {'train', 'val', 'test'}
+        if split_type not in valid_splits:
+            raise ValueError(f"Invalid split_type: {split_type}. Must be one of {valid_splits}")
+
+        # Define path mappings for different targets
+        path_mappings = {
+            # Gaze classification paths
+            'gaze': (cls.gaze_data_input_dir / split_type / 'gaze', 
+                    cls.gaze_data_input_dir / split_type / 'gaze'),
+            'no_gaze': (cls.gaze_data_input_dir / split_type / 'no_gaze',
+                    cls.gaze_data_input_dir / split_type / 'no_gaze'),
             
-        # Handle all classes detection
-        if yolo_target in cls.all_classes:
-            return (
-                cls.all_data_input_dir / "images" / split_type,
-                cls.all_data_input_dir / "labels" / split_type
-            )
+            # Person-face detection paths
+            'child_person_face': (cls.child_person_face_data_input_dir / "images" / split_type,
+                                cls.child_person_face_data_input_dir / "labels" / split_type),
+            'adult_person_face': (cls.adult_person_face_data_input_dir / "images" / split_type,
+                                cls.adult_person_face_data_input_dir / "labels" / split_type),
             
-        return None  # Return None if target is not found
+            # Object detection paths
+            'object': (cls.object_data_input_dir / "images" / split_type,
+                    cls.object_data_input_dir / "labels" / split_type),
+            
+            # Combined detection paths
+            'all': (cls.all_data_input_dir / "images" / split_type,
+                    cls.all_data_input_dir / "labels" / split_type),
+            'person_face_object': (cls.person_face_object_data_input_dir / "images" / split_type,
+                                cls.person_face_object_data_input_dir / "labels" / split_type),
+            'person_face': (cls.person_face_data_input_dir / "images" / split_type,
+                        cls.person_face_data_input_dir / "labels" / split_type)
+        }
+
+        # Return paths if target exists
+        if yolo_target in path_mappings:
+            return path_mappings[yolo_target]
+
+        return None
 
 class ResNetPaths:
     person_extracted_faces_dir = Path(BasePaths.data_dir/"resnet_person_input")
