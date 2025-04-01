@@ -230,6 +230,7 @@ class VTCPaths:
     childlens_df_file_path_20 = Path(output_dir/"childlens_df_duration_off_20.pkl")
     childlens_gt_df_file_path = Path(DetectionPaths.childlens_annotations_dir/"childlens_annotations.pkl")
 
+    quantex_audio_dir = Path(BasePaths.data_dir/"quantex_audio")
     quantex_output_folder = Path(output_dir/"quantex_audio")
     quantex_df_file_path = Path(output_dir/"quantex_df.pkl")
 
