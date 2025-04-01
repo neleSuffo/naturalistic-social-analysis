@@ -118,6 +118,8 @@ def save_annotations(
     logging.info("Saving annotations in YOLO format.")
     output_dirs = {
         "all": YoloPaths.all_labels_input_dir,
+        "person_face": YoloPaths.person_face_labels_input_dir,
+        "person_face_object": YoloPaths.person_face_object_labels_input_dir
         "adult_person_face": YoloPaths.adult_person_face_labels_input_dir,
         "child_person_face": YoloPaths.child_person_face_labels_input_dir,
         "object": YoloPaths.object_labels_input_dir,
@@ -135,7 +137,7 @@ def save_annotations(
     file_contents = {}
     skipped_count = 0
     processed_count = 0
-    #(category_id, bbox, image_file_name, gaze_directed_at_child, person_age)
+    #(category_id, bbox, object_interaction, image_file_name, gaze_directed_at_child, person_age)
 
     for annotation in annotations:    
         category_id, bbox, object_interaction, image_file_name, gaze_directed_at_child, person_age = annotation
@@ -183,6 +185,7 @@ def main(target: str) -> None:
         category_ids = {
             "all": YoloConfig.all_target_class_ids,
             "person_face": YoloConfig.child_target_class_ids,
+            "person_face_object": YoloConfig.all_target_class_ids,
             "adult_person_face": YoloConfig.adult_target_class_ids,
             "child_person_face": YoloConfig.child_target_class_ids,
             "object": YoloConfig.object_target_class_ids,
@@ -195,9 +198,9 @@ def main(target: str) -> None:
             logging.error(f"Invalid target: {target}. Expected 'all', 'adult_person_face', 'child_person_face', 'object', 'person', 'face', 'gaze'.")
             return
 
-        if target == "all":
+        if target in ["all", "person_face_object"]:
             annotations = fetch_all_annotations(category_ids=category_ids, persons = True, objects=True)
-        elif target in ["adult_person_face", "child_person_face", "gaze", "person", "face"]:
+        elif target in ["adult_person_face", "child_person_face", "gaze", "person", "face", "person_face"]:
             annotations = fetch_all_annotations(category_ids=category_ids, persons = True, objects=False, yolo_target=target)
         elif target == "object":
             annotations = fetch_all_annotations(category_ids=category_ids, persons = False, objects=True, yolo_target=target)
