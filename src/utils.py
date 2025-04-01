@@ -100,7 +100,7 @@ def fetch_all_annotations(
         """
         
     # Add object interaction filter if objects is True
-    #if objects:
+    # if objects:
     #    query += """
     #    AND a.object_interaction = 'Yes'
     #    """
