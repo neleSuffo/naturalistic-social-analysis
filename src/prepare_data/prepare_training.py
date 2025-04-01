@@ -69,9 +69,9 @@ def get_total_number_of_annotated_frames(label_path: Path, image_folder: Path = 
             total_images.extend([str(p.resolve()) for p in video_path.iterdir() if p.is_file()])
     return total_images   
 
-def get_pf_class_distribution(total_images: list, annotation_folder: Path, target_type: str) -> pd.DataFrame:
+def get_class_distribution(total_images: list, annotation_folder: Path, target_type: str = "all") -> pd.DataFrame:
     """
-    Reads label files and groups images based on their person/face class distribution.
+    Reads label files and groups images based on their class distribution.
 
     Parameters:
     ----------
@@ -80,182 +80,68 @@ def get_pf_class_distribution(total_images: list, annotation_folder: Path, targe
     annotation_folder: Path
         Path to the directory containing label files.
     target_type: str
-        The target type for YOLO (e.g., "person_face" or "adult_person_face").
-        
+        The target type for classification (e.g., "all", "person_face", "object", etc.)
+
     Returns:
     -------
-    df: pd.DataFrame
+    pd.DataFrame
         DataFrame containing image filenames and their corresponding one-hot encoded class labels.
     """
-    # Define the classes based on target type
-    if target_type == "adult_person_face":
-        class_mapping = {
-            0: "adult_person",
-            1: "adult_face",
+    # Define class mappings based on target type
+    class_mappings = {
+        "all": {
+            0: "adult_person", 1: "child_person", 2: "adult_face", 3: "child_face",
+            5: "book", 6: "toy", 7: "kitchenware", 8: "screen", 
+            9: "food", 10: "other_object"
+        },
+        "person_face": {
+            0: "person", 1: "face", 2: "child_body_parts"
+        },
+        "adult_person_face": {
+            0: "adult_person", 1: "adult_face"
+        },
+        "child_person_face": {
+            0: "child_person", 1: "child_face", 2: "child_body_parts"
+        },
+        "object": {
+            0: "interacted_book", 1: "interacted_toy", 2: "interacted_kitchenware",
+            3: "interacted_screen", 4: "interacted_other_object", 5: "book",
+            6: "toy", 7: "kitchenware", 8: "screen", 9: "other_object",
+            10: "interacted_animal", 11: "interacted_food", 12: "animal", 13: "food"
+        },
+        "person_face_object": {
+            0: "person", 1: "face", 2: "child_body_parts", 3: "book",
+            4: "toy", 5: "kitchenware", 6: "screen", 7: "other_object",
+            8: "food", 9: "animal"
         }
-    elif target_type == "child_person_face":
-        class_mapping = {
-            0: "child_person",
-            1: "child_face",
-            2: "child_body_parts"
-        }
-    elif target_type == "person_face":
-        class_mapping = {
-            0: "person",
-            1: "face",
-            2: "child_body_parts"
-        }
-    else:
-        class_mapping = {
-            0: "person",
-            1: "face",
-        }
+    }
 
+    # Get the appropriate class mapping
+    if target_type not in class_mappings:
+        raise ValueError(f"Invalid target_type: {target_type}")
+    
+    id_to_name = class_mappings[target_type]
     image_class_mapping = []
 
     for image_file in total_images:
         image_file = Path(image_file)
         annotation_file = annotation_folder / image_file.with_suffix('.txt').name
 
+        # Get labels from annotation file
+        labels = []
         if annotation_file.exists() and annotation_file.stat().st_size > 0:
             with open(annotation_file, 'r') as f:
                 class_ids = {int(line.split()[0]) for line in f if line.split()}
-
-            # Convert class IDs to names
-            labels = [class_mapping[cid] for cid in class_ids if cid in class_mapping]
-        else:
-            labels = []
+                labels = [id_to_name[cid] for cid in class_ids if cid in id_to_name]
 
         # Create one-hot encoded dictionary
         image_class_mapping.append({
             "filename": image_file.stem,
-            **{class_name: (1 if class_name in labels else 0) for class_name in class_mapping.values()}
+            **{class_name: (1 if class_name in labels else 0) 
+               for class_name in id_to_name.values()}
         })
 
-    # Convert to DataFrame
-    df = pd.DataFrame(image_class_mapping)
-    return df
-
-def get_all_class_distribution(total_images: list, annotation_folder: Path):
-    """
-    Reads label files and groups images based on their refined class distribution.
-
-    Parameters:
-    ----------
-    total_images: list
-        List of image names.
-    annotation_folder: Path
-        Path to the directory containing label files.
-
-    Returns:
-    -------
-    df: pd.DataFrame
-        DataFrame containing image filenames and their corresponding one-hot encoded class labels.
-    """
-    object_mapping = {
-        5: "book",
-        6: "toy", 
-        7: "kitchenware",
-        8: "screen",
-        9: "food",
-        10: "other_object",
-    }
-
-    # Class mapping
-    person_mapping = {
-        0: "adult_person",
-        1: "child_person",
-        2: "adult_face",
-        3: "child_face"
-    }
-
-    # Combine all class mappings
-    id_to_name = {**person_mapping, **object_mapping}
-
-    image_class_mapping = []
-
-    for image_file in total_images:
-        image_file = Path(image_file)
-        annotation_file = annotation_folder / image_file.with_suffix('.txt').name
-
-        if annotation_file.exists() and annotation_file.stat().st_size > 0:
-            with open(annotation_file, 'r') as f:
-                class_ids = {int(line.split()[0]) for line in f if line.split()}
-
-            # Convert class IDs to names
-            labels = [id_to_name[cid] for cid in class_ids if cid in id_to_name]
-        else:
-            labels = []
-
-        image_class_mapping.append({
-            "filename": image_file.stem,
-            **{class_name: (1 if class_name in labels else 0) for class_name in id_to_name.values()}
-        })
-
-    # Convert to DataFrame
-    df = pd.DataFrame(image_class_mapping)
-
-    # save df
-    return df
-
-def get_object_class_distribution(total_images: list, annotation_folder: Path, target_type: bool = None) -> pd.DataFrame:
-    """
-    Reads label files and groups images based on their refined class distribution.
-
-    Parameters:
-    ----------
-    total_images: list
-        List of image names.
-    annotation_folder: Path
-        Path to the directory containing label files.
-
-    Returns:
-    -------
-    df: pd.DataFrame
-        DataFrame containing image filenames and their corresponding one-hot encoded class labels.
-    """
-    object_mapping = {
-        0: "interacted_book",
-        1: "interacted_toy",
-        2: "interacted_kitchenware",
-        3: "interacted_screen",
-        4: "interacted_other_object",
-        5: "book",
-        6: "toy",
-        7: "kitchenware",
-        8: "screen",
-        9: "other_object",
-        10: "interacted_animal",
-        11: "interacted_food",
-        12: "animal",
-        13: "food"
-    }
-
-    image_class_mapping = []
-
-    for image_file in total_images:
-        image_file = Path(image_file)
-        annotation_file = annotation_folder / image_file.with_suffix('.txt').name
-
-        if annotation_file.exists() and annotation_file.stat().st_size > 0:
-            with open(annotation_file, 'r') as f:
-                class_ids = {int(line.split()[0]) for line in f if line.split()}
-
-            # Convert class IDs to names
-            labels = [object_mapping[cid] for cid in class_ids if cid in object_mapping]
-        else:
-            labels = []
-
-        image_class_mapping.append({
-            "filename": image_file.stem,
-            **{class_name: (1 if class_name in labels else 0) for class_name in object_mapping.values()}
-        })
-
-    # Convert to DataFrame
-    df = pd.DataFrame(image_class_mapping)
-
-    # save df
-    return df
+    return pd.DataFrame(image_class_mapping)
 
 def get_binary_class_distribution(total_images: list, annotation_folder: Path, target: str) -> (set, set):
     """
@@ -372,7 +258,7 @@ def binary_stratified_split(image_sets: list, yolo_target: str, train_ratio: flo
         result[label] = (train, val, test)
     return result
     
-def stratified_split_all(df: pd.DataFrame, train_ratio=TrainingConfig.train_test_split_ratio, random_seed=TrainingConfig.random_seed, yolo_target=None):
+def stratified_split(df: pd.DataFrame, train_ratio=TrainingConfig.train_test_split_ratio, random_seed=TrainingConfig.random_seed, yolo_target=None):
     """
     Splits the dataset into training, validation, and testing while preserving class distribution.
 
@@ -643,40 +529,37 @@ def split_yolo_data(label_path: Path, yolo_target: str):
         The target object for YOLO detection.
     """
     total_images = get_total_number_of_annotated_frames(label_path)
-    
-    # Mapping of target type to corresponding distribution function.
-    distribution_funcs = {
-        "all": get_all_class_distribution,
-        "gaze": get_binary_class_distribution,
-        "person": get_binary_class_distribution,
-        "face": get_binary_class_distribution,
-        "person_face": get_pf_class_distribution,
-        "adult_person_face": get_pf_class_distribution,
-        "child_person_face": get_pf_class_distribution,
-        "object": get_object_class_distribution,
-    }
+
     try:
         if yolo_target in ["person", "face", "gaze"]:
+            # Handle binary classification cases
             class_mapping = {
                 "person": ["child_person", "adult_person"],
                 "face": ["child_face", "adult_face"],
                 "gaze": ["no_gaze", "gaze"]
             }
-            images_class_0, images_class_1 = distribution_funcs[yolo_target](total_images, label_path, yolo_target)
-            splits_dict = binary_stratified_split((images_class_0, images_class_1), yolo_target)
+            images_class_0, images_class_1 = get_binary_class_distribution(
+                total_images, label_path, yolo_target
+            )
+            splits_dict = binary_stratified_split(
+                (images_class_0, images_class_1), yolo_target
+            )
             for binary_class in class_mapping[yolo_target]:
                 train, val, test = splits_dict[binary_class]
                 for split_name, split_set in (("train", train), ("val", val), ("test", test)):
                     move_images(binary_class, split_set, split_name, label_path)
-        elif yolo_target in ["all", "adult_person_face", "child_person_face", "object"]:
-            df = distribution_funcs[yolo_target](total_images, label_path, yolo_target)
-            train, val, test, train_df, val_df, test_df = stratified_split_all(df, yolo_target=yolo_target)
+        else:
+            # Handle multi-class cases
+            df = get_class_distribution(total_images, label_path, yolo_target)
+            train, val, test, train_df, val_df, test_df = stratified_split_all(
+                df, yolo_target=yolo_target
+            )
             log_all_split_distributions(train_df, val_df, test_df, yolo_target)
             for split_name, split_set in (("train", train), ("val", val), ("test", test)):
                 move_images(yolo_target, split_set, split_name, label_path)
-    except KeyError:
-        logging.error(f"Distribution function not found for target: {yolo_target}")
-        raise ValueError(f"Invalid yolo_target: {yolo_target}")
+    except Exception as e:
+        logging.error(f"Error processing target {yolo_target}: {str(e)}")
+        raise
             
 def main(model_target: str, yolo_target: str):
     """
@@ -692,6 +575,8 @@ def main(model_target: str, yolo_target: str):
     if model_target == "yolo":
         path_mapping = {
             "all": YoloPaths.all_labels_input_dir,
+            "person_face": YoloPaths.person_face_labels_input_dir,
+            "person_face_object": YoloPaths.person_face_object_labels_input_dir,
             "child_person_face": YoloPaths.child_person_face_labels_input_dir,
             "adult_person_face": YoloPaths.adult_person_face_labels_input_dir,
             "object": YoloPaths.object_labels_input_dir,
@@ -710,7 +595,7 @@ def main(model_target: str, yolo_target: str):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Prepare dataset for model training.")
     parser.add_argument("--model_target", choices=["yolo", "other_model"], required=True, help="Specify the model type")
-    parser.add_argument("--yolo_target", choices=["all", "gaze", "adult_person_face", "child_person_face", "object"], required=True, help="Specify the YOLO target type")
+    parser.add_argument("--yolo_target", choices=["all", "gaze", "adult_person_face", "child_person_face", "object", "person_face", "person_face_object"], required=True, help="Specify the YOLO target type")
     
     args = parser.parse_args()
     main(args.model_target, args.yolo_target)
