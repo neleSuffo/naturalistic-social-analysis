@@ -178,14 +178,41 @@ class CategoryMappings:
         'Yes': 1
     }
     
-    person_face = {
+    person_face_cls = {
         'Inf': 0,
         'infant': 0,
-        'Child': 0,
         'child': 0,
         'adult': 1,
-        'Adult': 1
     }
+    
+    person_face_det = {
+        0: 0,
+        1: 0,
+        10: 1,
+        11: 2
+    }
+    
+    person_face_object = {
+        0: 0,
+        1: 0,
+        10: 1,
+        11: 2,
+        3: 3,
+        4: 9,
+        5: 4,
+        6: 5,
+        7: 6,
+        8: 8,
+        12: 7,
+    }
+  
+    all_instances = {
+        (1, 'inf'): 0,   (1, 'child'): 0,   (1, 'teen'): 1,   (10, 'adult'): 1,
+        (2, 'inf'): 0,   (2, 'child'): 0,   (2, 'teen'): 1,   (2, 'adult'): 1,
+        (10, 'infant'): 2, (10, 'child'): 2, (10, 'teen'): 3, (10, 'adult'): 3,
+        11: 4, 3: 5, 4: 11, 5: 6, 6: 7, 7: 8, 8: 9, 12: 10
+    }
+        
     
     child_person_face = {
         (1, 'inf'): 0,   (1, 'child'): 0,
@@ -200,15 +227,14 @@ class CategoryMappings:
         (10, 'teen'): 1, (10, 'adult'): 1,
     }
     
-    all = {
+    all_instances = {
         (1, 'inf'): 0,   (1, 'child'): 0,   (1, 'teen'): 1,   (10, 'adult'): 1,
         (2, 'inf'): 0,   (2, 'child'): 0,   (2, 'teen'): 1,   (2, 'adult'): 1,
         (10, 'infant'): 2, (10, 'child'): 2, (10, 'teen'): 3, (10, 'adult'): 3,
         11: 4, 3: 5, 4: 11, 5: 6, 6: 7, 7: 8, 8: 9, 12: 10
     }
-    
 
-    object = {
+    objects = {
         # With interaction (yes)
         (3, 'Yes'): 0,  # interacted_book
         (4, 'Yes'): 13,  # interacted_animal
