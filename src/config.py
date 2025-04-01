@@ -193,8 +193,8 @@ class CategoryMappings:
     }
     
     person_face_object = {
-        0: 0,
         1: 0,
+        2: 0,
         10: 1,
         11: 2,
         3: 3,
