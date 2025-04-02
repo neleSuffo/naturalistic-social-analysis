@@ -10,6 +10,7 @@ class BasePaths:
     vtc_dir = Path(home_dir/"projects/voice_type_classifier")
     strong_sort_dir = Path(home_dir/"projects/StrongSORT")
     fast_re_id_dir = Path(home_dir/"projects/fast-reid")
+    logging_dir = Path(output_dir/"dataset_statistics")
 
 class DetectionPaths:    
     person_detections_dir = Path(BasePaths.home_dir/"outputs/yolov8/")
