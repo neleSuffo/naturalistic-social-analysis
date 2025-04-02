@@ -149,153 +149,6 @@ def get_class_distribution(total_images: list, annotation_folder: Path, target_t
 
     return pd.DataFrame(image_class_mapping)
 
-def get_binary_class_distribution(total_images: list, annotation_folder: Path, target: str) -> Tuple[set, set]:
-    images_class_0 = set()
-    images_class_1 = set()
-    
-    class_description = "face" if target in ["gaze", "face"] else "person"
-    for image_file in total_images:
-        image_file = Path(image_file)
-        annotation_file = annotation_folder / image_file.with_suffix('.txt').name
-        if annotation_file.exists() and annotation_file.stat().st_size > 0:
-            with open(annotation_file, 'r') as f:
-                lines = f.readlines()
-                for i, line in enumerate(lines):
-                    class_id = line.strip().split()[0]
-                    # Include suffix to distinguish detections
-                    img_name = f"{image_file.stem}_{class_description}_{i}"
-                    if class_id == "0":
-                        images_class_0.add(img_name)
-                    elif class_id == "1":
-                        images_class_1.add(img_name)
-    
-    total = len(images_class_0) + len(images_class_1)
-    logging.info(f"Class 0: {len(images_class_0)} images")
-    logging.info(f"Class 1: {len(images_class_1)} images")
-    logging.info(f"Total: {total} images")
-    
-    return images_class_0, images_class_1
-
-def binary_stratified_split(image_sets: Tuple[set, set], yolo_target: str, 
-                            test_size: float = 0.2, val_size: float = 0.2, 
-                            random_state: int = 42) -> dict:
-    """
-    Perform a stratified split on binary class data while ensuring:
-    - Test and validation sets maintain the original ratio of class 1 and class 0.
-    - Training set is balanced 50/50.
-    - All images from the same ID stay in one split.
-
-    Parameters
-    ----------
-    image_sets : Tuple[set, set]
-        Tuple of (images_class_0, images_class_1), sets of image names.
-    yolo_target : str
-        YOLO target type (e.g., "person", "face", "gaze").
-    test_size : float
-        Fraction of data for the test set.
-    val_size : float
-        Fraction of data for the validation set (from remaining data).
-    random_state : int
-        Random seed for reproducibility.
-
-    Returns
-    -------
-    dict
-        {0: (train_list, val_list, test_list), 1: (train_list, val_list, test_list)}
-    """
-    images_class_0, images_class_1 = image_sets
-    
-    # Extract ID from image name
-    def extract_id(image_name: str) -> str:
-        parts = image_name.split('_')
-        for part in parts:
-            if part.startswith('id'):
-                return part[2:]
-        raise ValueError(f"Could not extract ID from {image_name}")
-
-    # Create DataFrame with image names, classes, and IDs
-    all_images = [(img, 0) for img in images_class_0] + [(img, 1) for img in images_class_1]
-    df = pd.DataFrame(all_images, columns=['filename', 'class'])
-    df['id'] = df['filename'].apply(extract_id)
-    
-    # Group by ID to ensure all images from an ID stay together
-    id_df = df.groupby('id').agg({
-        'filename': list,
-        'class': list
-    }).reset_index()
-    id_df['class_label'] = id_df['class'].apply(lambda x: 0 if all(c == 0 for c in x) else 1 if all(c == 1 for c in x) else 2)  # 2 for mixed
-
-    # Step 1: Split into train+val and test
-    sss_test = StratifiedShuffleSplit(n_splits=1, test_size=test_size, random_state=random_state)
-    train_val_idx, test_idx = next(sss_test.split(id_df.index, id_df['class_label']))
-
-    # Step 2: Split train+val into train and val
-    train_val_df = id_df.iloc[train_val_idx]
-    sss_val = StratifiedShuffleSplit(n_splits=1, test_size=val_size / (1 - test_size), random_state=random_state)
-    train_idx, val_idx = next(sss_val.split(train_val_df.index, train_val_df['class_label']))
-
-    # Extract IDs for each split
-    train_ids = train_val_df.iloc[train_idx]['id'].tolist()
-    val_ids = train_val_df.iloc[val_idx]['id'].tolist()
-    test_ids = id_df.iloc[test_idx]['id'].tolist()
-
-    # Map IDs back to images
-    id_to_images = dict(zip(id_df['id'], id_df['filename']))
-    train = [img for id_ in train_ids for img in id_to_images[id_]]
-    val = [img for id_ in val_ids for img in id_to_images[id_]]
-    test = [img for id_ in test_ids for img in id_to_images[id_]]
-
-    # Balance training set to 50/50
-    train_class_0 = [img for img in train if img in images_class_0]
-    train_class_1 = [img for img in train if img in images_class_1]
-    min_class_size = min(len(train_class_0), len(train_class_1))
-    if min_class_size > 0:
-        train_class_0_balanced = random.sample(train_class_0, min_class_size, random_state=random_state)
-        train_class_1_balanced = random.sample(train_class_1, min_class_size, random_state=random_state)
-    else:
-        train_class_0_balanced = train_class_0
-        train_class_1_balanced = train_class_1
-    train_balanced = train_class_0_balanced + train_class_1_balanced
-
-    # Prepare result
-    result = {
-        0: ([img for img in train_balanced if img in images_class_0], 
-            [img for img in val if img in images_class_0], 
-            [img for img in test if img in images_class_0]),
-        1: ([img for img in train_balanced if img in images_class_1], 
-            [img for img in val if img in images_class_1], 
-            [img for img in test if img in images_class_1])
-    }
-
-    # Logging
-    datetime_str = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")
-    BasePaths.logging_dir.mkdir(exist_ok=True)
-    log_file = BasePaths.logging_dir / f"split_distribution_{yolo_target}_{datetime_str}.txt"
-    
-    train_ids_set = set(train_ids)
-    val_ids_set = set(val_ids)
-    test_ids_set = set(test_ids)
-    overlap = train_ids_set & val_ids_set | train_ids_set & test_ids_set | val_ids_set & test_ids_set
-    
-    distribution_info = [
-        f"Dataset split distribution for {yolo_target}",
-        f"Original Class 0: {len(images_class_0)}, Class 1: {len(images_class_1)}",
-        f"Train Class 0: {len(result[0][0])}, Class 1: {len(result[1][0])} (balanced 50/50)",
-        f"Val Class 0: {len(result[0][1])}, Class 1: {len(result[1][1])}",
-        f"Test Class 0: {len(result[0][2])}, Class 1: {len(result[1][2])}",
-        f"Unique IDs - Train: {len(train_ids_set)}, Val: {len(val_ids_set)}, Test: {len(test_ids_set)}",
-        f"ID overlap: {len(overlap)} (should be 0)"
-    ]
-    
-    with open(log_file, 'w') as f:
-        f.write('\n'.join(distribution_info))
-    logging.info(f"Split distribution saved to: {log_file}")
-    
-    if overlap:
-        logging.warning(f"ID overlap detected: {overlap}")
-    
-    return result
-
 def balance_training_set(df: pd.DataFrame, yolo_target: str) -> pd.DataFrame:
     """Helper function to balance training set based on annotations."""
     # Define target columns based on yolo_target
@@ -315,16 +168,6 @@ def balance_training_set(df: pd.DataFrame, yolo_target: str) -> pd.DataFrame:
         )
     
     return pd.concat([pos_samples, neg_samples]).drop('has_annotation', axis=1)
-
-def verify_split_distributions(train_df: pd.DataFrame,
-                             val_df: pd.DataFrame,
-                             test_df: pd.DataFrame):
-    """Verify and log split distributions."""
-    total = len(train_df) + len(val_df) + len(test_df)
-    logging.info("\nSplit sizes:")
-    logging.info(f"Train: {len(train_df)} ({len(train_df)/total:.2%})")
-    logging.info(f"Val: {len(val_df)} ({len(val_df)/total:.2%})")
-    logging.info(f"Test: {len(test_df)} ({len(test_df)/total:.2%})")
      
 def multilabel_stratified_split(df: pd.DataFrame,
                               train_ratio: float = 0.8,
@@ -609,16 +452,45 @@ def extract_id(filename):
             return part
     return None
 
-def get_original_image_and_index(face_image):
-    """Get the original image name and detection index from a face image filename."""
-    base_name = face_image.split('_face_')[0]
-    index = int(face_image.split('_face_')[1].split('.')[0])
+def get_original_image_and_index(input_image: str) -> Tuple[str, int]:
+    """Extract the original image name and detection index from an input image filename.
+    
+    Works for both "_face_" and "_person_" formats by always extracting the last `_`-separated number.
+
+    Parameters
+    ----------
+    input_image: str
+        The name of the input image file.
+    
+    Returns
+    -------
+    Tuple[str, int]
+        The original image name and the detection index.
+    """
+    parts = input_image.rsplit('_', 2)  # Split at most twice from the right
+    base_name = parts[0]  # Everything before the last two `_` parts
+    index = int(parts[-1].split('.')[0])  # Extract last numeric part (index)
+    
     original_image = base_name + '.jpg'
     return original_image, index
 
-def get_class(face_image, annotation_folder):
-    """Retrieve the class ID (0 or 1) for a face image from its annotation file."""
-    original_image, index = get_original_image_and_index(face_image)
+def get_class(input_image: str, annotation_folder: Path) -> Optional[int]:
+    """Retrieve the class ID (0 or 1) for an input image from its annotation file.
+    
+    Parameters
+    ----------
+    input_image: str
+        The name of the input image file.
+    annotation_folder: Path
+        Path to the directory containing annotation files.
+        
+    Returns
+    -------
+    Optional[int]
+        The class ID (0 or 1) if found, otherwise None.
+    """
+    
+    original_image, index = get_original_image_and_index(input_image)
     annotation_file = annotation_folder / Path(original_image).with_suffix('.txt').name
     if annotation_file.exists():
         with open(annotation_file, 'r') as f:
@@ -628,17 +500,37 @@ def get_class(face_image, annotation_folder):
                 return int(class_id)
     return None
 
-def compute_id_counts(face_images, annotation_folder):
-    """Compute the number of class 0 and class 1 face images per ID."""
+def compute_id_counts(input_images: list,
+                      annotation_folder: Path) -> Tuple[defaultdict, int]:
+    """Compute the number of images per ID and their class distribution.
+    
+    Parameters
+    ----------
+    input_images: list
+        List of image filenames.
+    annotation_folder: Path
+        Path to the directory containing annotation files.
+    
+    Returns
+    -------
+    Tuple[defaultdict, int]
+        A dictionary with IDs as keys and a list of counts [n0, n1] as values,
+        where n0 is the count of class 0 and n1 is the count of class 1.
+        Also returns the number of images without annotations.
+    """
     id_counts = defaultdict(lambda: [0, 0])  # [n0, n1] for each ID
-    for face_image in face_images:
-        id_ = extract_id(face_image)
-        class_id = get_class(face_image, annotation_folder)
+    missing_annotations = 0
+    for input_image in input_images:
+        id_ = extract_id(input_image)
+        class_id = get_class(input_image, annotation_folder)
         if class_id == 0:
             id_counts[id_][0] += 1
         elif class_id == 1:
             id_counts[id_][1] += 1
-    return id_counts
+        else:
+            missing_annotations += 1
+    print(f"Images without annotations: {missing_annotations}")
+    return id_counts, missing_annotations
 
 def find_best_split(all_ids, id_counts, total_samples, num_trials=100):
     """Find the best split of IDs that maintains class distribution in val and test sets."""
@@ -689,10 +581,24 @@ def find_best_split(all_ids, id_counts, total_samples, num_trials=100):
     
     return best_split
 
-def balance_train_set(train_face_images, annotation_folder):
-    """Balance the training set to a 50/50 class ratio by dropping majority class samples."""
-    train_class_0 = [f for f in train_face_images if get_class(f, annotation_folder) == 0]
-    train_class_1 = [f for f in train_face_images if get_class(f, annotation_folder) == 1]
+def balance_train_set(train_input_images: list, 
+                      annotation_folder: Path) -> list:
+    """Balance the training set to a 50/50 class ratio by dropping majority class samples.
+    
+    Parameters
+    ----------
+    train_input_images: list
+        List of training image filenames.
+    annotation_folder: Path
+        Path to the directory containing annotation files.
+        
+    Returns
+    -------
+    list
+        A balanced list of training image filenames.
+    """
+    train_class_0 = [f for f in train_input_images if get_class(f, annotation_folder) == 0]
+    train_class_1 = [f for f in train_input_images if get_class(f, annotation_folder) == 1]
     
     if len(train_class_0) > len(train_class_1):
         train_class_0_balanced = random.sample(train_class_0, len(train_class_1))
@@ -701,138 +607,193 @@ def balance_train_set(train_face_images, annotation_folder):
         train_class_1_balanced = random.sample(train_class_1, len(train_class_0))
         return train_class_0 + train_class_1_balanced
 
-def split_dataset(face_folder, annotation_folder):
-    """Split the dataset into train, val, and test sets with the specified conditions."""
-    # Get all face images
-    face_folder = Path(face_folder)
-    annotation_folder = Path(annotation_folder)
-    all_face_images = [f for f in os.listdir(face_folder) if f.endswith('.jpg')]
+def split_dataset(input_folder: str, 
+                  annotation_folder: str,
+                  yolo_target: str,
+                  class_mapping: dict = None) -> Tuple[list, list, list]:
+    """Split the dataset into train, val, and test sets with the specified conditions.
     
-    logging.info(f"Found {len(all_face_images)} face images in {face_folder}")
+    Parameters
+    ----------
+    input_folder: str
+        Path to the folder containing input images.
+    annotation_folder: str
+        Path to the folder containing annotation files.
+    yolo_target: str
+        The target type for YOLO detection or classification.
+    class_mapping: dict
+        Optional mapping of class IDs to names.
+    """
+    # Get all input images
+    input_folder = Path(input_folder)
+    annotation_folder = Path(annotation_folder)
+    all_input_images = [f for f in os.listdir(input_folder) if f.endswith('.jpg')]
+    
+    # Create output directory for split information
+    output_dir = Path(BasePaths.output_dir/"dataset_statistics")
+    output_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")
+    output_file = output_dir / f"split_distribution_{yolo_target}_{timestamp}.txt"
+    
+    split_info = []
+    split_info.append(f"Dataset Split Information - {timestamp}\n")
+    split_info.append(f"Found {len(all_input_images)} {yolo_target} images in {input_folder}\n")
+    
     # Compute class counts per ID
-    id_counts = compute_id_counts(all_face_images, annotation_folder)
+    id_counts, missing_annotations = compute_id_counts(all_input_images, annotation_folder)
     all_ids = list(id_counts.keys())
     
     # Get total distribution
     N0 = sum(counts[0] for counts in id_counts.values())
     N1 = sum(counts[1] for counts in id_counts.values())
     total_samples = N0 + N1
-    logging.info(f"Class 0 (Child Faces): {N0} images")
-    logging.info(f"Class 1 (Adult Faces): {N1} images")
-    logging.info(f"Total: {total_samples} images")
-    logging.info(f"Overall Child-to-Total Ratio: {N0 / total_samples:.3f}")
+    
+    # Log initial distribution
+    split_info.append("Initial Distribution:")
+    split_info.append(f"Class 0 {class_mapping[0][0]}: {N0} images")
+    split_info.append(f"Class 1 {class_mapping[1][0]}: {N1} images")
+    split_info.append(f"Total: {total_samples} images")
+    split_info.append(f"Missing Annotations: {missing_annotations} images\n")
+    split_info.append(f"Overall {class_mapping[0][0]}-to-Total Ratio: {N0 / total_samples:.3f}\n")
 
     # Find the best split
     val_ids, test_ids, train_ids = find_best_split(all_ids, id_counts, total_samples)
     
-    # Assign face images to splits
-    val_face_images = [f for f in all_face_images if extract_id(f) in val_ids]
-    test_face_images = [f for f in all_face_images if extract_id(f) in test_ids]
-    train_face_images = [f for f in all_face_images if extract_id(f) in train_ids]
+    # Assign input images to splits
+    val_input_images = [f for f in all_input_images if extract_id(f) in val_ids]
+    test_input_images = [f for f in all_input_images if extract_id(f) in test_ids]
+    train_input_images = [f for f in all_input_images if extract_id(f) in train_ids]
     
     # Balance the training set
-    train_balanced = balance_train_set(train_face_images, annotation_folder)
+    train_balanced = balance_train_set(train_input_images, annotation_folder)
     
-    # Log the results
-    for split_name, split_images in [("Validation", val_face_images), 
-                                     ("Test", test_face_images), 
-                                     ("Train (Balanced)", train_balanced)]:
+    # Log detailed split information
+    split_info.append("Split Distribution:")
+    split_info.append("-" * 50)
+    
+    for split_name, split_images in [
+        ("Validation", val_input_images), 
+        ("Test", test_input_images), 
+        ("Train (Original)", train_input_images),
+        ("Train (Balanced)", train_balanced)
+    ]:
         n0 = sum(1 for f in split_images if get_class(f, annotation_folder) == 0)
+        n1 = len(split_images) - n0
         n_split = len(split_images)
-        logging.info(f"{split_name} Set: {n_split} images, Child-to-Total Ratio: {n0 / n_split if n_split > 0 else 0:.3f}")
+        ratio = n0 / n_split if n_split > 0 else 0
+        
+        split_details = [
+            f"\n{split_name} Set:",
+            f"Total Images: {n_split}",
+            f"{class_mapping[0][0]} (Class 0): {n0}",
+            f"{class_mapping[1][0]} (Class 1): {n1}",
+            f"{class_mapping[0][0]}-to-Total Ratio: {ratio:.3f}"
+        ]
+        split_info.extend(split_details)
+        
+        # Also log to console
+        logging.info("\n".join(split_details))
     
-    return train_balanced, val_face_images, test_face_images
+    # Add ID distribution information
+    split_info.extend([
+        f"\nID Distribution:",
+        f"Training IDs: {len(train_ids)}, {train_ids}",
+        f"Validation IDs: {len(val_ids)}, {val_ids}",
+        f"Test IDs: {len(test_ids)}, {test_ids}",
+    ])
+    
+    # Check for ID overlap
+    train_id_set = set(train_ids)
+    val_id_set = set(val_ids)
+    test_id_set = set(test_ids)
+    
+    overlap = train_id_set & val_id_set | train_id_set & test_id_set | val_id_set & test_id_set
+    split_info.append(f"\nID Overlap Check:")
+    split_info.append(f"Overlap found: {'Yes' if overlap else 'No'}")
+    if overlap:
+        split_info.append(f"Overlapping IDs: {overlap}")
+    
+    # Write to file
+    with open(output_file, 'w') as f:
+        f.write('\n'.join(split_info))
+    
+    logging.info(f"\nSplit distribution saved to: {output_file}")
+    
+    return train_balanced, val_input_images, test_input_images
            
-def split_yolo_data(label_path: Path, yolo_target: str):
+def split_yolo_data(annotation_folder: Path, yolo_target: str):
     """
     This function prepares the dataset for YOLO training by splitting the images into train, val, and test sets.
     
     Parameters:
     ----------
-    label_path: Path
+    annotation_folder: Path
         Path to the directory containing label files.
     yolo_target: str
         The target object for YOLO detection or classification.
     """
     logging.info(f"Starting dataset preparation for {yolo_target}")
-    total_images = get_total_number_of_annotated_frames(label_path)
 
     try:
-        if yolo_target == "face":
-            # Define source directories
-            face_folder = DetectionPaths.face_images_input_dir
-            annotation_folder = label_path
-
-            # Get custom splits (assumes split_dataset is defined elsewhere)
-            train_images, val_images, test_images = split_dataset(face_folder, annotation_folder)
+        # Define mappings for different target types
+        target_mappings = {
+            "face": {
+                0: ("adult_face", DetectionPaths.face_images_input_dir),
+                1: ("child_face", DetectionPaths.face_images_input_dir)
+            },
+            "person": {
+                0: ("adult_person", DetectionPaths.person_images_input_dir),
+                1: ("child_person", DetectionPaths.person_images_input_dir)
+            },
+            "gaze": {
+                0: ("no_gaze", DetectionPaths.gaze_images_input_dir),
+                1: ("gaze", DetectionPaths.gaze_images_input_dir)
+            }
+        }       
+         
+        if yolo_target in target_mappings:
+            # Get source directories based on target type
+            input_folder = target_mappings[yolo_target][0][1]  # Use first mapping's input dir
+            class_mapping = target_mappings[yolo_target]
+            # Get custom splits
+            train_images, val_images, test_images = split_dataset(input_folder, annotation_folder, yolo_target, class_mapping)
 
             # Process each split
             for split_name, split_images in [("train", train_images), ("val", val_images), ("test", test_images)]:
-                # Separate images into child and adult classes
-                child_images = [img for img in split_images if get_class(img, annotation_folder) == 0]
-                adult_images = [img for img in split_images if get_class(img, annotation_folder) == 1]
+                # Separate images into classes
+                class_0_images = [img for img in split_images if get_class(img, annotation_folder) == 0]
+                class_1_images = [img for img in split_images if get_class(img, annotation_folder) == 1]
 
-                # Move child face images
-                if child_images:
+                # Move class 0 images
+                if class_0_images:
                     successful, failed = move_images(
-                        yolo_target="child_face",
-                        image_names=child_images,
+                        yolo_target=target_mappings[yolo_target][0][0],
+                        image_names=class_0_images,
                         split_type=split_name,
-                        label_path=label_path,
+                        label_path=annotation_folder,
                         n_workers=4
                     )
-                    logging.info(f"{split_name} child_face: Moved {successful} images, Failed {failed}")
+                    logging.info(f"{split_name} {target_mappings[yolo_target][0][0]}: Moved {successful} images, Failed {failed}")
                 else:
-                    logging.warning(f"No child_face images for {split_name}")
+                    logging.warning(f"No {target_mappings[yolo_target][0][0]} images for {split_name}")
 
-                # Move adult face images
-                if adult_images:
+                # Move class 1 images
+                if class_1_images:
                     successful, failed = move_images(
-                        yolo_target="adult_face",
-                        image_names=adult_images,
+                        yolo_target=target_mappings[yolo_target][1][0],
+                        image_names=class_1_images,
                         split_type=split_name,
-                        label_path=label_path,
+                        label_path=annotation_folder,
                         n_workers=4
                     )
-                    logging.info(f"{split_name} adult_face: Moved {successful} images, Failed {failed}")
+                    logging.info(f"{split_name} {target_mappings[yolo_target][1][0]}: Moved {successful} images, Failed {failed}")
                 else:
-                    logging.warning(f"No adult_face images for {split_name}")
-
-        elif yolo_target in ["person", "gaze"]:
-            # Handle other binary classification cases (unchanged)
-            class_mapping = {
-                "person": {0: "child_person", 1: "adult_person"},
-                "gaze": {0: "no_gaze", 1: "gaze"}
-            }
-            images_class_0, images_class_1 = get_binary_class_distribution(
-                total_images, label_path, yolo_target
-            )
-            
-            splits_dict = binary_stratified_split(
-                (images_class_0, images_class_1), yolo_target,
-                test_size=0.1, val_size=0.1, random_state=TrainingConfig.random_seed
-            )
-            
-            for class_idx, binary_class in class_mapping[yolo_target].items():
-                train, val, test = splits_dict[class_idx]
-                logging.info(f"\nProcessing {binary_class}:")
-                
-                for split_name, split_set in [("train", train), ("val", val), ("test", test)]:
-                    if split_set:
-                        successful, failed = move_images(
-                            yolo_target=binary_class,
-                            image_names=split_set,
-                            split_type=split_name,
-                            label_path=label_path,
-                            n_workers=4
-                        )
-                        logging.info(f"{split_name}: Moved {successful} images, Failed {failed}")
-                    else:
-                        logging.warning(f"No images for {binary_class} {split_name} split")
+                    logging.warning(f"No {target_mappings[yolo_target][1][0]} images for {split_name}")
                         
         else:
+            total_images = get_total_number_of_annotated_frames(annotation_folder)
             # Handle multi-class cases (unchanged)
-            df = get_class_distribution(total_images, label_path, yolo_target)
+            df = get_class_distribution(total_images, annotation_folder, yolo_target)
             
             train, val, test, train_df, val_df, test_df = multilabel_stratified_split(
                 df, yolo_target=yolo_target
@@ -847,7 +808,7 @@ def split_yolo_data(label_path: Path, yolo_target: str):
                         yolo_target=yolo_target,
                         image_names=split_set,
                         split_type=split_name,
-                        label_path=label_path,
+                        label_path=annotation_folder,
                         n_workers=4
                     )
                     total_successful += successful
@@ -859,6 +820,7 @@ def split_yolo_data(label_path: Path, yolo_target: str):
             logging.info(f"\nTotal images processed: {total_successful + total_failed}")
             logging.info(f"Successfully moved: {total_successful}")
             logging.info(f"Failed to move: {total_failed}")
+    
     except Exception as e:
         logging.error(f"Error processing target {yolo_target}: {str(e)}")
         raise
@@ -889,8 +851,6 @@ def main(model_target: str, yolo_target: str):
             "gaze": YoloPaths.gaze_labels_input_dir
         }
         label_path = path_mapping[yolo_target]
-        image_folder = DetectionPaths.images_input_dir
-        #train_images, val_images, test_images = split_dataset(image_folder, label_path)
         split_yolo_data(label_path, yolo_target)
         logging.info("Dataset preparation for YOLO completed.")
     elif model_target == "other_model":
