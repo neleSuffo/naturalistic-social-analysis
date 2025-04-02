@@ -62,6 +62,7 @@ def fetch_all_annotations(
     list of tuple
         The list of annotations. For persons includes extra fields (gaze, age)
     """
+    logging.info(f"Fetching annotations for category IDs: {category_ids}")
     if not (persons or objects):
         raise ValueError("At least one of persons or objects must be True")
 
@@ -70,6 +71,8 @@ def fetch_all_annotations(
     
     placeholders = ", ".join("?" for _ in category_ids)
     
+    if persons:
+        logging.info("Fetching person-specific annotation attributes")
     # Always include all fields, use COALESCE for person-specific fields
     query = f"""
     SELECT DISTINCT 
@@ -77,8 +80,14 @@ def fetch_all_annotations(
         a.bbox, 
         a.object_interaction,
         i.file_name,
-        CASE WHEN {persons} THEN a.gaze_directed_at_child ELSE NULL END as gaze_directed_at_child,
-        CASE WHEN {persons} THEN a.person_age ELSE NULL END as person_age
+        CASE 
+            WHEN {persons} THEN a.gaze_directed_at_child 
+            ELSE NULL 
+        END as gaze_directed_at_child,        
+        CASE 
+            WHEN {persons} THEN a.person_age 
+            ELSE NULL 
+        END as person_age,     
     FROM annotations a
     JOIN images i ON a.image_id = i.frame_id AND a.video_id = i.video_id
     JOIN videos v ON a.video_id = v.id
@@ -94,7 +103,7 @@ def fetch_all_annotations(
         AND LOWER(a.person_age) IN ('teen', 'adult')
         AND (a.person_ID != 1 OR a.person_ID IS NULL)
         """
-    elif yolo_target == 'child_person_face':
+    if yolo_target == 'child_person_face':
         logging.info("Filtering for child_person_face target")
         query += """
         AND LOWER(a.person_age) IN ('child', 'infant', 'inf')
@@ -102,15 +111,19 @@ def fetch_all_annotations(
         
     #Add object interaction filter if objects is True
     if objects:
-       query += """
-       AND a.object_interaction = 'Yes'
-       """
+        logging.info("Fetching object-specific annotation attributes")
+        query += """
+        AND a.object_interaction = 'Yes'
+        """
     
     query += " ORDER BY a.video_id, a.image_id"
     cursor.execute(query, category_ids)
     
     annotations = cursor.fetchall()
     conn.close()
+    # log all unique category ids
+    unique_category_ids = set(annotation[0] for annotation in annotations)
+    logging.info(f"Unique category IDs in fetched annotations: {unique_category_ids}")
     return annotations
 
 
