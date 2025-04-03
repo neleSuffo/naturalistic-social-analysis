@@ -621,51 +621,61 @@ def create_video_to_id_mapping(video_names: list) -> dict:
 
 def extract_audio_from_video(video_path: Path, audio_output_path: Path) -> None:
     """
-    Extracts the audio from a video file and saves it as a 16kHz WAV file.
+    Extracts the audio from a video file and saves it directly as a 16kHz WAV file.
+    
+    Parameters
+    ----------
+    video_path : Path
+        Path to the input video file
+    audio_output_path : Path
+        Path where the 16kHz WAV file should be saved
     """
-    print(f"Starting audio extraction for {video_path}")  # Debugging step
+    print(f"Starting audio extraction for {video_path}")
     parent_dir = audio_output_path.parent
     parent_dir.mkdir(parents=True, exist_ok=True)
 
-    filename = audio_output_path.stem
-    intermediate_wav = parent_dir / f"{filename}_original.wav"
-
     try:
-        print("Opening video file...")  # Debugging step
-        with VideoFileClip(str(video_path)) as video:
-            print("Extracting audio...")  # Debugging step
-            video.audio.write_audiofile(str(intermediate_wav), codec="pcm_s16le")
+        # Create a temporary file for intermediate processing
+        with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_file:
+            temp_path = Path(temp_file.name)
             
-            print("Closing video file...")  # Debugging step
-            video.reader.close()
-            video.audio.reader.close_proc()
+            print("Opening video file...")
+            with VideoFileClip(str(video_path)) as video:
+                print("Extracting audio...")
+                video.audio.write_audiofile(str(temp_path), codec="pcm_s16le")
+                
+                print("Closing video file...")
+                video.reader.close()
+                video.audio.reader.close_proc()
 
-        # Force garbage collection to release any lingering file handles
-        gc.collect()
+            # Force garbage collection to release file handles
+            gc.collect()
 
-        print(f"Running sox: {intermediate_wav} -> {audio_output_path}")  # Debugging step
-        process = subprocess.run(
-            ["sox", str(intermediate_wav), "-r", "16000", str(audio_output_path)],
-            check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            timeout=30  # Prevent hanging
-        )
+            print(f"Converting to 16kHz: {temp_path} -> {audio_output_path}")
+            process = subprocess.run(
+                ["sox", str(temp_path), "-r", "16000", str(audio_output_path)],
+                check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                timeout=30
+            )
 
-        if process.returncode != 0:
-            print(f"sox error: {process.stderr.decode()}")  # Debugging step
-            return
+            if process.returncode != 0:
+                print(f"sox error: {process.stderr.decode()}")
+                return
 
-        # Remove intermediate WAV file after successful processing
-        intermediate_wav.unlink()
-        print(f"Successfully stored the file at {audio_output_path}")  # Debugging step
+        # Remove temporary file
+        temp_path.unlink()
+        print(f"Successfully stored 16kHz audio at {audio_output_path}")
 
     except subprocess.TimeoutExpired:
-        print("sox process timed out!")  # Debugging step
+        print("sox process timed out!")
+        if 'temp_path' in locals():
+            temp_path.unlink()
     except Exception as e:
-        print(f"Error extracting audio: {e}")  # Debugging step
-        if intermediate_wav.exists():
-            intermediate_wav.unlink()
+        print(f"Error extracting audio: {e}")
+        if 'temp_path' in locals():
+            temp_path.unlink()
         raise
 
 def extract_audio_from_videos_in_folder(videos_input_dir: Path, output_dir: Path):
