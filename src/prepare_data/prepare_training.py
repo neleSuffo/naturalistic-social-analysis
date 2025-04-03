@@ -8,7 +8,7 @@ import pandas as pd
 from collections import defaultdict
 from pathlib import Path
 from sklearn.model_selection import train_test_split
-from constants import DetectionPaths, YoloPaths, BasePaths, ClassificationPaths
+from constants import DetectionPaths, BasePaths, ClassificationPaths
 from config import TrainingConfig
 from iterstrat.ml_stratifiers import MultilabelStratifiedShuffleSplit as MSSS
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -359,7 +359,7 @@ def move_images(yolo_target: str,
     # Get destination paths
     paths = (ClassificationPaths.get_target_paths(yolo_target, split_type) 
             if yolo_target in ["child_face", "adult_face", "adult_person", "child_person", "gaze", "no_gaze"]
-            else YoloPaths.get_target_paths(yolo_target, split_type))
+            else DetectionPaths.get_target_paths(yolo_target, split_type))
     
     if not paths:
         raise ValueError(f"Invalid yolo_target: {yolo_target}")
@@ -874,12 +874,9 @@ def main(model_target: str, yolo_target: str):
     """
     if model_target == "yolo":
         path_mapping = {
-            "all": YoloPaths.all_labels_input_dir,
-            "person_face": YoloPaths.person_face_labels_input_dir,
-            "person_face_object": YoloPaths.person_face_object_labels_input_dir,
-            "child_person_face": YoloPaths.child_person_face_labels_input_dir,
-            "adult_person_face": YoloPaths.adult_person_face_labels_input_dir,
-            "object": YoloPaths.object_labels_input_dir,
+            "person_face": DetectionPaths.person_face_labels_input_dir,
+            "person_face_object": DetectionPaths.person_face_object_labels_input_dir,
+            "object": DetectionPaths.object_labels_input_dir,
             "person": ClassificationPaths.person_labels_input_dir,
             "face": ClassificationPaths.face_labels_input_dir,
             "gaze": ClassificationPaths.gaze_labels_input_dir
