@@ -87,7 +87,7 @@ def fetch_all_annotations(
         CASE 
             WHEN {persons} THEN a.person_age 
             ELSE NULL 
-        END as person_age,     
+        END as person_age     
     FROM annotations a
     JOIN images i ON a.image_id = i.frame_id AND a.video_id = i.video_id
     JOIN videos v ON a.video_id = v.id
