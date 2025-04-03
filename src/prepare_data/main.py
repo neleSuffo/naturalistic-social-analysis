@@ -6,8 +6,6 @@ from pathlib import Path
 from typing import Optional
 from prepare_data.prepare_training import main as prepare_training
 from prepare_data.process_videos import main as process_videos
-from prepare_data.extract_faces import main as extract_faces
-from prepare_data.extract_persons import main as extract_persons
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -24,17 +22,6 @@ class DataPipeline:
         """Process videos into frames."""
         logging.info("Processing videos into frames...")
         process_videos()
-        
-    def extract_detections(self):
-        """Extract person/face detections based on model target."""
-        if self.model_target != "yolo" or self.yolo_target not in ["person", "face", "gaze"]:
-            return
-            
-        logging.info(f"Extracting detections for {self.yolo_target}...")
-        if self.yolo_target == "person":
-            extract_persons()
-        if self.yolo_target in ["face", "gaze"]:
-            extract_faces()
             
     def process_annotations(self, setup_db: bool = False):
         """Process annotations for the specified target."""
@@ -67,7 +54,6 @@ class DataPipeline:
         """Run specified pipeline steps in order."""
         step_mapping = {
             'videos': self.process_videos,
-            'detections': self.extract_detections,
             'annotations': lambda: self.process_annotations(setup_db=False),
             'annotations_db': lambda: self.process_annotations(setup_db=True),
             'dataset': self.prepare_dataset
@@ -84,7 +70,6 @@ class DataPipeline:
 def main():
     parser = argparse.ArgumentParser(description='Data preparation pipeline')
     parser.add_argument('--videos', action='store_true', help='Process videos into frames')
-    parser.add_argument('--detections', action='store_true', help='Extract person/face detections')
     parser.add_argument('--annotations', action='store_true', help='Process annotations')
     parser.add_argument('--annotations_db', action='store_true', help='Setup annotations database')
     parser.add_argument('--dataset', action='store_true', help='Prepare training dataset')
@@ -98,13 +83,11 @@ def main():
     pipeline = DataPipeline(args.model_target, args.yolo_target, args.threads)
     
     if args.all:
-        pipeline.run_pipeline(['videos', 'detections', 'annotations', 'annotations_db', 'dataset'])
+        pipeline.run_pipeline(['videos', 'annotations', 'annotations_db', 'dataset'])
     else:
         steps = []
         if args.videos:
             steps.append('videos')
-        if args.detections:
-            steps.append('detections')
         if args.annotations:
             steps.append('annotations')
         if args.annotations_db:
