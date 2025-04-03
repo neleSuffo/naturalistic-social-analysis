@@ -90,16 +90,12 @@ def map_category_id(target: str, category_id: int, person_age: str = None, gaze_
         return CategoryMappings.objects.get((category_id, object_interaction), 99)
     elif target == "all":
         mapping = CategoryMappings.all_instances
-    elif target == "adult_person_face":
-        mapping = CategoryMappings.adult_person_face
-    elif target == "child_person_face":
-        mapping = CategoryMappings.child_person_face
     else:
         logging.error(f"Invalid target: {target}")
         return 99
     
     # For person categories in adult/child detection, consider age
-    if target in ["adult_person_face", "child_person_face", "all", "person", "face"] and person_age and category_id in [1, 2, 10]:
+    if target in ["all", "person", "face"] and person_age and category_id in [1, 2, 10]:
         return mapping.get((category_id, person_age.lower()), 99)
     
     # For all other cases, use direct mapping
@@ -184,11 +180,8 @@ def main(target: str) -> None:
     logging.info(f"Starting the conversion process for Yolo {target} detection.")
     try:
         category_ids = {
-            "all": YoloConfig.all_target_class_ids,
             "person_face": YoloConfig.child_target_class_ids,
-            "person_face_object": YoloConfig.all_target_class_ids,
-            "adult_person_face": YoloConfig.adult_target_class_ids,
-            "child_person_face": YoloConfig.child_target_class_ids,
+            "person_face_object": YoloConfig.person_face_object_target_class_ids,
             "object": YoloConfig.object_target_class_ids,
             "person": YoloConfig.person_target_class_ids,
             "face": YoloConfig.face_target_class_ids,
