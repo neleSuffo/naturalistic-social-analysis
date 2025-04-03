@@ -3,7 +3,7 @@ import logging
 import cv2
 from pathlib import Path
 from utils import fetch_all_annotations
-from constants import YoloPaths, DetectionPaths, ClassificationPaths
+from constants import DetectionPaths, ClassificationPaths
 from config import YoloConfig, CategoryMappings
 
 # Configure logging
@@ -121,12 +121,9 @@ def save_annotations(
     """
     logging.info("Saving annotations in YOLO format.")
     output_dirs = {
-        "all": YoloPaths.all_labels_input_dir,
-        "person_face": YoloPaths.person_face_labels_input_dir,
-        "person_face_object": YoloPaths.person_face_object_labels_input_dir,
-        "adult_person_face": YoloPaths.adult_person_face_labels_input_dir,
-        "child_person_face": YoloPaths.child_person_face_labels_input_dir,
-        "object": YoloPaths.object_labels_input_dir,
+        "person_face": DetectionPaths.person_face_labels_input_dir,
+        "person_face_object": DetectionPaths.person_face_object_labels_input_dir,
+        "object": DetectionPaths.object_labels_input_dir,
         "person": ClassificationPaths.person_labels_input_dir,
         "face": ClassificationPaths.face_labels_input_dir,
         "gaze": ClassificationPaths.gaze_labels_input_dir,
