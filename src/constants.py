@@ -74,7 +74,6 @@ class YoloPaths:
     child_person_face_data_input_dir = Path(BasePaths.data_dir/"yolo_child_person_face_input")
     child_person_face_output_dir = Path(BasePaths.output_dir/"yolo_child_person_face_detections/")
     
-    gaze_classes = ['no_gaze', 'gaze']
     person_face_cls_classes = ['child_person_face', 'adult_person_face']
 
     @classmethod
@@ -106,12 +105,6 @@ class YoloPaths:
 
         # Define path mappings for different targets
         path_mappings = {
-            # Gaze classification paths
-            'gaze': (cls.gaze_data_input_dir / split_type / 'gaze', 
-                    cls.gaze_data_input_dir / split_type / 'gaze'),
-            'no_gaze': (cls.gaze_data_input_dir / split_type / 'no_gaze',
-                    cls.gaze_data_input_dir / split_type / 'no_gaze'),
-            
             # Person-face detection paths
             'child_person_face': (cls.child_person_face_data_input_dir / "images" / split_type,
                                 cls.child_person_face_data_input_dir / "labels" / split_type),
@@ -150,7 +143,7 @@ class ClassificationPaths:
 
     face_classes = ['child_face', 'adult_face']
     face_extracted_faces_dir = Path(BasePaths.data_dir/"face_cls_input")
-    face_trained_weights_path = Path(BasePaths.models_dir/'face_classification.pt')
+    face_trained_weights_path = Path(BasePaths.models_dir/'yolo11_face_classification.pt')
     face_extraction_progress_file_path = Path(BasePaths.data_dir/"face_extraction_progress.txt")
     face_missing_frames_file_path = Path(BasePaths.data_dir/"face_missing_frames.txt")
     face_labels_input_dir = Path(BasePaths.data_dir/"face_cls_labels")
