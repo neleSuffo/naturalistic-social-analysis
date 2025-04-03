@@ -1,7 +1,7 @@
-path: /home/nele_pauline_suffo/ProcessedData/resnet_person_input
-train: /home/nele_pauline_suffo/ProcessedData/resnet_person_input/train
-val: /home/nele_pauline_suffo/ProcessedData/resnet_person_input/val
-test: /home/nele_pauline_suffo/ProcessedData/resnet_person_input/test
+path: /home/nele_pauline_suffo/ProcessedData/person_cls_input
+train: /home/nele_pauline_suffo/ProcessedData/person_cls_input/train
+val: /home/nele_pauline_suffo/ProcessedData/person_cls_input/val
+test: /home/nele_pauline_suffo/ProcessedData/person_cls_input/test
 
 # Number of classes
 nc: 2
