@@ -5,6 +5,8 @@ from pathlib import Path
 from tqdm import tqdm
 from constants import DetectionPaths, ClassificationPaths
 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 def crop_detections_from_labels(
     labels_input_dir: Path,
     rawframe_dir: Path,
@@ -116,29 +118,52 @@ def crop_detections_from_labels(
     logging.info(f"Completed {detection_type} extraction. Results saved to {output_dir}")
 
 
-def main():
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+def main(target: str = None):
+    """
+    Main function to crop detections.
+    
+    Parameters
+    ----------
+    target : str, optional
+        Target type to crop ('person' or 'face'). If None, will parse from command line.
+    """
+    if target is None:
+        parser = argparse.ArgumentParser(description='Crop person or face detections from images.')
+        parser.add_argument(
+            '--target', 
+            type=str,
+            choices=['person', 'face'],
+            required=True,
+            help='Target type to crop (person or face)'
+        )
+        args = parser.parse_args()
+        target = args.target
 
-    # Process faces
-    crop_detections_from_labels(
-        labels_input_dir=ClassificationPaths.face_labels_input_dir,
-        rawframe_dir=DetectionPaths.images_input_dir,
-        output_dir=DetectionPaths.face_images_input_dir,
-        progress_file=ClassificationPaths.gaze_extraction_progress_file_path,
-        missing_frames_file=ClassificationPaths.gaze_missing_frames_file_path,
-        detection_type="face"
-    )
+    if target not in ['person', 'face']:
+        raise ValueError("Target must be either 'person' or 'face'")
 
-    # Process persons (only process class IDs 0 = person, 1 = reflection)
-    crop_detections_from_labels(
-        labels_input_dir=ClassificationPaths.person_labels_input_dir,
-        rawframe_dir=DetectionPaths.images_input_dir,
-        output_dir=DetectionPaths.person_images_input_dir,
-        progress_file=ClassificationPaths.person_extraction_progress_file_path,
-        missing_frames_file=ClassificationPaths.person_missing_frames_file_path,
-        detection_type="person",
-    )
+    if target == 'face':
+        logging.info("Processing face detections...")
+        crop_detections_from_labels(
+            labels_input_dir=ClassificationPaths.face_labels_input_dir,
+            rawframe_dir=DetectionPaths.images_input_dir,
+            output_dir=DetectionPaths.face_images_input_dir,
+            progress_file=ClassificationPaths.gaze_extraction_progress_file_path,
+            missing_frames_file=ClassificationPaths.gaze_missing_frames_file_path,
+            detection_type="face"
+        )
+    else:  # person
+        logging.info("Processing person detections...")
+        crop_detections_from_labels(
+            labels_input_dir=ClassificationPaths.person_labels_input_dir,
+            rawframe_dir=DetectionPaths.images_input_dir,
+            output_dir=DetectionPaths.person_images_input_dir,
+            progress_file=ClassificationPaths.person_extraction_progress_file_path,
+            missing_frames_file=ClassificationPaths.person_missing_frames_file_path,
+            detection_type="person"
+        )
 
+    logging.info(f"Completed processing {target} detections")
 
-if __name__ == "__main__":    
+if __name__ == "__main__":
     main()
