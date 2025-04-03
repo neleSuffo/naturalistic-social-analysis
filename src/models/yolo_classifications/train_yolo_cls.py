@@ -6,7 +6,7 @@ import argparse
 from datetime import datetime
 from pathlib import Path
 from ultralytics import YOLO
-from constants import YoloPaths
+from constants import ClassificationPaths
 
 def parse_args():
     """Parse command line arguments."""
@@ -29,23 +29,18 @@ def main():
 
     # Load the YOLO model
     model = YOLO("/home/nele_pauline_suffo/models/yolo11x-cls.pt")
-
     # Define experiment name and output directory
-    experiment_name = f"{timestamp}_yolo_{target}"
-    output_dir = getattr(YoloPaths, f"{target}_output_dir") / experiment_name
+    experiment_name = f"yolo_{target}_cls_{timestamp}"
+    output_dir = getattr(ClassificationPaths, f"{target}_output_dir") / experiment_name
 
-    # Get data directory based on target
-    if target == "gaze":
-        data_dir = f"/home/nele_pauline_suffo/ProcessedData/yolo_{target}_input"
-    else:
-        data_dir = f"/home/nele_pauline_suffo/ProcessedData/resnet_{target}_input"
+    data_dir = f"/home/nele_pauline_suffo/ProcessedData/{target}_cls_input"
     # Train the model with a cosine annealing learning rate scheduler
     model.train(
         data=data_dir,
         epochs=200,  # Total number of epochs
         imgsz=640,  # Image size
         batch=16,   # Batch size
-        project=str(getattr(YoloPaths, f"{target}_output_dir")),  # Output directory
+        project=str(getattr(ClassificationPaths, f"{target}_output_dir")),  # Output directory
         name=experiment_name,  # Experiment name
         lr0=0.01,  # Initial learning rate
         lrf=0.001,  # Final learning rate after scheduling
