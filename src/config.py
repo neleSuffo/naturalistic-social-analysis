@@ -35,9 +35,7 @@ class YoloConfig:
     num_epochs = 100
     iou_threshold = 0.35 # the intersection over union threshold
     img_size = (320, 640) # multi scale training
-    all_target_class_ids = [1,2,3,4,5,6,7,8,10,11,12]
-    child_target_class_ids = [1,2,10,11]
-    adult_target_class_ids = [1,2,10]
+    person_face_object_target_class_ids = [1,2,3,4,5,6,7,8,10,11,12]
     face_target_class_ids = [10]
     person_target_class_ids = [1,2]
     object_target_class_ids = [3,4,5,6,7,8,12]
@@ -206,27 +204,6 @@ class CategoryMappings:
         12: 7,
     }
   
-    all_instances = {
-        (1, 'inf'): 0,   (1, 'child'): 0,   (1, 'teen'): 1,   (10, 'adult'): 1,
-        (2, 'inf'): 0,   (2, 'child'): 0,   (2, 'teen'): 1,   (2, 'adult'): 1,
-        (10, 'infant'): 2, (10, 'child'): 2, (10, 'teen'): 3, (10, 'adult'): 3,
-        11: 4, 3: 5, 4: 11, 5: 6, 6: 7, 7: 8, 8: 9, 12: 10
-    }
-        
-    
-    child_person_face = {
-        (1, 'inf'): 0,   (1, 'child'): 0,
-        (2, 'inf'): 0,   (2, 'child'): 0,
-        (10, 'infant'): 1, (10, 'child'): 1,
-        11: 2,
-    }
-    
-    adult_person_face = {
-        (1, 'teen'): 0,  (1, 'adult'): 0,
-        (2, 'teen'): 0,  (2, 'adult'): 0,
-        (10, 'teen'): 1, (10, 'adult'): 1,
-    }
-    
     all_instances = {
         (1, 'inf'): 0,   (1, 'child'): 0,   (1, 'teen'): 1,   (10, 'adult'): 1,
         (2, 'inf'): 0,   (2, 'child'): 0,   (2, 'teen'): 1,   (2, 'adult'): 1,
