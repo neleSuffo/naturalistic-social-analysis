@@ -95,19 +95,6 @@ def fetch_all_annotations(
         AND a.outside = 0 
         AND v.file_name NOT LIKE '%id255237_2022_05_08_04%'
     """
-
-    # Add age filtering and person_id filtering for adult_person_face target
-    if yolo_target == 'adult_person_face':
-        logging.info("Filtering for adult_person_face target")
-        query += """
-        AND LOWER(a.person_age) IN ('teen', 'adult')
-        AND (a.person_ID != 1 OR a.person_ID IS NULL)
-        """
-    if yolo_target == 'child_person_face':
-        logging.info("Filtering for child_person_face target")
-        query += """
-        AND LOWER(a.person_age) IN ('child', 'infant', 'inf')
-        """
         
     #Add object interaction filter if objects is True
     if objects:
@@ -618,7 +605,6 @@ def create_video_to_id_mapping(video_names: list) -> dict:
     video_id_dict = {video_name: i for i, video_name in enumerate(video_names)}
     return video_id_dict
 
-
 def extract_audio_from_video(video_path: Path, audio_output_path: Path) -> None:
     """
     Extracts the audio from a video file and saves it directly as a 16kHz WAV file.
@@ -626,43 +612,44 @@ def extract_audio_from_video(video_path: Path, audio_output_path: Path) -> None:
     Parameters
     ----------
     video_path : Path
-        Path to the input video file
+        Path to the input video file.
     audio_output_path : Path
-        Path where the 16kHz WAV file should be saved
+        Path where the 16kHz WAV file should be saved.
     """
     print(f"Starting audio extraction for {video_path}")
     parent_dir = audio_output_path.parent
     parent_dir.mkdir(parents=True, exist_ok=True)
 
     try:
-        # Create a temporary file for intermediate processing
-        with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_file:
-            temp_path = Path(temp_file.name)
+        # Define temp file path in /tmp instead of same directory to avoid clutter
+        temp_file = tempfile.NamedTemporaryFile(suffix='.wav', delete=False)
+        temp_path = Path(temp_file.name)
+        temp_file.close()  # Close immediately to allow reuse by external processes
+
+        print("Opening video file...")
+        with VideoFileClip(str(video_path)) as video:
+            print("Extracting audio...")
+            video.audio.write_audiofile(str(temp_path), codec="pcm_s16le")
             
-            print("Opening video file...")
-            with VideoFileClip(str(video_path)) as video:
-                print("Extracting audio...")
-                video.audio.write_audiofile(str(temp_path), codec="pcm_s16le")
-                
-                print("Closing video file...")
-                video.reader.close()
-                video.audio.reader.close_proc()
+            print("Closing video file...")
+            video.reader.close()
+            video.audio.reader.close_proc()
 
-            # Force garbage collection to release file handles
-            gc.collect()
+        # Force garbage collection to release file handles
+        gc.collect()
 
-            print(f"Converting to 16kHz: {temp_path} -> {audio_output_path}")
-            process = subprocess.run(
-                ["sox", str(temp_path), "-r", "16000", str(audio_output_path)],
-                check=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                timeout=30
-            )
+        print(f"Converting to 16kHz: {temp_path} -> {audio_output_path}")
+        process = subprocess.run(
+            ["sox", str(temp_path), "-r", "16000", str(audio_output_path)],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=30
+        )
 
-            if process.returncode != 0:
-                print(f"sox error: {process.stderr.decode()}")
-                return
+        if process.returncode != 0:
+            print(f"sox error: {process.stderr.decode()}")
+            return
 
         # Remove temporary file
         temp_path.unlink()
@@ -670,13 +657,12 @@ def extract_audio_from_video(video_path: Path, audio_output_path: Path) -> None:
 
     except subprocess.TimeoutExpired:
         print("sox process timed out!")
-        if 'temp_path' in locals():
-            temp_path.unlink()
     except Exception as e:
         print(f"Error extracting audio: {e}")
-        if 'temp_path' in locals():
+    finally:
+        # Ensure the temp file is deleted even if an error occurs
+        if temp_path.exists():
             temp_path.unlink()
-        raise
 
 def extract_audio_from_videos_in_folder(videos_input_dir: Path, output_dir: Path):
     """
