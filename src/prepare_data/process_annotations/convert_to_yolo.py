@@ -3,7 +3,7 @@ import logging
 import cv2
 from pathlib import Path
 from utils import fetch_all_annotations
-from constants import YoloPaths, DetectionPaths, ResNetPaths
+from constants import YoloPaths, DetectionPaths, ClassificationPaths
 from config import YoloConfig, CategoryMappings
 
 # Configure logging
@@ -127,9 +127,9 @@ def save_annotations(
         "adult_person_face": YoloPaths.adult_person_face_labels_input_dir,
         "child_person_face": YoloPaths.child_person_face_labels_input_dir,
         "object": YoloPaths.object_labels_input_dir,
-        "person": ResNetPaths.person_labels_input_dir,
-        "face": ResNetPaths.face_labels_input_dir,
-        "gaze": YoloPaths.gaze_labels_input_dir,
+        "person": ClassificationPaths.person_labels_input_dir,
+        "face": ClassificationPaths.face_labels_input_dir,
+        "gaze": ClassificationPaths.gaze_labels_input_dir,
     }
     # Remove default fallback and add error handling
     if target not in output_dirs:
