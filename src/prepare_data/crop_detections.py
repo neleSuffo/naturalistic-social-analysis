@@ -3,34 +3,37 @@ import cv2
 import logging
 from pathlib import Path
 from tqdm import tqdm
-from constants import DetectionPaths, YoloPaths
+from constants import DetectionPaths, ClassificationPaths
 
-def crop_faces_from_labels(
+def crop_detections_from_labels(
     labels_input_dir: Path,
     rawframe_dir: Path,
     output_dir: Path,
     progress_file: Path,
-    missing_frames_file: Path
+    missing_frames_file: Path,
+    detection_type: str,  # "face" or "person"
 ):
     """ 
-    This function reads YOLO annotations and crops faces from rawframes.
-    
+    Reads YOLO annotations and crops faces or persons from rawframes.
+
     Parameters
     ----------
     labels_input_dir : Path
-        Directory containing YOLO annotations in txt format
+        Directory containing YOLO annotations in txt format.
     rawframe_dir : Path
-        Directory containing rawframes
+        Directory containing rawframes.
     output_dir : Path
-        Directory to save cropped faces
+        Directory to save cropped detections.
     progress_file : Path
-        File to track progress
+        File to track progress.
     missing_frames_file : Path
-        File to log missing frames
+        File to log missing frames.
+    detection_type : str
+        Either "face" or "person" to specify the crop type.
     """
     cv2.setNumThreads(1)
-    
-    # Create output directories
+
+    # Create necessary directories
     output_dir.mkdir(parents=True, exist_ok=True)
     progress_dir = progress_file.parent
     progress_dir.mkdir(parents=True, exist_ok=True)
@@ -42,12 +45,12 @@ def crop_faces_from_labels(
             processed_images = set(line.strip() for line in f)
         logging.info(f"Loaded {len(processed_images)} processed images")
 
-    # Get all txt files in labels directory
+    # Get all annotation files
     annotation_files = list(labels_input_dir.glob('*.txt'))
 
-    for ann_file in tqdm(annotation_files, desc="Processing annotations"):
-        image_name = ann_file.stem + '.jpg'  # Assuming images are jpg
-        
+    for ann_file in tqdm(annotation_files, desc=f"Processing {detection_type} annotations"):
+        image_name = ann_file.stem + '.jpg'  
+
         # Skip if already processed
         if image_name in processed_images:
             continue
@@ -75,33 +78,32 @@ def crop_faces_from_labels(
         # Read annotations
         with open(ann_file, 'r') as f:
             lines = f.readlines()
-            # Process each line in the annotation file
             for idx, line in enumerate(lines):
                 try:
-                    # Parse YOLO format: class x_center y_center width height
+                    # Parse YOLO format: class_id x_center y_center width height
                     class_id, x_center, y_center, width, height = map(float, line.strip().split())
                     
-                    # Convert YOLO coordinates to pixel coordinates
-                    x1 = int((x_center - width/2) * frame_width)
-                    y1 = int((y_center - height/2) * frame_height)
+                    # Convert YOLO format to pixel coordinates
+                    x1 = int((x_center - width / 2) * frame_width)
+                    y1 = int((y_center - height / 2) * frame_height)
                     w = int(width * frame_width)
                     h = int(height * frame_height)
-                    
+
                     # Ensure coordinates are within image bounds
                     x1 = max(0, x1)
                     y1 = max(0, y1)
                     w = min(w, frame_width - x1)
                     h = min(h, frame_height - y1)
 
-                    # Crop the face
-                    cropped_face = frame[y1:y1+h, x1:x1+w]
-                    if cropped_face.size == 0:
+                    # Crop the detection
+                    cropped_detection = frame[y1:y1 + h, x1:x1 + w]
+                    if cropped_detection.size == 0:
                         logging.warning(f"Empty crop for {image_path}")
                         continue
 
-                    # Save cropped face with same name as original
-                    face_output_path = output_dir / f"{ann_file.stem}_face_{idx}.jpg"
-                    cv2.imwrite(str(face_output_path), cropped_face)
+                    # Save the cropped detection
+                    output_path = output_dir / f"{ann_file.stem}_{detection_type}_{idx}.jpg"
+                    cv2.imwrite(str(output_path), cropped_detection)
 
                 except Exception as e:
                     logging.error(f"Error processing {ann_file}: {e}")
@@ -111,17 +113,32 @@ def crop_faces_from_labels(
         with open(progress_file, 'a') as f:
             f.write(f"{image_name}\n")
 
-    logging.info(f"Completed face extraction. Results saved to {output_dir}")
+    logging.info(f"Completed {detection_type} extraction. Results saved to {output_dir}")
+
 
 def main():
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-    crop_faces_from_labels(
-        labels_input_dir=YoloPaths.gaze_labels_input_dir,
+
+    # Process faces
+    crop_detections_from_labels(
+        labels_input_dir=ClassificationPaths.face_labels_input_dir,
         rawframe_dir=DetectionPaths.images_input_dir,
-        output_dir=DetectionPaths.gaze_images_input_dir,
-        progress_file=YoloPaths.gaze_extraction_progress_file_path,
-        missing_frames_file=YoloPaths.gaze_missing_frames_file_path
+        output_dir=DetectionPaths.face_images_input_dir,
+        progress_file=ClassificationPaths.gaze_extraction_progress_file_path,
+        missing_frames_file=ClassificationPaths.gaze_missing_frames_file_path,
+        detection_type="face"
     )
+
+    # Process persons (only process class IDs 0 = person, 1 = reflection)
+    crop_detections_from_labels(
+        labels_input_dir=ClassificationPaths.person_labels_input_dir,
+        rawframe_dir=DetectionPaths.images_input_dir,
+        output_dir=DetectionPaths.person_images_input_dir,
+        progress_file=ClassificationPaths.person_extraction_progress_file_path,
+        missing_frames_file=ClassificationPaths.person_missing_frames_file_path,
+        detection_type="person",
+    )
+
 
 if __name__ == "__main__":    
     main()
