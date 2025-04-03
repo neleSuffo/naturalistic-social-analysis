@@ -532,7 +532,6 @@ def compute_id_counts(input_images: list,
             missing_annotations += 1
             missing_images.append(input_image)
     logging.info(f"Images without annotations: {missing_annotations}")
-    logging.info(f"Missing images: {missing_images}")
     return id_counts, missing_annotations
 
 def find_best_split(all_ids, id_counts, total_samples, num_trials=100):
