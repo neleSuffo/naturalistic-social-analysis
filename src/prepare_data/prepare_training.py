@@ -8,7 +8,7 @@ import pandas as pd
 from collections import defaultdict
 from pathlib import Path
 from sklearn.model_selection import train_test_split
-from constants import DetectionPaths, YoloPaths, ResNetPaths, BasePaths
+from constants import DetectionPaths, YoloPaths, BasePaths, ClassificationPaths
 from config import TrainingConfig
 from iterstrat.ml_stratifiers import MultilabelStratifiedShuffleSplit as MSSS
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -357,9 +357,9 @@ def move_images(yolo_target: str,
         return (0, 0)
 
     # Get destination paths
-    paths = (ResNetPaths.get_target_paths(yolo_target, split_type) 
+    paths = (YoloPaths.get_target_paths(yolo_target, split_type) 
             if yolo_target in ["child_face", "adult_face", "adult_person", "child_person"]
-            else YoloPaths.get_target_paths(yolo_target, split_type))
+            else ClassificationPaths.get_target_paths(yolo_target, split_type))
     
     if not paths:
         raise ValueError(f"Invalid yolo_target: {yolo_target}")
@@ -520,6 +520,7 @@ def compute_id_counts(input_images: list,
     """
     id_counts = defaultdict(lambda: [0, 0])  # [n0, n1] for each ID
     missing_annotations = 0
+    missing_images = []
     for input_image in input_images:
         id_ = extract_id(input_image)
         class_id = get_class(input_image, annotation_folder)
@@ -529,7 +530,9 @@ def compute_id_counts(input_images: list,
             id_counts[id_][1] += 1
         else:
             missing_annotations += 1
-    print(f"Images without annotations: {missing_annotations}")
+            missing_images.append(input_image)
+    logging.info(f"Images without annotations: {missing_annotations}")
+    logging.info(f"Missing images: {missing_images}")
     return id_counts, missing_annotations
 
 def find_best_split(all_ids, id_counts, total_samples, num_trials=100):
@@ -582,8 +585,10 @@ def find_best_split(all_ids, id_counts, total_samples, num_trials=100):
     return best_split
 
 def balance_train_set(train_input_images: list, 
-                      annotation_folder: Path) -> list:
-    """Balance the training set to a 50/50 class ratio by dropping majority class samples.
+                      annotation_folder: Path,
+                      min_ratio: float = 0.45) -> list:
+    """
+    Balance the training set only if class ratio exceeds specified threshold.
     
     Parameters
     ----------
@@ -591,22 +596,51 @@ def balance_train_set(train_input_images: list,
         List of training image filenames.
     annotation_folder: Path
         Path to the directory containing annotation files.
+    min_ratio: float
+        Minimum ratio of minority class to total images to trigger balancing.
         
     Returns
     -------
     list
         A balanced list of training image filenames.
     """
-    train_class_0 = [f for f in train_input_images if get_class(f, annotation_folder) == 0]
-    train_class_1 = [f for f in train_input_images if get_class(f, annotation_folder) == 1]
+    # Separate images by class
+    train_class_0 = []
+    train_class_1 = []
     
-    if len(train_class_0) > len(train_class_1):
-        train_class_0_balanced = random.sample(train_class_0, len(train_class_1))
-        return train_class_0_balanced + train_class_1
-    else:
-        train_class_1_balanced = random.sample(train_class_1, len(train_class_0))
-        return train_class_0 + train_class_1_balanced
+    for img in train_input_images:
+        class_id = get_class(img, annotation_folder)
+        if class_id == 0:
+            train_class_0.append(img)
+        elif class_id == 1:
+            train_class_1.append(img)
 
+    n0 = len(train_class_0)
+    n1 = len(train_class_1)
+    total = n0 + n1
+    
+    # Calculate class ratios
+    ratio_0 = n0 / total if total > 0 else 0
+    ratio_1 = n1 / total if total > 0 else 0
+    
+        
+    # Only balance if ratio exceeds threshold
+    if min(ratio_0, ratio_1) < min_ratio:
+        logging.info("Class imbalance detected, performing balancing...")
+        if len(train_class_0) > len(train_class_1):
+            target_size = len(train_class_1)
+            train_class_0 = random.sample(train_class_0, target_size)
+        else:
+            target_size = len(train_class_0)
+            train_class_1 = random.sample(train_class_1, target_size)
+    
+        balanced_ratio = len(train_class_0) / (len(train_class_0) + len(train_class_1))
+        logging.info(f"After balancing - Class ratio: {balanced_ratio:.3f}")
+        return train_class_0 + train_class_1
+    else:
+        logging.info("Class distribution within acceptable range, no balancing needed")
+        return train_input_images
+    
 def split_dataset(input_folder: str, 
                   annotation_folder: str,
                   yolo_target: str,
@@ -846,9 +880,9 @@ def main(model_target: str, yolo_target: str):
             "child_person_face": YoloPaths.child_person_face_labels_input_dir,
             "adult_person_face": YoloPaths.adult_person_face_labels_input_dir,
             "object": YoloPaths.object_labels_input_dir,
-            "person": ResNetPaths.person_labels_input_dir,
-            "face": ResNetPaths.face_labels_input_dir,
-            "gaze": YoloPaths.gaze_labels_input_dir
+            "person": ClassificationPaths.person_labels_input_dir,
+            "face": ClassificationPaths.face_labels_input_dir,
+            "gaze": ClassificationPaths.gaze_labels_input_dir
         }
         label_path = path_mapping[yolo_target]
         split_yolo_data(label_path, yolo_target)
