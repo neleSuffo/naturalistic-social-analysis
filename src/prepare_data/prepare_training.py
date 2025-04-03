@@ -357,9 +357,9 @@ def move_images(yolo_target: str,
         return (0, 0)
 
     # Get destination paths
-    paths = (YoloPaths.get_target_paths(yolo_target, split_type) 
-            if yolo_target in ["child_face", "adult_face", "adult_person", "child_person"]
-            else ClassificationPaths.get_target_paths(yolo_target, split_type))
+    paths = (ClassificationPaths.get_target_paths(yolo_target, split_type) 
+            if yolo_target in ["child_face", "adult_face", "adult_person", "child_person", "gaze", "no_gaze"]
+            else YoloPaths.get_target_paths(yolo_target, split_type))
     
     if not paths:
         raise ValueError(f"Invalid yolo_target: {yolo_target}")
