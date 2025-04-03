@@ -20,8 +20,8 @@ class DetectionPaths:
     childlens_videos_input_dir = Path(BasePaths.data_dir/"childlens_videos/") 
     images_input_dir = Path(BasePaths.data_dir/"quantex_videos_processed/")
     childlens_images_input_dir = Path(BasePaths.data_dir/"childlens_videos_processed/")
-    gaze_images_input_dir = Path(BasePaths.data_dir/"quantex_rawframes_face/")
-    face_images_input_dir = gaze_images_input_dir
+    face_images_input_dir = Path(BasePaths.data_dir/"quantex_rawframes_face/")
+    gaze_images_input_dir = face_images_input_dir
     person_images_input_dir = Path(BasePaths.data_dir/"quantex_rawframes_person/")
     # Path variable to the annotation xml files
     quantex_annotations_dir = Path(BasePaths.data_dir/"quantex_annotations/")
@@ -73,24 +73,6 @@ class YoloPaths:
     child_person_face_labels_input_dir = Path(BasePaths.data_dir/"yolo_child_person_face_labels")
     child_person_face_data_input_dir = Path(BasePaths.data_dir/"yolo_child_person_face_input")
     child_person_face_output_dir = Path(BasePaths.output_dir/"yolo_child_person_face_detections/")
-
-    gaze_extracted_faces_dir = Path(BasePaths.data_dir/"yolo_gaze_input")
-    gaze_trained_weights_path = Path(BasePaths.models_dir/'yolo11_gaze_classification.pt')
-    gaze_extraction_progress_file_path = Path(BasePaths.data_dir/"gaze_extraction_progress.txt")
-    gaze_missing_frames_file_path = Path(BasePaths.data_dir/"gaze_missing_frames.txt")
-    gaze_data_config_path = Path(BasePaths.leuphana_ipe_dir/"src/models/yolo_gaze_classification/gaze_dataset.yaml")
-    gaze_labels_input_dir = Path(BasePaths.data_dir/"yolo_gaze_labels")
-    gaze_data_input_dir = Path(BasePaths.data_dir/"yolo_gaze_input")
-    gaze_output_dir = Path(BasePaths.output_dir/"yolo_gaze_classification/")
-    
-    person_output_dir = Path(BasePaths.output_dir/"yolo_person_classification/")
-    person_trained_weights_path = Path(BasePaths.models_dir/'yolo11_person_classification.pt')
-    person_data_config_path = Path(BasePaths.leuphana_ipe_dir/"src/models/yolo_classifications/person_dataset.yaml")
-
-    face_output_dir = Path(BasePaths.output_dir/"yolo_face_classification/")
-    face_trained_weights_path = Path(BasePaths.models_dir/'yolo11_face_classification.pt')
-    face_data_config_path = Path(BasePaths.leuphana_ipe_dir/"src/models/yolo_classifications/face_dataset.yaml")
-
     
     gaze_classes = ['no_gaze', 'gaze']
     person_face_cls_classes = ['child_person_face', 'adult_person_face']
@@ -155,35 +137,36 @@ class YoloPaths:
 
         return None
 
-class ResNetPaths:
-    person_extracted_faces_dir = Path(BasePaths.data_dir/"resnet_person_input")
-    person_trained_weights_path = Path(BasePaths.models_dir/'resnet_person_classification.pt')
-    person_extraction_progress_file_path = Path(BasePaths.data_dir/"person_extraction_progress.txt")
-    person_missing_frames_file_path = Path(BasePaths.data_dir/"person_missing_frames.txt")
-    person_labels_input_dir = Path(BasePaths.data_dir/"resnet_person_labels")
-    person_data_input_dir = Path(BasePaths.data_dir/"resnet_person_input")
-    person_output_dir = Path(BasePaths.output_dir/"resnet_person_classification/")
-    person_trained_weights_path = Path(BasePaths.models_dir/"resnet_person_classification.pth")
+class ClassificationPaths:
+    person_classes = ['child_person', 'adult_person']
+    person_extracted_faces_dir = Path(BasePaths.data_dir/"person_cls_input")
+    person_trained_weights_path = Path(BasePaths.models_dir/'person_classification.pt')
+    person_extraction_progress_file_path = Path(BasePaths.data_dir/"person_cls_extraction_progress.txt")
+    person_missing_frames_file_path = Path(BasePaths.data_dir/"person_cls_missing_frames.txt")
+    person_labels_input_dir = Path(BasePaths.data_dir/"person_cls_labels")
+    person_data_input_dir = Path(BasePaths.data_dir/"person_cls_input")
+    person_output_dir = Path(BasePaths.output_dir/"person_classification/")
+    person_data_config_path = Path(BasePaths.leuphana_ipe_dir/"src/models/yolo_classifications/person_dataset.yaml")
 
-    face_extracted_faces_dir = Path(BasePaths.data_dir/"resnet_face_input")
-    face_trained_weights_path = Path(BasePaths.models_dir/'resnet_face_classification.pt')
-    face_labels_input_dir = Path(BasePaths.data_dir/"resnet_face_labels")
-    face_data_input_dir = Path(BasePaths.data_dir/"resnet_face_input")
-    face_output_dir = Path(BasePaths.output_dir/"resnet_face_classification/")
-    face_trained_weights_path = Path(BasePaths.models_dir/"resnet_face_classification.pth")
-
-    gaze_extracted_faces_dir = Path(BasePaths.data_dir/"yolo_gaze_input")
-    gaze_trained_weights_path = Path(BasePaths.models_dir/'yolo11_gaze_classification.pt')
+    face_classes = ['child_face', 'adult_face']
+    face_extracted_faces_dir = Path(BasePaths.data_dir/"face_cls_input")
+    face_trained_weights_path = Path(BasePaths.models_dir/'face_classification.pt')
+    face_extraction_progress_file_path = Path(BasePaths.data_dir/"face_extraction_progress.txt")
+    face_missing_frames_file_path = Path(BasePaths.data_dir/"face_missing_frames.txt")
+    face_labels_input_dir = Path(BasePaths.data_dir/"face_cls_labels")
+    face_data_input_dir = Path(BasePaths.data_dir/"face_cls_input")
+    face_output_dir = Path(BasePaths.output_dir/"face_classification/")
+    face_data_config_path = Path(BasePaths.leuphana_ipe_dir/"src/models/yolo_classifications/face_dataset.yaml")
+    
+    gaze_classes = ['no_gaze', 'gaze']
+    gaze_extracted_faces_dir = Path(BasePaths.data_dir/"gaze_cls_input")
+    gaze_trained_weights_path = Path(BasePaths.models_dir/'gaze_classification.pt')
     gaze_extraction_progress_file_path = Path(BasePaths.data_dir/"gaze_extraction_progress.txt")
     gaze_missing_frames_file_path = Path(BasePaths.data_dir/"gaze_missing_frames.txt")
     gaze_data_config_path = Path(BasePaths.leuphana_ipe_dir/"src/models/yolo_gaze_classification/gaze_dataset.yaml")
-    gaze_labels_input_dir = Path(BasePaths.data_dir/"yolo_gaze_labels")
-    gaze_data_input_dir = Path(BasePaths.data_dir/"yolo_gaze_input")
+    gaze_labels_input_dir = Path(BasePaths.data_dir/"gaze_cls_labels")
+    gaze_data_input_dir = Path(BasePaths.data_dir/"gaze_cls_input")
     gaze_output_dir = Path(BasePaths.output_dir/"resnet_gaze_classification/")
-    
-    person_classes = ['child_person', 'adult_person']
-    face_classes = ['child_face', 'adult_face']
-    gaze_classes = ['no_gaze', 'gaze']
     
     @classmethod
     def get_target_paths(cls, target: str, split_type: str) -> Optional[Tuple[Path, Path]]:
