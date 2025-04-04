@@ -70,7 +70,8 @@ def fetch_all_annotations(
     cursor = conn.cursor()
     
     placeholders = ", ".join("?" for _ in category_ids)
-    
+    object_target_class_ids = [3, 4, 5, 6, 7, 8, 12]
+
     if persons:
         logging.info("Fetching person-specific annotation attributes")
     # Always include all fields, use COALESCE for person-specific fields
@@ -94,18 +95,15 @@ def fetch_all_annotations(
     WHERE a.category_id IN ({placeholders}) 
         AND a.outside = 0 
         AND v.file_name NOT LIKE '%id255237_2022_05_08_04%'
+        AND (
+            a.category_id NOT IN ({','.join(map(str, object_target_class_ids))})
+            OR (a.category_id IN ({','.join(map(str, object_target_class_ids))}) 
+                AND ({objects} = 0 OR a.object_interaction = 'Yes'))
+        )
+    ORDER BY a.video_id, a.image_id
     """
-        
-    #Add object interaction filter if objects is True
-    if objects:
-        logging.info("Fetching object-specific annotation attributes")
-        query += """
-        AND a.object_interaction = 'Yes'
-        """
     
-    query += " ORDER BY a.video_id, a.image_id"
     cursor.execute(query, category_ids)
-    
     annotations = cursor.fetchall()
     conn.close()
     # log all unique category ids
@@ -670,11 +668,15 @@ def extract_audio_from_videos_in_folder(videos_input_dir: Path, output_dir: Path
     """
     logging.info(f"Scanning folder: {videos_input_dir}")  # Debugging step
 
+    # load file with problematic videos
+    problematic_videos = []
+    with open("/home/nele_pauline_suffo/outputs/audio_extraction/problematic_audio_files.txt", 'r') as f:
+        problematic_videos = [line.strip() for line in f.readlines()]
     for video_file in videos_input_dir.iterdir():
         logging.info(f"Found file: {video_file}")  # Debugging step
         
-        if video_file.suffix.lower() not in ['.mp4', '.MP4']:
-            logging.info(f"Skipping non-video file: {video_file}")  # Debugging step
+        if video_file.suffix.lower() not in ['.mp4', '.MP4'] or video_file.name in problematic_videos:
+            logging.info(f"Skipping problematic video file: {video_file}")
             continue
         
         audio_output_path = output_dir / f"{video_file.stem}.wav"
