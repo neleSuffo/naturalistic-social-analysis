@@ -180,7 +180,7 @@ def main(target: str) -> None:
     logging.info(f"Starting the conversion process for Yolo {target} detection.")
     try:
         category_ids = {
-            "person_face": YoloConfig.child_target_class_ids,
+            "person_face": YoloConfig.person_face_target_class_ids,
             "person_face_object": YoloConfig.person_face_object_target_class_ids,
             "object": YoloConfig.object_target_class_ids,
             "person": YoloConfig.person_target_class_ids,
