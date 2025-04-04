@@ -77,26 +77,21 @@ def map_category_id(target: str, category_id: int, person_age: str = None, gaze_
     
     # mapping for classification models
     if target == "gaze":
-        return CategoryMappings.gaze.get(gaze_directed_at_child, 99)
-    elif target in ["person", "face"]:
-        mapping = CategoryMappings.person_face_cls
-    
+        return CategoryMappings.gaze_cls.get(gaze_directed_at_child, 99)
+    elif target == "person":
+        return CategoryMappings.person_cls.get(person_age, 99)
+    elif target == "face":
+       return CategoryMappings.face_cls.get(person_age, 99)
     # mapping for detection models
     elif target == "person_face":
         mapping = CategoryMappings.person_face_det
     elif target == "person_face_object":
-        return CategoryMappings.person_face_object.get(category_id, 99)
+        CategoryMappings.person_face_object_det
     elif target == "object":
-        return CategoryMappings.objects.get((category_id, object_interaction), 99)
-    elif target == "all":
-        mapping = CategoryMappings.all_instances
+        return CategoryMappings.object_det.get((category_id, object_interaction), 99)
     else:
         logging.error(f"Invalid target: {target}")
         return 99
-    
-    # For person categories in adult/child detection, consider age
-    if target in ["all", "person", "face"] and person_age and category_id in [1, 2, 10]:
-        return mapping.get((category_id, person_age.lower()), 99)
     
     # For all other cases, use direct mapping
     return mapping.get(category_id, 99)
@@ -194,7 +189,7 @@ def main(target: str) -> None:
 
         if target in ["all", "person_face_object"]:
             annotations = fetch_all_annotations(category_ids=category_ids, persons = True, objects=True)
-        elif target in ["adult_person_face", "child_person_face", "gaze", "person", "face", "person_face"]:
+        elif target in ["gaze", "person", "face", "person_face"]:
             annotations = fetch_all_annotations(category_ids=category_ids, persons = True, objects=False, yolo_target=target)
         elif target == "object":
             annotations = fetch_all_annotations(category_ids=category_ids, persons = False, objects=False, yolo_target=target)
