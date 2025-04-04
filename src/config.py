@@ -172,15 +172,22 @@ class DetectionPipelineConfig:
     ]
     
 class CategoryMappings:
-    gaze = {
+    gaze_cls = {
         'No': 0, 
         'Yes': 1
     }
     
-    person_face_cls = {
+    person_cls = {
         'Inf': 0,
+        'child': 0,
+        'teen': 1,
+        'adult': 1,
+    }
+        
+    face_cls = {
         'infant': 0,
         'child': 0,
+        'teen': 1,
         'adult': 1,
     }
     
@@ -191,7 +198,7 @@ class CategoryMappings:
         11: 2
     }
     
-    person_face_object = {
+    person_face_object_det = {
         1: 0,
         2: 0,
         10: 1,
@@ -212,7 +219,7 @@ class CategoryMappings:
         11: 4, 3: 5, 4: 11, 5: 6, 6: 7, 7: 8, 8: 9, 12: 10
     }
 
-    objects = {
+    object_det = {
         # With interaction (yes)
         (3, 'Yes'): 0,  # interacted_book
         (4, 'Yes'): 13,  # interacted_animal
