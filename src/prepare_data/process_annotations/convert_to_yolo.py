@@ -21,13 +21,26 @@ def get_image_dimensions(image_paths: list) -> dict:
     -------
     dict        Dictionary mapping image paths to their dimensions (height, width).
     """
-    # Preload image dimensions
     dimensions = {}
     for image_path in image_paths:
-        img = cv2.imread(str(image_path))
-        if img is not None:
-            # Store the dimensions in the dictionary
+        if not image_path.exists():
+            logging.warning(f"Image file not found: {image_path}")
+            continue
+            
+        try:
+            img = cv2.imread(str(image_path))
+            if img is None:
+                logging.warning(f"Failed to load image: {image_path}")
+                continue
+            
             dimensions[image_path] = img.shape[:2]
+        except Exception as e:
+            logging.error(f"Error processing image {image_path}: {e}")
+            continue
+            
+    if not dimensions:
+        logging.error("No valid images found!")
+        
     return dimensions
 
 def convert_to_yolo_format(img_width: int, img_height: int, bbox: list) -> tuple:
@@ -112,6 +125,9 @@ def save_annotations(annotations, target):
     image_paths = {DetectionPaths.images_input_dir / ann[3][:-11] / ann[3] for ann in annotations}
     image_dims = get_image_dimensions(image_paths)
 
+    if len(image_dims) == 0:
+        raise RuntimeError("No valid images found. Please check the image paths and files.")
+        
     file_contents = {}
     skipped_count = 0
     processed_count = 0
