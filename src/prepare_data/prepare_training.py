@@ -771,12 +771,12 @@ def split_yolo_data(annotation_folder: Path, yolo_target: str):
         # Define mappings for different target types
         target_mappings = {
             "face": {
-                0: ("adult_face", DetectionPaths.face_images_input_dir),
-                1: ("child_face", DetectionPaths.face_images_input_dir)
+                1: ("adult_face", DetectionPaths.face_images_input_dir),
+                0: ("child_face", DetectionPaths.face_images_input_dir)
             },
             "person": {
-                0: ("adult_person", DetectionPaths.person_images_input_dir),
-                1: ("child_person", DetectionPaths.person_images_input_dir)
+                1: ("adult_person", DetectionPaths.person_images_input_dir),
+                0: ("child_person", DetectionPaths.person_images_input_dir)
             },
             "gaze": {
                 0: ("no_gaze", DetectionPaths.gaze_images_input_dir),
