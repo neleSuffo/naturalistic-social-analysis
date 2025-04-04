@@ -39,13 +39,15 @@ def main():
         data=data_dir,
         epochs=200,  # Total number of epochs
         imgsz=640,  # Image size
-        batch=16,   # Batch size
+        batch=32,   # Batch size
         project=str(getattr(ClassificationPaths, f"{target}_output_dir")),  # Output directory
         name=experiment_name,  # Experiment name
-        lr0=0.01,  # Initial learning rate
-        lrf=0.001,  # Final learning rate after scheduling
+        lr0=0.005,  # Reduce initial learning rate
+        lrf=0.0001,  # Final learning rate after scheduling
+        weight_decay=0.0005,  # Weight decay
         cos_lr=True,  # Use cosine annealing for learning rate scheduling
         patience=10,  # Stop training if no improvement for 10 consecutive epochs
+        amp=True,  # Use automatic mixed precision
         device=0,  # GPU (use "cpu" for CPU training)
         plots=True,  # Plot training results
     )
