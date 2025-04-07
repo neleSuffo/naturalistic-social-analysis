@@ -3,6 +3,7 @@ import logging
 import cv2
 from pathlib import Path
 from utils import fetch_all_annotations
+from multiprocessing import Pool
 from constants import DetectionPaths, ClassificationPaths
 from config import YoloConfig, CategoryMappings
 
@@ -19,7 +20,8 @@ def get_image_dimensions(image_paths: list) -> dict:
     
     Returns
     -------
-    dict        Dictionary mapping image paths to their dimensions (height, width).
+    dict        
+        Dictionary mapping image paths to their dimensions (height, width).
     """
     dimensions = {}
     for image_path in image_paths:
@@ -102,6 +104,19 @@ def map_category_id(target: str, category_id: int, person_age: None, gaze_direct
     }
     return mappings.get(target, 99)
 
+def write_annotations(txt_file: Path, lines: list) -> None:
+    """Write annotation lines to a text file.
+    
+    Parameters
+    ----------
+    txt_file : Path
+        Path to the output text file
+    lines : list
+        List of annotation lines to write
+    """
+    with open(txt_file, "w") as f:
+        f.writelines(lines)
+            
 def save_annotations(annotations, target):
     """Saves annotations in YOLO format using optimized batch writing and multiprocessing."""
     logging.info("Saving annotations in YOLO format.")
@@ -156,13 +171,13 @@ def save_annotations(annotations, target):
             skipped_count += 1
             continue
 
-    def write_annotations(args):
-        txt_file, lines = args
-        with open(txt_file, "w") as f:
-            f.writelines(lines)
-
+    write_tasks = []
+    for img, lines in file_contents.items():
+        output_path = output_dir / f"{Path(img).stem}.txt"
+        write_tasks.append((output_path, lines))
+        
     with Pool(processes=4) as pool:
-        pool.map(write_annotations, [(output_dir / f"{Path(img).stem}.txt", lines) for img, lines in file_contents.items()])
+        pool.starmap(write_annotations, write_tasks)
 
     logging.info(f"Processed {processed_count} annotations, skipped {skipped_count}.")
 
