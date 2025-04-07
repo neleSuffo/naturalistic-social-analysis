@@ -2,7 +2,7 @@ import argparse
 import logging
 from datetime import datetime
 from ultralytics import YOLO
-from constants import YoloPaths, ClassificationPaths
+from constants import DetectionPaths, ClassificationPaths
 
 def main():
     parser = argparse.ArgumentParser(description="Evaluate YOLO model.")
@@ -14,18 +14,12 @@ def main():
     args = parser.parse_args()
 
     # Load the YOLO model with the supplied target weights
-    if args.yolo_target == "all":
-        model = YOLO(YoloPaths.all_trained_weights_path)
-        folder_name = "all_detections_validation_" + datetime.now().strftime("%Y%m%d_%H%M%S")
-        data_config = str(YoloPaths.all_data_config_path)
-        project_folder = str(YoloPaths.all_output_dir)
-        output_path = YoloPaths.all_output_dir / folder_name
     if args.yolo_target == "person_face":
-        model = YOLO(YoloPaths.person_face_trained_weights_path)
+        model = YOLO(DetectionPaths.person_face_trained_weights_path)
         folder_name = "person_face_validation_" + datetime.now().strftime("%Y%m%d_%H%M%S")
-        data_config = str(YoloPaths.person_face_data_config_path)
-        project_folder = str(YoloPaths.person_face_output_dir)
-        output_path = YoloPaths.person_face_output_dir / folder_name
+        data_config = str(DetectionPaths.person_face_data_config_path)
+        project_folder = str(DetectionPaths.person_face_output_dir)
+        output_path = DetectionPaths.person_face_output_dir / folder_name
     elif args.yolo_target == "gaze":
         model = YOLO(ClassificationPaths.gaze_trained_weights_path)
         folder_name = "yolo_gaze_validation_" + datetime.now().strftime("%Y%m%d_%H%M%S")
