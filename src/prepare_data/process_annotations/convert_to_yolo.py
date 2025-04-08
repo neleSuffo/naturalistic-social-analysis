@@ -93,6 +93,7 @@ def map_category_id(target: str, category_id: int, person_age: None, gaze_direct
     int
         The mapped category ID.
     """
+    person_age = person_age.strip().capitalize()
     mappings = {
         "gaze": CategoryMappings.gaze_cls.get(gaze_directed_at_child, 99),
         "person": CategoryMappings.person_cls.get(person_age, 99),
@@ -100,7 +101,6 @@ def map_category_id(target: str, category_id: int, person_age: None, gaze_direct
         "object": CategoryMappings.object_det.get((category_id, object_interaction), 99),
         "person_face": CategoryMappings.person_face_det.get(category_id, 99),
         "person_face_object": CategoryMappings.person_face_object_det.get(category_id, 99),
-        
     }
     return mappings.get(target, 99)
 
