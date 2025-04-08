@@ -1,11 +1,11 @@
 
-train: /home/nele_pauline_suffo/ProcessedData/yolo_person_face_input/images/train
-val: /home/nele_pauline_suffo/ProcessedData/yolo_person_face_input/images/val
-test: /home/nele_pauline_suffo/ProcessedData/yolo_person_face_input/images/test
+train: /home/nele_pauline_suffo/ProcessedData/person_face_object_det_input/images/train
+val: /home/nele_pauline_suffo/ProcessedData/person_face_object_det_input/images/val
+test: /home/nele_pauline_suffo/ProcessedData/person_face_object_det_input/images/test
 
 
 # Number of classes
-nc: 10
+nc: 8
 
 # Class names
 names:
