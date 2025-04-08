@@ -91,10 +91,6 @@ class DetectionPaths:
             # Object detection paths
             'object': (cls.object_data_input_dir / "images" / split_type,
                     cls.object_data_input_dir / "labels" / split_type),
-            
-            # Combined detection paths
-            'all': (cls.all_data_input_dir / "images" / split_type,
-                    cls.all_data_input_dir / "labels" / split_type),
             'person_face_object': (cls.person_face_object_data_input_dir / "images" / split_type,
                                 cls.person_face_object_data_input_dir / "labels" / split_type),
             'person_face': (cls.person_face_data_input_dir / "images" / split_type,
