@@ -163,136 +163,11 @@ def balance_training_set(df: pd.DataFrame) -> pd.DataFrame:
         )
     
     return pd.concat([pos_samples, neg_samples]).drop('has_annotation', axis=1)
-     
-def multilabel_stratified_split(df: pd.DataFrame,
-                                  train_ratio: float = TrainingConfig.train_test_split_ratio,
-                                  min_val_test_ratio: float = 0.05,
-                                  random_seed: int = TrainingConfig.random_seed) -> Tuple[List[str], List[str], List[str], pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    """
-    Improved stratified split that:
-    - Maintains ~80% train ratio
-    - Ensures at least min_val_test_ratio (e.g., 5%) of each class in val/test
-    - Preserves ID grouping
-    - Returns DataFrames for train, val, and test splits
-    
-    Parameters
-    ----------
-    df: pd.DataFrame
-        DataFrame containing image filenames and their corresponding IDs.
-        Must have a 'has_annotation' column.
-    train_ratio: float
-        Ratio of training samples to total samples.
-    min_val_test_ratio: float
-        Minimum ratio of validation and test samples to total samples.
-    random_seed: int
-        Random seed for reproducibility.
-    
-    Returns
-    -------
-    Tuple[List[str], List[str], List[str], pd.DataFrame, pd.DataFrame, pd.DataFrame]
-        - List of filenames for train, val, and test splits
-        - DataFrames for train, val, and test splits
-    """
-    np.random.seed(random_seed)
-    
-    # Get class columns (excluding metadata columns)
-    class_columns = [col for col in df.columns if col not in ['filename', 'id']]
-    
-    # Track which IDs contain which classes
-    id_class_map = defaultdict(set)
-    for _, row in df.iterrows():
-        for class_col in class_columns:
-            if row[class_col] == 1:
-                id_class_map[row['id']].add(class_col)
-    
-    # Initialize splits
-    train_ids = set()
-    val_ids = set()
-    test_ids = set()
-    
-    # Track class counts per split
-    class_counts = {c: {'train': 0, 'val': 0, 'test': 0} for c in class_columns}
-    
-    # Sort IDs by number of classes to handle diverse ones first
-    sorted_ids = sorted(id_class_map.keys(), 
-                       key=lambda x: len(id_class_map[x]), 
-                       reverse=True)
-    
-    for id in sorted_ids:
-        # Calculate current class ratios if we add this ID to each split
-        temp_counts = {split: defaultdict(int) for split in ['train', 'val', 'test']}
-        
-        for class_col in id_class_map[id]:
-            temp_counts['train'][class_col] = class_counts[class_col]['train'] + 1
-            temp_counts['val'][class_col] = class_counts[class_col]['val'] + 1
-            temp_counts['test'][class_col] = class_counts[class_col]['test'] + 1
-        
-        # Evaluate best split for this ID
-        best_split = None
-        best_score = float('-inf')
-        
-        for split in ['train', 'val', 'test']:
-            # Calculate score for this potential split
-            score = 0
-            
-            # Penalize moving away from target train ratio
-            if split == 'train':
-                target_ratio = train_ratio
-            else:
-                target_ratio = (1 - train_ratio) / 2
-                
-            current_ratio = (len(eval(f"{split}_ids")) + 1) / len(sorted_ids)
-            ratio_diff = abs(current_ratio - target_ratio)
-            score -= ratio_diff * 10  # Higher weight for ratio adherence
-            
-            # Reward meeting minimum class requirements
-            for class_col in id_class_map[id]:
-                current_count = temp_counts[split][class_col]
-                total_class = sum(class_counts[class_col].values()) + 1
-                
-                if split != 'train':
-                    min_needed = total_class * min_val_test_ratio
-                    if current_count < min_needed:
-                        score += (min_needed - current_count) * 5  # Strong reward
-                
-            if score > best_score:
-                best_score = score
-                best_split = split
-        
-        # Assign to best split
-        if best_split == 'train':
-            train_ids.add(id)
-        elif best_split == 'val':
-            val_ids.add(id)
-        else:
-            test_ids.add(id)
-            
-        # Update class counts
-        for class_col in id_class_map[id]:
-            class_counts[class_col][best_split] += 1
-    
-    # Create final splits
-    train_df = df[df['id'].isin(train_ids)].copy()
-    val_df = df[df['id'].isin(val_ids)].copy()
-    test_df = df[df['id'].isin(test_ids)].copy()
-    
-    # Verify splits
-    print("\nFinal class distribution:")
-    print(f"{'Class':<15} {'Train':<8} {'Val':<8} {'Test':<8} {'Total':<8}")
-    print("-"*45)
-    for class_col in class_columns:
-        total = df[class_col].sum()
-        print(f"{class_col:<15} {train_df[class_col].sum():<8} {val_df[class_col].sum():<8} {test_df[class_col].sum():<8} {total:<8}")
-    
-    total_images = len(df)
-    print(f"\nTotal images: {total_images}")
-    print(f"Train: {len(train_df)} ({len(train_df)/total_images:.1%})")
-    print(f"Val: {len(val_df)} ({len(val_df)/total_images:.1%})")
-    print(f"Test: {len(test_df)} ({len(test_df)/total_images:.1%})")
-    
-    return train_df['filename'].tolist(), val_df['filename'].tolist(), test_df['filename'].tolist(), train_df, val_df, test_df
- 
-def log_all_split_distributions(train_df, val_df, test_df, yolo_target):
+  
+def log_all_split_distributions(train_df: pd.DataFrame,
+                                val_df: pd.DataFrame,
+                                test_df: pd.DataFrame,
+                                yolo_target: str):
     """Log detailed distribution of images across splits and save to file.
     
     Parameters:
@@ -343,12 +218,159 @@ def log_all_split_distributions(train_df, val_df, test_df, yolo_target):
     output_dir.mkdir(exist_ok=True)
     
     timestamp = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")
-    output_file = output_dir / f"split_distribution_{yolo_target}_{timestamp}.txt"
+    output_file = output_dir / f"distribution_{yolo_target}_{timestamp}.txt"
     
     with open(output_file, 'w') as f:
         f.write('\n'.join(distribution_info))
     
     logging.info(f"\nDistribution saved to: {output_file}")
+       
+def multilabel_stratified_split(df: pd.DataFrame,
+                                train_ratio: float = TrainingConfig.train_test_split_ratio,
+                                min_val_test_ratio: float = 0.05,
+                                random_seed: int = TrainingConfig.random_seed,
+                                yolo_target: str = None):
+    """
+    Improved stratified split that:
+    - Maintains ~80% train ratio
+    - Ensures at least min_val_test_ratio (e.g., 5%) of each class in val/test
+    - Preserves ID grouping
+    - Returns DataFrames for train, val, and test splits
+    - Logs split distributions like split_dataset function
+    
+    Parameters:
+    ----------
+    df: pd.DataFrame
+        DataFrame containing image filenames, IDs, and class labels.
+    train_ratio: float
+        Target ratio for training set (default from TrainingConfig).
+    min_val_test_ratio: float
+        Minimum ratio of each class in val/test sets.
+    random_seed: int
+        Random seed for reproducibility.
+    yolo_target: str
+        The target type for YOLO (e.g., "adult_person_face").
+    
+    Returns:
+    -------
+    Tuple[List[str], List[str], List[str], pd.DataFrame, pd.DataFrame, pd.DataFrame]
+        Lists of filenames for train, val, test splits, and their corresponding DataFrames.
+    """
+    np.random.seed(random_seed)
+    
+    # Log input details
+    logging.info(f"Input DataFrame size: {len(df)} rows")
+    logging.info(f"Unique IDs in input: {df['id'].nunique()}")
+    if df.empty:
+        logging.error("Input DataFrame is empty!")
+        raise ValueError("No data to split")
+
+    # Get class columns (excluding metadata columns)
+    class_columns = [col for col in df.columns if col not in ['filename', 'id', 'has_annotation']]
+    logging.info(f"Class columns detected: {class_columns}")
+    
+    # Track which IDs contain which classes
+    id_class_map = defaultdict(set)
+    for _, row in df.iterrows():
+        for class_col in class_columns:
+            if row[class_col] == 1:
+                id_class_map[row['id']].add(class_col)
+    
+    # Initialize splits
+    train_ids = set()
+    val_ids = set()
+    test_ids = set()
+    
+    # Track class counts per split
+    class_counts = {c: {'train': 0, 'val': 0, 'test': 0} for c in class_columns}
+    
+    # Sort IDs by number of classes to handle diverse ones first
+    sorted_ids = sorted(id_class_map.keys(), 
+                       key=lambda x: len(id_class_map[x]), 
+                       reverse=True)
+    logging.info(f"Total unique IDs to split: {len(sorted_ids)}")
+    
+    # Expected train size to guide prioritization
+    expected_train_size = int(train_ratio * len(sorted_ids))
+    logging.info(f"Expected train IDs: {expected_train_size}")
+    
+    for id in sorted_ids:
+        # Calculate current class ratios if we add this ID to each split
+        temp_counts = {split: defaultdict(int) for split in ['train', 'val', 'test']}
+        
+        for class_col in id_class_map[id]:
+            temp_counts['train'][class_col] = class_counts[class_col]['train'] + 1
+            temp_counts['val'][class_col] = class_counts[class_col]['val'] + 1
+            temp_counts['test'][class_col] = class_counts[class_col]['test'] + 1
+        
+        # Evaluate best split for this ID
+        best_split = None
+        best_score = float('-inf')
+        
+        for split in ['train', 'val', 'test']:
+            # Calculate score for this potential split
+            score = 0
+            
+            # Set target ratio based on split
+            target_ratio = train_ratio if split == 'train' else (1 - train_ratio) / 2
+            current_ratio = (len(eval(f"{split}_ids")) + 1) / len(sorted_ids)
+            ratio_diff = abs(current_ratio - target_ratio)
+            
+            # Adjusted scoring: lower penalty and prioritize train
+            if split == 'train' and len(train_ids) < expected_train_size * 0.8:
+                score += 10  # Boost train score until 80% of expected size
+            score -= ratio_diff * 5  # Reduced penalty weight from 10 to 5
+            
+            # Reward meeting minimum class requirements for val/test
+            if split != 'train':
+                for class_col in id_class_map[id]:
+                    current_count = temp_counts[split][class_col]
+                    total_class = sum(class_counts[class_col].values()) + 1
+                    min_needed = total_class * min_val_test_ratio
+                    if current_count < min_needed:
+                        score += (min_needed - current_count) * 5  # Encourage val/test minimums
+            
+            if score > best_score:
+                best_score = score
+                best_split = split
+        
+        # Assign to best split
+        if best_split == 'train':
+            train_ids.add(id)
+        elif best_split == 'val':
+            val_ids.add(id)
+        else:
+            test_ids.add(id)
+            
+        # Update class counts
+        for class_col in id_class_map[id]:
+            class_counts[class_col][best_split] += 1
+    
+    # Log split assignments
+    logging.info(f"Train IDs assigned: {len(train_ids)}")
+    logging.info(f"Val IDs assigned: {len(val_ids)}")
+    logging.info(f"Test IDs assigned: {len(test_ids)}")
+    logging.info(f"Sample train_ids: {list(train_ids)[:5]}")
+    
+    # Create final splits
+    train_df = df[df['id'].isin(train_ids)].copy()
+    val_df = df[df['id'].isin(val_ids)].copy()
+    test_df = df[df['id'].isin(test_ids)].copy()
+    
+    # Log split sizes
+    logging.info(f"Train DF size: {len(train_df)}, Filenames: {len(train_df['filename'].tolist())}")
+    logging.info(f"Val DF size: {len(val_df)}, Filenames: {len(val_df['filename'].tolist())}")
+    logging.info(f"Test DF size: {len(test_df)}, Filenames: {len(test_df['filename'].tolist())}")
+    
+    if train_df.empty:
+        logging.warning("Training DataFrame is empty! Check ID assignments and DataFrame filtering.")
+    
+    # Log distributions
+    log_all_split_distributions(train_df, val_df, test_df, yolo_target)
+    
+    return (train_df['filename'].tolist(), val_df['filename'].tolist(), test_df['filename'].tolist(),
+            train_df, val_df, test_df)
+ 
 
 def get_target_columns(yolo_target: str) -> list:
     """
@@ -887,13 +909,17 @@ def split_yolo_data(annotation_folder: Path, yolo_target: str):
         else:
             # count number of total images in annotated videos
             total_images = get_total_number_of_annotated_frames(annotation_folder)
+            logging.info(f"Total number of images found: {len(total_images)}")
+
             # get data distribution per frame
             df = get_class_distribution(total_images, annotation_folder, yolo_target)
+            logging.info(f"DataFrame shape after get_class_distribution: {df.shape}")
+            logging.info(f"Class columns: {[col for col in df.columns if col not in ['filename', 'id']]}")
+            logging.info(f"Sample counts per class:\n{df.iloc[:, 2:].sum()}")            
             # split data grouped by id
-            train, val, test, train_df, val_df, test_df = multilabel_stratified_split(df)
-            
-            log_all_split_distributions(train_df, val_df, test_df, yolo_target)
-            
+            train, val, test, train_df, val_df, test_df = multilabel_stratified_split(df, yolo_target=yolo_target)
+            logging.info(f"Split sizes - Train: {len(train)}, Val: {len(val)}, Test: {len(test)}")
+         
             total_successful = total_failed = 0
             for split_name, split_set in [("train", train), ("val", val), ("test", test)]:
                 if split_set:
