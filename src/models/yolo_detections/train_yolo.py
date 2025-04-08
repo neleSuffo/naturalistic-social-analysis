@@ -6,13 +6,12 @@ import argparse
 from datetime import datetime
 from pathlib import Path
 from ultralytics import YOLO
-from constants import YoloPaths
+from constants import DetectionPaths
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train YOLO model for different detection tasks')
     parser.add_argument('--yolo_target', type=str, required=True,
-                      choices=['adult_person_face', 'child_person_face',
-                              'object', 'all', 'person_face'],
+                      choices=['person_face_object', 'object', 'person_face'],
                       help='Target detection task')
     parser.add_argument('--epochs', type=int, default=200,
                       help='Number of training epochs')
@@ -33,8 +32,8 @@ def main():
     torch.set_num_threads(24)  # PyTorch threads
 
     # Get appropriate paths based on yolo_target
-    data_config_path = getattr(YoloPaths, f"{args.yolo_target}_data_config_path")
-    base_output_dir = getattr(YoloPaths, f"{args.yolo_target}_output_dir")
+    data_config_path = getattr(DetectionPaths, f"{args.yolo_target}_data_config_path")
+    base_output_dir = getattr(DetectionPaths, f"{args.yolo_target}_output_dir")
     
     # Load the YOLO model
     model = YOLO("/home/nele_pauline_suffo/models/yolo11x.pt")
