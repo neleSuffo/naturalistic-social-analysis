@@ -19,7 +19,7 @@ from sklearn.model_selection import StratifiedShuffleSplit
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-def get_total_number_of_annotated_frames(label_path: Path, image_folder: Path = DetectionPaths.images_input_dir, target_type: str = None) -> list:
+def get_total_number_of_annotated_frames(label_path: Path, image_folder: Path = DetectionPaths.images_input_dir) -> list:
     """
     This function returns the total number of annotated frames in the dataset.
     
@@ -29,16 +29,12 @@ def get_total_number_of_annotated_frames(label_path: Path, image_folder: Path = 
         the path to the label files
     image_folder : Path
         the path to the image folder
-    target_type : str, optional
-        the target type for YOLO (e.g., "child_person_face" or "adult_person_face")
         
     Returns
     -------
     list
-        the total number of images
+        the total number of images along with their IDs
     """
-    positive_frames = set()  # Frames with target annotations
-    negative_frames = set()  # Frames without target annotations
     video_names = set()
     total_images = []
     
@@ -46,52 +42,43 @@ def get_total_number_of_annotated_frames(label_path: Path, image_folder: Path = 
     for annotation_file in label_path.glob('*.txt'):
         parts = annotation_file.stem.split('_')
         video_name = "_".join(parts[:8])
-        video_names.add(video_name)
-
-        # Read the annotation file
-        with open(annotation_file, 'r') as f:
-            annotations = f.readlines()
-            
-        has_target = False
-        if target_type in ["child_person_face", "adult_person_face"]:
-            # Check if file contains adult/child annotations (class 0 or 1)
-            has_target = any(line.startswith(('0', '1')) for line in annotations)
-        elif target_type == 'child_person_face':
-            # Check if file contains child annotations (class 2 or 3)
-            has_target = any(line.startswith(('0', '1', '2')) for line in annotations)
-            
-        if has_target:
-            positive_frames.add(annotation_file.stem)
-        else:
-            negative_frames.add(annotation_file.stem)
+        video_names.add(video_name)      
     
     logging.info(f"Found {len(video_names)} unique video names")
 
     
-    # Step 2: Count total images
+    # Step 2: Count total images and extract IDs
     for video_name in video_names:
         video_path = image_folder / video_name
         if video_path.exists() and video_path.is_dir():
-            total_images.extend([str(p.resolve()) for p in video_path.iterdir() if p.is_file()])
+            for video_file in video_path.iterdir():
+                if video_file.is_file():
+                    image_name = video_file.name
+                    # extract image_id from file_name 
+                    parts = image_name.split("_")
+                    image_id = parts[3].replace("id", "")
+                    
+                    total_images.append((str(video_file.resolve()), image_id))
     return total_images   
 
-def get_class_distribution(total_images: list, annotation_folder: Path, target_type: str = "all") -> pd.DataFrame:
+
+def get_class_distribution(total_images: list, annotation_folder: Path, target_type: str) -> pd.DataFrame:
     """
     Reads label files and groups images based on their class distribution.
 
     Parameters:
     ----------
     total_images: list
-        List of image names.
+        List of tuples containing image paths and IDs.
     annotation_folder: Path
         Path to the directory containing label files.
     target_type: str
-        The target type for classification (e.g., "all", "person_face", "object", etc.)
+        The target type for classification (e.g., "person_face_object")
 
     Returns:
     -------
     pd.DataFrame
-        DataFrame containing image filenames and their corresponding one-hot encoded class labels.
+        DataFrame containing image filenames, IDs, and their corresponding one-hot encoded class labels.
     """
     # Define class mappings based on target type
     class_mappings = {
@@ -129,8 +116,8 @@ def get_class_distribution(total_images: list, annotation_folder: Path, target_t
     id_to_name = class_mappings[target_type]
     image_class_mapping = []
 
-    for image_file in total_images:
-        image_file = Path(image_file)
+    for image_path, image_id in total_images:
+        image_file = Path(image_path)
         annotation_file = annotation_folder / image_file.with_suffix('.txt').name
 
         # Get labels from annotation file
@@ -140,23 +127,31 @@ def get_class_distribution(total_images: list, annotation_folder: Path, target_t
                 class_ids = {int(line.split()[0]) for line in f if line.split()}
                 labels = [id_to_name[cid] for cid in class_ids if cid in id_to_name]
 
-        # Create one-hot encoded dictionary
+        # Create one-hot encoded dictionary for the image
         image_class_mapping.append({
             "filename": image_file.stem,
+            "id": image_id,
+            "has_annotation": bool(labels),  # True if labels are found, False otherwise
             **{class_name: (1 if class_name in labels else 0) 
-               for class_name in id_to_name.values()}
+            for class_name in id_to_name.values()}
         })
 
     return pd.DataFrame(image_class_mapping)
 
-def balance_training_set(df: pd.DataFrame, yolo_target: str) -> pd.DataFrame:
-    """Helper function to balance training set based on annotations."""
-    # Define target columns based on yolo_target
-    target_columns = get_target_columns(yolo_target)
+def balance_training_set(df: pd.DataFrame) -> pd.DataFrame:
+    """Helper function to balance training set based on existing has_annotation column.
     
-    # Create has_annotation column
-    df['has_annotation'] = df[target_columns].sum(axis=1) > 0
-    
+    Parameters
+    ----------
+    df: pd.DataFrame
+        DataFrame containing image filenames and their corresponding IDs.
+        Must have a 'has_annotation' column.
+        
+    Returns
+    -------
+    pd.DataFrame
+        Balanced DataFrame with equal numbers of positive and negative samples.
+    """
     pos_samples = df[df['has_annotation']].copy()
     neg_samples = df[~df['has_annotation']].copy()
     
@@ -170,55 +165,43 @@ def balance_training_set(df: pd.DataFrame, yolo_target: str) -> pd.DataFrame:
     return pd.concat([pos_samples, neg_samples]).drop('has_annotation', axis=1)
      
 def multilabel_stratified_split(df: pd.DataFrame,
-                              train_ratio: float = 0.8,
-                              random_seed: int = TrainingConfig.random_seed,
-                              yolo_target: str = None):
+                                train_ratio: float = 0.8,
+                                random_seed: int = TrainingConfig.random_seed):
     """
     Performs stratified split maintaining 80/10/10 ratio.
     Only balances training set to preserve real-world distribution in val/test.
+    Ensures images from the same ID are in the same split.
+    
+    Parameters
+    -----------
+    df: pd.DataFrame
+        DataFrame containing image filenames and their corresponding IDs.
+    train_ratio: float
+        Ratio of training data (default is 0.8).
+    random_seed: int
+        Random seed for reproducibility (default is 42).
     """
     if df.empty:
         raise ValueError("Empty DataFrame provided")
-
-    if 'filename' not in df.columns:
-        raise ValueError("DataFrame must contain 'filename' column")
+    if 'filename' not in df.columns or 'id' not in df.columns:
+        raise ValueError("DataFrame must contain 'filename' and 'id' columns")
         
-    X = df['filename'].values
-    y = df.iloc[:, 1:].values
+    # Group by ID and shuffle IDs
+    ids = df['id'].unique()
+    np.random.seed(random_seed)
+    np.random.shuffle(ids)
     
-    test_size = (1-train_ratio)/2
-    val_size = test_size
-    
-    # First split off test set (10%)
-    msss_first = MultilabelStratifiedShuffleSplit(
-        n_splits=1,
-        test_size=test_size,  # 10% for test
-        random_state=random_seed
-    )
-    temp_idx, test_idx = next(msss_first.split(X, y))
-    
-    # Create temporary and test dataframes
-    temp_df = df.iloc[temp_idx].copy()
-    test_df = df.iloc[test_idx].copy()
-    
-    # Split remaining 90% into train (8/9) and val (1/9)
-    msss_second = MultilabelStratifiedShuffleSplit(
-        n_splits=1,
-        test_size=1/9,  # This gives us 80/10 split of remaining data
-        random_state=random_seed
-    )
-    
-    train_idx, val_idx = next(msss_second.split(
-        temp_df['filename'].values,
-        temp_df.iloc[:, 1:].values
-    ))
-    
-    # Create final dataframes
-    train_df = temp_df.iloc[train_idx].copy()
-    val_df = temp_df.iloc[val_idx].copy()
-    
+    train_ids = ids[:int(len(ids) * train_ratio)]
+    val_ids = ids[int(len(ids) * train_ratio):int(len(ids) * (train_ratio + (1-train_ratio)/2))]
+    test_ids = ids[int(len(ids) * (train_ratio + (1-train_ratio)/2)):]
+
+    # Split data based on IDs
+    train_df = df[df['id'].isin(train_ids)].copy()
+    val_df = df[df['id'].isin(val_ids)].copy()
+    test_df = df[df['id'].isin(test_ids)].copy()
+
     # Balance only training set
-    train_df = balance_training_set(train_df, yolo_target)
+    train_df = balance_training_set(train_df)
     
     # Verify final split sizes
     total = len(train_df) + len(val_df) + len(test_df)
@@ -644,7 +627,8 @@ def split_dataset(input_folder: str,
                   annotation_folder: str,
                   yolo_target: str,
                   class_mapping: dict = None) -> Tuple[list, list, list]:
-    """Split the dataset into train, val, and test sets with the specified conditions.
+    """
+    Split the dataset into train, val, and test sets while 
     
     Parameters
     ----------
