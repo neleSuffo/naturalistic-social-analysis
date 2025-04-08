@@ -165,7 +165,7 @@ def balance_training_set(df: pd.DataFrame) -> pd.DataFrame:
     return pd.concat([pos_samples, neg_samples]).drop('has_annotation', axis=1)
      
 def multilabel_stratified_split(df: pd.DataFrame,
-                                train_ratio: float = 0.8,
+                                train_ratio: float = TrainingConfig.train_test_split_ratio,
                                 random_seed: int = TrainingConfig.random_seed):
     """
     Performs stratified split maintaining 80/10/10 ratio.
@@ -808,13 +808,12 @@ def split_yolo_data(annotation_folder: Path, yolo_target: str):
                     logging.warning(f"No {target_mappings[yolo_target][1][0]} images for {split_name}")
                         
         else:
+            # count number of total images in annotated videos
             total_images = get_total_number_of_annotated_frames(annotation_folder)
-            # Handle multi-class cases (unchanged)
+            # get data distribution per frame
             df = get_class_distribution(total_images, annotation_folder, yolo_target)
-            
-            train, val, test, train_df, val_df, test_df = multilabel_stratified_split(
-                df, yolo_target=yolo_target
-            )
+            # split data grouped by id
+            train, val, test, train_df, val_df, test_df = multilabel_stratified_split(df)
             
             log_all_split_distributions(train_df, val_df, test_df, yolo_target)
             
