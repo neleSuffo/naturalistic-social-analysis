@@ -298,7 +298,7 @@ def prepare_video_dataset(
     batch_size: int
         The number of videos to process concurrently.
     """
-    logging.info(f"Starting frame extraction from videos in {video_dir} to {output_dir} at {fps} FPS with split ratio {split_ratio}.")
+    logging.info(f"Starting frame extraction from videos in {video_dir} to {routput_dir} at {fps} FPS with split ratio {split_ratio}.")
 
     video_dir = DetectionPaths.videos_input_dir
     split_ratio = TrainingConfig.train_test_split
@@ -614,7 +614,6 @@ def extract_audio_from_video(video_path: Path, audio_output_path: Path) -> None:
     audio_output_path : Path
         Path where the 16kHz WAV file should be saved.
     """
-    logging.info(f"Starting audio extraction for {video_path}")
     parent_dir = audio_output_path.parent
     parent_dir.mkdir(parents=True, exist_ok=True)
 
@@ -673,7 +672,6 @@ def extract_audio_from_videos_in_folder(videos_input_dir: Path, output_dir: Path
     with open("/home/nele_pauline_suffo/outputs/audio_extraction/problematic_audio_files.txt", 'r') as f:
         problematic_videos = [line.strip() for line in f.readlines()]
     for video_file in videos_input_dir.iterdir():
-        logging.info(f"Found file: {video_file}")  # Debugging step
         
         if video_file.suffix.lower() not in ['.mp4', '.MP4'] or video_file.name in problematic_videos:
             logging.info(f"Skipping problematic video file: {video_file}")
