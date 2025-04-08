@@ -218,7 +218,7 @@ def log_all_split_distributions(train_df: pd.DataFrame,
     output_dir.mkdir(exist_ok=True)
     
     timestamp = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")
-    output_file = output_dir / f"distribution_{yolo_target}_{timestamp}.txt"
+    output_file = output_dir / f"split_distribution_{yolo_target}_{timestamp}.txt"
     
     with open(output_file, 'w') as f:
         f.write('\n'.join(distribution_info))
@@ -909,13 +909,9 @@ def split_yolo_data(annotation_folder: Path, yolo_target: str):
         else:
             # count number of total images in annotated videos
             total_images = get_total_number_of_annotated_frames(annotation_folder)
-            logging.info(f"Total number of images found: {len(total_images)}")
 
             # get data distribution per frame
             df = get_class_distribution(total_images, annotation_folder, yolo_target)
-            logging.info(f"DataFrame shape after get_class_distribution: {df.shape}")
-            logging.info(f"Class columns: {[col for col in df.columns if col not in ['filename', 'id']]}")
-            logging.info(f"Sample counts per class:\n{df.iloc[:, 2:].sum()}")            
             # split data grouped by id
             train, val, test, train_df, val_df, test_df = multilabel_stratified_split(df, yolo_target=yolo_target)
             logging.info(f"Split sizes - Train: {len(train)}, Val: {len(val)}, Test: {len(test)}")
