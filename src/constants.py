@@ -224,8 +224,10 @@ class MtcnnPaths:
     output_dir = Path(BasePaths.output_dir/"mtcnn/")
     
 class VideoParameters:
-    success_log_path = Path("src/projects/shared/process_data/output/success.log")
-    rawframes_extraction_error_log = Path(BasePaths.output_dir/"rawframes_extraction_error.log")
+    quantex_processed_videos_log = Path(BasePaths.data_dir/"quantex_processed_videos.txt")
+    childlens_processed_videos_log = Path(BasePaths.data_dir/"childlens_processed_videos.txt")
+    quantex_rawframes_extraction_error_log = Path(BasePaths.data_dir/"quantex_rawframes_extraction_error.log")
+    childlens_rawframes_extraction_error_log = Path(BasePaths.data_dir/"childlens_rawframes_extraction_error.log")
     
 class ModelNames:
     yolo_model = "yolo"
