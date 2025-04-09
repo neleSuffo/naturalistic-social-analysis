@@ -355,8 +355,7 @@ def extract_every_nth_frame_from_videos_in_folder(
     output_root_folder: Path,
     frame_step: int,
     error_log_file: Path,
-    processed_videos_file: Path = Path('/home/nele_pauline_suffo/ProcessedData/quantex_processed_videos.txt')
-
+    processed_videos_file: Path,
 ):
     """
     Extract frames from videos, skipping existing frames.
@@ -420,27 +419,22 @@ def extract_every_nth_frame(video_path: Path, output_folder: Path, frame_interva
     cap = cv2.VideoCapture(str(video_path))
     if not cap.isOpened():
         logging.error(f"Error: Unable to open video file {video_path}")
+        with Path(error_log_file).open('a') as error_log:
+            error_log.write(f"Failed to open video: {video_path}\n")
         return
 
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    failed_frames = []
 
     def generate_image_name(video_path: Path, frame_idx: int) -> str:
         return f"{video_path.stem}_{frame_idx:06d}.jpg"
 
     saved_frames = 0
-    skipped_existing = 0
-    with Path(error_log_file).open('a') as error_log, tqdm(total=total_frames // frame_interval, desc="Extracting frames") as pbar:
+    with tqdm(total=total_frames // frame_interval, desc="Extracting frames") as pbar:
         frame_idx = 0
         while frame_idx < total_frames:
             frame_name = generate_image_name(video_path, frame_idx)
             output_path = output_folder / frame_name
-
-            # Skip if frame already exists
-            if output_path.exists():
-                frame_idx += frame_interval
-                skipped_existing += 1
-                pbar.update(1)
-                continue
 
             # Set frame position explicitly before reading
             cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
@@ -448,22 +442,33 @@ def extract_every_nth_frame(video_path: Path, output_folder: Path, frame_interva
 
             if not ret:
                 logging.error(f"Error: Unable to read frame {frame_idx} in {video_path}")
-                error_log.write(f"{video_path}, frame {frame_idx}\n")
+                failed_frames.append((video_path.name, frame_idx))
                 frame_idx += frame_interval
                 pbar.update(1)
                 continue
 
-            # Save the extracted frame
-            cv2.imwrite(str(output_path), frame)
-            saved_frames += 1
+            try:
+                # Try to save the extracted frame
+                cv2.imwrite(str(output_path), frame)
+                saved_frames += 1
+            except Exception as e:
+                logging.error(f"Error saving frame {frame_idx} from {video_path}: {str(e)}")
+                failed_frames.append((video_path.name, frame_idx))
 
-            frame_idx += frame_interval  # Move to the next nth frame
+            frame_idx += frame_interval
             pbar.update(1)
 
     cap.release()
+
+    # Write all failed frames to error log at once
+    if failed_frames:
+        with Path(error_log_file).open('a') as error_log:
+            for video_name, frame_idx in failed_frames:
+                error_log.write(f"{video_name}, frame {frame_idx}\n")
+
     logging.info(f"Extraction complete for {video_path}:")
-    logging.info(f"Saved {saved_frames} new frames")
-    logging.info(f"Skipped {skipped_existing} existing frames")
+    logging.info(f"Saved {saved_frames} frames")
+    logging.info(f"Failed to extract {len(failed_frames)} frames")
 
 
 def process_video_strong_sort(video_file: Path, output_subdir: Path) -> None:
