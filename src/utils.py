@@ -618,48 +618,27 @@ def extract_audio_from_video(video_path: Path, audio_output_path: Path) -> None:
     parent_dir.mkdir(parents=True, exist_ok=True)
 
     try:
-        # Define temp file path in /tmp instead of same directory to avoid clutter
-        temp_file = tempfile.NamedTemporaryFile(suffix='.wav', delete=False)
-        temp_path = Path(temp_file.name)
-        temp_file.close()  # Close immediately to allow reuse by external processes
+        # Use ffmpeg directly to extract and convert audio in one step
+        process = subprocess.run([
+            'ffmpeg',
+            '-i', str(video_path),
+            '-vn',  # No video
+            '-acodec', 'pcm_s16le',  # PCM 16-bit
+            '-ar', '16000',  # 16kHz sample rate
+            '-ac', '1',  # Mono
+            '-y',  # Overwrite output
+            str(audio_output_path)
+        ], check=True, capture_output=True, text=True)
 
-        logging.info("Opening video file...")
-        with VideoFileClip(str(video_path)) as video:
-            logging.info("Extracting audio...")
-            video.audio.write_audiofile(str(temp_path), codec="pcm_s16le")
-            
-            logging.info("Closing video file...")
-            video.reader.close()
-            video.audio.reader.close_proc()
+        if process.returncode == 0:
+            logging.info(f"Successfully stored 16kHz audio at {audio_output_path}")
+        else:
+            logging.error(f"Error extracting audio: {process.stderr}")
 
-        # Force garbage collection to release file handles
-        gc.collect()
-
-        logging.info(f"Converting to 16kHz: {temp_path} -> {audio_output_path}")
-        process = subprocess.run(
-            ["sox", str(temp_path), "-r", "16000", str(audio_output_path)],
-            check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            timeout=30
-        )
-
-        if process.returncode != 0:
-            logging.info(f"sox error: {process.stderr.decode()}")
-            return
-
-        # Remove temporary file
-        temp_path.unlink()
-        logging.info(f"Successfully stored 16kHz audio at {audio_output_path}")
-
-    except subprocess.TimeoutExpired:
-        logging.info("sox process timed out!")
+    except subprocess.CalledProcessError as e:
+        logging.error(f"FFmpeg error: {e.stderr}")
     except Exception as e:
-        logging.info(f"Error extracting audio: {e}")
-    finally:
-        # Ensure the temp file is deleted even if an error occurs
-        if temp_path.exists():
-            temp_path.unlink()
+        logging.error(f"Error extracting audio: {e}")
 
 def extract_audio_from_videos_in_folder(videos_input_dir: Path, output_dir: Path):
     """
@@ -677,6 +656,12 @@ def extract_audio_from_videos_in_folder(videos_input_dir: Path, output_dir: Path
             logging.info(f"Skipping problematic video file: {video_file}")
             continue
         
+        # skip if video file is already in the output directory
+        if (output_dir / f"{video_file.stem}.wav").exists():
+            logging.info(f"Audio already exists for: {video_file}")
+            continue
+        
+        # create output directory if it doesn't exist
         audio_output_path = output_dir / f"{video_file.stem}.wav"
 
         if not audio_output_path.exists():
