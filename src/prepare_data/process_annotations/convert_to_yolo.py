@@ -95,10 +95,9 @@ def map_category_id(target: str, category_id: int, person_age: None, gaze_direct
     """
     person_age = person_age.strip().lower()
     mappings = {
-        "gaze": CategoryMappings.gaze_cls.get(gaze_directed_at_child, 99),
-        "person": CategoryMappings.person_cls.get(person_age, 99),
-        "face": CategoryMappings.face_cls.get(person_age, 99),
-        "object": CategoryMappings.object_det.get((category_id, object_interaction), 99),
+        "gaze_cls": CategoryMappings.gaze_cls.get(gaze_directed_at_child, 99),
+        "person_cls": CategoryMappings.person_cls.get(person_age, 99),
+        "face_cls": CategoryMappings.face_cls.get(person_age, 99),
         "person_face": CategoryMappings.person_face_det.get(category_id, 99),
         "person_face_object": CategoryMappings.person_face_object_det.get(category_id, 99),
     }
@@ -124,10 +123,9 @@ def save_annotations(annotations, target):
     output_dirs = {
         "person_face": DetectionPaths.person_face_labels_input_dir,
         "person_face_object": DetectionPaths.person_face_object_labels_input_dir,
-        "object": DetectionPaths.object_labels_input_dir,
-        "person": ClassificationPaths.person_labels_input_dir,
-        "face": ClassificationPaths.face_labels_input_dir,
-        "gaze": ClassificationPaths.gaze_labels_input_dir,
+        "person_cls": ClassificationPaths.person_labels_input_dir,
+        "face_cls": ClassificationPaths.face_labels_input_dir,
+        "gaze_cls": ClassificationPaths.gaze_labels_input_dir,
     }
 
     if target not in output_dirs:
@@ -189,10 +187,9 @@ def main(target):
         category_ids = {
             "person_face": YoloConfig.person_face_target_class_ids,
             "person_face_object": YoloConfig.person_face_object_target_class_ids,
-            "object": YoloConfig.object_target_class_ids,
-            "person": YoloConfig.person_target_class_ids,
-            "face": YoloConfig.face_target_class_ids,
-            "gaze": YoloConfig.face_target_class_ids,
+            "person_cls": YoloConfig.person_target_class_ids,
+            "face_cls": YoloConfig.face_target_class_ids,
+            "gaze_cls": YoloConfig.face_target_class_ids,
         }.get(target)
 
         if category_ids is None:
