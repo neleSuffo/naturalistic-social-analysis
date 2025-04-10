@@ -17,15 +17,13 @@ def main(model: str = None, yolo_target: str = None, setup_db: bool = False) -> 
     model : str, optional
         Model to convert to (e.g., "yolo"). Defaults to None.
     yolo_target : str, optional
-        Target YOLO label ("person_face", "person_face_object" or "gaze"). Defaults to None.
+        Target YOLO label, defaults to None.
     setup_db : bool
         Whether to set up the database
     """
     # Validate arguments
     if model is not None:
-        valid_models = {"yolo", "all"}
-        valid_targets = {"all", "adult_person_face", "child_person_face", "person_face", 
-                        "person_face_object", "object", "person", "face", "gaze"}
+        valid_targets = {"person_face", "person_face_object", "person_cls", "face_cls", "gaze_cls"}
         
         if model not in valid_models:
             raise ValueError(f"Invalid model '{model}'. Must be one of: {valid_models}")
@@ -48,12 +46,10 @@ def main(model: str = None, yolo_target: str = None, setup_db: bool = False) -> 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process annotations")
-    parser.add_argument('--model_target', type=str, default=None, 
-                       help='Model to convert to (e.g., "yolo", "all")')
     parser.add_argument('--yolo_target', type=str, default=None,
-                       help='Target YOLO label ("all", "adult_person_face" or "gaze")')
+                       help='Target YOLO label')
     parser.add_argument('--setup_db', action='store_true', 
                        help='Whether to set up the database')
 
     args = parser.parse_args()
-    main(model=args.model_target, yolo_target=args.yolo_target, setup_db=args.setup_db)
+    main(yolo_target=args.yolo_target, setup_db=args.setup_db)
