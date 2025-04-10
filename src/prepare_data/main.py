@@ -32,7 +32,7 @@ class DataPipeline:
             'python', 
             '-m', 
             'prepare_data.process_annotations.__main__',
-            '--yolo_target', self.yolo_target     # Add argument flag
+            '--yolo_target', self.yolo_target
         ]
         if setup_db:
             cmd.append('--setup_db')
