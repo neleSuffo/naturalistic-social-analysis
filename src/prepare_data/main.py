@@ -13,8 +13,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 class DataPipeline:
     """Handles the data preparation pipeline steps."""
     
-    def __init__(self, model_target: Optional[str], yolo_target: Optional[str], threads: int = 2):
-        self.model_target = model_target
+    def __init__(self, yolo_target: Optional[str], threads: int = 2):
         self.yolo_target = yolo_target
         os.environ['OMP_NUM_THREADS'] = str(threads)
         
@@ -25,16 +24,15 @@ class DataPipeline:
             
     def process_annotations(self, setup_db: bool = False):
         """Process annotations for the specified target."""
-        if not all([self.model_target, self.yolo_target]):
-            raise ValueError("Model target and YOLO target required for annotation processing")
+        if not self.yolo_target:
+            raise ValueError("YOLO target required for annotation processing")
             
         logging.info(f"Processing annotations for {self.yolo_target}...")
         cmd = [
             'python', 
             '-m', 
             'prepare_data.process_annotations.__main__',
-            self.model_target,
-            self.yolo_target
+            '--yolo_target', self.yolo_target     # Add argument flag
         ]
         if setup_db:
             cmd.append('--setup_db')
@@ -48,7 +46,7 @@ class DataPipeline:
     def prepare_dataset(self):
         """Prepare training dataset."""
         logging.info("Preparing training dataset...")
-        prepare_training(self.model_target, self.yolo_target)
+        prepare_training(self.yolo_target)
         
     def run_pipeline(self, steps: list):
         """Run specified pipeline steps in order."""
@@ -73,14 +71,13 @@ def main():
     parser.add_argument('--annotations', action='store_true', help='Process annotations')
     parser.add_argument('--annotations_db', action='store_true', help='Setup annotations database')
     parser.add_argument('--dataset', action='store_true', help='Prepare training dataset')
-    parser.add_argument('--model_target', type=str, choices=['yolo', 'mtcnn', 'all'], help='Model target')
-    parser.add_argument('--yolo_target', type=str, choices=['person_face', 'person_face_object', 'gaze', 'all', 'person', 'face', 'object'], help='YOLO target')
+    parser.add_argument('--yolo_target', type=str, choices=['person_face', 'person_face_object', 'gaze_cls', 'person_cls', 'face_cls'], help='YOLO target')
     parser.add_argument('--all', action='store_true', help='Run full pipeline')
     parser.add_argument('--threads', type=int, default=2, help='Number of threads')
     
     args = parser.parse_args()
     
-    pipeline = DataPipeline(args.model_target, args.yolo_target, args.threads)
+    pipeline = DataPipeline(args.yolo_target, args.threads)
     
     if args.all:
         pipeline.run_pipeline(['videos', 'annotations', 'annotations_db', 'dataset'])
