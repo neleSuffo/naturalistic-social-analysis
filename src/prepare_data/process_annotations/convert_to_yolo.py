@@ -187,16 +187,16 @@ def main(target):
         category_ids = {
             "person_face": YoloConfig.person_face_target_class_ids,
             "person_face_object": YoloConfig.person_face_object_target_class_ids,
-            "person_cls": YoloConfig.person_target_class_ids,
-            "face_cls": YoloConfig.face_target_class_ids,
-            "gaze_cls": YoloConfig.face_target_class_ids,
+            "person_cls": YoloConfig.person_cls_target_class_ids,
+            "face_cls": YoloConfig.face_cls_target_class_ids,
+            "gaze_cls": YoloConfig.face_cls_target_class_ids,
         }.get(target)
 
         if category_ids is None:
             logging.error(f"Invalid target: {target}. Expected one of: {', '.join(category_ids.keys())}.")
             return
 
-        annotations = fetch_all_annotations(category_ids=category_ids, persons=True, objects=(target == "object"), yolo_target=target)
+        annotations = fetch_all_annotations(category_ids=category_ids, persons=True, objects=(target == "object"))
 
         logging.info(f"Fetched {len(annotations)} {target} annotations.")
         save_annotations(annotations, target)
