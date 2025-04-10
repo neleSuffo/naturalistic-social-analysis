@@ -125,24 +125,24 @@ def main(target: str = None):
     Parameters
     ----------
     target : str, optional
-        Target type to crop ('person' or 'face'). If None, will parse from command line.
+        Target type to crop ('person_cls' or 'face_cls'). If None, will parse from command line.
     """
     if target is None:
         parser = argparse.ArgumentParser(description='Crop person or face detections from images.')
         parser.add_argument(
             '--target', 
             type=str,
-            choices=['person', 'face'],
+            choices=['person_cls', 'face_cls'],
             required=True,
             help='Target type to crop (person or face)'
         )
         args = parser.parse_args()
         target = args.target
 
-    if target not in ['person', 'face']:
-        raise ValueError("Target must be either 'person' or 'face'")
+    if target not in ['person_cls', 'face_cls']:
+        raise ValueError("Target must be either 'person_cls' or 'face_cls'")
 
-    if target == 'face':
+    if target == 'face_cls':
         logging.info("Processing face detections...")
         crop_detections_from_labels(
             labels_input_dir=ClassificationPaths.face_labels_input_dir,
