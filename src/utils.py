@@ -40,7 +40,6 @@ def fetch_all_annotations(
     category_ids: List[int],
     persons: bool = False,
     objects: bool = False,
-    yolo_target: str = None,
 ) -> List[tuple]:
     """
     This function fetches annotations from the database for specific category IDs.
@@ -54,8 +53,6 @@ def fetch_all_annotations(
         Whether to include person annotations with gaze and age info
     objects : bool
         Whether to include object annotations with interaction info
-    yolo_target : str
-        The target for YOLO annotations (e.g., 'person', 'object')
     
     Returns
     -------
@@ -72,34 +69,21 @@ def fetch_all_annotations(
     placeholders = ", ".join("?" for _ in category_ids)
     object_target_class_ids = [3, 4, 5, 6, 7, 8, 12]
 
-    if persons:
-        logging.info("Fetching person-specific annotation attributes")
-    # Always include all fields, use COALESCE for person-specific fields
     query = f"""
     SELECT DISTINCT 
         a.category_id, 
         a.bbox, 
         a.object_interaction,
         i.file_name,
-        CASE 
-            WHEN {persons} THEN a.gaze_directed_at_child 
-            ELSE NULL 
-        END as gaze_directed_at_child,        
-        CASE 
-            WHEN {persons} THEN a.person_age 
-            ELSE NULL 
-        END as person_age     
+        a.gaze_directed_at_child,
+        a.person_age
     FROM annotations a
     JOIN images i ON a.image_id = i.frame_id AND a.video_id = i.video_id
     JOIN videos v ON a.video_id = v.id
     WHERE a.category_id IN ({placeholders}) 
         AND a.outside = 0 
         AND v.file_name NOT LIKE '%id255237_2022_05_08_04%'
-        AND (
-            a.category_id NOT IN ({','.join(map(str, object_target_class_ids))})
-            OR (a.category_id IN ({','.join(map(str, object_target_class_ids))}) 
-                AND ({objects} = 0 OR a.object_interaction = 'Yes'))
-        )
+        AND a.object_interaction = 'Yes'
     ORDER BY a.video_id, a.image_id
     """
     
