@@ -106,7 +106,7 @@ class DetectionPaths:
 class ClassificationPaths:
     person_classes = ['child_person', 'adult_person']
     person_extracted_faces_dir = Path(BasePaths.data_dir/"person_cls_input")
-    person_trained_weights_path = Path(BasePaths.models_dir/'person_classification.pt')
+    person_trained_weights_path = Path(BasePaths.models_dir/'yolo11_person_classification.pt')
     person_extraction_progress_file_path = Path(BasePaths.data_dir/"person_cls_extraction_progress.txt")
     person_missing_frames_file_path = Path(BasePaths.data_dir/"person_cls_missing_frames.txt")
     person_labels_input_dir = Path(BasePaths.data_dir/"person_cls_labels")
