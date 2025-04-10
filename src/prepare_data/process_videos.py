@@ -28,10 +28,10 @@ def main() -> None:
     #crop_detections()
     #logging.info("Finished cropping detections from labels.")
     
-    #logging.info("Starting to extract audio from videos.")
+    logging.info("Starting to extract audio from videos.")
     #Extract audio from video
-    #extract_audio_from_videos_in_folder(DetectionPaths.quantex_videos_input_dir, VTCPaths.quantex_audio_dir)
-    #logging.info("Finished extracting audio from videos.")
+    extract_audio_from_videos_in_folder(DetectionPaths.quantex_videos_input_dir, VTCPaths.quantex_audio_dir)
+    logging.info("Finished extracting audio from videos.")
     
 if __name__ == "__main__":
     main()
