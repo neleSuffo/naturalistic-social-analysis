@@ -82,25 +82,8 @@ def get_class_distribution(total_images: list, annotation_folder: Path, target_t
     """
     # Define class mappings based on target type
     class_mappings = {
-        "all": {
-            0: "adult_person", 1: "child_person", 2: "adult_face", 3: "child_face",
-            5: "book", 6: "toy", 7: "kitchenware", 8: "screen", 
-            9: "other_object", 10: "other_object" # map former food and animal class to other_object
-        },
         "person_face": {
             0: "person", 1: "face", 2: "child_body_parts"
-        },
-        "adult_person_face": {
-            0: "adult_person", 1: "adult_face"
-        },
-        "child_person_face": {
-            0: "child_person", 1: "child_face", 2: "child_body_parts"
-        },
-        "object": {
-            0: "interacted_book", 1: "interacted_toy", 2: "interacted_kitchenware",
-            3: "interacted_screen", 4: "interacted_other_object", 5: "book",
-            6: "toy", 7: "kitchenware", 8: "screen", 9: "other_object",
-            10: "interacted_animal", 11: "interacted_food", 12: "other_object", 13: "other_object" # map former food and animal class to other_object
         },
         "person_face_object": {
             0: "person", 1: "face", 2: "child_body_parts", 3: "book",
@@ -179,7 +162,7 @@ def log_all_split_distributions(train_df: pd.DataFrame,
     test_df: pd.DataFrame
         DataFrame containing testing split.
     yolo_target: str
-        The target type for YOLO (e.g., "adult_person_face", "child_person_face" or "all").
+        The target type for YOLO (e.g., "person_face_object", "person_cls").
     """
     splits = {'Train': train_df, 'Val': val_df, 'Test': test_df}
     all_categories = get_target_columns(yolo_target)
@@ -249,7 +232,7 @@ def multilabel_stratified_split(df: pd.DataFrame,
     random_seed: int
         Random seed for reproducibility.
     yolo_target: str
-        The target type for YOLO (e.g., "adult_person_face").
+        The target type for YOLO
     
     Returns:
     -------
@@ -379,7 +362,7 @@ def get_target_columns(yolo_target: str) -> list:
     Parameters:
     ----------
     yolo_target: str
-        The target type for YOLO (e.g., "adult_person_face", "child_person_face", etc.)
+        The target type for YOLO
     
     Returns:
     -------
@@ -387,14 +370,9 @@ def get_target_columns(yolo_target: str) -> list:
         List of column names that contain the target labels
     """
     target_columns_map = {
-        "adult_person_face": ["adult_person", "adult_face"],
-        "child_person_face": ["child_person", "child_face", "child_body_parts"],
-        "object": ["book", "toy", "kitchenware", "screen", "other_object"],
         "person_face": ["person", "face"],
         "person_face_object": ["person", "face", "book", "toy", "kitchenware", 
                              "screen", "other_object"],
-        "all": ["adult_person", "child_person", "adult_face", "child_face",
-                "book", "toy", "kitchenware", "screen", "other_object"]
     }
     
     if yolo_target not in target_columns_map:
@@ -414,7 +392,7 @@ def move_images(yolo_target: str,
     Parameters
     ----------
     yolo_target: str
-        Target type for YOLO (e.g., "person_face", "person_face_object", "gaze")
+        Target type for YOLO
     image_names: list
         List of image names to process
     split_type: str
@@ -463,8 +441,7 @@ def move_images(yolo_target: str,
     def process_single_image(image_name: str) -> bool:
         """Process a single image and its label."""
         try:
-            if yolo_target in ["all", "child_person_face", "adult_person_face", 
-                             "object", "person_face", "person_face_object"]:
+            if yolo_target in ["person_face", "person_face_object"]:
                 # Handle detection cases
                 image_parts = image_name.split("_")[:8]
                 image_folder = "_".join(image_parts)
@@ -853,15 +830,15 @@ def split_yolo_data(annotation_folder: Path, yolo_target: str):
     try:
         # Define mappings for different target types
         target_mappings = {
-            "face": {
+            "face_cls": {
                 1: ("adult_face", DetectionPaths.face_images_input_dir),
                 0: ("child_face", DetectionPaths.face_images_input_dir)
             },
-            "person": {
+            "person_cls": {
                 1: ("adult_person", DetectionPaths.person_images_input_dir),
                 0: ("child_person", DetectionPaths.person_images_input_dir)
             },
-            "gaze": {
+            "gaze_cls": {
                 0: ("no_gaze", DetectionPaths.gaze_images_input_dir),
                 1: ("gaze", DetectionPaths.gaze_images_input_dir)
             }
@@ -942,38 +919,29 @@ def split_yolo_data(annotation_folder: Path, yolo_target: str):
     
     logging.info(f"\nCompleted dataset preparation for {yolo_target}")
     
-def main(model_target: str, yolo_target: str):
+def main(yolo_target: str):
     """
     Main function to prepare the dataset for model training.
     
     Parameters:
     ----------
-    model_target : str
-        The target model for preparation (e.g., "yolo").
     yolo_target : str
         The target type for YOLO (e.g., "person" or "face").
     """
-    if model_target == "yolo":
-        path_mapping = {
-            "person_face": DetectionPaths.person_face_labels_input_dir,
-            "person_face_object": DetectionPaths.person_face_object_labels_input_dir,
-            "object": DetectionPaths.object_labels_input_dir,
-            "person": ClassificationPaths.person_labels_input_dir,
-            "face": ClassificationPaths.face_labels_input_dir,
-            "gaze": ClassificationPaths.gaze_labels_input_dir
-        }
-        label_path = path_mapping[yolo_target]
-        split_yolo_data(label_path, yolo_target)
-        logging.info("Dataset preparation for YOLO completed.")
-    elif model_target == "other_model":
-        pass
-    else:
-        logging.error("Unsupported model target specified!")
+    path_mapping = {
+        "person_face": DetectionPaths.person_face_labels_input_dir,
+        "person_face_object": DetectionPaths.person_face_object_labels_input_dir,
+        "person_cls": ClassificationPaths.person_labels_input_dir,
+        "face_cls": ClassificationPaths.face_labels_input_dir,
+        "gaze_cls": ClassificationPaths.gaze_labels_input_dir
+    }
+    label_path = path_mapping[yolo_target]
+    split_yolo_data(label_path, yolo_target)
+    logging.info("Dataset preparation for YOLO completed.")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Prepare dataset for model training.")
-    parser.add_argument("--model_target", choices=["yolo", "other_model"], required=True, help="Specify the model type")
-    parser.add_argument("--yolo_target", choices=["all", "gaze", "adult_person_face", "child_person_face", "object", "person_face", "person_face_object"], required=True, help="Specify the YOLO target type")
+    parser.add_argument("--yolo_target", choices=["gaze_cls", "person_cls", "face_cls", "person_face", "person_face_object"], required=True, help="Specify the YOLO target type")
     
     args = parser.parse_args()
-    main(args.model_target, args.yolo_target)
+    main(args.yolo_target)
