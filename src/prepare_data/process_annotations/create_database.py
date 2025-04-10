@@ -6,59 +6,12 @@ import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from constants import DetectionPaths
-from prepare_data.process_annotations.anno_utils import (
-    get_task_ids_names_lengths,
-    generate_cum_sum_frame_count,
-    get_video_id_from_name_db,
-)
-from config import VideoConfig, LabelToCategoryMapping
-
+from config import LabelToCategoryMapping
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
-
-def process_filename(
-    filename: str
-) -> str:
-    """
-    This function processes the filename of an image.
-    The input filename is structured like "quantex_at_home_id255237_2022_05_08_02_42630.jpg".
-    The output filename is structured like "quantex_at_home_id255237_2022_05_08_02_042630".
-
-
-    Parameters
-    ----------
-    filename : str
-        the filename of the image
-
-    Returns
-    -------
-    str
-        the processed filename
-    """
-    # Remove the .jpg extension
-    base_name = filename.replace('.jpg', '')
-    
-    # Extract the last number using regex
-    match = re.search(r'(\d+)$', base_name)
-    
-    if match:
-        last_number = match.group(1)
-        main_part = base_name[:match.start()]
-        
-        # Zero-pad the last number to six digits
-        last_number_padded = last_number.zfill(6)
-        
-        # Reconstruct the filename
-        new_filename = f"{main_part}{last_number_padded}"
-    else:
-        # If there's no match, return the base name as is (though it should always match)
-        new_filename = base_name
-    
-    return new_filename
-
 
 def write_xml_to_database() -> None:
     """
@@ -69,7 +22,6 @@ def write_xml_to_database() -> None:
     # Create the directory if it does not exist
     Path(DetectionPaths.quantex_annotations_db_path).parent.mkdir(parents=True, exist_ok=True)
 
-    added_images = set()  # Missing set initialization
     added_videos = set()
     added_categories = set()
     
@@ -78,11 +30,10 @@ def write_xml_to_database() -> None:
 
         # Drop tables if they exist
         cursor.execute("DROP TABLE IF EXISTS annotations")
-        cursor.execute("DROP TABLE IF EXISTS images")
         cursor.execute("DROP TABLE IF EXISTS videos")
         cursor.execute("DROP TABLE IF EXISTS categories")
 
-        # Create tables for annotations, images, and videos
+        # Create tables for annotations and videos
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS annotations (
                 image_id INTEGER,
@@ -100,16 +51,8 @@ def write_xml_to_database() -> None:
         """)
 
         cursor.execute("""
-            CREATE TABLE IF NOT EXISTS images (
-                video_id INTEGER,
-                frame_id INTEGER,
-                file_name TEXT
-            )
-        """)
-
-        cursor.execute("""
             CREATE TABLE IF NOT EXISTS videos (
-                id INTEGER PRIMARY KEY,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 file_name TEXT
             )
         """)
@@ -126,36 +69,14 @@ def write_xml_to_database() -> None:
         conn.commit()
         for file_name in DetectionPaths.quantex_annotations_dir.iterdir():
             if file_name.suffix == '.xml':
-                add_annotations_to_db(cursor, conn, file_name, added_images, added_videos, added_categories)
+                add_annotations_to_db(cursor, conn, file_name, added_videos, added_categories)
                 
         logging.info("Database setup complete.")
-
-def get_frame_width_height(video_file_name: str) -> tuple:
-    try:
-        video_file_path = DetectionPaths.quantex_videos_input_dir / video_file_name
-        if not video_file_path.exists():
-            logging.warning(f"Video file {video_file_path} not found, using default dimensions")
-            return (VideoConfig.frame_width, VideoConfig.frame_height)
-            
-        cap = cv2.VideoCapture(str(video_file_path))
-        if not cap.isOpened():
-            logging.warning(f"Could not open video file {video_file_path}, using default dimensions")
-            return (VideoConfig.frame_width, VideoConfig.frame_height)
-            
-        frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        cap.release()
-        return frame_width, frame_height
-        
-    except Exception as e:
-        logging.error(f"Error getting frame dimensions: {e}")
-        return (VideoConfig.frame_width, VideoConfig.frame_height)
 
 def add_annotations_to_db(
     cursor: sqlite3.Cursor,
     conn: sqlite3.Connection,
     xml_path: Path,
-    added_images: set,
     added_videos: set,
     added_categories: set
 ) -> None:
@@ -170,6 +91,10 @@ def add_annotations_to_db(
         the connection object
     xml_path : Path
         the path to the XML file
+    added_videos : set
+        a set of added videos
+    added_categories : set
+        a set of added categories
     """
     # Load the XML file
     tree = ET.parse(xml_path)
@@ -178,18 +103,22 @@ def add_annotations_to_db(
     # Navigate to the <task> element
     task_element = root.find('meta/task')
 
-    # Extract <id> and <name> values
-    task_id = task_element.find('id').text
+    # Extract <name> values
     task_name = task_element.find('name').text
     
     # Add video details if not already added
-    if task_id not in added_videos:
+    if task_name not in added_videos:
         cursor.execute(
-            "INSERT INTO videos (id, file_name) VALUES (?, ?)",
-            (task_id, f"{task_name}.mp4")
+            "INSERT INTO videos (file_name) VALUES (?)",
+            (f"{task_name}.mp4",)
         )
-        added_videos.add(task_id)
-
+        video_id = cursor.lastrowid
+        added_videos.add(task_name)
+    else:
+        # Get the video id if it was already added
+        cursor.execute("SELECT id FROM videos WHERE file_name = ?", (f"{task_name}.mp4",))
+        video_id = cursor.fetchone()[0]
+        
     # Iterate over all 'track' elements
     for track in root.iter("track"):
         track_label = track.get("label")
@@ -251,7 +180,7 @@ def add_annotations_to_db(
             """,
                 (
                     row["frame"], # image_id
-                    task_id, # video_id
+                    video_id, # video_id
                     track_label_id, # category_id
                     bbox_json, # bbox coordinates
                     outside,
@@ -263,24 +192,8 @@ def add_annotations_to_db(
                     object_interaction_value,
                 ),
             )
-            # Add image details if not already added
-            image_name = f"{task_name}_{frame_id_padded}.jpg"
-            if image_name not in added_images:
-                cursor.execute(
-                """
-                    INSERT INTO images (video_id, frame_id, file_name)
-                    VALUES (?, ?, ?)
-                """,
-                    (
-                    task_id, # video_id
-                    row["frame"], # frame_id
-                    image_name,
-                    ),
-                ) 
-                added_images.add(image_name)
     conn.commit()
-    logging.info(f'Database commit for file {xml_path} successful')
-
+    logging.info(f'Database commit for file {xml_path.name} successful')
 
 def create_child_class_in_db():
     """
