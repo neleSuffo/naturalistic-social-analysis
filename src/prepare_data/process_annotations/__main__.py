@@ -7,38 +7,31 @@ from prepare_data.process_annotations.create_database import (
 from prepare_data.process_annotations.convert_to_yolo import main as convert_to_yolo
 from constants import DetectionPaths
 
-def main(model: str = None, yolo_target: str = None, setup_db: bool = False) -> None:
+def main(yolo_target: str = None, setup_db: bool = False) -> None:
     """
     Main function to process annotations. This function creates a database 
     and converts annotations to YOLO format.
     
     Parameters
     ----------
-    model : str, optional
-        Model to convert to (e.g., "yolo"). Defaults to None.
     yolo_target : str, optional
         Target YOLO label, defaults to None.
     setup_db : bool
         Whether to set up the database
     """
     # Validate arguments
-    if model is not None:
-        valid_targets = {"person_face", "person_face_object", "person_cls", "face_cls", "gaze_cls"}
-        
-        if model not in valid_models:
-            raise ValueError(f"Invalid model '{model}'. Must be one of: {valid_models}")
-        
-        if yolo_target not in valid_targets:
-            raise ValueError(f"Invalid yolo_target '{yolo_target}'. Must be one of: {valid_targets}")
+    valid_targets = {"person_face", "person_face_object", "person_cls", "face_cls", "gaze_cls"}
     
+    if yolo_target not in valid_targets:
+        raise ValueError(f"Invalid model '{model}'. Must be one of: {valid_models}")
+        
     try:
         os.environ['OMP_NUM_THREADS'] = '20'
         if setup_db:
             write_xml_to_database()
             create_child_class_in_db()
 
-        if model in ["yolo", "all"]:
-            convert_to_yolo(yolo_target)
+        convert_to_yolo(yolo_target)
             
     except Exception as e:
         print(f"Error processing annotations: {str(e)}")
