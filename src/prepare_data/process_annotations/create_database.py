@@ -23,6 +23,7 @@ def write_xml_to_database() -> None:
     Path(DetectionPaths.quantex_annotations_db_path).parent.mkdir(parents=True, exist_ok=True)
 
     added_videos = set()
+    added_images = set()
     added_categories = set()
     
     with sqlite3.connect(DetectionPaths.quantex_annotations_db_path) as conn:
@@ -31,6 +32,7 @@ def write_xml_to_database() -> None:
         # Drop tables if they exist
         cursor.execute("DROP TABLE IF EXISTS annotations")
         cursor.execute("DROP TABLE IF EXISTS videos")
+        cursor.execute("DROP TABLE IF EXISTS images")
         cursor.execute("DROP TABLE IF EXISTS categories")
 
         # Create tables for annotations and videos
@@ -51,6 +53,14 @@ def write_xml_to_database() -> None:
         """)
 
         cursor.execute("""
+             CREATE TABLE IF NOT EXISTS images (
+                 video_id INTEGER,
+                 frame_id INTEGER,
+                 file_name TEXT
+             )
+         """)
+        
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS videos (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 file_name TEXT
@@ -69,7 +79,7 @@ def write_xml_to_database() -> None:
         conn.commit()
         for file_name in DetectionPaths.quantex_annotations_dir.iterdir():
             if file_name.suffix == '.xml':
-                add_annotations_to_db(cursor, conn, file_name, added_videos, added_categories)
+                add_annotations_to_db(cursor, conn, file_name, added_images, added_videos, added_categories)
                 
         logging.info("Database setup complete.")
 
@@ -77,6 +87,7 @@ def add_annotations_to_db(
     cursor: sqlite3.Cursor,
     conn: sqlite3.Connection,
     xml_path: Path,
+    added_images: set,
     added_videos: set,
     added_categories: set
 ) -> None:
@@ -91,6 +102,8 @@ def add_annotations_to_db(
         the connection object
     xml_path : Path
         the path to the XML file
+    added_images : set
+        a set of added images
     added_videos : set
         a set of added videos
     added_categories : set
@@ -192,6 +205,21 @@ def add_annotations_to_db(
                     object_interaction_value,
                 ),
             )
+            # Add image details if not already added
+            image_name = f"{task_name}_{frame_id_padded}.jpg"
+            if image_name not in added_images:
+                cursor.execute(
+                """
+                    INSERT INTO images (video_id, frame_id, file_name)
+                    VALUES (?, ?, ?)
+                """,
+                    (
+                    video_id,
+                    row["frame"], # frame_id
+                    image_name,
+                    ),
+                ) 
+                added_images.add(image_name)
     conn.commit()
     logging.info(f'Database commit for file {xml_path.name} successful')
 
