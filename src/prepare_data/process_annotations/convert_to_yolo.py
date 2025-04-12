@@ -196,7 +196,7 @@ def main(target):
             logging.error(f"Invalid target: {target}. Expected one of: {', '.join(category_ids.keys())}.")
             return
 
-        annotations = fetch_all_annotations(category_ids=category_ids, persons=True, objects=(target == "object"))
+        annotations = fetch_all_annotations(category_ids=category_ids)
 
         logging.info(f"Fetched {len(annotations)} {target} annotations.")
         save_annotations(annotations, target)
