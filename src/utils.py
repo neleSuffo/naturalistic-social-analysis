@@ -38,8 +38,6 @@ logging.basicConfig(
 
 def fetch_all_annotations(
     category_ids: List[int],
-    persons: bool = False,
-    objects: bool = False,
 ) -> List[tuple]:
     """
     This function fetches annotations from the database for specific category IDs.
@@ -49,26 +47,22 @@ def fetch_all_annotations(
     ----------
     category_ids : List[int]
         The list of category IDs to filter the annotations
-    persons : bool
-        Whether to include person annotations with gaze and age info
-    objects : bool
-        Whether to include object annotations with interaction info
     
     Returns
     -------
     list of tuple
-        The list of annotations. For persons includes extra fields (gaze, age)
+        The list of annotations.
     """
     logging.info(f"Fetching annotations for category IDs: {category_ids}")
-    if not (persons or objects):
-        raise ValueError("At least one of persons or objects must be True")
-
     conn = sqlite3.connect(DetectionPaths.quantex_annotations_db_path)
     cursor = conn.cursor()
     
     placeholders = ", ".join("?" for _ in category_ids)
     object_target_class_ids = [3, 4, 5, 6, 7, 8, 12]
 
+    # Construct conditional filter for object_interaction
+    object_placeholders = ", ".join(str(x) for x in object_target_class_ids)
+    
     query = f"""
     SELECT DISTINCT 
         a.category_id, 
@@ -83,7 +77,11 @@ def fetch_all_annotations(
     WHERE a.category_id IN ({placeholders}) 
         AND a.outside = 0 
         AND v.file_name NOT LIKE '%id255237_2022_05_08_04%'
-        AND a.object_interaction = 'Yes'
+        AND (
+            -- Only apply the interaction filter if category_id is an object category
+            (a.category_id IN ({object_placeholders}) AND a.object_interaction = 'Yes') OR
+            (a.category_id NOT IN ({object_placeholders}))
+        )
     ORDER BY a.video_id, a.image_id
     """
     
