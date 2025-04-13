@@ -523,7 +523,12 @@ def load_rttm_results(rttm_file: Path) -> pd.DataFrame:
     df['start_time'] = df['start_time'].astype(float)
     df['duration'] = df['duration'].astype(float)
     
-    return df[['audio_id', 'start_time', 'duration', 'label']]
+    output_df = df[['audio_id', 'start_time', 'duration', 'label']]
+    
+    # save to CSV for future use
+    output_df.to_pickle(VTCPaths.quantex_output_dir / 'vtc_quantex_audio_results.pkl')
+    logging.info(f"Saved RTTM results to {VTCPaths.quantex_output_dir / 'vtc_quantex_audio_results.pkl'}")
+    return output_df
  
 def store_voice_detections(video_file_name: str, 
                            rttm_df: pd.DataFrame, 
@@ -675,7 +680,7 @@ def main(num_videos_to_process: int = None,
     
     # Load the age group data and rttm file once
     age_df = pd.read_csv('/home/nele_pauline_suffo/ProcessedData/age_group.csv')
-    rttm_file = VTCPaths.vtc_results_dir / "quantex_audio/all.rttm"
+    rttm_file = VTCPaths.quantex_output_dir / "all.rttm"
     if rttm_file.exists():
         rttm_df = load_rttm_results(rttm_file)
         logging.info(f"Loaded voice detection results for {rttm_df['audio_id'].nunique()} videos")
