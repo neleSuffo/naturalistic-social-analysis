@@ -21,7 +21,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 def get_total_number_of_annotated_frames(label_path: Path, image_folder: Path = DetectionPaths.images_input_dir) -> list:
     """
-    This function returns the total number of annotated frames in the dataset.
+    This function returns only the frames that have annotations (every 30th frame).
     
     Parameters
     ----------
@@ -33,34 +33,37 @@ def get_total_number_of_annotated_frames(label_path: Path, image_folder: Path = 
     Returns
     -------
     list
-        the total number of annotated frames (formatted as a list of tuples)
+        the annotated frames (formatted as a list of tuples)
         e.g. [(image_path, image_id), ...]
     """
     video_names = set()
     total_images = []
     
-    # Step 1: Get unique video names
+    # Step 1: Get unique video names and annotated frames
+    annotated_frames = set()
     for annotation_file in label_path.glob('*.txt'):
         parts = annotation_file.stem.split('_')
         video_name = "_".join(parts[:8])
-        video_names.add(video_name)      
+        video_names.add(video_name)
+        annotated_frames.add(annotation_file.stem)
     
     logging.info(f"Found {len(video_names)} unique video names")
 
-    
-    # Step 2: Count total images and extract IDs
+    # Step 2: Only get the corresponding annotated frames from image folders
     for video_name in video_names:
         video_path = image_folder / video_name
         if video_path.exists() and video_path.is_dir():
             for video_file in video_path.iterdir():
                 if video_file.is_file():
-                    image_name = video_file.name
-                    # extract image_id from file_name 
-                    parts = image_name.split("_")
-                    image_id = parts[3].replace("id", "")
-                    
-                    total_images.append((str(video_file.resolve()), image_id))
-    return total_images   
+                    # Only include if the frame is in our annotated frames set
+                    if video_file.stem in annotated_frames:
+                        image_name = video_file.name
+                        parts = image_name.split("_")
+                        image_id = parts[3].replace("id", "")
+                        total_images.append((str(video_file.resolve()), image_id))
+                        
+    logging.info(f"Total annotated frames found: {len(total_images)}")
+    return total_images  
 
 
 def get_class_distribution(total_images: list, annotation_folder: Path, target_type: str) -> pd.DataFrame:
@@ -359,6 +362,14 @@ def move_images(yolo_target: str,
                 # Handle detection cases
                 image_parts = image_name.split("_")[:8]
                 image_folder = "_".join(image_parts)
+                
+                # Extract frame number from filename
+                frame_num = int(image_name.split("_")[-1].split(".")[0])
+            
+                # Only process every 30th frame (those with annotations)
+                if frame_num % 30 != 0:
+                    return True  # Return True to not count as failure
+                
                 image_src = DetectionPaths.images_input_dir / image_folder / f"{image_name}.jpg"
                 label_src = label_path / f"{image_name}.txt"
                 image_dst = image_dst_dir / f"{image_name}.jpg"
@@ -378,6 +389,13 @@ def move_images(yolo_target: str,
 
             else:
                 # Handle classification cases
+                # Extract frame number from filename
+                frame_num = int(image_name.split("_")[-1].split(".")[0])
+
+                # Only process every 30th frame
+                if frame_num % 30 != 0:
+                    return True  # Return True to not count as failure
+                
                 input_dir = input_dir_mapping.get(yolo_target)
                 if not input_dir:
                     logging.error(f"No input directory for target: {yolo_target}")
@@ -385,7 +403,7 @@ def move_images(yolo_target: str,
 
                 image_src = input_dir / image_name
                 image_dst = image_dst_dir / image_name
-
+                
                 if not image_src.exists():
                     logging.debug(f"Image not found: {image_src}")
                     return False
@@ -785,58 +803,48 @@ def split_yolo_data(annotation_folder: Path, yolo_target: str):
                 1: ("gaze", DetectionPaths.gaze_images_input_dir)
             }
         }       
-         
+        # Get annotated frames
+        total_images = get_total_number_of_annotated_frames(annotation_folder)
+        
         if yolo_target in target_mappings:
             # Get source directories based on target type
             input_folder = target_mappings[yolo_target][0][1]  # Use first mapping's input dir
             class_mapping = target_mappings[yolo_target]
             # Get custom splits
-            train_images, val_images, test_images = split_dataset(input_folder, annotation_folder, yolo_target, class_mapping)
-
+            train_images, val_images, test_images = split_dataset(
+                input_folder, annotation_folder, yolo_target, class_mapping)
+                
             # Process each split
-            for split_name, split_images in [("train", train_images), ("val", val_images), ("test", test_images)]:
+            for split_name, split_images in [("train", train_images), 
+                                           ("val", val_images), 
+                                           ("test", test_images)]:
                 # Separate images into classes
-                class_0_images = [img for img in split_images if get_class(img, annotation_folder) == 0]
-                class_1_images = [img for img in split_images if get_class(img, annotation_folder) == 1]
-
-                # Move class 0 images
-                if class_0_images:
-                    successful, failed = move_images(
-                        yolo_target=target_mappings[yolo_target][0][0],
-                        image_names=class_0_images,
-                        split_type=split_name,
-                        label_path=annotation_folder,
-                        n_workers=4
-                    )
-                    logging.info(f"{split_name} {target_mappings[yolo_target][0][0]}: Moved {successful} images, Failed {failed}")
-                else:
-                    logging.warning(f"No {target_mappings[yolo_target][0][0]} images for {split_name}")
-
-                # Move class 1 images
-                if class_1_images:
-                    successful, failed = move_images(
-                        yolo_target=target_mappings[yolo_target][1][0],
-                        image_names=class_1_images,
-                        split_type=split_name,
-                        label_path=annotation_folder,
-                        n_workers=4
-                    )
-                    logging.info(f"{split_name} {target_mappings[yolo_target][1][0]}: Moved {successful} images, Failed {failed}")
-                else:
-                    logging.warning(f"No {target_mappings[yolo_target][1][0]} images for {split_name}")
-                        
-        else:
-            # count number of total images in annotated videos
-            total_images = get_total_number_of_annotated_frames(annotation_folder)
-
-            # get data distribution per frame
+                for class_id in [0, 1]:
+                    class_images = [img for img in split_images 
+                                  if get_class(img, annotation_folder) == class_id]
+                    if class_images:
+                        target = target_mappings[yolo_target][class_id][0]
+                        successful, failed = move_images(
+                            yolo_target=target,
+                            image_names=class_images,
+                            split_type=split_name,
+                            label_path=annotation_folder,
+                            n_workers=4
+                        )   
+                        logging.info(f"{split_name} {target}: Moved {successful}, Failed {failed}")
+                    else:
+                        target = target_mappings[yolo_target][class_id][0]
+                        logging.warning(f"No {target} images for {split_name}")
+        else:         
+            # Multi-class detection case
             df = get_class_distribution(total_images, annotation_folder, yolo_target)
             # split data grouped by id
-            train, val, test, train_df, val_df, test_df = multilabel_stratified_split(df, yolo_target=yolo_target)
-            logging.info(f"Split sizes - Train: {len(train)}, Val: {len(val)}, Test: {len(test)}")
-         
-            total_successful = total_failed = 0
-            for split_name, split_set in [("train", train), ("val", val), ("test", test)]:
+            train, val, test, *_ = multilabel_stratified_split(df, yolo_target=yolo_target)
+
+            # Move images for each split
+            for split_name, split_set in [("train", train), 
+                                        ("val", val), 
+                                        ("test", test)]:
                 if split_set:
                     successful, failed = move_images(
                         yolo_target=yolo_target,
@@ -845,15 +853,9 @@ def split_yolo_data(annotation_folder: Path, yolo_target: str):
                         label_path=annotation_folder,
                         n_workers=4
                     )
-                    total_successful += successful
-                    total_failed += failed
-                    logging.info(f"{split_name}: Moved {successful} images, Failed {failed}")
+                    logging.info(f"{split_name}: Moved {successful}, Failed {failed}")
                 else:
                     logging.warning(f"No images for {split_name} split")
-            
-            logging.info(f"\nTotal images processed: {total_successful + total_failed}")
-            logging.info(f"Successfully moved: {total_successful}")
-            logging.info(f"Failed to move: {total_failed}")
     
     except Exception as e:
         logging.error(f"Error processing target {yolo_target}: {str(e)}")
