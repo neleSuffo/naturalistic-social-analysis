@@ -93,7 +93,8 @@ def map_category_id(target: str, category_id: int, person_age: None, gaze_direct
     int
         The mapped category ID.
     """
-    person_age = person_age.strip().lower()
+    person_age = person_age.strip().lower() if isinstance(person_age, str) else "unknown"
+
     mappings = {
         "gaze_cls": CategoryMappings.gaze_cls.get(gaze_directed_at_child, 99),
         "person_cls": CategoryMappings.person_cls.get(person_age, 99),
