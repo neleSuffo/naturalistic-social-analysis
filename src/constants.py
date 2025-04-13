@@ -177,17 +177,14 @@ class ClassificationPaths:
     
 class VTCPaths:
     childlens_audio_dir = Path(BasePaths.data_dir/"childlens_audio")
-    vtc_results_dir = Path("/home/nele_pauline_suffo/projects/voice_type_classifier/output_voice_type_classifier/")
-    output_dir = Path(BasePaths.output_dir/"vtc")
-    childlens_output_folder = Path(output_dir/"childlens_audio_duration_off_01")
-    childlens_df_file_path_01 = Path(output_dir/"childlens_df_duration_off_01.pkl")
-    childlens_df_file_path_02 = Path(output_dir/"childlens_df_duration_off_02.pkl")
-    childlens_df_file_path_20 = Path(output_dir/"childlens_df_duration_off_20.pkl")
+    quantex_output_dir = Path(BasePaths.output_dir/"quantex_audio")
+    childlens_output_dir = Path(BasePaths.output_dir/"childlens_audio")
+    childlens_df_file_path_01 = Path(childlens_output_dir/"childlens_df_duration_off_01.pkl")
+    childlens_df_file_path_02 = Path(childlens_output_dir/"childlens_df_duration_off_02.pkl")
+    childlens_df_file_path_20 = Path(childlens_output_dir/"childlens_df_duration_off_20.pkl")
     childlens_gt_df_file_path = Path(DetectionPaths.childlens_annotations_dir/"childlens_annotations.pkl")
 
     quantex_audio_dir = Path(BasePaths.data_dir/"quantex_audio")
-    quantex_output_folder = Path(output_dir/"quantex_audio")
-    quantex_df_file_path = Path(output_dir/"quantex_df.pkl")
 
 class StrongSortPaths:
     base_dir = Path(BasePaths.data_dir/"strong_sort/")
