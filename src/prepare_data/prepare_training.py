@@ -160,7 +160,6 @@ def multilabel_stratified_split(df: pd.DataFrame,
     split_info.append(f"Dataset Split Information - {timestamp}\n")
     
     # Log input details
-    logging.info(f"Input DataFrame size: {len(df)} rows")
     logging.info(f"Unique IDs in input: {df['id'].nunique()}")
     if df.empty:
         logging.error("Input DataFrame is empty!")
@@ -168,15 +167,6 @@ def multilabel_stratified_split(df: pd.DataFrame,
 
     # Get class columns (excluding metadata columns)
     class_columns = [col for col in df.columns if col not in ['filename', 'id', 'has_annotation']]
-    
-    # Log initial distribution
-    split_info.append("Initial Distribution:")
-    for col in class_columns:
-        count = df[col].sum()
-        total = len(df)
-        ratio = count/total if total > 0 else 0
-        split_info.append(f"{col}: {count} images ({ratio:.3f})")
-    split_info.append(f"Total images: {len(df)}\n")
     
     # Track which IDs contain which classes
     id_class_map = defaultdict(set)
@@ -253,14 +243,15 @@ def multilabel_stratified_split(df: pd.DataFrame,
     val_df = df[df['id'].isin(val_ids)].copy()
     test_df = df[df['id'].isin(test_ids)].copy()
     
-    # Log split distribution
-    split_info.append("\nSplit Distribution:")
+    # After creating the final splits (train_df, val_df, test_df)
+    split_info.append("\nClass Distribution:")
     split_info.append("-" * 55)
     
+    # Header
     header = f"{'Category':<18} {'Train':<8} {'Val':<8} {'Test':<8} {'Total':<8}"
     split_info.append(header)
     split_info.append("-" * 55)
-        
+    
     # Calculate totals for each class
     class_totals = {}
     for col in class_columns:
@@ -516,53 +507,81 @@ def compute_id_counts(input_images: list,
     logging.info(f"Images without annotations: {missing_annotations}")
     return id_counts, missing_annotations
 
-def find_best_split(all_ids, id_counts, total_samples, num_trials=100):
+def find_best_split(all_ids, id_counts, total_samples, num_trials=100, min_ratio=0.05):
     """Find the best split of IDs that maintains class distribution in val and test sets."""
     best_score = float('inf')
     best_split = None
-    overall_ratio = sum(counts[0] for counts in id_counts.values()) / total_samples
+    total_class_0 = sum(counts[0] for counts in id_counts.values())
+    total_class_1 = sum(counts[1] for counts in id_counts.values())
+    min_class_0_needed = total_class_0 * min_ratio
+    min_class_1_needed = total_class_1 * min_ratio
 
     for _ in range(num_trials):
-        random.shuffle(all_ids)
-        # Cumulative sum of samples
-        cumsums = [0]
-        for id_ in all_ids:
-            cumsums.append(cumsums[-1] + id_counts[id_][0] + id_counts[id_][1])
-        
-        # Find the split point for validation
-        target_val = 0.1 * total_samples
-        k = min(range(1, len(cumsums)), key=lambda i: abs(cumsums[i] - target_val))
-        val_ids = all_ids[:k]
-        
-        remaining_ids = all_ids[k:]
-        cumsums_remaining = [0]
-        for id_ in remaining_ids:
-            cumsums_remaining.append(cumsums_remaining[-1] + id_counts[id_][0] + id_counts[id_][1])
-        
-        # Find the split point for test
-        target_test = 0.1 * total_samples
-        m = min(range(1, len(cumsums_remaining)), key=lambda i: abs(cumsums_remaining[i] - target_test))
-        test_ids = remaining_ids[:m]
-        train_ids = remaining_ids[m:]
+        # Sort IDs by ratio of classes to try balancing first
+        id_ratios = [(id_, counts[0]/(counts[0] + counts[1]) if (counts[0] + counts[1]) > 0 else 0) 
+                     for id_, counts in id_counts.items()]
+        sorted_ids = sorted(id_ratios, key=lambda x: abs(x[1] - 0.5))  # Sort by how balanced they are
+        trial_ids = [id_ for id_, _ in sorted_ids]
+        random.shuffle(trial_ids)  # Add some randomness while keeping generally balanced IDs first
 
-        # Compute class distribution in val and test
-        n0_val = sum(id_counts[id_][0] for id_ in val_ids)
-        n1_val = sum(id_counts[id_][1] for id_ in val_ids)
-        n_val = n0_val + n1_val
-        
-        n0_test = sum(id_counts[id_][0] for id_ in test_ids)
-        n1_test = sum(id_counts[id_][1] for id_ in test_ids)
-        n_test = n0_test + n1_test
+        # Initialize trial splits
+        val_ids = []
+        test_ids = []
+        val_class_0 = val_class_1 = test_class_0 = test_class_1 = 0
 
-        # Calculate how close the class ratios are to the overall ratio
-        if n_val > 0 and n_test > 0:
-            val_ratio = n0_val / n_val
-            test_ratio = n0_test / n_test
-            score = abs(val_ratio - overall_ratio) + abs(test_ratio - overall_ratio)
-            if score < best_score:
-                best_score = score
+        # First fill validation set until minimum requirements met
+        for id_ in trial_ids[:]:
+            if (val_class_0 >= min_class_0_needed and 
+                val_class_1 >= min_class_1_needed):
+                break
+                
+            val_ids.append(id_)
+            trial_ids.remove(id_)
+            val_class_0 += id_counts[id_][0]
+            val_class_1 += id_counts[id_][1]
+
+        # Then fill test set until minimum requirements met
+        for id_ in trial_ids[:]:
+            if (test_class_0 >= min_class_0_needed and 
+                test_class_1 >= min_class_1_needed):
+                break
+                
+            test_ids.append(id_)
+            trial_ids.remove(id_)
+            test_class_0 += id_counts[id_][0]
+            test_class_1 += id_counts[id_][1]
+
+        # Remaining IDs go to train
+        train_ids = trial_ids
+
+        # Calculate how well balanced the splits are
+        val_total = val_class_0 + val_class_1
+        test_total = test_class_0 + test_class_1
+        
+        if val_total > 0 and test_total > 0:
+            val_ratio = val_class_0 / val_total
+            test_ratio = test_class_0 / test_total
+            overall_ratio = total_class_0 / total_samples
+            
+            # Score based on:
+            # 1. How close ratios are to overall ratio
+            # 2. Whether minimum requirements are met
+            # 3. How close to target split sizes (10% each)
+            ratio_score = abs(val_ratio - overall_ratio) + abs(test_ratio - overall_ratio)
+            min_req_score = 0
+            if val_class_0 < min_class_0_needed or val_class_1 < min_class_1_needed:
+                min_req_score += 100
+            if test_class_0 < min_class_0_needed or test_class_1 < min_class_1_needed:
+                min_req_score += 100
+                
+            size_score = abs(val_total - 0.1 * total_samples) + abs(test_total - 0.1 * total_samples)
+            
+            total_score = ratio_score + min_req_score + size_score * 0.1
+            
+            if total_score < best_score:
+                best_score = total_score
                 best_split = (val_ids, test_ids, train_ids)
-    
+
     return best_split
 
 def balance_train_set(train_input_images: list, 
