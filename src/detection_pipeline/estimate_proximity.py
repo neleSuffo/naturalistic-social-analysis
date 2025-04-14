@@ -35,7 +35,7 @@ def draw_detections(image, detections, output_path):
                       thickness)
         
         # Prepare text
-        text = f"{age} Proximity:{proximity:.2f} (age:{age_conf:.2f})"
+        text = f"{age} Proximity: {proximity:.2f} (Age: {age_conf:.2f})"
         
         # Calculate text position
         (text_width, text_height), _ = cv2.getTextSize(text, font, font_scale, thickness)
@@ -65,7 +65,7 @@ def main():
     args = parser.parse_args()
 
     # Initialize models
-    detector = YOLO(DetectionPaths.person_face_trained_weights_path)
+    detector = YOLO("/home/nele_pauline_suffo/models/yolo11_face_detection.pt")
     age_classifier = YOLO(ClassificationPaths.face_trained_weights_path)
 
     # Load image
@@ -88,8 +88,8 @@ def main():
     
     results = []
     for box in detections.boxes:
-        if int(box.cls) != 1:  # Skip non-face classes
-            continue
+        #if int(box.cls) != 1:  # Skip non-face classes
+        #    continue
             
         # Extract face ROI
         x1, y1, x2, y2 = map(int, box.xyxy[0])
@@ -109,13 +109,6 @@ def main():
             "age_confidence": float(age_result.probs.top1conf),
             "proximity": float(proximity),
         })
-    
-    # Log results
-    logging.info("Detection Results:")
-    for i, res in enumerate(results, 1):
-        logging.info(f"\nFace {i}:")
-        logging.info(f"  Age: {res['age']} (confidence: {res['age_confidence']:.2f})")
-        logging.info(f"  Proximity: {res['proximity']:.2f}")
     
     # Draw detections and save image
     output_path = f"/home/nele_pauline_suffo/outputs/detection_pipeline_results/inference_images/{args.image_path}"
