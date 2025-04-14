@@ -1,338 +1,125 @@
 import cv2
-import logging
-import argparse
 import os
-import json
-import numpy as np
-from pathlib import Path
+import argparse
+import logging
+from proximity_utils import ProximityCalculator
 from ultralytics import YOLO
-from constants import Proximity, YoloPaths
+from constants import DetectionPaths, ClassificationPaths
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 
-def extract_bounding_boxes(results):
-    """Extract bounding boxes for children, adults, and their faces."""
-    child, adult, child_face, adult_face = [], [], [], []
-    for result in results:
-        for box in result.boxes:
-            cls = int(box.cls[0])
-            x1, y1, x2, y2 = map(int, box.xyxy[0])
-            bbox = (x1, y1, x2 - x1, y2 - y1)  # (x, y, width, height)
-            if cls == 0:
-                child.append(bbox)
-            elif cls == 1:
-                adult.append(bbox)
-            elif cls == 2:
-                child_face.append(bbox)
-            elif cls == 3:
-                adult_face.append(bbox)
-    return child, adult, child_face, adult_face
-
-def find_matching_person(face_bbox, person_bboxes):
-    """Find the person bounding box that contains the face."""
-    x_face, y_face, w_face, h_face = face_bbox
-    face_center = (x_face + w_face // 2, y_face + h_face // 2)
+def draw_detections(image, detections, output_path):
+    """Draw bounding boxes and labels on image and save it"""
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    font_scale = 0.7
+    thickness = 2
     
-    for person_bbox in person_bboxes:
-        x_person, y_person, w_person, h_person = person_bbox
-        if (x_person <= face_center[0] <= x_person + w_person and 
-            y_person <= face_center[1] <= y_person + h_person):
-            return person_bbox
-    return None
-
-def normalize_proximity(face_area, ref_far, ref_close):
-    """Normalize proximity so that ref_far maps to 0 and ref_close maps to 1."""
-    if ref_close is None or ref_far is None or ref_close == ref_far:
-        logging.warning("Invalid reference values for proximity calculation.")
-        return None
-
-    normalized_value = (face_area - ref_far) / (ref_close - ref_far)
-    return max(0, min(1, normalized_value))  # Ensure it's between 0 and 1
-
-def calculate_proximity(face_bbox, min_ref_area, max_ref_area, ref_aspect_ratio, aspect_ratio_threshold=0.5):
-    """
-    Compute proximity based on detected face area and aspect ratio relative to reference values.
-    
-    Parameters:
-    ----------
-    face_bbox: tuple
-        Bounding box coordinates for the detected face (x, y, width, height)
-    min_ref_area: int
-        Minimum reference area for face detection
-    max_ref_area: int
-        Maximum reference area for face detection
-    ref_aspect_ratio: float 
-        Reference aspect ratio for face detection
-    aspect_ratio_threshold: float
-        Maximum deviation from the reference aspect ratio
-        
-    Returns:
-    --------
-    float
-        Proximity value for the detected face
-    
-    """
-    if face_bbox is None:
-        return None
-
-    # Extract face bounding box coordinates
-    x1, y1, x2, y2 = face_bbox
-    face_width = x2 - x1
-    face_height = y2 - y1
-    face_area = face_width * face_height
-    aspect_ratio = float(face_width) / float(face_height)
-
-    print(f"detected face_area: {face_area}")
-
-    # Check if the face is a "partial face" based on aspect ratio
-    if ref_aspect_ratio is not None:  # Only check if we have a valid reference ratio
-        if abs(aspect_ratio - ref_aspect_ratio) > aspect_ratio_threshold:
-            logging.info(f"Partial face detected! Aspect ratio {aspect_ratio:.2f} deviates significantly from reference {ref_aspect_ratio:.2f}")
-            return 1.0  # Partial face: very close
-
-    # Normalize face area to a value between 0 and 1
-    if face_area <= max_ref_area:
-        logging.info("Face area smaller than max_ref_area")
-        return 0.0  # Smallest possible proximity (far away)
-    if face_area >= min_ref_area:
-        logging.info("Face area larger than min_ref_area")
-        return 1.0  # Largest possible proximity (very close)
-
-    # Scale the face area between min_ref_area and max_ref_area
-    proximity = (np.log(face_area) - np.log(max_ref_area)) / (np.log(min_ref_area) - np.log(max_ref_area)) 
-    return proximity
-
-# File to store reference values
-def save_reference_metrics(metrics: dict, reference_file: Path = Proximity.reference_file):
-    """Save reference metrics to a JSON file."""
-    with open(reference_file, "w") as f:
-        json.dump(metrics, f)
-
-def load_reference_metrics(reference_file: Path = Proximity.reference_file):
-    """Load reference metrics from a JSON file if available."""
-    if os.path.exists(reference_file):
-        with open(reference_file, "r") as f:
-            data = json.load(f)
-        # Ensure all keys are present for backward compatibility
-        if not all(k in data for k in ("child_ref_close", "child_ref_far", "adult_ref_close", "adult_ref_far", "child_ref_aspect_ratio", "adult_ref_aspect_ratio")):
-            logging.warning("Reference file is missing some metrics, recomputing...")
-            return None
-        return data
-    return None
-
-def get_reference_proximity_metrics(model, child_close_image_path, child_far_image_path, adult_close_image_path, adult_far_image_path):
-    """Retrieve or compute reference proximity metrics and aspect ratios separately for child and adult faces."""
-
-    # Try loading stored references
-    stored_metrics = load_reference_metrics()
-    if stored_metrics:
-        logging.info("Loaded reference metrics from file.")
-        return (stored_metrics["child_ref_close"], stored_metrics["child_ref_far"],
-                stored_metrics["adult_ref_close"], stored_metrics["adult_ref_far"],
-                stored_metrics["child_ref_aspect_ratio"], stored_metrics["adult_ref_aspect_ratio"])
-
-    logging.info("Computing reference metrics...")
-
-    child_close_image = cv2.imread(child_close_image_path)
-    child_far_image = cv2.imread(child_far_image_path)
-    adult_close_image = cv2.imread(adult_close_image_path)
-    adult_far_image = cv2.imread(adult_far_image_path)
-
-    results_child_close = model(child_close_image)
-    results_child_far = model(child_far_image)
-    results_adult_close = model(adult_close_image)
-    results_adult_far = model(adult_far_image)
-
-    _, _, child_face_close, _ = extract_bounding_boxes(results_child_close)
-    _, _, child_face_far, _ = extract_bounding_boxes(results_child_far)
-    _, _, _, adult_face_close = extract_bounding_boxes(results_adult_close)
-    _, _, _, adult_face_far = extract_bounding_boxes(results_adult_far)
-    
-    def compute_largest_face_area_and_ratio(faces, label):
-        """Find the area and aspect ratio of the largest face in the detected faces."""
-        if not faces:
-            logging.warning(f"No {label} faces detected in reference images.")
-            return None, None
-        
-        # Calculate area for each face
-        face_areas = [(face[2] * face[3], face) for face in faces]  # (area, face)
-        largest_area, largest_face = max(face_areas, key=lambda x: x[0])
-        
-        # Calculate aspect ratio for largest face
-        aspect_ratio = float(largest_face[2]) / float(largest_face[3])  # width / height
-        
-        logging.info(f"Largest {label} face area: {largest_area}, aspect ratio: {aspect_ratio:.2f}")
-        return largest_area, aspect_ratio
-
-    def compute_smallest_face_area_and_ratio(faces, label):
-        """Find the area and aspect ratio of the smallest face in the detected faces."""
-        if not faces:
-            logging.warning(f"No {label} faces detected in reference images.")
-            return None, None
-        
-        # Calculate area for each face
-        face_areas = [(face[2] * face[3], face) for face in faces]  # (area, face)
-        smallest_area, smallest_face = min(face_areas, key=lambda x: x[0])
-        
-        # Calculate aspect ratio for smallest face
-        aspect_ratio = float(smallest_face[2]) / float(smallest_face[3])  # width / height
-        
-        logging.info(f"Smallest {label} face area: {smallest_area}, aspect ratio: {aspect_ratio:.2f}")
-        return smallest_area, aspect_ratio
-
-    child_ref_close, child_ref_aspect_ratio = compute_largest_face_area_and_ratio(child_face_close, "child close")
-    child_ref_far, _ = compute_smallest_face_area_and_ratio(child_face_far, "child far")
-    adult_ref_close, adult_ref_aspect_ratio = compute_largest_face_area_and_ratio(adult_face_close, "adult close")
-    adult_ref_far, _ = compute_smallest_face_area_and_ratio(adult_face_far, "adult far")
-
-    # Save computed references for future runs
-    metrics = {
-        "child_ref_close": child_ref_close,
-        "child_ref_far": child_ref_far,
-        "adult_ref_close": adult_ref_close,
-        "adult_ref_far": adult_ref_far,
-        "child_ref_aspect_ratio": child_ref_aspect_ratio,
-        "adult_ref_aspect_ratio": adult_ref_aspect_ratio
+    # Colors for different classes
+    colors = {
+        "child": (0, 255, 0),  # Green
+        "adult": (255, 0, 0)   # Blue
     }
-    save_reference_metrics(metrics)
-
-    return (child_ref_close, child_ref_far, adult_ref_close, adult_ref_far,
-            child_ref_aspect_ratio, adult_ref_aspect_ratio)
-
-
-def describe_proximity(proximity):
-    """Returns a qualitative description of proximity."""
-    if proximity is None:
-        return "No valid detection"
-    elif proximity < 0.2:
-        return "Further away"
-    elif proximity < 0.4:
-        return "Quite far"
-    elif proximity < 0.6:
-        return "Moderate distance"
-    elif proximity < 0.8:
-        return "Quite close"
-    else:
-        return "Very close"
-
-def compute_proximity(image_path, model, ref_metrics):
-    """
-    Compute and return the proximity value for each detected face in a given image.
     
-    Parameters:
-    ----------
-    image_path: str
-        Path to the input image.
-    model: YOLO
-        YOLO model for face detection.
-    ref_metrics: tuple
-        Reference metrics for proximity calculation.
-    """
-    image = cv2.imread(image_path)
+    for det in detections:
+        bbox = det["bbox"]
+        age = det["age"]
+        proximity = det["proximity"]
+        age_conf = det["age_confidence"]
         
-    if image is None:
-        logging.error(f"Failed to load image from {image_path}")
-        return {}
-
-    results = model(image)
-    child_bboxes, adult_bboxes, child_faces, adult_faces = extract_bounding_boxes(results)
-
-    proximities = {}  # Store proximity values for each detected face
-    logging.info(f"Proximity values for {image_path}")
-
-    # Process child faces
-    for i, face_bbox in enumerate(child_faces):
-        proximity = calculate_proximity(face_bbox, ref_metrics[0], ref_metrics[1], ref_metrics[4]) # Pass child aspect ratio
-        if proximity is not None:
-            description = describe_proximity(proximity)
-            face_key = f"child_face_{i+1}"
-            proximities[face_key] = proximity
-            logging.info(f"{face_key}: Proximity = {proximity:.2f} ({description})")
-
-    # Process adult faces
-    for i, face_bbox in enumerate(adult_faces):
-        proximity = calculate_proximity(face_bbox, ref_metrics[2], ref_metrics[3], ref_metrics[5]) # Pass adult aspect ratio
-        if proximity is not None:
-            description = describe_proximity(proximity)
-            face_key = f"adult_face_{i+1}"
-            proximities[face_key] = proximity
-            logging.info(f"{face_key}: Proximity = {proximity:.2f} ({description})")
-
-    if not proximities:
-        logging.info(f"No valid proximity data for image {image_path}")
-
-def return_proximity(bounding_box: list, face_type: str, ref_metrics: tuple):
-    """
-    Compute and return the proximity value for each detected face in a given image.
-    
-    Parameters:
-    ----------
-    bounding_box: list
-        Bounding box coordinates for the detected face
-    face_type: str
-        Type of the detected face (child or adult)
-    ref_metrics: tuple
-        Reference metrics for proximity calculation.
+        # Draw bounding box
+        cv2.rectangle(image, 
+                      (bbox[0], bbox[1]), 
+                      (bbox[2], bbox[3]), 
+                      colors[age], 
+                      thickness)
         
-    Returns:
-    --------
-    dict
-        Proximity value for the detected face
-    
-    """
-    if face_type == "infant/child face":
-        proximity = calculate_proximity(bounding_box, ref_metrics[0], ref_metrics[1], ref_metrics[4])
-        print("proximity", proximity)
-        return proximity
-    elif face_type == "adult face":
-        proximity = calculate_proximity(bounding_box, ref_metrics[2], ref_metrics[3], ref_metrics[5])
-        print("proximity", proximity)
-        return proximity
+        # Prepare text
+        text = f"{age} Proximity:{proximity:.2f} (age:{age_conf:.2f})"
         
-def get_proximity(bounding_box: list, face_type: str):
-    """ 
-    This function is used to compute the proximity of detected faces in an image.
+        # Calculate text position
+        (text_width, text_height), _ = cv2.getTextSize(text, font, font_scale, thickness)
+        text_y = bbox[1] - 10 if bbox[1] - 10 > 10 else bbox[1] + 20
+        
+        # Draw text background
+        cv2.rectangle(image, 
+                      (bbox[0], text_y - text_height - 5),
+                      (bbox[0] + text_width, text_y + 5),
+                      colors[age], 
+                      -1)
+        
+        # Draw text
+        cv2.putText(image, text, 
+                    (bbox[0], text_y), 
+                    font, font_scale, 
+                    (255, 255, 255),  # White text
+                    thickness)
     
-    Parameters:
-    ----------
-    bounding_box: list
-        Bounding box coordinates for the detected face
-    face_type: str
-        Type of the detected face (infant/child face or adult face)
-    
-    Returns:
-    --------
-    proximity: float
-        Proximity value for the detected face
-    
-    """
-    ref_metrics = load_reference_metrics()
-    if ref_metrics is None:
-        logging.warning("Reference metrics not found. Please run the reference computation script.")
-        return
-    ref_metrics_list = list(ref_metrics.values())
-    proximity = return_proximity(bounding_box, face_type, ref_metrics_list)
-    return proximity
+    # Save the annotated image
+    cv2.imwrite(output_path, image)
+    logging.info(f"Saved annotated image to {output_path}")
 
 def main():
-    parser = argparse.ArgumentParser(description='Compute proximity for detected faces in an image.')
-    parser.add_argument('--image_path', type=str, required=True,
-                       help='Path to the input image')
+    parser = argparse.ArgumentParser(description='Calculate proximity for faces in an image')
+    parser.add_argument('--image_path', type=str, required=True, help='Path to the input image')
     args = parser.parse_args()
 
-    model_path = YoloPaths.all_trained_weights_path
-    child_close_image_path = Proximity.child_close_image_path
-    child_far_image_path = Proximity.child_far_image_path
-    adult_close_image_path = Proximity.adult_close_image_path
-    adult_far_image_path = Proximity.adult_far_image_path
+    # Initialize models
+    detector = YOLO(DetectionPaths.person_face_trained_weights_path)
+    age_classifier = YOLO(ClassificationPaths.face_trained_weights_path)
 
-    model = YOLO(model_path)
-    (child_ref_close, child_ref_far, adult_ref_close, adult_ref_far,
-    child_ref_aspect_ratio, adult_ref_aspect_ratio) = get_reference_proximity_metrics(model, child_close_image_path, child_far_image_path, adult_close_image_path, adult_far_image_path)
-    ref_metrics = (child_ref_close, child_ref_far, adult_ref_close, adult_ref_far, child_ref_aspect_ratio, adult_ref_aspect_ratio)
-    compute_proximity(args.image_path, model, ref_metrics)
+    # Load image
+    videos_folder = "/home/nele_pauline_suffo/ProcessedData/quantex_videos_processed"
+    video_base_folder = os.path.basename(args.image_path).rsplit('_', 1)[0]
+    full_image_path = os.path.join(videos_folder, video_base_folder, args.image_path)
+        
+    img = cv2.imread(full_image_path)
+    if img is None:
+        raise ValueError(f"Could not load image at {full_image_path}")
 
+    # Make a copy for drawing detections
+    output_img = img.copy()
+
+    # Detect faces
+    detections = detector(img)[0]
+    
+    # Initialize proximity calculator
+    prox_calculator = ProximityCalculator()
+    
+    results = []
+    for box in detections.boxes:
+        if int(box.cls) != 1:  # Skip non-face classes
+            continue
+            
+        # Extract face ROI
+        x1, y1, x2, y2 = map(int, box.xyxy[0])
+        face_roi = img[y1:y2, x1:x2]
+        
+        # Classify age
+        age_result = age_classifier(face_roi)[0]
+        is_child = int(age_result.probs.top1) == 1
+        
+        # Calculate proximity
+        proximity = prox_calculator.calculate((x1, y1, x2, y2), is_child)
+        
+        # Format results
+        results.append({
+            "bbox": [x1, y1, x2, y2],
+            "age": "child" if is_child else "adult",
+            "age_confidence": float(age_result.probs.top1conf),
+            "proximity": float(proximity),
+        })
+    
+    # Log results
+    logging.info("Detection Results:")
+    for i, res in enumerate(results, 1):
+        logging.info(f"\nFace {i}:")
+        logging.info(f"  Age: {res['age']} (confidence: {res['age_confidence']:.2f})")
+        logging.info(f"  Proximity: {res['proximity']:.2f}")
+    
+    # Draw detections and save image
+    output_path = f"/home/nele_pauline_suffo/outputs/detection_pipeline_results/inference_images/{args.image_path}"
+    draw_detections(output_img, results, output_path)
 
 if __name__ == "__main__":
     main()
