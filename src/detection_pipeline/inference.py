@@ -3,7 +3,8 @@ import logging
 import argparse
 import os
 from ultralytics import YOLO
-from constants import YoloPaths
+from proximity_utils import ProximityCalculator
+from constants import ClassificationPaths, DetectionPaths
 from config import YoloConfig
 
 def is_face_inside_person(face_box, person_box):
@@ -108,14 +109,20 @@ def draw_detection(image, box, cls_id, conf, age_cls=None, gaze_cls=None,
 def run_inference(image_path):
     """Run object detection inference on an image."""
     # Load models
-    object_model = YOLO(YoloPaths.all_trained_weights_path)
-    person_face_model = YOLO(YoloPaths.person_face_trained_weights_path)
-    gaze_cls_model = YOLO(YoloPaths.gaze_trained_weights_path)
-    face_cls_model = YOLO(YoloPaths.face_trained_weights_path)
-    person_cls_model = YOLO(YoloPaths.person_trained_weights_path)
+    object_model = YOLO(DetectionPaths.all_trained_weights_path)
+    person_face_model = YOLO(DetectionPaths.person_face_trained_weights_path)
+    gaze_cls_model = YOLO(ClassificationPaths.gaze_trained_weights_path)
+    face_cls_model = YOLO(ClassificationPaths.face_trained_weights_path)
+    person_cls_model = YOLO(ClassificationPaths.person_trained_weights_path)
+    # Initialize proximity calculator
+    prox_calculator = ProximityCalculator()
     
     # Load image
-    image = cv2.imread(image_path)
+    videos_folder = "/home/nele_pauline_suffo/ProcessedData/quantex_videos_processed"
+    video_base_folder = os.path.basename(image_path).rsplit('_', 1)[0]
+    full_image_path = os.path.join(videos_folder, video_base_folder, image_path)
+    
+    image = cv2.imread(full_image_path)
     if image is None:
         logging.error(f"Failed to read image: {image_path}")
         return
@@ -167,10 +174,19 @@ def run_inference(image_path):
             gaze_cls = int(gaze_results[0].probs.top1)
             gaze_conf = float(gaze_results[0].probs.top1conf)
             
+            is_child = (face_age_cls == 1)  # Adjust based on your age classifier
+            
+            # Calculate proximity
+            proximity = prox_calculator.calculate(
+                box.xyxy[0].tolist(), 
+                is_child=is_child
+            )
+    
             face_detections.append({
                 'box': box,
                 'age_cls': face_age_cls,
                 'age_conf': face_age_conf,
+                'proximity': proximity,
                 'gaze_cls': gaze_cls,
                 'gaze_conf': gaze_conf,
                 'conf': conf
@@ -225,7 +241,7 @@ def main():
     
     logging.basicConfig(level=logging.INFO,
                        format='%(asctime)s - %(levelname)s - %(message)s')
-    
+
     run_inference(args.image_path)
 
 if __name__ == "__main__":
