@@ -101,7 +101,7 @@ def main():
         
         # Calculate proximity
         proximity = prox_calculator.calculate((x1, y1, x2, y2), is_child)
-        
+        print("proximity", proximity)
         # Format results
         results.append({
             "bbox": [x1, y1, x2, y2],
