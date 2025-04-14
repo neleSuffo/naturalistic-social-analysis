@@ -131,7 +131,6 @@ class ProximityCalculator:
         x1, y1, x2, y2 = map(int, bbox)
         width, height = x2 - x1, y2 - y1
         area = width * height
-        logging.info(f"Area: {area}, Width: {width}, Height: {height}")
         aspect_ratio = width / height if height != 0 else 0
         
         # Get appropriate reference values
@@ -140,7 +139,6 @@ class ProximityCalculator:
         else:
             ref_close, ref_far, ref_ar = self.ref_metrics[2], self.ref_metrics[3], self.ref_metrics[5]
         
-        logging.info(f"Reference Close: {ref_close}, Reference Far: {ref_far}, Aspect Ratio: {aspect_ratio}")
         # Check for partial face based on aspect ratio
         if abs(aspect_ratio - ref_ar) > aspect_ratio_threshold:
             logging.debug("Partial face detected - returning maximum proximity")
