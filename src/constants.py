@@ -126,7 +126,7 @@ class ClassificationPaths:
     
     gaze_classes = ['no_gaze', 'gaze']
     gaze_extracted_faces_dir = Path(BasePaths.data_dir/"gaze_cls_input")
-    gaze_trained_weights_path = Path(BasePaths.models_dir/'gaze_classification.pt')
+    gaze_trained_weights_path = Path(BasePaths.models_dir/'yolo11_gaze_classification.pt')
     gaze_extraction_progress_file_path = Path(BasePaths.data_dir/"gaze_extraction_progress.txt")
     gaze_missing_frames_file_path = Path(BasePaths.data_dir/"gaze_missing_frames.txt")
     gaze_data_config_path = Path(BasePaths.leuphana_ipe_dir/"src/models/yolo_gaze_classification/gaze_dataset.yaml")
