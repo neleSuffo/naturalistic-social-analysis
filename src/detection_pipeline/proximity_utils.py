@@ -113,7 +113,7 @@ class ProximityCalculator:
             logging.error(f"Failed to compute references: {str(e)}")
             raise
 
-    def calculate(self, bbox, is_child=True, aspect_ratio_threshold=0.8):
+    def calculate(self, bbox, is_child=True, aspect_ratio_threshold=1):
         """
         Calculate proximity for a face bounding box
         
