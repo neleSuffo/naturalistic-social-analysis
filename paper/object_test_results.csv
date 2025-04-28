@@ -1,0 +1,3001 @@
+video_id,frame_id,ID,object_present,object_type,age,social,social_context
+151,330,257108,0,book,4.25,adult present,adult present
+151,330,257108,0,food,4.25,adult present,adult present
+151,330,257108,0,kitchenware,4.25,adult present,adult present
+151,330,257108,0,other_object,4.25,adult present,adult present
+151,330,257108,0,screen,4.25,adult present,adult present
+151,330,257108,0,toy,4.25,adult present,adult present
+151,1920,257108,0,book,4.25,child present,child present
+151,1920,257108,0,food,4.25,child present,child present
+151,1920,257108,0,kitchenware,4.25,child present,child present
+151,1920,257108,0,other_object,4.25,child present,child present
+151,1920,257108,0,screen,4.25,child present,child present
+151,1920,257108,0,toy,4.25,child present,child present
+151,2130,257108,0,book,4.25,adult present,adult present
+151,2130,257108,0,food,4.25,adult present,adult present
+151,2130,257108,0,kitchenware,4.25,adult present,adult present
+151,2130,257108,0,other_object,4.25,adult present,adult present
+151,2130,257108,0,screen,4.25,adult present,adult present
+151,2130,257108,0,toy,4.25,adult present,adult present
+151,3300,257108,0,book,4.25,adult present,adult present
+151,3300,257108,0,food,4.25,adult present,adult present
+151,3300,257108,0,kitchenware,4.25,adult present,adult present
+151,3300,257108,0,other_object,4.25,adult present,adult present
+151,3300,257108,0,screen,4.25,adult present,adult present
+151,3300,257108,0,toy,4.25,adult present,adult present
+151,3340,257108,0,book,4.25,adult present,adult present
+151,3340,257108,0,food,4.25,adult present,adult present
+151,3340,257108,0,kitchenware,4.25,adult present,adult present
+151,3340,257108,0,other_object,4.25,adult present,adult present
+151,3340,257108,0,screen,4.25,adult present,adult present
+151,3340,257108,0,toy,4.25,adult present,adult present
+151,3380,257108,0,book,4.25,adult present,adult present
+151,3380,257108,0,food,4.25,adult present,adult present
+151,3380,257108,0,kitchenware,4.25,adult present,adult present
+151,3380,257108,0,other_object,4.25,adult present,adult present
+151,3380,257108,0,screen,4.25,adult present,adult present
+151,3380,257108,0,toy,4.25,adult present,adult present
+151,3450,257108,0,book,4.25,adult present,adult present
+151,3450,257108,0,food,4.25,adult present,adult present
+151,3450,257108,0,kitchenware,4.25,adult present,adult present
+151,3450,257108,0,other_object,4.25,adult present,adult present
+151,3450,257108,0,screen,4.25,adult present,adult present
+151,3450,257108,0,toy,4.25,adult present,adult present
+151,3830,257108,0,book,4.25,adult present,adult present
+151,3830,257108,0,food,4.25,adult present,adult present
+151,3830,257108,0,kitchenware,4.25,adult present,adult present
+151,3830,257108,0,other_object,4.25,adult present,adult present
+151,3830,257108,0,screen,4.25,adult present,adult present
+151,3830,257108,0,toy,4.25,adult present,adult present
+151,4430,257108,0,book,4.25,alone,alone
+151,4430,257108,0,food,4.25,alone,alone
+151,4430,257108,0,kitchenware,4.25,alone,alone
+151,4430,257108,0,other_object,4.25,alone,alone
+151,4430,257108,0,screen,4.25,alone,alone
+151,4430,257108,0,toy,4.25,alone,alone
+151,6950,257108,0,book,4.25,alone,alone
+151,6950,257108,0,food,4.25,alone,alone
+151,6950,257108,0,kitchenware,4.25,alone,alone
+151,6950,257108,0,other_object,4.25,alone,alone
+151,6950,257108,0,screen,4.25,alone,alone
+151,6950,257108,0,toy,4.25,alone,alone
+151,7040,257108,0,book,4.25,alone,alone
+151,7040,257108,0,food,4.25,alone,alone
+151,7040,257108,0,kitchenware,4.25,alone,alone
+151,7040,257108,0,other_object,4.25,alone,alone
+151,7040,257108,0,screen,4.25,alone,alone
+151,7040,257108,0,toy,4.25,alone,alone
+151,7900,257108,0,book,4.25,alone,alone
+151,7900,257108,0,food,4.25,alone,alone
+151,7900,257108,0,kitchenware,4.25,alone,alone
+151,7900,257108,0,other_object,4.25,alone,alone
+151,7900,257108,0,screen,4.25,alone,alone
+151,7900,257108,0,toy,4.25,alone,alone
+151,8460,257108,0,book,4.25,alone,alone
+151,8460,257108,0,food,4.25,alone,alone
+151,8460,257108,0,kitchenware,4.25,alone,alone
+151,8460,257108,0,other_object,4.25,alone,alone
+151,8460,257108,0,screen,4.25,alone,alone
+151,8460,257108,0,toy,4.25,alone,alone
+151,8890,257108,0,book,4.25,child present,child present
+151,8890,257108,0,food,4.25,child present,child present
+151,8890,257108,0,kitchenware,4.25,child present,child present
+151,8890,257108,0,other_object,4.25,child present,child present
+151,8890,257108,0,screen,4.25,child present,child present
+151,8890,257108,0,toy,4.25,child present,child present
+151,9970,257108,0,book,4.25,adult present,adult present
+151,9970,257108,0,food,4.25,adult present,adult present
+151,9970,257108,0,kitchenware,4.25,adult present,adult present
+151,9970,257108,0,other_object,4.25,adult present,adult present
+151,9970,257108,0,screen,4.25,adult present,adult present
+151,9970,257108,0,toy,4.25,adult present,adult present
+151,10990,257108,0,book,4.25,adult present,adult present
+151,10990,257108,0,food,4.25,adult present,adult present
+151,10990,257108,0,kitchenware,4.25,adult present,adult present
+151,10990,257108,0,other_object,4.25,adult present,adult present
+151,10990,257108,0,screen,4.25,adult present,adult present
+151,10990,257108,0,toy,4.25,adult present,adult present
+151,12270,257108,0,book,4.25,adult present,adult present
+151,12270,257108,0,food,4.25,adult present,adult present
+151,12270,257108,0,kitchenware,4.25,adult present,adult present
+151,12270,257108,0,other_object,4.25,adult present,adult present
+151,12270,257108,0,screen,4.25,adult present,adult present
+151,12270,257108,0,toy,4.25,adult present,adult present
+151,12480,257108,0,book,4.25,adult present,adult present
+151,12480,257108,0,food,4.25,adult present,adult present
+151,12480,257108,0,kitchenware,4.25,adult present,adult present
+151,12480,257108,0,other_object,4.25,adult present,adult present
+151,12480,257108,0,screen,4.25,adult present,adult present
+151,12480,257108,0,toy,4.25,adult present,adult present
+151,14020,257108,0,book,4.25,adult present,adult present
+151,14020,257108,0,food,4.25,adult present,adult present
+151,14020,257108,0,kitchenware,4.25,adult present,adult present
+151,14020,257108,0,other_object,4.25,adult present,adult present
+151,14020,257108,0,screen,4.25,adult present,adult present
+151,14020,257108,0,toy,4.25,adult present,adult present
+151,14790,257108,0,book,4.25,adult present,adult present
+151,14790,257108,0,food,4.25,adult present,adult present
+151,14790,257108,0,kitchenware,4.25,adult present,adult present
+151,14790,257108,0,other_object,4.25,adult present,adult present
+151,14790,257108,0,screen,4.25,adult present,adult present
+151,14790,257108,0,toy,4.25,adult present,adult present
+151,15420,257108,1,book,4.25,child present,child present
+151,15420,257108,0,food,4.25,child present,child present
+151,15420,257108,0,kitchenware,4.25,child present,child present
+151,15420,257108,1,other_object,4.25,child present,child present
+151,15420,257108,0,screen,4.25,child present,child present
+151,15420,257108,0,toy,4.25,child present,child present
+151,16850,257108,1,book,4.25,alone,alone
+151,16850,257108,0,food,4.25,alone,alone
+151,16850,257108,0,kitchenware,4.25,alone,alone
+151,16850,257108,0,other_object,4.25,alone,alone
+151,16850,257108,0,screen,4.25,alone,alone
+151,16850,257108,0,toy,4.25,alone,alone
+151,17530,257108,0,book,4.25,alone,alone
+151,17530,257108,0,food,4.25,alone,alone
+151,17530,257108,0,kitchenware,4.25,alone,alone
+151,17530,257108,0,other_object,4.25,alone,alone
+151,17530,257108,0,screen,4.25,alone,alone
+151,17530,257108,0,toy,4.25,alone,alone
+151,17720,257108,0,book,4.25,alone,alone
+151,17720,257108,0,food,4.25,alone,alone
+151,17720,257108,0,kitchenware,4.25,alone,alone
+151,17720,257108,0,other_object,4.25,alone,alone
+151,17720,257108,0,screen,4.25,alone,alone
+151,17720,257108,0,toy,4.25,alone,alone
+151,17850,257108,0,book,4.25,alone,alone
+151,17850,257108,0,food,4.25,alone,alone
+151,17850,257108,0,kitchenware,4.25,alone,alone
+151,17850,257108,0,other_object,4.25,alone,alone
+151,17850,257108,0,screen,4.25,alone,alone
+151,17850,257108,0,toy,4.25,alone,alone
+151,18720,257108,0,book,4.25,adult present,adult present
+151,18720,257108,0,food,4.25,adult present,adult present
+151,18720,257108,0,kitchenware,4.25,adult present,adult present
+151,18720,257108,0,other_object,4.25,adult present,adult present
+151,18720,257108,0,screen,4.25,adult present,adult present
+151,18720,257108,0,toy,4.25,adult present,adult present
+53,1130,258192,0,book,4.45,child present,child present
+53,1130,258192,0,food,4.45,child present,child present
+53,1130,258192,0,kitchenware,4.45,child present,child present
+53,1130,258192,0,other_object,4.45,child present,child present
+53,1130,258192,0,screen,4.45,child present,child present
+53,1130,258192,0,toy,4.45,child present,child present
+53,3760,258192,0,book,4.45,child present,child present
+53,3760,258192,0,food,4.45,child present,child present
+53,3760,258192,0,kitchenware,4.45,child present,child present
+53,3760,258192,0,other_object,4.45,child present,child present
+53,3760,258192,0,screen,4.45,child present,child present
+53,3760,258192,0,toy,4.45,child present,child present
+53,4200,258192,0,book,4.45,child present,child present
+53,4200,258192,0,food,4.45,child present,child present
+53,4200,258192,0,kitchenware,4.45,child present,child present
+53,4200,258192,0,other_object,4.45,child present,child present
+53,4200,258192,0,screen,4.45,child present,child present
+53,4200,258192,0,toy,4.45,child present,child present
+53,5070,258192,0,book,4.45,child present,child present
+53,5070,258192,0,food,4.45,child present,child present
+53,5070,258192,0,kitchenware,4.45,child present,child present
+53,5070,258192,0,other_object,4.45,child present,child present
+53,5070,258192,0,screen,4.45,child present,child present
+53,5070,258192,0,toy,4.45,child present,child present
+53,5540,258192,0,book,4.45,child present,child present
+53,5540,258192,0,food,4.45,child present,child present
+53,5540,258192,0,kitchenware,4.45,child present,child present
+53,5540,258192,0,other_object,4.45,child present,child present
+53,5540,258192,0,screen,4.45,child present,child present
+53,5540,258192,0,toy,4.45,child present,child present
+53,5590,258192,0,book,4.45,child present,child present
+53,5590,258192,0,food,4.45,child present,child present
+53,5590,258192,0,kitchenware,4.45,child present,child present
+53,5590,258192,0,other_object,4.45,child present,child present
+53,5590,258192,0,screen,4.45,child present,child present
+53,5590,258192,0,toy,4.45,child present,child present
+53,7170,258192,0,book,4.45,child present,child present
+53,7170,258192,0,food,4.45,child present,child present
+53,7170,258192,0,kitchenware,4.45,child present,child present
+53,7170,258192,0,other_object,4.45,child present,child present
+53,7170,258192,0,screen,4.45,child present,child present
+53,7170,258192,0,toy,4.45,child present,child present
+53,7360,258192,0,book,4.45,child present,child present
+53,7360,258192,0,food,4.45,child present,child present
+53,7360,258192,0,kitchenware,4.45,child present,child present
+53,7360,258192,0,other_object,4.45,child present,child present
+53,7360,258192,0,screen,4.45,child present,child present
+53,7360,258192,0,toy,4.45,child present,child present
+53,8050,258192,0,book,4.45,child present,child present
+53,8050,258192,0,food,4.45,child present,child present
+53,8050,258192,0,kitchenware,4.45,child present,child present
+53,8050,258192,0,other_object,4.45,child present,child present
+53,8050,258192,0,screen,4.45,child present,child present
+53,8050,258192,0,toy,4.45,child present,child present
+53,8160,258192,0,book,4.45,child present,child present
+53,8160,258192,0,food,4.45,child present,child present
+53,8160,258192,0,kitchenware,4.45,child present,child present
+53,8160,258192,0,other_object,4.45,child present,child present
+53,8160,258192,0,screen,4.45,child present,child present
+53,8160,258192,0,toy,4.45,child present,child present
+53,8440,258192,0,book,4.45,child present,child present
+53,8440,258192,0,food,4.45,child present,child present
+53,8440,258192,0,kitchenware,4.45,child present,child present
+53,8440,258192,0,other_object,4.45,child present,child present
+53,8440,258192,0,screen,4.45,child present,child present
+53,8440,258192,0,toy,4.45,child present,child present
+53,8850,258192,0,book,4.45,child present,child present
+53,8850,258192,0,food,4.45,child present,child present
+53,8850,258192,0,kitchenware,4.45,child present,child present
+53,8850,258192,0,other_object,4.45,child present,child present
+53,8850,258192,0,screen,4.45,child present,child present
+53,8850,258192,0,toy,4.45,child present,child present
+53,10020,258192,0,book,4.45,child present,child present
+53,10020,258192,0,food,4.45,child present,child present
+53,10020,258192,0,kitchenware,4.45,child present,child present
+53,10020,258192,0,other_object,4.45,child present,child present
+53,10020,258192,0,screen,4.45,child present,child present
+53,10020,258192,0,toy,4.45,child present,child present
+53,10690,258192,0,book,4.45,child present,child present
+53,10690,258192,0,food,4.45,child present,child present
+53,10690,258192,0,kitchenware,4.45,child present,child present
+53,10690,258192,0,other_object,4.45,child present,child present
+53,10690,258192,0,screen,4.45,child present,child present
+53,10690,258192,0,toy,4.45,child present,child present
+53,12290,258192,0,book,4.45,child present,child present
+53,12290,258192,0,food,4.45,child present,child present
+53,12290,258192,0,kitchenware,4.45,child present,child present
+53,12290,258192,0,other_object,4.45,child present,child present
+53,12290,258192,0,screen,4.45,child present,child present
+53,12290,258192,0,toy,4.45,child present,child present
+53,15110,258192,0,book,4.45,child present,child present
+53,15110,258192,0,food,4.45,child present,child present
+53,15110,258192,0,kitchenware,4.45,child present,child present
+53,15110,258192,0,other_object,4.45,child present,child present
+53,15110,258192,0,screen,4.45,child present,child present
+53,15110,258192,0,toy,4.45,child present,child present
+53,15360,258192,0,book,4.45,child present,child present
+53,15360,258192,0,food,4.45,child present,child present
+53,15360,258192,0,kitchenware,4.45,child present,child present
+53,15360,258192,0,other_object,4.45,child present,child present
+53,15360,258192,0,screen,4.45,child present,child present
+53,15360,258192,0,toy,4.45,child present,child present
+53,16210,258192,0,book,4.45,child present,child present
+53,16210,258192,0,food,4.45,child present,child present
+53,16210,258192,0,kitchenware,4.45,child present,child present
+53,16210,258192,0,other_object,4.45,child present,child present
+53,16210,258192,0,screen,4.45,child present,child present
+53,16210,258192,0,toy,4.45,child present,child present
+53,16900,258192,0,book,4.45,child present,child present
+53,16900,258192,0,food,4.45,child present,child present
+53,16900,258192,0,kitchenware,4.45,child present,child present
+53,16900,258192,0,other_object,4.45,child present,child present
+53,16900,258192,0,screen,4.45,child present,child present
+53,16900,258192,0,toy,4.45,child present,child present
+53,17460,258192,0,book,4.45,child present,child present
+53,17460,258192,0,food,4.45,child present,child present
+53,17460,258192,0,kitchenware,4.45,child present,child present
+53,17460,258192,0,other_object,4.45,child present,child present
+53,17460,258192,0,screen,4.45,child present,child present
+53,17460,258192,0,toy,4.45,child present,child present
+53,19350,258192,0,book,4.45,child present,child present
+53,19350,258192,0,food,4.45,child present,child present
+53,19350,258192,0,kitchenware,4.45,child present,child present
+53,19350,258192,0,other_object,4.45,child present,child present
+53,19350,258192,0,screen,4.45,child present,child present
+53,19350,258192,0,toy,4.45,child present,child present
+53,22080,258192,0,book,4.45,child present,child present
+53,22080,258192,0,food,4.45,child present,child present
+53,22080,258192,0,kitchenware,4.45,child present,child present
+53,22080,258192,0,other_object,4.45,child present,child present
+53,22080,258192,0,screen,4.45,child present,child present
+53,22080,258192,0,toy,4.45,child present,child present
+53,22610,258192,0,book,4.45,child present,child present
+53,22610,258192,0,food,4.45,child present,child present
+53,22610,258192,0,kitchenware,4.45,child present,child present
+53,22610,258192,0,other_object,4.45,child present,child present
+53,22610,258192,0,screen,4.45,child present,child present
+53,22610,258192,0,toy,4.45,child present,child present
+53,22890,258192,0,book,4.45,child present,child present
+53,22890,258192,0,food,4.45,child present,child present
+53,22890,258192,0,kitchenware,4.45,child present,child present
+53,22890,258192,0,other_object,4.45,child present,child present
+53,22890,258192,0,screen,4.45,child present,child present
+53,22890,258192,0,toy,4.45,child present,child present
+53,23790,258192,0,book,4.45,child present,child present
+53,23790,258192,0,food,4.45,child present,child present
+53,23790,258192,0,kitchenware,4.45,child present,child present
+53,23790,258192,0,other_object,4.45,child present,child present
+53,23790,258192,0,screen,4.45,child present,child present
+53,23790,258192,0,toy,4.45,child present,child present
+53,23810,258192,0,book,4.45,child present,child present
+53,23810,258192,0,food,4.45,child present,child present
+53,23810,258192,0,kitchenware,4.45,child present,child present
+53,23810,258192,0,other_object,4.45,child present,child present
+53,23810,258192,0,screen,4.45,child present,child present
+53,23810,258192,0,toy,4.45,child present,child present
+53,24400,258192,0,book,4.45,child present,child present
+53,24400,258192,0,food,4.45,child present,child present
+53,24400,258192,0,kitchenware,4.45,child present,child present
+53,24400,258192,0,other_object,4.45,child present,child present
+53,24400,258192,0,screen,4.45,child present,child present
+53,24400,258192,0,toy,4.45,child present,child present
+53,25710,258192,0,book,4.45,child present,child present
+53,25710,258192,0,food,4.45,child present,child present
+53,25710,258192,0,kitchenware,4.45,child present,child present
+53,25710,258192,0,other_object,4.45,child present,child present
+53,25710,258192,0,screen,4.45,child present,child present
+53,25710,258192,0,toy,4.45,child present,child present
+53,25840,258192,0,book,4.45,child present,child present
+53,25840,258192,0,food,4.45,child present,child present
+53,25840,258192,0,kitchenware,4.45,child present,child present
+53,25840,258192,0,other_object,4.45,child present,child present
+53,25840,258192,0,screen,4.45,child present,child present
+53,25840,258192,0,toy,4.45,child present,child present
+53,27370,258192,0,book,4.45,child present,child present
+53,27370,258192,0,food,4.45,child present,child present
+53,27370,258192,0,kitchenware,4.45,child present,child present
+53,27370,258192,0,other_object,4.45,child present,child present
+53,27370,258192,0,screen,4.45,child present,child present
+53,27370,258192,0,toy,4.45,child present,child present
+53,29060,258192,0,book,4.45,child present,child present
+53,29060,258192,0,food,4.45,child present,child present
+53,29060,258192,0,kitchenware,4.45,child present,child present
+53,29060,258192,0,other_object,4.45,child present,child present
+53,29060,258192,0,screen,4.45,child present,child present
+53,29060,258192,0,toy,4.45,child present,child present
+53,29620,258192,0,book,4.45,child present,child present
+53,29620,258192,0,food,4.45,child present,child present
+53,29620,258192,0,kitchenware,4.45,child present,child present
+53,29620,258192,0,other_object,4.45,child present,child present
+53,29620,258192,0,screen,4.45,child present,child present
+53,29620,258192,0,toy,4.45,child present,child present
+53,31390,258192,0,book,4.45,child present,child present
+53,31390,258192,0,food,4.45,child present,child present
+53,31390,258192,0,kitchenware,4.45,child present,child present
+53,31390,258192,0,other_object,4.45,child present,child present
+53,31390,258192,0,screen,4.45,child present,child present
+53,31390,258192,0,toy,4.45,child present,child present
+53,34340,258192,0,book,4.45,child present,child present
+53,34340,258192,0,food,4.45,child present,child present
+53,34340,258192,0,kitchenware,4.45,child present,child present
+53,34340,258192,0,other_object,4.45,child present,child present
+53,34340,258192,0,screen,4.45,child present,child present
+53,34340,258192,0,toy,4.45,child present,child present
+53,34800,258192,0,book,4.45,child present,child present
+53,34800,258192,0,food,4.45,child present,child present
+53,34800,258192,0,kitchenware,4.45,child present,child present
+53,34800,258192,0,other_object,4.45,child present,child present
+53,34800,258192,0,screen,4.45,child present,child present
+53,34800,258192,0,toy,4.45,child present,child present
+53,35000,258192,0,book,4.45,child present,child present
+53,35000,258192,0,food,4.45,child present,child present
+53,35000,258192,0,kitchenware,4.45,child present,child present
+53,35000,258192,0,other_object,4.45,child present,child present
+53,35000,258192,0,screen,4.45,child present,child present
+53,35000,258192,0,toy,4.45,child present,child present
+53,35190,258192,0,book,4.45,child present,child present
+53,35190,258192,0,food,4.45,child present,child present
+53,35190,258192,0,kitchenware,4.45,child present,child present
+53,35190,258192,0,other_object,4.45,child present,child present
+53,35190,258192,0,screen,4.45,child present,child present
+53,35190,258192,0,toy,4.45,child present,child present
+53,36430,258192,0,book,4.45,child present,child present
+53,36430,258192,0,food,4.45,child present,child present
+53,36430,258192,0,kitchenware,4.45,child present,child present
+53,36430,258192,0,other_object,4.45,child present,child present
+53,36430,258192,0,screen,4.45,child present,child present
+53,36430,258192,0,toy,4.45,child present,child present
+53,38630,258192,0,book,4.45,child present,child present
+53,38630,258192,0,food,4.45,child present,child present
+53,38630,258192,0,kitchenware,4.45,child present,child present
+53,38630,258192,0,other_object,4.45,child present,child present
+53,38630,258192,0,screen,4.45,child present,child present
+53,38630,258192,0,toy,4.45,child present,child present
+53,40230,258192,0,book,4.45,child present,child present
+53,40230,258192,0,food,4.45,child present,child present
+53,40230,258192,0,kitchenware,4.45,child present,child present
+53,40230,258192,0,other_object,4.45,child present,child present
+53,40230,258192,0,screen,4.45,child present,child present
+53,40230,258192,0,toy,4.45,child present,child present
+53,40710,258192,0,book,4.45,child present,child present
+53,40710,258192,0,food,4.45,child present,child present
+53,40710,258192,0,kitchenware,4.45,child present,child present
+53,40710,258192,0,other_object,4.45,child present,child present
+53,40710,258192,0,screen,4.45,child present,child present
+53,40710,258192,0,toy,4.45,child present,child present
+53,41730,258192,0,book,4.45,child present,child present
+53,41730,258192,0,food,4.45,child present,child present
+53,41730,258192,0,kitchenware,4.45,child present,child present
+53,41730,258192,0,other_object,4.45,child present,child present
+53,41730,258192,0,screen,4.45,child present,child present
+53,41730,258192,0,toy,4.45,child present,child present
+53,41930,258192,0,book,4.45,child present,child present
+53,41930,258192,0,food,4.45,child present,child present
+53,41930,258192,0,kitchenware,4.45,child present,child present
+53,41930,258192,0,other_object,4.45,child present,child present
+53,41930,258192,0,screen,4.45,child present,child present
+53,41930,258192,0,toy,4.45,child present,child present
+53,42420,258192,0,book,4.45,child present,child present
+53,42420,258192,0,food,4.45,child present,child present
+53,42420,258192,0,kitchenware,4.45,child present,child present
+53,42420,258192,0,other_object,4.45,child present,child present
+53,42420,258192,0,screen,4.45,child present,child present
+53,42420,258192,0,toy,4.45,child present,child present
+53,42500,258192,0,book,4.45,child present,child present
+53,42500,258192,0,food,4.45,child present,child present
+53,42500,258192,0,kitchenware,4.45,child present,child present
+53,42500,258192,0,other_object,4.45,child present,child present
+53,42500,258192,0,screen,4.45,child present,child present
+53,42500,258192,0,toy,4.45,child present,child present
+53,44540,258192,0,book,4.45,child present,child present
+53,44540,258192,0,food,4.45,child present,child present
+53,44540,258192,0,kitchenware,4.45,child present,child present
+53,44540,258192,0,other_object,4.45,child present,child present
+53,44540,258192,0,screen,4.45,child present,child present
+53,44540,258192,0,toy,4.45,child present,child present
+53,45080,258192,0,book,4.45,child present,child present
+53,45080,258192,0,food,4.45,child present,child present
+53,45080,258192,0,kitchenware,4.45,child present,child present
+53,45080,258192,0,other_object,4.45,child present,child present
+53,45080,258192,0,screen,4.45,child present,child present
+53,45080,258192,0,toy,4.45,child present,child present
+53,45650,258192,0,book,4.45,child present,child present
+53,45650,258192,0,food,4.45,child present,child present
+53,45650,258192,0,kitchenware,4.45,child present,child present
+53,45650,258192,0,other_object,4.45,child present,child present
+53,45650,258192,0,screen,4.45,child present,child present
+53,45650,258192,0,toy,4.45,child present,child present
+53,45740,258192,0,book,4.45,child present,child present
+53,45740,258192,0,food,4.45,child present,child present
+53,45740,258192,0,kitchenware,4.45,child present,child present
+53,45740,258192,0,other_object,4.45,child present,child present
+53,45740,258192,0,screen,4.45,child present,child present
+53,45740,258192,0,toy,4.45,child present,child present
+53,47580,258192,0,book,4.45,child present,child present
+53,47580,258192,0,food,4.45,child present,child present
+53,47580,258192,0,kitchenware,4.45,child present,child present
+53,47580,258192,0,other_object,4.45,child present,child present
+53,47580,258192,0,screen,4.45,child present,child present
+53,47580,258192,0,toy,4.45,child present,child present
+53,47860,258192,0,book,4.45,child present,child present
+53,47860,258192,0,food,4.45,child present,child present
+53,47860,258192,0,kitchenware,4.45,child present,child present
+53,47860,258192,0,other_object,4.45,child present,child present
+53,47860,258192,0,screen,4.45,child present,child present
+53,47860,258192,0,toy,4.45,child present,child present
+53,47870,258192,0,book,4.45,child present,child present
+53,47870,258192,0,food,4.45,child present,child present
+53,47870,258192,0,kitchenware,4.45,child present,child present
+53,47870,258192,0,other_object,4.45,child present,child present
+53,47870,258192,0,screen,4.45,child present,child present
+53,47870,258192,0,toy,4.45,child present,child present
+53,48390,258192,0,book,4.45,child present,child present
+53,48390,258192,0,food,4.45,child present,child present
+53,48390,258192,0,kitchenware,4.45,child present,child present
+53,48390,258192,0,other_object,4.45,child present,child present
+53,48390,258192,0,screen,4.45,child present,child present
+53,48390,258192,0,toy,4.45,child present,child present
+53,49060,258192,0,book,4.45,child present,child present
+53,49060,258192,0,food,4.45,child present,child present
+53,49060,258192,0,kitchenware,4.45,child present,child present
+53,49060,258192,0,other_object,4.45,child present,child present
+53,49060,258192,0,screen,4.45,child present,child present
+53,49060,258192,0,toy,4.45,child present,child present
+53,50610,258192,0,book,4.45,child present,child present
+53,50610,258192,0,food,4.45,child present,child present
+53,50610,258192,0,kitchenware,4.45,child present,child present
+53,50610,258192,0,other_object,4.45,child present,child present
+53,50610,258192,0,screen,4.45,child present,child present
+53,50610,258192,0,toy,4.45,child present,child present
+53,51550,258192,0,book,4.45,child present,child present
+53,51550,258192,0,food,4.45,child present,child present
+53,51550,258192,0,kitchenware,4.45,child present,child present
+53,51550,258192,0,other_object,4.45,child present,child present
+53,51550,258192,0,screen,4.45,child present,child present
+53,51550,258192,0,toy,4.45,child present,child present
+53,52680,258192,0,book,4.45,child present,child present
+53,52680,258192,0,food,4.45,child present,child present
+53,52680,258192,0,kitchenware,4.45,child present,child present
+53,52680,258192,0,other_object,4.45,child present,child present
+53,52680,258192,0,screen,4.45,child present,child present
+53,52680,258192,0,toy,4.45,child present,child present
+53,53420,258192,0,book,4.45,child present,child present
+53,53420,258192,0,food,4.45,child present,child present
+53,53420,258192,0,kitchenware,4.45,child present,child present
+53,53420,258192,0,other_object,4.45,child present,child present
+53,53420,258192,0,screen,4.45,child present,child present
+53,53420,258192,0,toy,4.45,child present,child present
+53,53760,258192,0,book,4.45,child present,child present
+53,53760,258192,0,food,4.45,child present,child present
+53,53760,258192,0,kitchenware,4.45,child present,child present
+53,53760,258192,0,other_object,4.45,child present,child present
+53,53760,258192,0,screen,4.45,child present,child present
+53,53760,258192,0,toy,4.45,child present,child present
+53,53890,258192,0,book,4.45,child present,child present
+53,53890,258192,0,food,4.45,child present,child present
+53,53890,258192,0,kitchenware,4.45,child present,child present
+53,53890,258192,0,other_object,4.45,child present,child present
+53,53890,258192,0,screen,4.45,child present,child present
+53,53890,258192,0,toy,4.45,child present,child present
+215,270,258309,0,book,5.81,child present,child present
+215,270,258309,0,food,5.81,child present,child present
+215,270,258309,0,kitchenware,5.81,child present,child present
+215,270,258309,0,other_object,5.81,child present,child present
+215,270,258309,0,screen,5.81,child present,child present
+215,270,258309,0,toy,5.81,child present,child present
+215,550,258309,0,book,5.81,adult present,adult present
+215,550,258309,0,food,5.81,adult present,adult present
+215,550,258309,0,kitchenware,5.81,adult present,adult present
+215,550,258309,0,other_object,5.81,adult present,adult present
+215,550,258309,0,screen,5.81,adult present,adult present
+215,550,258309,0,toy,5.81,adult present,adult present
+215,1510,258309,0,book,5.81,alone,alone
+215,1510,258309,0,food,5.81,alone,alone
+215,1510,258309,0,kitchenware,5.81,alone,alone
+215,1510,258309,0,other_object,5.81,alone,alone
+215,1510,258309,0,screen,5.81,alone,alone
+215,1510,258309,0,toy,5.81,alone,alone
+215,1670,258309,0,book,5.81,alone,alone
+215,1670,258309,0,food,5.81,alone,alone
+215,1670,258309,0,kitchenware,5.81,alone,alone
+215,1670,258309,0,other_object,5.81,alone,alone
+215,1670,258309,0,screen,5.81,alone,alone
+215,1670,258309,0,toy,5.81,alone,alone
+215,3160,258309,0,book,5.81,alone,alone
+215,3160,258309,0,food,5.81,alone,alone
+215,3160,258309,0,kitchenware,5.81,alone,alone
+215,3160,258309,0,other_object,5.81,alone,alone
+215,3160,258309,0,screen,5.81,alone,alone
+215,3160,258309,0,toy,5.81,alone,alone
+215,3750,258309,0,book,5.81,alone,alone
+215,3750,258309,0,food,5.81,alone,alone
+215,3750,258309,0,kitchenware,5.81,alone,alone
+215,3750,258309,0,other_object,5.81,alone,alone
+215,3750,258309,0,screen,5.81,alone,alone
+215,3750,258309,0,toy,5.81,alone,alone
+215,4280,258309,0,book,5.81,adult present,adult present
+215,4280,258309,0,food,5.81,adult present,adult present
+215,4280,258309,0,kitchenware,5.81,adult present,adult present
+215,4280,258309,0,other_object,5.81,adult present,adult present
+215,4280,258309,0,screen,5.81,adult present,adult present
+215,4280,258309,0,toy,5.81,adult present,adult present
+215,4670,258309,0,book,5.81,child and adult present,child and adult present
+215,4670,258309,0,food,5.81,child and adult present,child and adult present
+215,4670,258309,0,kitchenware,5.81,child and adult present,child and adult present
+215,4670,258309,0,other_object,5.81,child and adult present,child and adult present
+215,4670,258309,0,screen,5.81,child and adult present,child and adult present
+215,4670,258309,0,toy,5.81,child and adult present,child and adult present
+215,6090,258309,0,book,5.81,alone,alone
+215,6090,258309,0,food,5.81,alone,alone
+215,6090,258309,0,kitchenware,5.81,alone,alone
+215,6090,258309,0,other_object,5.81,alone,alone
+215,6090,258309,0,screen,5.81,alone,alone
+215,6090,258309,0,toy,5.81,alone,alone
+215,6620,258309,0,book,5.81,adult present,adult present
+215,6620,258309,0,food,5.81,adult present,adult present
+215,6620,258309,0,kitchenware,5.81,adult present,adult present
+215,6620,258309,0,other_object,5.81,adult present,adult present
+215,6620,258309,0,screen,5.81,adult present,adult present
+215,6620,258309,0,toy,5.81,adult present,adult present
+215,7540,258309,0,book,5.81,alone,alone
+215,7540,258309,0,food,5.81,alone,alone
+215,7540,258309,0,kitchenware,5.81,alone,alone
+215,7540,258309,0,other_object,5.81,alone,alone
+215,7540,258309,0,screen,5.81,alone,alone
+215,7540,258309,0,toy,5.81,alone,alone
+215,9800,258309,0,book,5.81,adult present,adult present
+215,9800,258309,0,food,5.81,adult present,adult present
+215,9800,258309,0,kitchenware,5.81,adult present,adult present
+215,9800,258309,0,other_object,5.81,adult present,adult present
+215,9800,258309,0,screen,5.81,adult present,adult present
+215,9800,258309,0,toy,5.81,adult present,adult present
+215,9850,258309,0,book,5.81,adult present,adult present
+215,9850,258309,0,food,5.81,adult present,adult present
+215,9850,258309,0,kitchenware,5.81,adult present,adult present
+215,9850,258309,0,other_object,5.81,adult present,adult present
+215,9850,258309,0,screen,5.81,adult present,adult present
+215,9850,258309,0,toy,5.81,adult present,adult present
+52,10,258704,0,book,4.79,alone,alone
+52,10,258704,0,food,4.79,alone,alone
+52,10,258704,0,kitchenware,4.79,alone,alone
+52,10,258704,0,other_object,4.79,alone,alone
+52,10,258704,0,screen,4.79,alone,alone
+52,10,258704,0,toy,4.79,alone,alone
+52,110,258704,0,book,4.79,alone,alone
+52,110,258704,0,food,4.79,alone,alone
+52,110,258704,0,kitchenware,4.79,alone,alone
+52,110,258704,0,other_object,4.79,alone,alone
+52,110,258704,0,screen,4.79,alone,alone
+52,110,258704,0,toy,4.79,alone,alone
+52,120,258704,0,book,4.79,adult present,adult present
+52,120,258704,0,food,4.79,adult present,adult present
+52,120,258704,0,kitchenware,4.79,adult present,adult present
+52,120,258704,0,other_object,4.79,adult present,adult present
+52,120,258704,0,screen,4.79,adult present,adult present
+52,120,258704,0,toy,4.79,adult present,adult present
+52,410,258704,0,book,4.79,adult present,adult present
+52,410,258704,0,food,4.79,adult present,adult present
+52,410,258704,0,kitchenware,4.79,adult present,adult present
+52,410,258704,0,other_object,4.79,adult present,adult present
+52,410,258704,0,screen,4.79,adult present,adult present
+52,410,258704,0,toy,4.79,adult present,adult present
+52,440,258704,0,book,4.79,adult present,adult present
+52,440,258704,0,food,4.79,adult present,adult present
+52,440,258704,1,kitchenware,4.79,adult present,adult present
+52,440,258704,0,other_object,4.79,adult present,adult present
+52,440,258704,0,screen,4.79,adult present,adult present
+52,440,258704,0,toy,4.79,adult present,adult present
+52,2940,258704,0,book,4.79,alone,alone
+52,2940,258704,0,food,4.79,alone,alone
+52,2940,258704,0,kitchenware,4.79,alone,alone
+52,2940,258704,0,other_object,4.79,alone,alone
+52,2940,258704,0,screen,4.79,alone,alone
+52,2940,258704,0,toy,4.79,alone,alone
+52,4700,258704,0,book,4.79,child and adult present,child and adult present
+52,4700,258704,0,food,4.79,child and adult present,child and adult present
+52,4700,258704,0,kitchenware,4.79,child and adult present,child and adult present
+52,4700,258704,0,other_object,4.79,child and adult present,child and adult present
+52,4700,258704,0,screen,4.79,child and adult present,child and adult present
+52,4700,258704,0,toy,4.79,child and adult present,child and adult present
+52,5260,258704,0,book,4.79,adult present,adult present
+52,5260,258704,0,food,4.79,adult present,adult present
+52,5260,258704,0,kitchenware,4.79,adult present,adult present
+52,5260,258704,0,other_object,4.79,adult present,adult present
+52,5260,258704,0,screen,4.79,adult present,adult present
+52,5260,258704,0,toy,4.79,adult present,adult present
+52,5880,258704,0,book,4.79,adult present,adult present
+52,5880,258704,0,food,4.79,adult present,adult present
+52,5880,258704,0,kitchenware,4.79,adult present,adult present
+52,5880,258704,0,other_object,4.79,adult present,adult present
+52,5880,258704,0,screen,4.79,adult present,adult present
+52,5880,258704,0,toy,4.79,adult present,adult present
+52,6950,258704,0,book,4.79,adult present,adult present
+52,6950,258704,0,food,4.79,adult present,adult present
+52,6950,258704,0,kitchenware,4.79,adult present,adult present
+52,6950,258704,0,other_object,4.79,adult present,adult present
+52,6950,258704,0,screen,4.79,adult present,adult present
+52,6950,258704,0,toy,4.79,adult present,adult present
+52,7160,258704,0,book,4.79,adult present,adult present
+52,7160,258704,0,food,4.79,adult present,adult present
+52,7160,258704,0,kitchenware,4.79,adult present,adult present
+52,7160,258704,0,other_object,4.79,adult present,adult present
+52,7160,258704,0,screen,4.79,adult present,adult present
+52,7160,258704,0,toy,4.79,adult present,adult present
+52,7470,258704,0,book,4.79,adult present,adult present
+52,7470,258704,0,food,4.79,adult present,adult present
+52,7470,258704,0,kitchenware,4.79,adult present,adult present
+52,7470,258704,0,other_object,4.79,adult present,adult present
+52,7470,258704,0,screen,4.79,adult present,adult present
+52,7470,258704,0,toy,4.79,adult present,adult present
+52,8690,258704,0,book,4.79,alone,alone
+52,8690,258704,0,food,4.79,alone,alone
+52,8690,258704,0,kitchenware,4.79,alone,alone
+52,8690,258704,1,other_object,4.79,alone,alone
+52,8690,258704,0,screen,4.79,alone,alone
+52,8690,258704,0,toy,4.79,alone,alone
+52,9750,258704,0,book,4.79,adult present,adult present
+52,9750,258704,0,food,4.79,adult present,adult present
+52,9750,258704,0,kitchenware,4.79,adult present,adult present
+52,9750,258704,0,other_object,4.79,adult present,adult present
+52,9750,258704,0,screen,4.79,adult present,adult present
+52,9750,258704,0,toy,4.79,adult present,adult present
+52,10150,258704,0,book,4.79,adult present,adult present
+52,10150,258704,0,food,4.79,adult present,adult present
+52,10150,258704,0,kitchenware,4.79,adult present,adult present
+52,10150,258704,0,other_object,4.79,adult present,adult present
+52,10150,258704,0,screen,4.79,adult present,adult present
+52,10150,258704,0,toy,4.79,adult present,adult present
+52,10240,258704,0,book,4.79,child and adult present,child and adult present
+52,10240,258704,0,food,4.79,child and adult present,child and adult present
+52,10240,258704,0,kitchenware,4.79,child and adult present,child and adult present
+52,10240,258704,0,other_object,4.79,child and adult present,child and adult present
+52,10240,258704,0,screen,4.79,child and adult present,child and adult present
+52,10240,258704,0,toy,4.79,child and adult present,child and adult present
+52,10270,258704,0,book,4.79,adult present,adult present
+52,10270,258704,0,food,4.79,adult present,adult present
+52,10270,258704,0,kitchenware,4.79,adult present,adult present
+52,10270,258704,0,other_object,4.79,adult present,adult present
+52,10270,258704,0,screen,4.79,adult present,adult present
+52,10270,258704,0,toy,4.79,adult present,adult present
+52,10890,258704,0,book,4.79,adult present,adult present
+52,10890,258704,0,food,4.79,adult present,adult present
+52,10890,258704,0,kitchenware,4.79,adult present,adult present
+52,10890,258704,0,other_object,4.79,adult present,adult present
+52,10890,258704,0,screen,4.79,adult present,adult present
+52,10890,258704,0,toy,4.79,adult present,adult present
+52,11340,258704,0,book,4.79,child and adult present,child and adult present
+52,11340,258704,0,food,4.79,child and adult present,child and adult present
+52,11340,258704,0,kitchenware,4.79,child and adult present,child and adult present
+52,11340,258704,0,other_object,4.79,child and adult present,child and adult present
+52,11340,258704,0,screen,4.79,child and adult present,child and adult present
+52,11340,258704,0,toy,4.79,child and adult present,child and adult present
+52,12230,258704,0,book,4.79,child present,child present
+52,12230,258704,0,food,4.79,child present,child present
+52,12230,258704,0,kitchenware,4.79,child present,child present
+52,12230,258704,0,other_object,4.79,child present,child present
+52,12230,258704,0,screen,4.79,child present,child present
+52,12230,258704,0,toy,4.79,child present,child present
+52,12530,258704,0,book,4.79,alone,alone
+52,12530,258704,0,food,4.79,alone,alone
+52,12530,258704,0,kitchenware,4.79,alone,alone
+52,12530,258704,0,other_object,4.79,alone,alone
+52,12530,258704,0,screen,4.79,alone,alone
+52,12530,258704,0,toy,4.79,alone,alone
+52,12640,258704,0,book,4.79,alone,alone
+52,12640,258704,0,food,4.79,alone,alone
+52,12640,258704,0,kitchenware,4.79,alone,alone
+52,12640,258704,0,other_object,4.79,alone,alone
+52,12640,258704,0,screen,4.79,alone,alone
+52,12640,258704,0,toy,4.79,alone,alone
+52,13320,258704,0,book,4.79,adult present,adult present
+52,13320,258704,0,food,4.79,adult present,adult present
+52,13320,258704,0,kitchenware,4.79,adult present,adult present
+52,13320,258704,0,other_object,4.79,adult present,adult present
+52,13320,258704,0,screen,4.79,adult present,adult present
+52,13320,258704,0,toy,4.79,adult present,adult present
+52,13330,258704,0,book,4.79,adult present,adult present
+52,13330,258704,0,food,4.79,adult present,adult present
+52,13330,258704,0,kitchenware,4.79,adult present,adult present
+52,13330,258704,0,other_object,4.79,adult present,adult present
+52,13330,258704,0,screen,4.79,adult present,adult present
+52,13330,258704,0,toy,4.79,adult present,adult present
+52,14370,258704,0,book,4.79,adult present,adult present
+52,14370,258704,0,food,4.79,adult present,adult present
+52,14370,258704,0,kitchenware,4.79,adult present,adult present
+52,14370,258704,0,other_object,4.79,adult present,adult present
+52,14370,258704,0,screen,4.79,adult present,adult present
+52,14370,258704,0,toy,4.79,adult present,adult present
+52,14770,258704,0,book,4.79,child and adult present,child and adult present
+52,14770,258704,0,food,4.79,child and adult present,child and adult present
+52,14770,258704,0,kitchenware,4.79,child and adult present,child and adult present
+52,14770,258704,0,other_object,4.79,child and adult present,child and adult present
+52,14770,258704,0,screen,4.79,child and adult present,child and adult present
+52,14770,258704,0,toy,4.79,child and adult present,child and adult present
+52,14860,258704,0,book,4.79,adult present,adult present
+52,14860,258704,0,food,4.79,adult present,adult present
+52,14860,258704,0,kitchenware,4.79,adult present,adult present
+52,14860,258704,0,other_object,4.79,adult present,adult present
+52,14860,258704,0,screen,4.79,adult present,adult present
+52,14860,258704,0,toy,4.79,adult present,adult present
+52,15250,258704,0,book,4.79,alone,alone
+52,15250,258704,0,food,4.79,alone,alone
+52,15250,258704,0,kitchenware,4.79,alone,alone
+52,15250,258704,0,other_object,4.79,alone,alone
+52,15250,258704,0,screen,4.79,alone,alone
+52,15250,258704,0,toy,4.79,alone,alone
+52,15440,258704,0,book,4.79,alone,alone
+52,15440,258704,0,food,4.79,alone,alone
+52,15440,258704,0,kitchenware,4.79,alone,alone
+52,15440,258704,0,other_object,4.79,alone,alone
+52,15440,258704,0,screen,4.79,alone,alone
+52,15440,258704,0,toy,4.79,alone,alone
+52,16550,258704,0,book,4.79,alone,alone
+52,16550,258704,0,food,4.79,alone,alone
+52,16550,258704,0,kitchenware,4.79,alone,alone
+52,16550,258704,0,other_object,4.79,alone,alone
+52,16550,258704,0,screen,4.79,alone,alone
+52,16550,258704,0,toy,4.79,alone,alone
+52,19240,258704,0,book,4.79,adult present,adult present
+52,19240,258704,0,food,4.79,adult present,adult present
+52,19240,258704,0,kitchenware,4.79,adult present,adult present
+52,19240,258704,0,other_object,4.79,adult present,adult present
+52,19240,258704,0,screen,4.79,adult present,adult present
+52,19240,258704,0,toy,4.79,adult present,adult present
+52,19320,258704,0,book,4.79,adult present,adult present
+52,19320,258704,0,food,4.79,adult present,adult present
+52,19320,258704,0,kitchenware,4.79,adult present,adult present
+52,19320,258704,0,other_object,4.79,adult present,adult present
+52,19320,258704,0,screen,4.79,adult present,adult present
+52,19320,258704,0,toy,4.79,adult present,adult present
+52,20490,258704,0,book,4.79,alone,alone
+52,20490,258704,0,food,4.79,alone,alone
+52,20490,258704,0,kitchenware,4.79,alone,alone
+52,20490,258704,0,other_object,4.79,alone,alone
+52,20490,258704,0,screen,4.79,alone,alone
+52,20490,258704,0,toy,4.79,alone,alone
+52,20560,258704,0,book,4.79,alone,alone
+52,20560,258704,0,food,4.79,alone,alone
+52,20560,258704,0,kitchenware,4.79,alone,alone
+52,20560,258704,0,other_object,4.79,alone,alone
+52,20560,258704,0,screen,4.79,alone,alone
+52,20560,258704,0,toy,4.79,alone,alone
+52,20600,258704,0,book,4.79,alone,alone
+52,20600,258704,0,food,4.79,alone,alone
+52,20600,258704,0,kitchenware,4.79,alone,alone
+52,20600,258704,0,other_object,4.79,alone,alone
+52,20600,258704,0,screen,4.79,alone,alone
+52,20600,258704,0,toy,4.79,alone,alone
+52,20960,258704,0,book,4.79,alone,alone
+52,20960,258704,0,food,4.79,alone,alone
+52,20960,258704,0,kitchenware,4.79,alone,alone
+52,20960,258704,0,other_object,4.79,alone,alone
+52,20960,258704,0,screen,4.79,alone,alone
+52,20960,258704,0,toy,4.79,alone,alone
+52,23320,258704,0,book,4.79,alone,alone
+52,23320,258704,0,food,4.79,alone,alone
+52,23320,258704,0,kitchenware,4.79,alone,alone
+52,23320,258704,0,other_object,4.79,alone,alone
+52,23320,258704,0,screen,4.79,alone,alone
+52,23320,258704,0,toy,4.79,alone,alone
+52,24750,258704,0,book,4.79,alone,alone
+52,24750,258704,0,food,4.79,alone,alone
+52,24750,258704,0,kitchenware,4.79,alone,alone
+52,24750,258704,0,other_object,4.79,alone,alone
+52,24750,258704,0,screen,4.79,alone,alone
+52,24750,258704,0,toy,4.79,alone,alone
+52,25550,258704,0,book,4.79,alone,alone
+52,25550,258704,0,food,4.79,alone,alone
+52,25550,258704,0,kitchenware,4.79,alone,alone
+52,25550,258704,0,other_object,4.79,alone,alone
+52,25550,258704,0,screen,4.79,alone,alone
+52,25550,258704,0,toy,4.79,alone,alone
+52,26280,258704,0,book,4.79,alone,alone
+52,26280,258704,0,food,4.79,alone,alone
+52,26280,258704,0,kitchenware,4.79,alone,alone
+52,26280,258704,0,other_object,4.79,alone,alone
+52,26280,258704,0,screen,4.79,alone,alone
+52,26280,258704,0,toy,4.79,alone,alone
+52,27460,258704,0,book,4.79,adult present,adult present
+52,27460,258704,0,food,4.79,adult present,adult present
+52,27460,258704,0,kitchenware,4.79,adult present,adult present
+52,27460,258704,0,other_object,4.79,adult present,adult present
+52,27460,258704,0,screen,4.79,adult present,adult present
+52,27460,258704,0,toy,4.79,adult present,adult present
+52,27710,258704,0,book,4.79,adult present,adult present
+52,27710,258704,0,food,4.79,adult present,adult present
+52,27710,258704,0,kitchenware,4.79,adult present,adult present
+52,27710,258704,0,other_object,4.79,adult present,adult present
+52,27710,258704,0,screen,4.79,adult present,adult present
+52,27710,258704,0,toy,4.79,adult present,adult present
+52,27910,258704,0,book,4.79,adult present,adult present
+52,27910,258704,0,food,4.79,adult present,adult present
+52,27910,258704,0,kitchenware,4.79,adult present,adult present
+52,27910,258704,0,other_object,4.79,adult present,adult present
+52,27910,258704,0,screen,4.79,adult present,adult present
+52,27910,258704,0,toy,4.79,adult present,adult present
+52,28310,258704,0,book,4.79,adult present,adult present
+52,28310,258704,0,food,4.79,adult present,adult present
+52,28310,258704,0,kitchenware,4.79,adult present,adult present
+52,28310,258704,0,other_object,4.79,adult present,adult present
+52,28310,258704,0,screen,4.79,adult present,adult present
+52,28310,258704,0,toy,4.79,adult present,adult present
+52,28420,258704,0,book,4.79,adult present,adult present
+52,28420,258704,0,food,4.79,adult present,adult present
+52,28420,258704,0,kitchenware,4.79,adult present,adult present
+52,28420,258704,0,other_object,4.79,adult present,adult present
+52,28420,258704,0,screen,4.79,adult present,adult present
+52,28420,258704,0,toy,4.79,adult present,adult present
+52,28860,258704,0,book,4.79,adult present,adult present
+52,28860,258704,0,food,4.79,adult present,adult present
+52,28860,258704,0,kitchenware,4.79,adult present,adult present
+52,28860,258704,0,other_object,4.79,adult present,adult present
+52,28860,258704,0,screen,4.79,adult present,adult present
+52,28860,258704,0,toy,4.79,adult present,adult present
+52,28980,258704,0,book,4.79,adult present,adult present
+52,28980,258704,0,food,4.79,adult present,adult present
+52,28980,258704,0,kitchenware,4.79,adult present,adult present
+52,28980,258704,0,other_object,4.79,adult present,adult present
+52,28980,258704,0,screen,4.79,adult present,adult present
+52,28980,258704,0,toy,4.79,adult present,adult present
+52,29280,258704,0,book,4.79,adult present,adult present
+52,29280,258704,0,food,4.79,adult present,adult present
+52,29280,258704,0,kitchenware,4.79,adult present,adult present
+52,29280,258704,0,other_object,4.79,adult present,adult present
+52,29280,258704,0,screen,4.79,adult present,adult present
+52,29280,258704,0,toy,4.79,adult present,adult present
+52,30080,258704,0,book,4.79,adult present,adult present
+52,30080,258704,0,food,4.79,adult present,adult present
+52,30080,258704,0,kitchenware,4.79,adult present,adult present
+52,30080,258704,0,other_object,4.79,adult present,adult present
+52,30080,258704,0,screen,4.79,adult present,adult present
+52,30080,258704,0,toy,4.79,adult present,adult present
+52,30170,258704,0,book,4.79,adult present,adult present
+52,30170,258704,0,food,4.79,adult present,adult present
+52,30170,258704,0,kitchenware,4.79,adult present,adult present
+52,30170,258704,0,other_object,4.79,adult present,adult present
+52,30170,258704,0,screen,4.79,adult present,adult present
+52,30170,258704,0,toy,4.79,adult present,adult present
+52,30240,258704,0,book,4.79,adult present,adult present
+52,30240,258704,0,food,4.79,adult present,adult present
+52,30240,258704,0,kitchenware,4.79,adult present,adult present
+52,30240,258704,0,other_object,4.79,adult present,adult present
+52,30240,258704,0,screen,4.79,adult present,adult present
+52,30240,258704,0,toy,4.79,adult present,adult present
+52,30250,258704,0,book,4.79,adult present,adult present
+52,30250,258704,0,food,4.79,adult present,adult present
+52,30250,258704,0,kitchenware,4.79,adult present,adult present
+52,30250,258704,0,other_object,4.79,adult present,adult present
+52,30250,258704,0,screen,4.79,adult present,adult present
+52,30250,258704,0,toy,4.79,adult present,adult present
+52,30370,258704,0,book,4.79,adult present,adult present
+52,30370,258704,0,food,4.79,adult present,adult present
+52,30370,258704,0,kitchenware,4.79,adult present,adult present
+52,30370,258704,0,other_object,4.79,adult present,adult present
+52,30370,258704,0,screen,4.79,adult present,adult present
+52,30370,258704,0,toy,4.79,adult present,adult present
+52,30520,258704,0,book,4.79,adult present,adult present
+52,30520,258704,0,food,4.79,adult present,adult present
+52,30520,258704,0,kitchenware,4.79,adult present,adult present
+52,30520,258704,0,other_object,4.79,adult present,adult present
+52,30520,258704,0,screen,4.79,adult present,adult present
+52,30520,258704,0,toy,4.79,adult present,adult present
+52,30540,258704,0,book,4.79,child and adult present,child and adult present
+52,30540,258704,0,food,4.79,child and adult present,child and adult present
+52,30540,258704,0,kitchenware,4.79,child and adult present,child and adult present
+52,30540,258704,0,other_object,4.79,child and adult present,child and adult present
+52,30540,258704,0,screen,4.79,child and adult present,child and adult present
+52,30540,258704,0,toy,4.79,child and adult present,child and adult present
+52,30860,258704,0,book,4.79,alone,alone
+52,30860,258704,0,food,4.79,alone,alone
+52,30860,258704,0,kitchenware,4.79,alone,alone
+52,30860,258704,0,other_object,4.79,alone,alone
+52,30860,258704,0,screen,4.79,alone,alone
+52,30860,258704,0,toy,4.79,alone,alone
+52,31190,258704,0,book,4.79,adult present,adult present
+52,31190,258704,0,food,4.79,adult present,adult present
+52,31190,258704,0,kitchenware,4.79,adult present,adult present
+52,31190,258704,1,other_object,4.79,adult present,adult present
+52,31190,258704,0,screen,4.79,adult present,adult present
+52,31190,258704,0,toy,4.79,adult present,adult present
+52,31510,258704,0,book,4.79,alone,alone
+52,31510,258704,0,food,4.79,alone,alone
+52,31510,258704,0,kitchenware,4.79,alone,alone
+52,31510,258704,0,other_object,4.79,alone,alone
+52,31510,258704,0,screen,4.79,alone,alone
+52,31510,258704,0,toy,4.79,alone,alone
+52,31710,258704,0,book,4.79,adult present,adult present
+52,31710,258704,0,food,4.79,adult present,adult present
+52,31710,258704,0,kitchenware,4.79,adult present,adult present
+52,31710,258704,1,other_object,4.79,adult present,adult present
+52,31710,258704,0,screen,4.79,adult present,adult present
+52,31710,258704,0,toy,4.79,adult present,adult present
+52,31960,258704,0,book,4.79,alone,alone
+52,31960,258704,0,food,4.79,alone,alone
+52,31960,258704,0,kitchenware,4.79,alone,alone
+52,31960,258704,0,other_object,4.79,alone,alone
+52,31960,258704,0,screen,4.79,alone,alone
+52,31960,258704,0,toy,4.79,alone,alone
+52,32270,258704,0,book,4.79,alone,alone
+52,32270,258704,0,food,4.79,alone,alone
+52,32270,258704,0,kitchenware,4.79,alone,alone
+52,32270,258704,0,other_object,4.79,alone,alone
+52,32270,258704,0,screen,4.79,alone,alone
+52,32270,258704,0,toy,4.79,alone,alone
+52,32810,258704,0,book,4.79,adult present,adult present
+52,32810,258704,0,food,4.79,adult present,adult present
+52,32810,258704,0,kitchenware,4.79,adult present,adult present
+52,32810,258704,0,other_object,4.79,adult present,adult present
+52,32810,258704,0,screen,4.79,adult present,adult present
+52,32810,258704,0,toy,4.79,adult present,adult present
+52,32900,258704,0,book,4.79,alone,alone
+52,32900,258704,0,food,4.79,alone,alone
+52,32900,258704,0,kitchenware,4.79,alone,alone
+52,32900,258704,1,other_object,4.79,alone,alone
+52,32900,258704,0,screen,4.79,alone,alone
+52,32900,258704,0,toy,4.79,alone,alone
+52,35270,258704,0,book,4.79,alone,alone
+52,35270,258704,0,food,4.79,alone,alone
+52,35270,258704,0,kitchenware,4.79,alone,alone
+52,35270,258704,0,other_object,4.79,alone,alone
+52,35270,258704,0,screen,4.79,alone,alone
+52,35270,258704,0,toy,4.79,alone,alone
+52,36250,258704,0,book,4.79,alone,alone
+52,36250,258704,0,food,4.79,alone,alone
+52,36250,258704,0,kitchenware,4.79,alone,alone
+52,36250,258704,0,other_object,4.79,alone,alone
+52,36250,258704,0,screen,4.79,alone,alone
+52,36250,258704,0,toy,4.79,alone,alone
+52,36280,258704,0,book,4.79,alone,alone
+52,36280,258704,0,food,4.79,alone,alone
+52,36280,258704,0,kitchenware,4.79,alone,alone
+52,36280,258704,0,other_object,4.79,alone,alone
+52,36280,258704,0,screen,4.79,alone,alone
+52,36280,258704,0,toy,4.79,alone,alone
+52,36300,258704,0,book,4.79,alone,alone
+52,36300,258704,0,food,4.79,alone,alone
+52,36300,258704,0,kitchenware,4.79,alone,alone
+52,36300,258704,0,other_object,4.79,alone,alone
+52,36300,258704,0,screen,4.79,alone,alone
+52,36300,258704,0,toy,4.79,alone,alone
+52,36960,258704,0,book,4.79,alone,alone
+52,36960,258704,0,food,4.79,alone,alone
+52,36960,258704,0,kitchenware,4.79,alone,alone
+52,36960,258704,0,other_object,4.79,alone,alone
+52,36960,258704,0,screen,4.79,alone,alone
+52,36960,258704,0,toy,4.79,alone,alone
+52,37400,258704,0,book,4.79,alone,alone
+52,37400,258704,0,food,4.79,alone,alone
+52,37400,258704,0,kitchenware,4.79,alone,alone
+52,37400,258704,0,other_object,4.79,alone,alone
+52,37400,258704,0,screen,4.79,alone,alone
+52,37400,258704,0,toy,4.79,alone,alone
+52,37510,258704,0,book,4.79,adult present,adult present
+52,37510,258704,0,food,4.79,adult present,adult present
+52,37510,258704,0,kitchenware,4.79,adult present,adult present
+52,37510,258704,0,other_object,4.79,adult present,adult present
+52,37510,258704,0,screen,4.79,adult present,adult present
+52,37510,258704,0,toy,4.79,adult present,adult present
+52,38090,258704,0,book,4.79,alone,alone
+52,38090,258704,0,food,4.79,alone,alone
+52,38090,258704,0,kitchenware,4.79,alone,alone
+52,38090,258704,1,other_object,4.79,alone,alone
+52,38090,258704,0,screen,4.79,alone,alone
+52,38090,258704,0,toy,4.79,alone,alone
+52,38860,258704,0,book,4.79,alone,alone
+52,38860,258704,0,food,4.79,alone,alone
+52,38860,258704,0,kitchenware,4.79,alone,alone
+52,38860,258704,0,other_object,4.79,alone,alone
+52,38860,258704,0,screen,4.79,alone,alone
+52,38860,258704,0,toy,4.79,alone,alone
+52,39200,258704,0,book,4.79,alone,alone
+52,39200,258704,0,food,4.79,alone,alone
+52,39200,258704,0,kitchenware,4.79,alone,alone
+52,39200,258704,0,other_object,4.79,alone,alone
+52,39200,258704,0,screen,4.79,alone,alone
+52,39200,258704,0,toy,4.79,alone,alone
+52,39510,258704,0,book,4.79,adult present,adult present
+52,39510,258704,0,food,4.79,adult present,adult present
+52,39510,258704,0,kitchenware,4.79,adult present,adult present
+52,39510,258704,0,other_object,4.79,adult present,adult present
+52,39510,258704,0,screen,4.79,adult present,adult present
+52,39510,258704,0,toy,4.79,adult present,adult present
+52,40690,258704,0,book,4.79,adult present,adult present
+52,40690,258704,0,food,4.79,adult present,adult present
+52,40690,258704,0,kitchenware,4.79,adult present,adult present
+52,40690,258704,0,other_object,4.79,adult present,adult present
+52,40690,258704,0,screen,4.79,adult present,adult present
+52,40690,258704,0,toy,4.79,adult present,adult present
+52,40870,258704,0,book,4.79,adult present,adult present
+52,40870,258704,0,food,4.79,adult present,adult present
+52,40870,258704,0,kitchenware,4.79,adult present,adult present
+52,40870,258704,1,other_object,4.79,adult present,adult present
+52,40870,258704,0,screen,4.79,adult present,adult present
+52,40870,258704,0,toy,4.79,adult present,adult present
+52,41230,258704,0,book,4.79,adult present,adult present
+52,41230,258704,0,food,4.79,adult present,adult present
+52,41230,258704,0,kitchenware,4.79,adult present,adult present
+52,41230,258704,0,other_object,4.79,adult present,adult present
+52,41230,258704,0,screen,4.79,adult present,adult present
+52,41230,258704,0,toy,4.79,adult present,adult present
+52,41340,258704,0,book,4.79,adult present,adult present
+52,41340,258704,0,food,4.79,adult present,adult present
+52,41340,258704,0,kitchenware,4.79,adult present,adult present
+52,41340,258704,0,other_object,4.79,adult present,adult present
+52,41340,258704,0,screen,4.79,adult present,adult present
+52,41340,258704,0,toy,4.79,adult present,adult present
+52,41870,258704,0,book,4.79,adult present,adult present
+52,41870,258704,0,food,4.79,adult present,adult present
+52,41870,258704,0,kitchenware,4.79,adult present,adult present
+52,41870,258704,0,other_object,4.79,adult present,adult present
+52,41870,258704,0,screen,4.79,adult present,adult present
+52,41870,258704,0,toy,4.79,adult present,adult present
+52,42180,258704,0,book,4.79,adult present,adult present
+52,42180,258704,0,food,4.79,adult present,adult present
+52,42180,258704,0,kitchenware,4.79,adult present,adult present
+52,42180,258704,0,other_object,4.79,adult present,adult present
+52,42180,258704,0,screen,4.79,adult present,adult present
+52,42180,258704,0,toy,4.79,adult present,adult present
+52,42230,258704,0,book,4.79,adult present,adult present
+52,42230,258704,0,food,4.79,adult present,adult present
+52,42230,258704,0,kitchenware,4.79,adult present,adult present
+52,42230,258704,1,other_object,4.79,adult present,adult present
+52,42230,258704,0,screen,4.79,adult present,adult present
+52,42230,258704,0,toy,4.79,adult present,adult present
+52,42340,258704,0,book,4.79,adult present,adult present
+52,42340,258704,0,food,4.79,adult present,adult present
+52,42340,258704,0,kitchenware,4.79,adult present,adult present
+52,42340,258704,0,other_object,4.79,adult present,adult present
+52,42340,258704,0,screen,4.79,adult present,adult present
+52,42340,258704,0,toy,4.79,adult present,adult present
+52,42670,258704,0,book,4.79,adult present,adult present
+52,42670,258704,0,food,4.79,adult present,adult present
+52,42670,258704,0,kitchenware,4.79,adult present,adult present
+52,42670,258704,0,other_object,4.79,adult present,adult present
+52,42670,258704,0,screen,4.79,adult present,adult present
+52,42670,258704,0,toy,4.79,adult present,adult present
+52,42740,258704,0,book,4.79,adult present,adult present
+52,42740,258704,0,food,4.79,adult present,adult present
+52,42740,258704,0,kitchenware,4.79,adult present,adult present
+52,42740,258704,0,other_object,4.79,adult present,adult present
+52,42740,258704,0,screen,4.79,adult present,adult present
+52,42740,258704,0,toy,4.79,adult present,adult present
+52,44170,258704,0,book,4.79,adult present,adult present
+52,44170,258704,0,food,4.79,adult present,adult present
+52,44170,258704,0,kitchenware,4.79,adult present,adult present
+52,44170,258704,0,other_object,4.79,adult present,adult present
+52,44170,258704,0,screen,4.79,adult present,adult present
+52,44170,258704,0,toy,4.79,adult present,adult present
+52,44280,258704,0,book,4.79,adult present,adult present
+52,44280,258704,0,food,4.79,adult present,adult present
+52,44280,258704,0,kitchenware,4.79,adult present,adult present
+52,44280,258704,0,other_object,4.79,adult present,adult present
+52,44280,258704,0,screen,4.79,adult present,adult present
+52,44280,258704,0,toy,4.79,adult present,adult present
+52,44410,258704,0,book,4.79,alone,alone
+52,44410,258704,0,food,4.79,alone,alone
+52,44410,258704,0,kitchenware,4.79,alone,alone
+52,44410,258704,0,other_object,4.79,alone,alone
+52,44410,258704,0,screen,4.79,alone,alone
+52,44410,258704,0,toy,4.79,alone,alone
+52,44980,258704,0,book,4.79,alone,alone
+52,44980,258704,0,food,4.79,alone,alone
+52,44980,258704,0,kitchenware,4.79,alone,alone
+52,44980,258704,0,other_object,4.79,alone,alone
+52,44980,258704,0,screen,4.79,alone,alone
+52,44980,258704,0,toy,4.79,alone,alone
+52,45190,258704,0,book,4.79,adult present,adult present
+52,45190,258704,0,food,4.79,adult present,adult present
+52,45190,258704,0,kitchenware,4.79,adult present,adult present
+52,45190,258704,0,other_object,4.79,adult present,adult present
+52,45190,258704,0,screen,4.79,adult present,adult present
+52,45190,258704,0,toy,4.79,adult present,adult present
+52,45520,258704,0,book,4.79,alone,alone
+52,45520,258704,0,food,4.79,alone,alone
+52,45520,258704,0,kitchenware,4.79,alone,alone
+52,45520,258704,0,other_object,4.79,alone,alone
+52,45520,258704,0,screen,4.79,alone,alone
+52,45520,258704,0,toy,4.79,alone,alone
+52,46160,258704,0,book,4.79,adult present,adult present
+52,46160,258704,0,food,4.79,adult present,adult present
+52,46160,258704,0,kitchenware,4.79,adult present,adult present
+52,46160,258704,0,other_object,4.79,adult present,adult present
+52,46160,258704,0,screen,4.79,adult present,adult present
+52,46160,258704,0,toy,4.79,adult present,adult present
+52,46690,258704,0,book,4.79,adult present,adult present
+52,46690,258704,0,food,4.79,adult present,adult present
+52,46690,258704,0,kitchenware,4.79,adult present,adult present
+52,46690,258704,0,other_object,4.79,adult present,adult present
+52,46690,258704,0,screen,4.79,adult present,adult present
+52,46690,258704,0,toy,4.79,adult present,adult present
+52,46780,258704,0,book,4.79,adult present,adult present
+52,46780,258704,0,food,4.79,adult present,adult present
+52,46780,258704,0,kitchenware,4.79,adult present,adult present
+52,46780,258704,0,other_object,4.79,adult present,adult present
+52,46780,258704,0,screen,4.79,adult present,adult present
+52,46780,258704,0,toy,4.79,adult present,adult present
+52,48430,258704,0,book,4.79,adult present,adult present
+52,48430,258704,0,food,4.79,adult present,adult present
+52,48430,258704,0,kitchenware,4.79,adult present,adult present
+52,48430,258704,0,other_object,4.79,adult present,adult present
+52,48430,258704,0,screen,4.79,adult present,adult present
+52,48430,258704,0,toy,4.79,adult present,adult present
+52,50060,258704,0,book,4.79,adult present,adult present
+52,50060,258704,0,food,4.79,adult present,adult present
+52,50060,258704,0,kitchenware,4.79,adult present,adult present
+52,50060,258704,1,other_object,4.79,adult present,adult present
+52,50060,258704,0,screen,4.79,adult present,adult present
+52,50060,258704,0,toy,4.79,adult present,adult present
+52,50250,258704,0,book,4.79,adult present,adult present
+52,50250,258704,0,food,4.79,adult present,adult present
+52,50250,258704,0,kitchenware,4.79,adult present,adult present
+52,50250,258704,1,other_object,4.79,adult present,adult present
+52,50250,258704,0,screen,4.79,adult present,adult present
+52,50250,258704,0,toy,4.79,adult present,adult present
+52,50780,258704,0,book,4.79,adult present,adult present
+52,50780,258704,0,food,4.79,adult present,adult present
+52,50780,258704,0,kitchenware,4.79,adult present,adult present
+52,50780,258704,0,other_object,4.79,adult present,adult present
+52,50780,258704,0,screen,4.79,adult present,adult present
+52,50780,258704,0,toy,4.79,adult present,adult present
+52,51140,258704,0,book,4.79,adult present,adult present
+52,51140,258704,0,food,4.79,adult present,adult present
+52,51140,258704,0,kitchenware,4.79,adult present,adult present
+52,51140,258704,1,other_object,4.79,adult present,adult present
+52,51140,258704,0,screen,4.79,adult present,adult present
+52,51140,258704,0,toy,4.79,adult present,adult present
+52,51200,258704,0,book,4.79,child and adult present,child and adult present
+52,51200,258704,0,food,4.79,child and adult present,child and adult present
+52,51200,258704,0,kitchenware,4.79,child and adult present,child and adult present
+52,51200,258704,0,other_object,4.79,child and adult present,child and adult present
+52,51200,258704,0,screen,4.79,child and adult present,child and adult present
+52,51200,258704,0,toy,4.79,child and adult present,child and adult present
+52,51360,258704,0,book,4.79,adult present,adult present
+52,51360,258704,0,food,4.79,adult present,adult present
+52,51360,258704,0,kitchenware,4.79,adult present,adult present
+52,51360,258704,0,other_object,4.79,adult present,adult present
+52,51360,258704,0,screen,4.79,adult present,adult present
+52,51360,258704,0,toy,4.79,adult present,adult present
+52,53090,258704,0,book,4.79,alone,alone
+52,53090,258704,0,food,4.79,alone,alone
+52,53090,258704,0,kitchenware,4.79,alone,alone
+52,53090,258704,0,other_object,4.79,alone,alone
+52,53090,258704,0,screen,4.79,alone,alone
+52,53090,258704,0,toy,4.79,alone,alone
+52,53790,258704,0,book,4.79,adult present,adult present
+52,53790,258704,0,food,4.79,adult present,adult present
+52,53790,258704,0,kitchenware,4.79,adult present,adult present
+52,53790,258704,0,other_object,4.79,adult present,adult present
+52,53790,258704,0,screen,4.79,adult present,adult present
+52,53790,258704,0,toy,4.79,adult present,adult present
+263,740,260178,0,book,5.76,adult present,adult present
+263,740,260178,0,food,5.76,adult present,adult present
+263,740,260178,0,kitchenware,5.76,adult present,adult present
+263,740,260178,0,other_object,5.76,adult present,adult present
+263,740,260178,0,screen,5.76,adult present,adult present
+263,740,260178,0,toy,5.76,adult present,adult present
+263,1310,260178,0,book,5.76,alone,alone
+263,1310,260178,0,food,5.76,alone,alone
+263,1310,260178,0,kitchenware,5.76,alone,alone
+263,1310,260178,0,other_object,5.76,alone,alone
+263,1310,260178,0,screen,5.76,alone,alone
+263,1310,260178,1,toy,5.76,alone,alone
+263,2890,260178,0,book,5.76,adult present,adult present
+263,2890,260178,0,food,5.76,adult present,adult present
+263,2890,260178,0,kitchenware,5.76,adult present,adult present
+263,2890,260178,0,other_object,5.76,adult present,adult present
+263,2890,260178,0,screen,5.76,adult present,adult present
+263,2890,260178,0,toy,5.76,adult present,adult present
+263,5180,260178,0,book,5.76,alone,alone
+263,5180,260178,0,food,5.76,alone,alone
+263,5180,260178,0,kitchenware,5.76,alone,alone
+263,5180,260178,0,other_object,5.76,alone,alone
+263,5180,260178,0,screen,5.76,alone,alone
+263,5180,260178,0,toy,5.76,alone,alone
+263,5550,260178,0,book,5.76,alone,alone
+263,5550,260178,0,food,5.76,alone,alone
+263,5550,260178,0,kitchenware,5.76,alone,alone
+263,5550,260178,0,other_object,5.76,alone,alone
+263,5550,260178,0,screen,5.76,alone,alone
+263,5550,260178,0,toy,5.76,alone,alone
+263,5780,260178,0,book,5.76,adult present,adult present
+263,5780,260178,0,food,5.76,adult present,adult present
+263,5780,260178,0,kitchenware,5.76,adult present,adult present
+263,5780,260178,0,other_object,5.76,adult present,adult present
+263,5780,260178,0,screen,5.76,adult present,adult present
+263,5780,260178,0,toy,5.76,adult present,adult present
+263,6390,260178,0,book,5.76,child present,child present
+263,6390,260178,0,food,5.76,child present,child present
+263,6390,260178,0,kitchenware,5.76,child present,child present
+263,6390,260178,0,other_object,5.76,child present,child present
+263,6390,260178,0,screen,5.76,child present,child present
+263,6390,260178,0,toy,5.76,child present,child present
+263,6480,260178,0,book,5.76,alone,alone
+263,6480,260178,0,food,5.76,alone,alone
+263,6480,260178,0,kitchenware,5.76,alone,alone
+263,6480,260178,0,other_object,5.76,alone,alone
+263,6480,260178,0,screen,5.76,alone,alone
+263,6480,260178,0,toy,5.76,alone,alone
+263,7370,260178,0,book,5.76,alone,alone
+263,7370,260178,0,food,5.76,alone,alone
+263,7370,260178,0,kitchenware,5.76,alone,alone
+263,7370,260178,0,other_object,5.76,alone,alone
+263,7370,260178,0,screen,5.76,alone,alone
+263,7370,260178,0,toy,5.76,alone,alone
+263,7760,260178,0,book,5.76,alone,alone
+263,7760,260178,0,food,5.76,alone,alone
+263,7760,260178,0,kitchenware,5.76,alone,alone
+263,7760,260178,0,other_object,5.76,alone,alone
+263,7760,260178,0,screen,5.76,alone,alone
+263,7760,260178,0,toy,5.76,alone,alone
+263,8370,260178,0,book,5.76,child present,child present
+263,8370,260178,0,food,5.76,child present,child present
+263,8370,260178,0,kitchenware,5.76,child present,child present
+263,8370,260178,0,other_object,5.76,child present,child present
+263,8370,260178,0,screen,5.76,child present,child present
+263,8370,260178,0,toy,5.76,child present,child present
+263,9210,260178,0,book,5.76,alone,alone
+263,9210,260178,0,food,5.76,alone,alone
+263,9210,260178,0,kitchenware,5.76,alone,alone
+263,9210,260178,0,other_object,5.76,alone,alone
+263,9210,260178,0,screen,5.76,alone,alone
+263,9210,260178,0,toy,5.76,alone,alone
+263,9490,260178,0,book,5.76,child present,child present
+263,9490,260178,0,food,5.76,child present,child present
+263,9490,260178,0,kitchenware,5.76,child present,child present
+263,9490,260178,0,other_object,5.76,child present,child present
+263,9490,260178,0,screen,5.76,child present,child present
+263,9490,260178,0,toy,5.76,child present,child present
+263,9520,260178,0,book,5.76,alone,alone
+263,9520,260178,0,food,5.76,alone,alone
+263,9520,260178,0,kitchenware,5.76,alone,alone
+263,9520,260178,0,other_object,5.76,alone,alone
+263,9520,260178,0,screen,5.76,alone,alone
+263,9520,260178,0,toy,5.76,alone,alone
+263,9600,260178,0,book,5.76,alone,alone
+263,9600,260178,0,food,5.76,alone,alone
+263,9600,260178,0,kitchenware,5.76,alone,alone
+263,9600,260178,0,other_object,5.76,alone,alone
+263,9600,260178,0,screen,5.76,alone,alone
+263,9600,260178,0,toy,5.76,alone,alone
+263,10960,260178,0,book,5.76,alone,alone
+263,10960,260178,0,food,5.76,alone,alone
+263,10960,260178,0,kitchenware,5.76,alone,alone
+263,10960,260178,0,other_object,5.76,alone,alone
+263,10960,260178,0,screen,5.76,alone,alone
+263,10960,260178,0,toy,5.76,alone,alone
+263,11730,260178,0,book,5.76,child and adult present,child and adult present
+263,11730,260178,0,food,5.76,child and adult present,child and adult present
+263,11730,260178,0,kitchenware,5.76,child and adult present,child and adult present
+263,11730,260178,0,other_object,5.76,child and adult present,child and adult present
+263,11730,260178,0,screen,5.76,child and adult present,child and adult present
+263,11730,260178,0,toy,5.76,child and adult present,child and adult present
+263,11810,260178,0,book,5.76,alone,alone
+263,11810,260178,0,food,5.76,alone,alone
+263,11810,260178,0,kitchenware,5.76,alone,alone
+263,11810,260178,0,other_object,5.76,alone,alone
+263,11810,260178,0,screen,5.76,alone,alone
+263,11810,260178,0,toy,5.76,alone,alone
+263,13090,260178,0,book,5.76,alone,alone
+263,13090,260178,0,food,5.76,alone,alone
+263,13090,260178,0,kitchenware,5.76,alone,alone
+263,13090,260178,0,other_object,5.76,alone,alone
+263,13090,260178,0,screen,5.76,alone,alone
+263,13090,260178,0,toy,5.76,alone,alone
+263,13210,260178,0,book,5.76,child present,child present
+263,13210,260178,0,food,5.76,child present,child present
+263,13210,260178,0,kitchenware,5.76,child present,child present
+263,13210,260178,0,other_object,5.76,child present,child present
+263,13210,260178,0,screen,5.76,child present,child present
+263,13210,260178,0,toy,5.76,child present,child present
+263,13280,260178,0,book,5.76,adult present,adult present
+263,13280,260178,0,food,5.76,adult present,adult present
+263,13280,260178,0,kitchenware,5.76,adult present,adult present
+263,13280,260178,1,other_object,5.76,adult present,adult present
+263,13280,260178,0,screen,5.76,adult present,adult present
+263,13280,260178,0,toy,5.76,adult present,adult present
+263,13620,260178,0,book,5.76,child present,child present
+263,13620,260178,0,food,5.76,child present,child present
+263,13620,260178,0,kitchenware,5.76,child present,child present
+263,13620,260178,0,other_object,5.76,child present,child present
+263,13620,260178,0,screen,5.76,child present,child present
+263,13620,260178,0,toy,5.76,child present,child present
+263,14130,260178,0,book,5.76,adult present,adult present
+263,14130,260178,0,food,5.76,adult present,adult present
+263,14130,260178,0,kitchenware,5.76,adult present,adult present
+263,14130,260178,0,other_object,5.76,adult present,adult present
+263,14130,260178,0,screen,5.76,adult present,adult present
+263,14130,260178,0,toy,5.76,adult present,adult present
+263,17570,260178,0,book,5.76,adult present,adult present
+263,17570,260178,0,food,5.76,adult present,adult present
+263,17570,260178,0,kitchenware,5.76,adult present,adult present
+263,17570,260178,0,other_object,5.76,adult present,adult present
+263,17570,260178,0,screen,5.76,adult present,adult present
+263,17570,260178,0,toy,5.76,adult present,adult present
+263,18060,260178,0,book,5.76,alone,alone
+263,18060,260178,0,food,5.76,alone,alone
+263,18060,260178,0,kitchenware,5.76,alone,alone
+263,18060,260178,0,other_object,5.76,alone,alone
+263,18060,260178,0,screen,5.76,alone,alone
+263,18060,260178,0,toy,5.76,alone,alone
+263,18340,260178,0,book,5.76,child present,child present
+263,18340,260178,0,food,5.76,child present,child present
+263,18340,260178,0,kitchenware,5.76,child present,child present
+263,18340,260178,0,other_object,5.76,child present,child present
+263,18340,260178,0,screen,5.76,child present,child present
+263,18340,260178,0,toy,5.76,child present,child present
+263,18740,260178,0,book,5.76,adult present,adult present
+263,18740,260178,0,food,5.76,adult present,adult present
+263,18740,260178,0,kitchenware,5.76,adult present,adult present
+263,18740,260178,0,other_object,5.76,adult present,adult present
+263,18740,260178,0,screen,5.76,adult present,adult present
+263,18740,260178,0,toy,5.76,adult present,adult present
+263,19050,260178,0,book,5.76,adult present,adult present
+263,19050,260178,0,food,5.76,adult present,adult present
+263,19050,260178,0,kitchenware,5.76,adult present,adult present
+263,19050,260178,0,other_object,5.76,adult present,adult present
+263,19050,260178,0,screen,5.76,adult present,adult present
+263,19050,260178,0,toy,5.76,adult present,adult present
+263,19100,260178,0,book,5.76,child present,child present
+263,19100,260178,0,food,5.76,child present,child present
+263,19100,260178,0,kitchenware,5.76,child present,child present
+263,19100,260178,0,other_object,5.76,child present,child present
+263,19100,260178,0,screen,5.76,child present,child present
+263,19100,260178,0,toy,5.76,child present,child present
+263,19860,260178,0,book,5.76,child and adult present,child and adult present
+263,19860,260178,0,food,5.76,child and adult present,child and adult present
+263,19860,260178,0,kitchenware,5.76,child and adult present,child and adult present
+263,19860,260178,0,other_object,5.76,child and adult present,child and adult present
+263,19860,260178,0,screen,5.76,child and adult present,child and adult present
+263,19860,260178,0,toy,5.76,child and adult present,child and adult present
+263,20200,260178,0,book,5.76,child and adult present,child and adult present
+263,20200,260178,0,food,5.76,child and adult present,child and adult present
+263,20200,260178,0,kitchenware,5.76,child and adult present,child and adult present
+263,20200,260178,0,other_object,5.76,child and adult present,child and adult present
+263,20200,260178,0,screen,5.76,child and adult present,child and adult present
+263,20200,260178,0,toy,5.76,child and adult present,child and adult present
+263,20340,260178,0,book,5.76,child present,child present
+263,20340,260178,0,food,5.76,child present,child present
+263,20340,260178,0,kitchenware,5.76,child present,child present
+263,20340,260178,0,other_object,5.76,child present,child present
+263,20340,260178,0,screen,5.76,child present,child present
+263,20340,260178,0,toy,5.76,child present,child present
+263,21430,260178,0,book,5.76,child present,child present
+263,21430,260178,0,food,5.76,child present,child present
+263,21430,260178,0,kitchenware,5.76,child present,child present
+263,21430,260178,0,other_object,5.76,child present,child present
+263,21430,260178,0,screen,5.76,child present,child present
+263,21430,260178,0,toy,5.76,child present,child present
+263,21540,260178,0,book,5.76,alone,alone
+263,21540,260178,0,food,5.76,alone,alone
+263,21540,260178,0,kitchenware,5.76,alone,alone
+263,21540,260178,0,other_object,5.76,alone,alone
+263,21540,260178,0,screen,5.76,alone,alone
+263,21540,260178,0,toy,5.76,alone,alone
+263,22620,260178,0,book,5.76,child present,child present
+263,22620,260178,0,food,5.76,child present,child present
+263,22620,260178,0,kitchenware,5.76,child present,child present
+263,22620,260178,0,other_object,5.76,child present,child present
+263,22620,260178,0,screen,5.76,child present,child present
+263,22620,260178,0,toy,5.76,child present,child present
+263,23110,260178,0,book,5.76,adult present,adult present
+263,23110,260178,0,food,5.76,adult present,adult present
+263,23110,260178,0,kitchenware,5.76,adult present,adult present
+263,23110,260178,0,other_object,5.76,adult present,adult present
+263,23110,260178,0,screen,5.76,adult present,adult present
+263,23110,260178,1,toy,5.76,adult present,adult present
+263,23170,260178,0,book,5.76,adult present,adult present
+263,23170,260178,0,food,5.76,adult present,adult present
+263,23170,260178,0,kitchenware,5.76,adult present,adult present
+263,23170,260178,0,other_object,5.76,adult present,adult present
+263,23170,260178,0,screen,5.76,adult present,adult present
+263,23170,260178,0,toy,5.76,adult present,adult present
+263,23190,260178,0,book,5.76,child and adult present,child and adult present
+263,23190,260178,0,food,5.76,child and adult present,child and adult present
+263,23190,260178,0,kitchenware,5.76,child and adult present,child and adult present
+263,23190,260178,0,other_object,5.76,child and adult present,child and adult present
+263,23190,260178,0,screen,5.76,child and adult present,child and adult present
+263,23190,260178,0,toy,5.76,child and adult present,child and adult present
+263,24150,260178,0,book,5.76,adult present,adult present
+263,24150,260178,0,food,5.76,adult present,adult present
+263,24150,260178,0,kitchenware,5.76,adult present,adult present
+263,24150,260178,0,other_object,5.76,adult present,adult present
+263,24150,260178,0,screen,5.76,adult present,adult present
+263,24150,260178,0,toy,5.76,adult present,adult present
+263,24190,260178,0,book,5.76,adult present,adult present
+263,24190,260178,0,food,5.76,adult present,adult present
+263,24190,260178,0,kitchenware,5.76,adult present,adult present
+263,24190,260178,0,other_object,5.76,adult present,adult present
+263,24190,260178,0,screen,5.76,adult present,adult present
+263,24190,260178,0,toy,5.76,adult present,adult present
+263,24610,260178,0,book,5.76,alone,alone
+263,24610,260178,0,food,5.76,alone,alone
+263,24610,260178,0,kitchenware,5.76,alone,alone
+263,24610,260178,0,other_object,5.76,alone,alone
+263,24610,260178,0,screen,5.76,alone,alone
+263,24610,260178,0,toy,5.76,alone,alone
+263,25740,260178,0,book,5.76,child present,child present
+263,25740,260178,0,food,5.76,child present,child present
+263,25740,260178,0,kitchenware,5.76,child present,child present
+263,25740,260178,0,other_object,5.76,child present,child present
+263,25740,260178,0,screen,5.76,child present,child present
+263,25740,260178,1,toy,5.76,child present,child present
+263,26120,260178,0,book,5.76,alone,alone
+263,26120,260178,0,food,5.76,alone,alone
+263,26120,260178,0,kitchenware,5.76,alone,alone
+263,26120,260178,0,other_object,5.76,alone,alone
+263,26120,260178,0,screen,5.76,alone,alone
+263,26120,260178,0,toy,5.76,alone,alone
+263,27390,260178,0,book,5.76,child present,child present
+263,27390,260178,0,food,5.76,child present,child present
+263,27390,260178,0,kitchenware,5.76,child present,child present
+263,27390,260178,0,other_object,5.76,child present,child present
+263,27390,260178,0,screen,5.76,child present,child present
+263,27390,260178,0,toy,5.76,child present,child present
+263,28240,260178,0,book,5.76,adult present,adult present
+263,28240,260178,0,food,5.76,adult present,adult present
+263,28240,260178,0,kitchenware,5.76,adult present,adult present
+263,28240,260178,0,other_object,5.76,adult present,adult present
+263,28240,260178,0,screen,5.76,adult present,adult present
+263,28240,260178,0,toy,5.76,adult present,adult present
+263,28960,260178,0,book,5.76,adult present,adult present
+263,28960,260178,0,food,5.76,adult present,adult present
+263,28960,260178,0,kitchenware,5.76,adult present,adult present
+263,28960,260178,0,other_object,5.76,adult present,adult present
+263,28960,260178,0,screen,5.76,adult present,adult present
+263,28960,260178,0,toy,5.76,adult present,adult present
+263,29880,260178,0,book,5.76,alone,alone
+263,29880,260178,0,food,5.76,alone,alone
+263,29880,260178,0,kitchenware,5.76,alone,alone
+263,29880,260178,0,other_object,5.76,alone,alone
+263,29880,260178,0,screen,5.76,alone,alone
+263,29880,260178,0,toy,5.76,alone,alone
+263,30120,260178,0,book,5.76,adult present,adult present
+263,30120,260178,0,food,5.76,adult present,adult present
+263,30120,260178,0,kitchenware,5.76,adult present,adult present
+263,30120,260178,0,other_object,5.76,adult present,adult present
+263,30120,260178,0,screen,5.76,adult present,adult present
+263,30120,260178,0,toy,5.76,adult present,adult present
+263,31280,260178,0,book,5.76,adult present,adult present
+263,31280,260178,0,food,5.76,adult present,adult present
+263,31280,260178,0,kitchenware,5.76,adult present,adult present
+263,31280,260178,0,other_object,5.76,adult present,adult present
+263,31280,260178,0,screen,5.76,adult present,adult present
+263,31280,260178,0,toy,5.76,adult present,adult present
+263,31530,260178,0,book,5.76,adult present,adult present
+263,31530,260178,0,food,5.76,adult present,adult present
+263,31530,260178,0,kitchenware,5.76,adult present,adult present
+263,31530,260178,0,other_object,5.76,adult present,adult present
+263,31530,260178,0,screen,5.76,adult present,adult present
+263,31530,260178,0,toy,5.76,adult present,adult present
+263,31640,260178,0,book,5.76,adult present,adult present
+263,31640,260178,0,food,5.76,adult present,adult present
+263,31640,260178,0,kitchenware,5.76,adult present,adult present
+263,31640,260178,0,other_object,5.76,adult present,adult present
+263,31640,260178,0,screen,5.76,adult present,adult present
+263,31640,260178,0,toy,5.76,adult present,adult present
+263,32610,260178,0,book,5.76,child and adult present,child and adult present
+263,32610,260178,0,food,5.76,child and adult present,child and adult present
+263,32610,260178,0,kitchenware,5.76,child and adult present,child and adult present
+263,32610,260178,0,other_object,5.76,child and adult present,child and adult present
+263,32610,260178,0,screen,5.76,child and adult present,child and adult present
+263,32610,260178,0,toy,5.76,child and adult present,child and adult present
+263,33020,260178,0,book,5.76,adult present,adult present
+263,33020,260178,0,food,5.76,adult present,adult present
+263,33020,260178,0,kitchenware,5.76,adult present,adult present
+263,33020,260178,0,other_object,5.76,adult present,adult present
+263,33020,260178,0,screen,5.76,adult present,adult present
+263,33020,260178,0,toy,5.76,adult present,adult present
+263,33190,260178,0,book,5.76,child and adult present,child and adult present
+263,33190,260178,0,food,5.76,child and adult present,child and adult present
+263,33190,260178,0,kitchenware,5.76,child and adult present,child and adult present
+263,33190,260178,0,other_object,5.76,child and adult present,child and adult present
+263,33190,260178,0,screen,5.76,child and adult present,child and adult present
+263,33190,260178,0,toy,5.76,child and adult present,child and adult present
+263,33210,260178,0,book,5.76,child and adult present,child and adult present
+263,33210,260178,0,food,5.76,child and adult present,child and adult present
+263,33210,260178,0,kitchenware,5.76,child and adult present,child and adult present
+263,33210,260178,0,other_object,5.76,child and adult present,child and adult present
+263,33210,260178,0,screen,5.76,child and adult present,child and adult present
+263,33210,260178,0,toy,5.76,child and adult present,child and adult present
+263,35050,260178,0,book,5.76,adult present,adult present
+263,35050,260178,0,food,5.76,adult present,adult present
+263,35050,260178,0,kitchenware,5.76,adult present,adult present
+263,35050,260178,0,other_object,5.76,adult present,adult present
+263,35050,260178,0,screen,5.76,adult present,adult present
+263,35050,260178,0,toy,5.76,adult present,adult present
+263,35260,260178,0,book,5.76,adult present,adult present
+263,35260,260178,0,food,5.76,adult present,adult present
+263,35260,260178,0,kitchenware,5.76,adult present,adult present
+263,35260,260178,0,other_object,5.76,adult present,adult present
+263,35260,260178,0,screen,5.76,adult present,adult present
+263,35260,260178,0,toy,5.76,adult present,adult present
+263,35740,260178,0,book,5.76,alone,alone
+263,35740,260178,0,food,5.76,alone,alone
+263,35740,260178,0,kitchenware,5.76,alone,alone
+263,35740,260178,0,other_object,5.76,alone,alone
+263,35740,260178,0,screen,5.76,alone,alone
+263,35740,260178,0,toy,5.76,alone,alone
+263,35920,260178,0,book,5.76,alone,alone
+263,35920,260178,0,food,5.76,alone,alone
+263,35920,260178,0,kitchenware,5.76,alone,alone
+263,35920,260178,0,other_object,5.76,alone,alone
+263,35920,260178,0,screen,5.76,alone,alone
+263,35920,260178,0,toy,5.76,alone,alone
+263,36150,260178,0,book,5.76,child present,child present
+263,36150,260178,0,food,5.76,child present,child present
+263,36150,260178,0,kitchenware,5.76,child present,child present
+263,36150,260178,0,other_object,5.76,child present,child present
+263,36150,260178,0,screen,5.76,child present,child present
+263,36150,260178,0,toy,5.76,child present,child present
+263,36190,260178,0,book,5.76,adult present,adult present
+263,36190,260178,0,food,5.76,adult present,adult present
+263,36190,260178,0,kitchenware,5.76,adult present,adult present
+263,36190,260178,0,other_object,5.76,adult present,adult present
+263,36190,260178,0,screen,5.76,adult present,adult present
+263,36190,260178,0,toy,5.76,adult present,adult present
+263,36600,260178,0,book,5.76,child present,child present
+263,36600,260178,0,food,5.76,child present,child present
+263,36600,260178,0,kitchenware,5.76,child present,child present
+263,36600,260178,0,other_object,5.76,child present,child present
+263,36600,260178,0,screen,5.76,child present,child present
+263,36600,260178,0,toy,5.76,child present,child present
+263,36640,260178,0,book,5.76,adult present,adult present
+263,36640,260178,0,food,5.76,adult present,adult present
+263,36640,260178,0,kitchenware,5.76,adult present,adult present
+263,36640,260178,0,other_object,5.76,adult present,adult present
+263,36640,260178,0,screen,5.76,adult present,adult present
+263,36640,260178,0,toy,5.76,adult present,adult present
+263,37180,260178,0,book,5.76,adult present,adult present
+263,37180,260178,0,food,5.76,adult present,adult present
+263,37180,260178,0,kitchenware,5.76,adult present,adult present
+263,37180,260178,0,other_object,5.76,adult present,adult present
+263,37180,260178,0,screen,5.76,adult present,adult present
+263,37180,260178,0,toy,5.76,adult present,adult present
+263,38080,260178,0,book,5.76,adult present,adult present
+263,38080,260178,0,food,5.76,adult present,adult present
+263,38080,260178,0,kitchenware,5.76,adult present,adult present
+263,38080,260178,0,other_object,5.76,adult present,adult present
+263,38080,260178,0,screen,5.76,adult present,adult present
+263,38080,260178,0,toy,5.76,adult present,adult present
+263,38510,260178,0,book,5.76,child present,child present
+263,38510,260178,0,food,5.76,child present,child present
+263,38510,260178,0,kitchenware,5.76,child present,child present
+263,38510,260178,0,other_object,5.76,child present,child present
+263,38510,260178,0,screen,5.76,child present,child present
+263,38510,260178,0,toy,5.76,child present,child present
+263,38700,260178,0,book,5.76,alone,alone
+263,38700,260178,0,food,5.76,alone,alone
+263,38700,260178,0,kitchenware,5.76,alone,alone
+263,38700,260178,0,other_object,5.76,alone,alone
+263,38700,260178,0,screen,5.76,alone,alone
+263,38700,260178,0,toy,5.76,alone,alone
+263,38970,260178,0,book,5.76,alone,alone
+263,38970,260178,0,food,5.76,alone,alone
+263,38970,260178,0,kitchenware,5.76,alone,alone
+263,38970,260178,0,other_object,5.76,alone,alone
+263,38970,260178,0,screen,5.76,alone,alone
+263,38970,260178,0,toy,5.76,alone,alone
+263,39540,260178,0,book,5.76,child present,child present
+263,39540,260178,0,food,5.76,child present,child present
+263,39540,260178,0,kitchenware,5.76,child present,child present
+263,39540,260178,0,other_object,5.76,child present,child present
+263,39540,260178,0,screen,5.76,child present,child present
+263,39540,260178,0,toy,5.76,child present,child present
+263,39930,260178,0,book,5.76,child present,child present
+263,39930,260178,0,food,5.76,child present,child present
+263,39930,260178,0,kitchenware,5.76,child present,child present
+263,39930,260178,0,other_object,5.76,child present,child present
+263,39930,260178,0,screen,5.76,child present,child present
+263,39930,260178,0,toy,5.76,child present,child present
+263,40960,260178,0,book,5.76,alone,alone
+263,40960,260178,0,food,5.76,alone,alone
+263,40960,260178,0,kitchenware,5.76,alone,alone
+263,40960,260178,0,other_object,5.76,alone,alone
+263,40960,260178,0,screen,5.76,alone,alone
+263,40960,260178,0,toy,5.76,alone,alone
+263,42080,260178,0,book,5.76,alone,alone
+263,42080,260178,0,food,5.76,alone,alone
+263,42080,260178,0,kitchenware,5.76,alone,alone
+263,42080,260178,0,other_object,5.76,alone,alone
+263,42080,260178,0,screen,5.76,alone,alone
+263,42080,260178,0,toy,5.76,alone,alone
+263,42100,260178,0,book,5.76,alone,alone
+263,42100,260178,0,food,5.76,alone,alone
+263,42100,260178,0,kitchenware,5.76,alone,alone
+263,42100,260178,0,other_object,5.76,alone,alone
+263,42100,260178,0,screen,5.76,alone,alone
+263,42100,260178,0,toy,5.76,alone,alone
+263,42480,260178,0,book,5.76,adult present,adult present
+263,42480,260178,0,food,5.76,adult present,adult present
+263,42480,260178,0,kitchenware,5.76,adult present,adult present
+263,42480,260178,0,other_object,5.76,adult present,adult present
+263,42480,260178,0,screen,5.76,adult present,adult present
+263,42480,260178,0,toy,5.76,adult present,adult present
+263,45700,260178,0,book,5.76,child present,child present
+263,45700,260178,0,food,5.76,child present,child present
+263,45700,260178,0,kitchenware,5.76,child present,child present
+263,45700,260178,0,other_object,5.76,child present,child present
+263,45700,260178,0,screen,5.76,child present,child present
+263,45700,260178,0,toy,5.76,child present,child present
+263,45780,260178,0,book,5.76,child present,child present
+263,45780,260178,0,food,5.76,child present,child present
+263,45780,260178,0,kitchenware,5.76,child present,child present
+263,45780,260178,0,other_object,5.76,child present,child present
+263,45780,260178,0,screen,5.76,child present,child present
+263,45780,260178,0,toy,5.76,child present,child present
+263,45940,260178,0,book,5.76,child present,child present
+263,45940,260178,0,food,5.76,child present,child present
+263,45940,260178,0,kitchenware,5.76,child present,child present
+263,45940,260178,0,other_object,5.76,child present,child present
+263,45940,260178,0,screen,5.76,child present,child present
+263,45940,260178,0,toy,5.76,child present,child present
+263,46050,260178,0,book,5.76,child present,child present
+263,46050,260178,0,food,5.76,child present,child present
+263,46050,260178,0,kitchenware,5.76,child present,child present
+263,46050,260178,0,other_object,5.76,child present,child present
+263,46050,260178,0,screen,5.76,child present,child present
+263,46050,260178,0,toy,5.76,child present,child present
+263,46970,260178,0,book,5.76,adult present,adult present
+263,46970,260178,0,food,5.76,adult present,adult present
+263,46970,260178,0,kitchenware,5.76,adult present,adult present
+263,46970,260178,0,other_object,5.76,adult present,adult present
+263,46970,260178,0,screen,5.76,adult present,adult present
+263,46970,260178,0,toy,5.76,adult present,adult present
+263,47290,260178,0,book,5.76,child present,child present
+263,47290,260178,0,food,5.76,child present,child present
+263,47290,260178,0,kitchenware,5.76,child present,child present
+263,47290,260178,0,other_object,5.76,child present,child present
+263,47290,260178,0,screen,5.76,child present,child present
+263,47290,260178,0,toy,5.76,child present,child present
+263,48810,260178,0,book,5.76,adult present,adult present
+263,48810,260178,0,food,5.76,adult present,adult present
+263,48810,260178,0,kitchenware,5.76,adult present,adult present
+263,48810,260178,1,other_object,5.76,adult present,adult present
+263,48810,260178,0,screen,5.76,adult present,adult present
+263,48810,260178,0,toy,5.76,adult present,adult present
+263,49870,260178,0,book,5.76,alone,alone
+263,49870,260178,0,food,5.76,alone,alone
+263,49870,260178,0,kitchenware,5.76,alone,alone
+263,49870,260178,0,other_object,5.76,alone,alone
+263,49870,260178,0,screen,5.76,alone,alone
+263,49870,260178,0,toy,5.76,alone,alone
+263,50160,260178,0,book,5.76,adult present,adult present
+263,50160,260178,0,food,5.76,adult present,adult present
+263,50160,260178,0,kitchenware,5.76,adult present,adult present
+263,50160,260178,0,other_object,5.76,adult present,adult present
+263,50160,260178,0,screen,5.76,adult present,adult present
+263,50160,260178,0,toy,5.76,adult present,adult present
+263,50930,260178,0,book,5.76,child present,child present
+263,50930,260178,0,food,5.76,child present,child present
+263,50930,260178,0,kitchenware,5.76,child present,child present
+263,50930,260178,0,other_object,5.76,child present,child present
+263,50930,260178,0,screen,5.76,child present,child present
+263,50930,260178,0,toy,5.76,child present,child present
+263,50980,260178,0,book,5.76,child present,child present
+263,50980,260178,0,food,5.76,child present,child present
+263,50980,260178,0,kitchenware,5.76,child present,child present
+263,50980,260178,0,other_object,5.76,child present,child present
+263,50980,260178,0,screen,5.76,child present,child present
+263,50980,260178,0,toy,5.76,child present,child present
+263,51950,260178,0,book,5.76,adult present,adult present
+263,51950,260178,0,food,5.76,adult present,adult present
+263,51950,260178,0,kitchenware,5.76,adult present,adult present
+263,51950,260178,0,other_object,5.76,adult present,adult present
+263,51950,260178,0,screen,5.76,adult present,adult present
+263,51950,260178,0,toy,5.76,adult present,adult present
+263,53320,260178,0,book,5.76,adult present,adult present
+263,53320,260178,0,food,5.76,adult present,adult present
+263,53320,260178,0,kitchenware,5.76,adult present,adult present
+263,53320,260178,0,other_object,5.76,adult present,adult present
+263,53320,260178,0,screen,5.76,adult present,adult present
+263,53320,260178,0,toy,5.76,adult present,adult present
+263,53460,260178,0,book,5.76,adult present,adult present
+263,53460,260178,0,food,5.76,adult present,adult present
+263,53460,260178,0,kitchenware,5.76,adult present,adult present
+263,53460,260178,0,other_object,5.76,adult present,adult present
+263,53460,260178,0,screen,5.76,adult present,adult present
+263,53460,260178,0,toy,5.76,adult present,adult present
+275,60,260539,0,book,3.88,child present,child present
+275,60,260539,0,food,3.88,child present,child present
+275,60,260539,0,kitchenware,3.88,child present,child present
+275,60,260539,0,other_object,3.88,child present,child present
+275,60,260539,0,screen,3.88,child present,child present
+275,60,260539,0,toy,3.88,child present,child present
+275,80,260539,0,book,3.88,child present,child present
+275,80,260539,0,food,3.88,child present,child present
+275,80,260539,0,kitchenware,3.88,child present,child present
+275,80,260539,0,other_object,3.88,child present,child present
+275,80,260539,0,screen,3.88,child present,child present
+275,80,260539,0,toy,3.88,child present,child present
+275,730,260539,0,book,3.88,child present,child present
+275,730,260539,0,food,3.88,child present,child present
+275,730,260539,0,kitchenware,3.88,child present,child present
+275,730,260539,0,other_object,3.88,child present,child present
+275,730,260539,0,screen,3.88,child present,child present
+275,730,260539,0,toy,3.88,child present,child present
+275,970,260539,0,book,3.88,child present,child present
+275,970,260539,0,food,3.88,child present,child present
+275,970,260539,0,kitchenware,3.88,child present,child present
+275,970,260539,0,other_object,3.88,child present,child present
+275,970,260539,0,screen,3.88,child present,child present
+275,970,260539,0,toy,3.88,child present,child present
+275,1200,260539,0,book,3.88,child present,child present
+275,1200,260539,0,food,3.88,child present,child present
+275,1200,260539,0,kitchenware,3.88,child present,child present
+275,1200,260539,0,other_object,3.88,child present,child present
+275,1200,260539,0,screen,3.88,child present,child present
+275,1200,260539,0,toy,3.88,child present,child present
+275,1330,260539,0,book,3.88,child present,child present
+275,1330,260539,0,food,3.88,child present,child present
+275,1330,260539,0,kitchenware,3.88,child present,child present
+275,1330,260539,0,other_object,3.88,child present,child present
+275,1330,260539,0,screen,3.88,child present,child present
+275,1330,260539,0,toy,3.88,child present,child present
+275,1520,260539,0,book,3.88,child present,child present
+275,1520,260539,0,food,3.88,child present,child present
+275,1520,260539,0,kitchenware,3.88,child present,child present
+275,1520,260539,0,other_object,3.88,child present,child present
+275,1520,260539,0,screen,3.88,child present,child present
+275,1520,260539,0,toy,3.88,child present,child present
+275,1880,260539,0,book,3.88,child present,child present
+275,1880,260539,0,food,3.88,child present,child present
+275,1880,260539,0,kitchenware,3.88,child present,child present
+275,1880,260539,0,other_object,3.88,child present,child present
+275,1880,260539,0,screen,3.88,child present,child present
+275,1880,260539,0,toy,3.88,child present,child present
+275,2110,260539,0,book,3.88,child present,child present
+275,2110,260539,0,food,3.88,child present,child present
+275,2110,260539,0,kitchenware,3.88,child present,child present
+275,2110,260539,0,other_object,3.88,child present,child present
+275,2110,260539,0,screen,3.88,child present,child present
+275,2110,260539,0,toy,3.88,child present,child present
+275,2190,260539,0,book,3.88,child present,child present
+275,2190,260539,0,food,3.88,child present,child present
+275,2190,260539,0,kitchenware,3.88,child present,child present
+275,2190,260539,0,other_object,3.88,child present,child present
+275,2190,260539,0,screen,3.88,child present,child present
+275,2190,260539,0,toy,3.88,child present,child present
+275,2980,260539,0,book,3.88,child present,child present
+275,2980,260539,0,food,3.88,child present,child present
+275,2980,260539,0,kitchenware,3.88,child present,child present
+275,2980,260539,0,other_object,3.88,child present,child present
+275,2980,260539,0,screen,3.88,child present,child present
+275,2980,260539,0,toy,3.88,child present,child present
+275,4050,260539,0,book,3.88,child present,child present
+275,4050,260539,0,food,3.88,child present,child present
+275,4050,260539,0,kitchenware,3.88,child present,child present
+275,4050,260539,0,other_object,3.88,child present,child present
+275,4050,260539,0,screen,3.88,child present,child present
+275,4050,260539,0,toy,3.88,child present,child present
+275,4630,260539,0,book,3.88,alone,alone
+275,4630,260539,0,food,3.88,alone,alone
+275,4630,260539,0,kitchenware,3.88,alone,alone
+275,4630,260539,1,other_object,3.88,alone,alone
+275,4630,260539,0,screen,3.88,alone,alone
+275,4630,260539,0,toy,3.88,alone,alone
+275,4820,260539,0,book,3.88,adult present,adult present
+275,4820,260539,0,food,3.88,adult present,adult present
+275,4820,260539,0,kitchenware,3.88,adult present,adult present
+275,4820,260539,0,other_object,3.88,adult present,adult present
+275,4820,260539,0,screen,3.88,adult present,adult present
+275,4820,260539,0,toy,3.88,adult present,adult present
+275,5560,260539,0,book,3.88,child present,child present
+275,5560,260539,0,food,3.88,child present,child present
+275,5560,260539,0,kitchenware,3.88,child present,child present
+275,5560,260539,0,other_object,3.88,child present,child present
+275,5560,260539,0,screen,3.88,child present,child present
+275,5560,260539,0,toy,3.88,child present,child present
+275,5960,260539,0,book,3.88,child present,child present
+275,5960,260539,0,food,3.88,child present,child present
+275,5960,260539,0,kitchenware,3.88,child present,child present
+275,5960,260539,0,other_object,3.88,child present,child present
+275,5960,260539,0,screen,3.88,child present,child present
+275,5960,260539,0,toy,3.88,child present,child present
+275,6390,260539,0,book,3.88,child present,child present
+275,6390,260539,0,food,3.88,child present,child present
+275,6390,260539,0,kitchenware,3.88,child present,child present
+275,6390,260539,0,other_object,3.88,child present,child present
+275,6390,260539,0,screen,3.88,child present,child present
+275,6390,260539,0,toy,3.88,child present,child present
+275,7030,260539,0,book,3.88,child present,child present
+275,7030,260539,0,food,3.88,child present,child present
+275,7030,260539,0,kitchenware,3.88,child present,child present
+275,7030,260539,0,other_object,3.88,child present,child present
+275,7030,260539,0,screen,3.88,child present,child present
+275,7030,260539,0,toy,3.88,child present,child present
+275,7880,260539,0,book,3.88,child present,child present
+275,7880,260539,0,food,3.88,child present,child present
+275,7880,260539,0,kitchenware,3.88,child present,child present
+275,7880,260539,0,other_object,3.88,child present,child present
+275,7880,260539,0,screen,3.88,child present,child present
+275,7880,260539,0,toy,3.88,child present,child present
+275,9130,260539,0,book,3.88,child present,child present
+275,9130,260539,0,food,3.88,child present,child present
+275,9130,260539,0,kitchenware,3.88,child present,child present
+275,9130,260539,0,other_object,3.88,child present,child present
+275,9130,260539,0,screen,3.88,child present,child present
+275,9130,260539,0,toy,3.88,child present,child present
+275,10180,260539,0,book,3.88,child present,child present
+275,10180,260539,0,food,3.88,child present,child present
+275,10180,260539,0,kitchenware,3.88,child present,child present
+275,10180,260539,0,other_object,3.88,child present,child present
+275,10180,260539,0,screen,3.88,child present,child present
+275,10180,260539,0,toy,3.88,child present,child present
+275,10530,260539,0,book,3.88,child present,child present
+275,10530,260539,0,food,3.88,child present,child present
+275,10530,260539,0,kitchenware,3.88,child present,child present
+275,10530,260539,0,other_object,3.88,child present,child present
+275,10530,260539,0,screen,3.88,child present,child present
+275,10530,260539,0,toy,3.88,child present,child present
+275,10720,260539,0,book,3.88,child present,child present
+275,10720,260539,0,food,3.88,child present,child present
+275,10720,260539,0,kitchenware,3.88,child present,child present
+275,10720,260539,0,other_object,3.88,child present,child present
+275,10720,260539,0,screen,3.88,child present,child present
+275,10720,260539,0,toy,3.88,child present,child present
+275,10960,260539,0,book,3.88,child present,child present
+275,10960,260539,0,food,3.88,child present,child present
+275,10960,260539,0,kitchenware,3.88,child present,child present
+275,10960,260539,0,other_object,3.88,child present,child present
+275,10960,260539,0,screen,3.88,child present,child present
+275,10960,260539,0,toy,3.88,child present,child present
+275,11440,260539,0,book,3.88,child present,child present
+275,11440,260539,0,food,3.88,child present,child present
+275,11440,260539,0,kitchenware,3.88,child present,child present
+275,11440,260539,0,other_object,3.88,child present,child present
+275,11440,260539,0,screen,3.88,child present,child present
+275,11440,260539,0,toy,3.88,child present,child present
+275,11950,260539,0,book,3.88,child present,child present
+275,11950,260539,0,food,3.88,child present,child present
+275,11950,260539,0,kitchenware,3.88,child present,child present
+275,11950,260539,0,other_object,3.88,child present,child present
+275,11950,260539,0,screen,3.88,child present,child present
+275,11950,260539,0,toy,3.88,child present,child present
+275,12460,260539,0,book,3.88,child present,child present
+275,12460,260539,0,food,3.88,child present,child present
+275,12460,260539,0,kitchenware,3.88,child present,child present
+275,12460,260539,0,other_object,3.88,child present,child present
+275,12460,260539,0,screen,3.88,child present,child present
+275,12460,260539,0,toy,3.88,child present,child present
+275,12650,260539,0,book,3.88,child present,child present
+275,12650,260539,0,food,3.88,child present,child present
+275,12650,260539,0,kitchenware,3.88,child present,child present
+275,12650,260539,0,other_object,3.88,child present,child present
+275,12650,260539,0,screen,3.88,child present,child present
+275,12650,260539,0,toy,3.88,child present,child present
+275,13660,260539,0,book,3.88,child present,child present
+275,13660,260539,0,food,3.88,child present,child present
+275,13660,260539,0,kitchenware,3.88,child present,child present
+275,13660,260539,0,other_object,3.88,child present,child present
+275,13660,260539,0,screen,3.88,child present,child present
+275,13660,260539,0,toy,3.88,child present,child present
+275,14800,260539,0,book,3.88,child present,child present
+275,14800,260539,0,food,3.88,child present,child present
+275,14800,260539,0,kitchenware,3.88,child present,child present
+275,14800,260539,0,other_object,3.88,child present,child present
+275,14800,260539,0,screen,3.88,child present,child present
+275,14800,260539,0,toy,3.88,child present,child present
+275,15050,260539,0,book,3.88,child present,child present
+275,15050,260539,0,food,3.88,child present,child present
+275,15050,260539,0,kitchenware,3.88,child present,child present
+275,15050,260539,0,other_object,3.88,child present,child present
+275,15050,260539,0,screen,3.88,child present,child present
+275,15050,260539,0,toy,3.88,child present,child present
+275,15190,260539,0,book,3.88,child present,child present
+275,15190,260539,0,food,3.88,child present,child present
+275,15190,260539,0,kitchenware,3.88,child present,child present
+275,15190,260539,0,other_object,3.88,child present,child present
+275,15190,260539,0,screen,3.88,child present,child present
+275,15190,260539,0,toy,3.88,child present,child present
+275,15970,260539,0,book,3.88,child present,child present
+275,15970,260539,0,food,3.88,child present,child present
+275,15970,260539,0,kitchenware,3.88,child present,child present
+275,15970,260539,0,other_object,3.88,child present,child present
+275,15970,260539,0,screen,3.88,child present,child present
+275,15970,260539,0,toy,3.88,child present,child present
+275,16110,260539,0,book,3.88,child present,child present
+275,16110,260539,0,food,3.88,child present,child present
+275,16110,260539,0,kitchenware,3.88,child present,child present
+275,16110,260539,0,other_object,3.88,child present,child present
+275,16110,260539,0,screen,3.88,child present,child present
+275,16110,260539,0,toy,3.88,child present,child present
+275,21980,260539,0,book,3.88,child present,child present
+275,21980,260539,0,food,3.88,child present,child present
+275,21980,260539,0,kitchenware,3.88,child present,child present
+275,21980,260539,0,other_object,3.88,child present,child present
+275,21980,260539,0,screen,3.88,child present,child present
+275,21980,260539,0,toy,3.88,child present,child present
+275,22310,260539,0,book,3.88,child present,child present
+275,22310,260539,0,food,3.88,child present,child present
+275,22310,260539,0,kitchenware,3.88,child present,child present
+275,22310,260539,0,other_object,3.88,child present,child present
+275,22310,260539,0,screen,3.88,child present,child present
+275,22310,260539,0,toy,3.88,child present,child present
+275,23450,260539,0,book,3.88,child present,child present
+275,23450,260539,0,food,3.88,child present,child present
+275,23450,260539,0,kitchenware,3.88,child present,child present
+275,23450,260539,0,other_object,3.88,child present,child present
+275,23450,260539,0,screen,3.88,child present,child present
+275,23450,260539,0,toy,3.88,child present,child present
+275,24090,260539,0,book,3.88,child present,child present
+275,24090,260539,0,food,3.88,child present,child present
+275,24090,260539,0,kitchenware,3.88,child present,child present
+275,24090,260539,0,other_object,3.88,child present,child present
+275,24090,260539,0,screen,3.88,child present,child present
+275,24090,260539,0,toy,3.88,child present,child present
+275,25060,260539,0,book,3.88,child present,child present
+275,25060,260539,0,food,3.88,child present,child present
+275,25060,260539,0,kitchenware,3.88,child present,child present
+275,25060,260539,0,other_object,3.88,child present,child present
+275,25060,260539,0,screen,3.88,child present,child present
+275,25060,260539,0,toy,3.88,child present,child present
+275,25520,260539,0,book,3.88,child present,child present
+275,25520,260539,0,food,3.88,child present,child present
+275,25520,260539,0,kitchenware,3.88,child present,child present
+275,25520,260539,0,other_object,3.88,child present,child present
+275,25520,260539,0,screen,3.88,child present,child present
+275,25520,260539,0,toy,3.88,child present,child present
+275,26100,260539,0,book,3.88,child present,child present
+275,26100,260539,0,food,3.88,child present,child present
+275,26100,260539,0,kitchenware,3.88,child present,child present
+275,26100,260539,0,other_object,3.88,child present,child present
+275,26100,260539,0,screen,3.88,child present,child present
+275,26100,260539,0,toy,3.88,child present,child present
+275,26210,260539,0,book,3.88,child present,child present
+275,26210,260539,0,food,3.88,child present,child present
+275,26210,260539,0,kitchenware,3.88,child present,child present
+275,26210,260539,0,other_object,3.88,child present,child present
+275,26210,260539,0,screen,3.88,child present,child present
+275,26210,260539,0,toy,3.88,child present,child present
+275,26420,260539,0,book,3.88,child present,child present
+275,26420,260539,0,food,3.88,child present,child present
+275,26420,260539,0,kitchenware,3.88,child present,child present
+275,26420,260539,0,other_object,3.88,child present,child present
+275,26420,260539,0,screen,3.88,child present,child present
+275,26420,260539,0,toy,3.88,child present,child present
+275,26870,260539,0,book,3.88,child present,child present
+275,26870,260539,0,food,3.88,child present,child present
+275,26870,260539,0,kitchenware,3.88,child present,child present
+275,26870,260539,0,other_object,3.88,child present,child present
+275,26870,260539,0,screen,3.88,child present,child present
+275,26870,260539,0,toy,3.88,child present,child present
+275,26970,260539,0,book,3.88,child present,child present
+275,26970,260539,0,food,3.88,child present,child present
+275,26970,260539,0,kitchenware,3.88,child present,child present
+275,26970,260539,0,other_object,3.88,child present,child present
+275,26970,260539,0,screen,3.88,child present,child present
+275,26970,260539,0,toy,3.88,child present,child present
+275,26990,260539,0,book,3.88,child present,child present
+275,26990,260539,0,food,3.88,child present,child present
+275,26990,260539,0,kitchenware,3.88,child present,child present
+275,26990,260539,0,other_object,3.88,child present,child present
+275,26990,260539,0,screen,3.88,child present,child present
+275,26990,260539,0,toy,3.88,child present,child present
+275,27250,260539,0,book,3.88,child present,child present
+275,27250,260539,0,food,3.88,child present,child present
+275,27250,260539,0,kitchenware,3.88,child present,child present
+275,27250,260539,0,other_object,3.88,child present,child present
+275,27250,260539,0,screen,3.88,child present,child present
+275,27250,260539,0,toy,3.88,child present,child present
+275,27560,260539,0,book,3.88,child present,child present
+275,27560,260539,0,food,3.88,child present,child present
+275,27560,260539,0,kitchenware,3.88,child present,child present
+275,27560,260539,0,other_object,3.88,child present,child present
+275,27560,260539,0,screen,3.88,child present,child present
+275,27560,260539,0,toy,3.88,child present,child present
+275,27860,260539,0,book,3.88,child present,child present
+275,27860,260539,0,food,3.88,child present,child present
+275,27860,260539,0,kitchenware,3.88,child present,child present
+275,27860,260539,0,other_object,3.88,child present,child present
+275,27860,260539,0,screen,3.88,child present,child present
+275,27860,260539,0,toy,3.88,child present,child present
+275,28170,260539,0,book,3.88,child present,child present
+275,28170,260539,0,food,3.88,child present,child present
+275,28170,260539,0,kitchenware,3.88,child present,child present
+275,28170,260539,0,other_object,3.88,child present,child present
+275,28170,260539,0,screen,3.88,child present,child present
+275,28170,260539,0,toy,3.88,child present,child present
+275,28710,260539,0,book,3.88,child present,child present
+275,28710,260539,0,food,3.88,child present,child present
+275,28710,260539,0,kitchenware,3.88,child present,child present
+275,28710,260539,0,other_object,3.88,child present,child present
+275,28710,260539,0,screen,3.88,child present,child present
+275,28710,260539,0,toy,3.88,child present,child present
+275,30190,260539,0,book,3.88,child present,child present
+275,30190,260539,0,food,3.88,child present,child present
+275,30190,260539,0,kitchenware,3.88,child present,child present
+275,30190,260539,0,other_object,3.88,child present,child present
+275,30190,260539,0,screen,3.88,child present,child present
+275,30190,260539,0,toy,3.88,child present,child present
+275,30220,260539,0,book,3.88,child present,child present
+275,30220,260539,0,food,3.88,child present,child present
+275,30220,260539,0,kitchenware,3.88,child present,child present
+275,30220,260539,0,other_object,3.88,child present,child present
+275,30220,260539,0,screen,3.88,child present,child present
+275,30220,260539,0,toy,3.88,child present,child present
+275,31490,260539,0,book,3.88,child present,child present
+275,31490,260539,0,food,3.88,child present,child present
+275,31490,260539,0,kitchenware,3.88,child present,child present
+275,31490,260539,0,other_object,3.88,child present,child present
+275,31490,260539,0,screen,3.88,child present,child present
+275,31490,260539,0,toy,3.88,child present,child present
+275,34490,260539,0,book,3.88,child present,child present
+275,34490,260539,0,food,3.88,child present,child present
+275,34490,260539,0,kitchenware,3.88,child present,child present
+275,34490,260539,0,other_object,3.88,child present,child present
+275,34490,260539,0,screen,3.88,child present,child present
+275,34490,260539,0,toy,3.88,child present,child present
+275,35170,260539,0,book,3.88,child present,child present
+275,35170,260539,0,food,3.88,child present,child present
+275,35170,260539,0,kitchenware,3.88,child present,child present
+275,35170,260539,0,other_object,3.88,child present,child present
+275,35170,260539,0,screen,3.88,child present,child present
+275,35170,260539,0,toy,3.88,child present,child present
+275,35180,260539,0,book,3.88,child present,child present
+275,35180,260539,0,food,3.88,child present,child present
+275,35180,260539,0,kitchenware,3.88,child present,child present
+275,35180,260539,0,other_object,3.88,child present,child present
+275,35180,260539,0,screen,3.88,child present,child present
+275,35180,260539,0,toy,3.88,child present,child present
+275,35930,260539,0,book,3.88,child present,child present
+275,35930,260539,0,food,3.88,child present,child present
+275,35930,260539,0,kitchenware,3.88,child present,child present
+275,35930,260539,0,other_object,3.88,child present,child present
+275,35930,260539,0,screen,3.88,child present,child present
+275,35930,260539,0,toy,3.88,child present,child present
+275,35990,260539,0,book,3.88,child present,child present
+275,35990,260539,0,food,3.88,child present,child present
+275,35990,260539,0,kitchenware,3.88,child present,child present
+275,35990,260539,0,other_object,3.88,child present,child present
+275,35990,260539,0,screen,3.88,child present,child present
+275,35990,260539,0,toy,3.88,child present,child present
+275,39140,260539,0,book,3.88,child present,child present
+275,39140,260539,0,food,3.88,child present,child present
+275,39140,260539,0,kitchenware,3.88,child present,child present
+275,39140,260539,0,other_object,3.88,child present,child present
+275,39140,260539,0,screen,3.88,child present,child present
+275,39140,260539,0,toy,3.88,child present,child present
+275,40550,260539,0,book,3.88,child present,child present
+275,40550,260539,0,food,3.88,child present,child present
+275,40550,260539,0,kitchenware,3.88,child present,child present
+275,40550,260539,0,other_object,3.88,child present,child present
+275,40550,260539,0,screen,3.88,child present,child present
+275,40550,260539,0,toy,3.88,child present,child present
+275,40840,260539,0,book,3.88,child present,child present
+275,40840,260539,0,food,3.88,child present,child present
+275,40840,260539,0,kitchenware,3.88,child present,child present
+275,40840,260539,0,other_object,3.88,child present,child present
+275,40840,260539,0,screen,3.88,child present,child present
+275,40840,260539,0,toy,3.88,child present,child present
+275,41140,260539,0,book,3.88,child present,child present
+275,41140,260539,0,food,3.88,child present,child present
+275,41140,260539,0,kitchenware,3.88,child present,child present
+275,41140,260539,0,other_object,3.88,child present,child present
+275,41140,260539,0,screen,3.88,child present,child present
+275,41140,260539,0,toy,3.88,child present,child present
+275,41570,260539,0,book,3.88,child present,child present
+275,41570,260539,0,food,3.88,child present,child present
+275,41570,260539,0,kitchenware,3.88,child present,child present
+275,41570,260539,0,other_object,3.88,child present,child present
+275,41570,260539,0,screen,3.88,child present,child present
+275,41570,260539,0,toy,3.88,child present,child present
+275,44330,260539,0,book,3.88,child present,child present
+275,44330,260539,0,food,3.88,child present,child present
+275,44330,260539,0,kitchenware,3.88,child present,child present
+275,44330,260539,0,other_object,3.88,child present,child present
+275,44330,260539,0,screen,3.88,child present,child present
+275,44330,260539,0,toy,3.88,child present,child present
+275,45810,260539,0,book,3.88,child present,child present
+275,45810,260539,0,food,3.88,child present,child present
+275,45810,260539,0,kitchenware,3.88,child present,child present
+275,45810,260539,0,other_object,3.88,child present,child present
+275,45810,260539,0,screen,3.88,child present,child present
+275,45810,260539,0,toy,3.88,child present,child present
+275,48670,260539,0,book,3.88,child present,child present
+275,48670,260539,0,food,3.88,child present,child present
+275,48670,260539,0,kitchenware,3.88,child present,child present
+275,48670,260539,0,other_object,3.88,child present,child present
+275,48670,260539,0,screen,3.88,child present,child present
+275,48670,260539,0,toy,3.88,child present,child present
+275,48700,260539,0,book,3.88,child present,child present
+275,48700,260539,0,food,3.88,child present,child present
+275,48700,260539,0,kitchenware,3.88,child present,child present
+275,48700,260539,0,other_object,3.88,child present,child present
+275,48700,260539,0,screen,3.88,child present,child present
+275,48700,260539,0,toy,3.88,child present,child present
+275,48970,260539,0,book,3.88,child present,child present
+275,48970,260539,0,food,3.88,child present,child present
+275,48970,260539,0,kitchenware,3.88,child present,child present
+275,48970,260539,0,other_object,3.88,child present,child present
+275,48970,260539,0,screen,3.88,child present,child present
+275,48970,260539,0,toy,3.88,child present,child present
+275,49100,260539,0,book,3.88,child present,child present
+275,49100,260539,0,food,3.88,child present,child present
+275,49100,260539,0,kitchenware,3.88,child present,child present
+275,49100,260539,0,other_object,3.88,child present,child present
+275,49100,260539,0,screen,3.88,child present,child present
+275,49100,260539,0,toy,3.88,child present,child present
+275,50220,260539,0,book,3.88,child present,child present
+275,50220,260539,0,food,3.88,child present,child present
+275,50220,260539,0,kitchenware,3.88,child present,child present
+275,50220,260539,0,other_object,3.88,child present,child present
+275,50220,260539,0,screen,3.88,child present,child present
+275,50220,260539,0,toy,3.88,child present,child present
+275,50790,260539,0,book,3.88,child present,child present
+275,50790,260539,0,food,3.88,child present,child present
+275,50790,260539,0,kitchenware,3.88,child present,child present
+275,50790,260539,0,other_object,3.88,child present,child present
+275,50790,260539,0,screen,3.88,child present,child present
+275,50790,260539,0,toy,3.88,child present,child present
+275,52230,260539,0,book,3.88,child present,child present
+275,52230,260539,0,food,3.88,child present,child present
+275,52230,260539,0,kitchenware,3.88,child present,child present
+275,52230,260539,0,other_object,3.88,child present,child present
+275,52230,260539,0,screen,3.88,child present,child present
+275,52230,260539,0,toy,3.88,child present,child present
+275,52920,260539,0,book,3.88,child present,child present
+275,52920,260539,0,food,3.88,child present,child present
+275,52920,260539,0,kitchenware,3.88,child present,child present
+275,52920,260539,0,other_object,3.88,child present,child present
+275,52920,260539,0,screen,3.88,child present,child present
+275,52920,260539,0,toy,3.88,child present,child present
+275,53330,260539,0,book,3.88,child present,child present
+275,53330,260539,0,food,3.88,child present,child present
+275,53330,260539,0,kitchenware,3.88,child present,child present
+275,53330,260539,0,other_object,3.88,child present,child present
+275,53330,260539,0,screen,3.88,child present,child present
+275,53330,260539,0,toy,3.88,child present,child present
+275,53650,260539,0,book,3.88,child present,child present
+275,53650,260539,0,food,3.88,child present,child present
+275,53650,260539,0,kitchenware,3.88,child present,child present
+275,53650,260539,0,other_object,3.88,child present,child present
+275,53650,260539,0,screen,3.88,child present,child present
+275,53650,260539,0,toy,3.88,child present,child present
+83,1210,263652,0,book,5.16,adult present,adult present
+83,1210,263652,0,food,5.16,adult present,adult present
+83,1210,263652,0,kitchenware,5.16,adult present,adult present
+83,1210,263652,0,other_object,5.16,adult present,adult present
+83,1210,263652,0,screen,5.16,adult present,adult present
+83,1210,263652,0,toy,5.16,adult present,adult present
+83,1670,263652,0,book,5.16,adult present,adult present
+83,1670,263652,0,food,5.16,adult present,adult present
+83,1670,263652,0,kitchenware,5.16,adult present,adult present
+83,1670,263652,0,other_object,5.16,adult present,adult present
+83,1670,263652,0,screen,5.16,adult present,adult present
+83,1670,263652,1,toy,5.16,adult present,adult present
+83,2770,263652,0,book,5.16,adult present,adult present
+83,2770,263652,0,food,5.16,adult present,adult present
+83,2770,263652,0,kitchenware,5.16,adult present,adult present
+83,2770,263652,1,other_object,5.16,adult present,adult present
+83,2770,263652,0,screen,5.16,adult present,adult present
+83,2770,263652,1,toy,5.16,adult present,adult present
+83,2940,263652,0,book,5.16,adult present,adult present
+83,2940,263652,0,food,5.16,adult present,adult present
+83,2940,263652,0,kitchenware,5.16,adult present,adult present
+83,2940,263652,0,other_object,5.16,adult present,adult present
+83,2940,263652,0,screen,5.16,adult present,adult present
+83,2940,263652,0,toy,5.16,adult present,adult present
+83,3330,263652,0,book,5.16,adult present,adult present
+83,3330,263652,0,food,5.16,adult present,adult present
+83,3330,263652,0,kitchenware,5.16,adult present,adult present
+83,3330,263652,0,other_object,5.16,adult present,adult present
+83,3330,263652,0,screen,5.16,adult present,adult present
+83,3330,263652,0,toy,5.16,adult present,adult present
+83,4120,263652,0,book,5.16,adult present,adult present
+83,4120,263652,0,food,5.16,adult present,adult present
+83,4120,263652,0,kitchenware,5.16,adult present,adult present
+83,4120,263652,0,other_object,5.16,adult present,adult present
+83,4120,263652,0,screen,5.16,adult present,adult present
+83,4120,263652,0,toy,5.16,adult present,adult present
+83,4670,263652,0,book,5.16,adult present,adult present
+83,4670,263652,0,food,5.16,adult present,adult present
+83,4670,263652,0,kitchenware,5.16,adult present,adult present
+83,4670,263652,1,other_object,5.16,adult present,adult present
+83,4670,263652,0,screen,5.16,adult present,adult present
+83,4670,263652,1,toy,5.16,adult present,adult present
+83,5120,263652,0,book,5.16,adult present,adult present
+83,5120,263652,0,food,5.16,adult present,adult present
+83,5120,263652,0,kitchenware,5.16,adult present,adult present
+83,5120,263652,1,other_object,5.16,adult present,adult present
+83,5120,263652,0,screen,5.16,adult present,adult present
+83,5120,263652,0,toy,5.16,adult present,adult present
+83,6850,263652,1,book,5.16,adult present,adult present
+83,6850,263652,0,food,5.16,adult present,adult present
+83,6850,263652,0,kitchenware,5.16,adult present,adult present
+83,6850,263652,0,other_object,5.16,adult present,adult present
+83,6850,263652,0,screen,5.16,adult present,adult present
+83,6850,263652,0,toy,5.16,adult present,adult present
+83,7250,263652,0,book,5.16,adult present,adult present
+83,7250,263652,0,food,5.16,adult present,adult present
+83,7250,263652,0,kitchenware,5.16,adult present,adult present
+83,7250,263652,0,other_object,5.16,adult present,adult present
+83,7250,263652,0,screen,5.16,adult present,adult present
+83,7250,263652,0,toy,5.16,adult present,adult present
+83,7680,263652,0,book,5.16,alone,alone
+83,7680,263652,0,food,5.16,alone,alone
+83,7680,263652,0,kitchenware,5.16,alone,alone
+83,7680,263652,0,other_object,5.16,alone,alone
+83,7680,263652,0,screen,5.16,alone,alone
+83,7680,263652,0,toy,5.16,alone,alone
+83,8290,263652,0,book,5.16,adult present,adult present
+83,8290,263652,0,food,5.16,adult present,adult present
+83,8290,263652,0,kitchenware,5.16,adult present,adult present
+83,8290,263652,0,other_object,5.16,adult present,adult present
+83,8290,263652,0,screen,5.16,adult present,adult present
+83,8290,263652,0,toy,5.16,adult present,adult present
+83,8520,263652,0,book,5.16,adult present,adult present
+83,8520,263652,0,food,5.16,adult present,adult present
+83,8520,263652,0,kitchenware,5.16,adult present,adult present
+83,8520,263652,1,other_object,5.16,adult present,adult present
+83,8520,263652,0,screen,5.16,adult present,adult present
+83,8520,263652,0,toy,5.16,adult present,adult present
+83,8710,263652,0,book,5.16,adult present,adult present
+83,8710,263652,0,food,5.16,adult present,adult present
+83,8710,263652,0,kitchenware,5.16,adult present,adult present
+83,8710,263652,0,other_object,5.16,adult present,adult present
+83,8710,263652,0,screen,5.16,adult present,adult present
+83,8710,263652,0,toy,5.16,adult present,adult present
+83,9970,263652,0,book,5.16,adult present,adult present
+83,9970,263652,0,food,5.16,adult present,adult present
+83,9970,263652,0,kitchenware,5.16,adult present,adult present
+83,9970,263652,1,other_object,5.16,adult present,adult present
+83,9970,263652,0,screen,5.16,adult present,adult present
+83,9970,263652,0,toy,5.16,adult present,adult present
+83,10490,263652,0,book,5.16,adult present,adult present
+83,10490,263652,0,food,5.16,adult present,adult present
+83,10490,263652,0,kitchenware,5.16,adult present,adult present
+83,10490,263652,1,other_object,5.16,adult present,adult present
+83,10490,263652,0,screen,5.16,adult present,adult present
+83,10490,263652,0,toy,5.16,adult present,adult present
+83,10570,263652,0,book,5.16,adult present,adult present
+83,10570,263652,0,food,5.16,adult present,adult present
+83,10570,263652,0,kitchenware,5.16,adult present,adult present
+83,10570,263652,0,other_object,5.16,adult present,adult present
+83,10570,263652,0,screen,5.16,adult present,adult present
+83,10570,263652,0,toy,5.16,adult present,adult present
+83,11020,263652,0,book,5.16,child and adult present,child and adult present
+83,11020,263652,0,food,5.16,child and adult present,child and adult present
+83,11020,263652,0,kitchenware,5.16,child and adult present,child and adult present
+83,11020,263652,1,other_object,5.16,child and adult present,child and adult present
+83,11020,263652,0,screen,5.16,child and adult present,child and adult present
+83,11020,263652,0,toy,5.16,child and adult present,child and adult present
+83,11320,263652,0,book,5.16,alone,alone
+83,11320,263652,0,food,5.16,alone,alone
+83,11320,263652,0,kitchenware,5.16,alone,alone
+83,11320,263652,0,other_object,5.16,alone,alone
+83,11320,263652,0,screen,5.16,alone,alone
+83,11320,263652,0,toy,5.16,alone,alone
+83,11370,263652,0,book,5.16,adult present,adult present
+83,11370,263652,0,food,5.16,adult present,adult present
+83,11370,263652,0,kitchenware,5.16,adult present,adult present
+83,11370,263652,0,other_object,5.16,adult present,adult present
+83,11370,263652,0,screen,5.16,adult present,adult present
+83,11370,263652,0,toy,5.16,adult present,adult present
+83,11550,263652,0,book,5.16,child present,child present
+83,11550,263652,0,food,5.16,child present,child present
+83,11550,263652,0,kitchenware,5.16,child present,child present
+83,11550,263652,0,other_object,5.16,child present,child present
+83,11550,263652,0,screen,5.16,child present,child present
+83,11550,263652,0,toy,5.16,child present,child present
+83,11600,263652,0,book,5.16,adult present,adult present
+83,11600,263652,0,food,5.16,adult present,adult present
+83,11600,263652,0,kitchenware,5.16,adult present,adult present
+83,11600,263652,0,other_object,5.16,adult present,adult present
+83,11600,263652,0,screen,5.16,adult present,adult present
+83,11600,263652,0,toy,5.16,adult present,adult present
+83,13390,263652,0,book,5.16,alone,alone
+83,13390,263652,0,food,5.16,alone,alone
+83,13390,263652,0,kitchenware,5.16,alone,alone
+83,13390,263652,0,other_object,5.16,alone,alone
+83,13390,263652,0,screen,5.16,alone,alone
+83,13390,263652,0,toy,5.16,alone,alone
+83,13550,263652,0,book,5.16,adult present,adult present
+83,13550,263652,0,food,5.16,adult present,adult present
+83,13550,263652,0,kitchenware,5.16,adult present,adult present
+83,13550,263652,0,other_object,5.16,adult present,adult present
+83,13550,263652,0,screen,5.16,adult present,adult present
+83,13550,263652,0,toy,5.16,adult present,adult present
+83,14710,263652,0,book,5.16,adult present,adult present
+83,14710,263652,0,food,5.16,adult present,adult present
+83,14710,263652,0,kitchenware,5.16,adult present,adult present
+83,14710,263652,0,other_object,5.16,adult present,adult present
+83,14710,263652,0,screen,5.16,adult present,adult present
+83,14710,263652,0,toy,5.16,adult present,adult present
+83,15000,263652,0,book,5.16,adult present,adult present
+83,15000,263652,0,food,5.16,adult present,adult present
+83,15000,263652,0,kitchenware,5.16,adult present,adult present
+83,15000,263652,0,other_object,5.16,adult present,adult present
+83,15000,263652,0,screen,5.16,adult present,adult present
+83,15000,263652,0,toy,5.16,adult present,adult present
+83,15180,263652,0,book,5.16,adult present,adult present
+83,15180,263652,0,food,5.16,adult present,adult present
+83,15180,263652,0,kitchenware,5.16,adult present,adult present
+83,15180,263652,1,other_object,5.16,adult present,adult present
+83,15180,263652,0,screen,5.16,adult present,adult present
+83,15180,263652,0,toy,5.16,adult present,adult present
+83,15420,263652,0,book,5.16,adult present,adult present
+83,15420,263652,0,food,5.16,adult present,adult present
+83,15420,263652,0,kitchenware,5.16,adult present,adult present
+83,15420,263652,0,other_object,5.16,adult present,adult present
+83,15420,263652,0,screen,5.16,adult present,adult present
+83,15420,263652,0,toy,5.16,adult present,adult present
+83,15860,263652,0,book,5.16,adult present,adult present
+83,15860,263652,0,food,5.16,adult present,adult present
+83,15860,263652,0,kitchenware,5.16,adult present,adult present
+83,15860,263652,1,other_object,5.16,adult present,adult present
+83,15860,263652,0,screen,5.16,adult present,adult present
+83,15860,263652,0,toy,5.16,adult present,adult present
+83,17440,263652,0,book,5.16,adult present,adult present
+83,17440,263652,0,food,5.16,adult present,adult present
+83,17440,263652,0,kitchenware,5.16,adult present,adult present
+83,17440,263652,0,other_object,5.16,adult present,adult present
+83,17440,263652,0,screen,5.16,adult present,adult present
+83,17440,263652,0,toy,5.16,adult present,adult present
+83,19210,263652,0,book,5.16,adult present,adult present
+83,19210,263652,0,food,5.16,adult present,adult present
+83,19210,263652,0,kitchenware,5.16,adult present,adult present
+83,19210,263652,0,other_object,5.16,adult present,adult present
+83,19210,263652,0,screen,5.16,adult present,adult present
+83,19210,263652,0,toy,5.16,adult present,adult present
+83,19850,263652,0,book,5.16,adult present,adult present
+83,19850,263652,0,food,5.16,adult present,adult present
+83,19850,263652,0,kitchenware,5.16,adult present,adult present
+83,19850,263652,0,other_object,5.16,adult present,adult present
+83,19850,263652,0,screen,5.16,adult present,adult present
+83,19850,263652,0,toy,5.16,adult present,adult present
+83,19860,263652,0,book,5.16,adult present,adult present
+83,19860,263652,0,food,5.16,adult present,adult present
+83,19860,263652,0,kitchenware,5.16,adult present,adult present
+83,19860,263652,0,other_object,5.16,adult present,adult present
+83,19860,263652,0,screen,5.16,adult present,adult present
+83,19860,263652,0,toy,5.16,adult present,adult present
+83,20590,263652,0,book,5.16,adult present,adult present
+83,20590,263652,0,food,5.16,adult present,adult present
+83,20590,263652,0,kitchenware,5.16,adult present,adult present
+83,20590,263652,0,other_object,5.16,adult present,adult present
+83,20590,263652,0,screen,5.16,adult present,adult present
+83,20590,263652,0,toy,5.16,adult present,adult present
+83,22050,263652,0,book,5.16,adult present,adult present
+83,22050,263652,0,food,5.16,adult present,adult present
+83,22050,263652,0,kitchenware,5.16,adult present,adult present
+83,22050,263652,0,other_object,5.16,adult present,adult present
+83,22050,263652,0,screen,5.16,adult present,adult present
+83,22050,263652,0,toy,5.16,adult present,adult present
+83,22070,263652,0,book,5.16,adult present,adult present
+83,22070,263652,0,food,5.16,adult present,adult present
+83,22070,263652,0,kitchenware,5.16,adult present,adult present
+83,22070,263652,0,other_object,5.16,adult present,adult present
+83,22070,263652,0,screen,5.16,adult present,adult present
+83,22070,263652,0,toy,5.16,adult present,adult present
+83,22120,263652,0,book,5.16,adult present,adult present
+83,22120,263652,0,food,5.16,adult present,adult present
+83,22120,263652,0,kitchenware,5.16,adult present,adult present
+83,22120,263652,0,other_object,5.16,adult present,adult present
+83,22120,263652,0,screen,5.16,adult present,adult present
+83,22120,263652,0,toy,5.16,adult present,adult present
+83,22490,263652,0,book,5.16,adult present,adult present
+83,22490,263652,0,food,5.16,adult present,adult present
+83,22490,263652,0,kitchenware,5.16,adult present,adult present
+83,22490,263652,0,other_object,5.16,adult present,adult present
+83,22490,263652,0,screen,5.16,adult present,adult present
+83,22490,263652,0,toy,5.16,adult present,adult present
+83,23480,263652,0,book,5.16,adult present,adult present
+83,23480,263652,0,food,5.16,adult present,adult present
+83,23480,263652,0,kitchenware,5.16,adult present,adult present
+83,23480,263652,0,other_object,5.16,adult present,adult present
+83,23480,263652,0,screen,5.16,adult present,adult present
+83,23480,263652,0,toy,5.16,adult present,adult present
+424,700,264351,0,book,4.12,alone,alone
+424,700,264351,0,food,4.12,alone,alone
+424,700,264351,0,kitchenware,4.12,alone,alone
+424,700,264351,0,other_object,4.12,alone,alone
+424,700,264351,0,screen,4.12,alone,alone
+424,700,264351,0,toy,4.12,alone,alone
+424,2680,264351,0,book,4.12,alone,alone
+424,2680,264351,0,food,4.12,alone,alone
+424,2680,264351,0,kitchenware,4.12,alone,alone
+424,2680,264351,0,other_object,4.12,alone,alone
+424,2680,264351,0,screen,4.12,alone,alone
+424,2680,264351,0,toy,4.12,alone,alone
+424,4700,264351,0,book,4.12,alone,alone
+424,4700,264351,0,food,4.12,alone,alone
+424,4700,264351,0,kitchenware,4.12,alone,alone
+424,4700,264351,0,other_object,4.12,alone,alone
+424,4700,264351,0,screen,4.12,alone,alone
+424,4700,264351,0,toy,4.12,alone,alone
+424,5970,264351,0,book,4.12,alone,alone
+424,5970,264351,0,food,4.12,alone,alone
+424,5970,264351,0,kitchenware,4.12,alone,alone
+424,5970,264351,0,other_object,4.12,alone,alone
+424,5970,264351,0,screen,4.12,alone,alone
+424,5970,264351,0,toy,4.12,alone,alone
+424,6200,264351,0,book,4.12,alone,alone
+424,6200,264351,0,food,4.12,alone,alone
+424,6200,264351,0,kitchenware,4.12,alone,alone
+424,6200,264351,0,other_object,4.12,alone,alone
+424,6200,264351,0,screen,4.12,alone,alone
+424,6200,264351,1,toy,4.12,alone,alone
+424,7260,264351,0,book,4.12,adult present,adult present
+424,7260,264351,0,food,4.12,adult present,adult present
+424,7260,264351,0,kitchenware,4.12,adult present,adult present
+424,7260,264351,0,other_object,4.12,adult present,adult present
+424,7260,264351,0,screen,4.12,adult present,adult present
+424,7260,264351,1,toy,4.12,adult present,adult present
+424,7350,264351,0,book,4.12,adult present,adult present
+424,7350,264351,0,food,4.12,adult present,adult present
+424,7350,264351,0,kitchenware,4.12,adult present,adult present
+424,7350,264351,0,other_object,4.12,adult present,adult present
+424,7350,264351,0,screen,4.12,adult present,adult present
+424,7350,264351,0,toy,4.12,adult present,adult present
+424,7450,264351,0,book,4.12,adult present,adult present
+424,7450,264351,0,food,4.12,adult present,adult present
+424,7450,264351,0,kitchenware,4.12,adult present,adult present
+424,7450,264351,0,other_object,4.12,adult present,adult present
+424,7450,264351,0,screen,4.12,adult present,adult present
+424,7450,264351,1,toy,4.12,adult present,adult present
+424,8000,264351,0,book,4.12,adult present,adult present
+424,8000,264351,0,food,4.12,adult present,adult present
+424,8000,264351,0,kitchenware,4.12,adult present,adult present
+424,8000,264351,0,other_object,4.12,adult present,adult present
+424,8000,264351,0,screen,4.12,adult present,adult present
+424,8000,264351,0,toy,4.12,adult present,adult present
+424,8470,264351,0,book,4.12,adult present,adult present
+424,8470,264351,0,food,4.12,adult present,adult present
+424,8470,264351,0,kitchenware,4.12,adult present,adult present
+424,8470,264351,0,other_object,4.12,adult present,adult present
+424,8470,264351,0,screen,4.12,adult present,adult present
+424,8470,264351,0,toy,4.12,adult present,adult present
+424,8980,264351,0,book,4.12,adult present,adult present
+424,8980,264351,0,food,4.12,adult present,adult present
+424,8980,264351,0,kitchenware,4.12,adult present,adult present
+424,8980,264351,0,other_object,4.12,adult present,adult present
+424,8980,264351,0,screen,4.12,adult present,adult present
+424,8980,264351,1,toy,4.12,adult present,adult present
+424,9260,264351,0,book,4.12,adult present,adult present
+424,9260,264351,0,food,4.12,adult present,adult present
+424,9260,264351,0,kitchenware,4.12,adult present,adult present
+424,9260,264351,0,other_object,4.12,adult present,adult present
+424,9260,264351,0,screen,4.12,adult present,adult present
+424,9260,264351,0,toy,4.12,adult present,adult present
+424,9900,264351,0,book,4.12,adult present,adult present
+424,9900,264351,0,food,4.12,adult present,adult present
+424,9900,264351,0,kitchenware,4.12,adult present,adult present
+424,9900,264351,0,other_object,4.12,adult present,adult present
+424,9900,264351,0,screen,4.12,adult present,adult present
+424,9900,264351,0,toy,4.12,adult present,adult present
+424,10670,264351,0,book,4.12,adult present,adult present
+424,10670,264351,0,food,4.12,adult present,adult present
+424,10670,264351,0,kitchenware,4.12,adult present,adult present
+424,10670,264351,0,other_object,4.12,adult present,adult present
+424,10670,264351,0,screen,4.12,adult present,adult present
+424,10670,264351,0,toy,4.12,adult present,adult present
+424,10880,264351,0,book,4.12,adult present,adult present
+424,10880,264351,0,food,4.12,adult present,adult present
+424,10880,264351,0,kitchenware,4.12,adult present,adult present
+424,10880,264351,0,other_object,4.12,adult present,adult present
+424,10880,264351,0,screen,4.12,adult present,adult present
+424,10880,264351,0,toy,4.12,adult present,adult present
+424,11410,264351,0,book,4.12,adult present,adult present
+424,11410,264351,0,food,4.12,adult present,adult present
+424,11410,264351,0,kitchenware,4.12,adult present,adult present
+424,11410,264351,0,other_object,4.12,adult present,adult present
+424,11410,264351,0,screen,4.12,adult present,adult present
+424,11410,264351,0,toy,4.12,adult present,adult present
+424,11790,264351,0,book,4.12,adult present,adult present
+424,11790,264351,0,food,4.12,adult present,adult present
+424,11790,264351,0,kitchenware,4.12,adult present,adult present
+424,11790,264351,0,other_object,4.12,adult present,adult present
+424,11790,264351,0,screen,4.12,adult present,adult present
+424,11790,264351,0,toy,4.12,adult present,adult present
+424,13120,264351,0,book,4.12,alone,alone
+424,13120,264351,0,food,4.12,alone,alone
+424,13120,264351,0,kitchenware,4.12,alone,alone
+424,13120,264351,0,other_object,4.12,alone,alone
+424,13120,264351,0,screen,4.12,alone,alone
+424,13120,264351,0,toy,4.12,alone,alone
+424,13280,264351,0,book,4.12,alone,alone
+424,13280,264351,0,food,4.12,alone,alone
+424,13280,264351,0,kitchenware,4.12,alone,alone
+424,13280,264351,1,other_object,4.12,alone,alone
+424,13280,264351,0,screen,4.12,alone,alone
+424,13280,264351,1,toy,4.12,alone,alone
+424,13360,264351,0,book,4.12,adult present,adult present
+424,13360,264351,0,food,4.12,adult present,adult present
+424,13360,264351,0,kitchenware,4.12,adult present,adult present
+424,13360,264351,0,other_object,4.12,adult present,adult present
+424,13360,264351,0,screen,4.12,adult present,adult present
+424,13360,264351,0,toy,4.12,adult present,adult present
+424,14300,264351,0,book,4.12,adult present,adult present
+424,14300,264351,0,food,4.12,adult present,adult present
+424,14300,264351,0,kitchenware,4.12,adult present,adult present
+424,14300,264351,0,other_object,4.12,adult present,adult present
+424,14300,264351,0,screen,4.12,adult present,adult present
+424,14300,264351,0,toy,4.12,adult present,adult present
+424,15790,264351,0,book,4.12,adult present,adult present
+424,15790,264351,0,food,4.12,adult present,adult present
+424,15790,264351,0,kitchenware,4.12,adult present,adult present
+424,15790,264351,0,other_object,4.12,adult present,adult present
+424,15790,264351,0,screen,4.12,adult present,adult present
+424,15790,264351,0,toy,4.12,adult present,adult present
+424,15800,264351,0,book,4.12,adult present,adult present
+424,15800,264351,0,food,4.12,adult present,adult present
+424,15800,264351,0,kitchenware,4.12,adult present,adult present
+424,15800,264351,0,other_object,4.12,adult present,adult present
+424,15800,264351,0,screen,4.12,adult present,adult present
+424,15800,264351,0,toy,4.12,adult present,adult present
+424,15810,264351,0,book,4.12,adult present,adult present
+424,15810,264351,0,food,4.12,adult present,adult present
+424,15810,264351,0,kitchenware,4.12,adult present,adult present
+424,15810,264351,0,other_object,4.12,adult present,adult present
+424,15810,264351,0,screen,4.12,adult present,adult present
+424,15810,264351,0,toy,4.12,adult present,adult present
+424,16360,264351,0,book,4.12,adult present,adult present
+424,16360,264351,0,food,4.12,adult present,adult present
+424,16360,264351,0,kitchenware,4.12,adult present,adult present
+424,16360,264351,0,other_object,4.12,adult present,adult present
+424,16360,264351,0,screen,4.12,adult present,adult present
+424,16360,264351,0,toy,4.12,adult present,adult present
+424,16420,264351,0,book,4.12,adult present,adult present
+424,16420,264351,0,food,4.12,adult present,adult present
+424,16420,264351,0,kitchenware,4.12,adult present,adult present
+424,16420,264351,0,other_object,4.12,adult present,adult present
+424,16420,264351,0,screen,4.12,adult present,adult present
+424,16420,264351,0,toy,4.12,adult present,adult present
+424,18660,264351,0,book,4.12,adult present,adult present
+424,18660,264351,0,food,4.12,adult present,adult present
+424,18660,264351,0,kitchenware,4.12,adult present,adult present
+424,18660,264351,0,other_object,4.12,adult present,adult present
+424,18660,264351,0,screen,4.12,adult present,adult present
+424,18660,264351,0,toy,4.12,adult present,adult present
+424,18690,264351,0,book,4.12,adult present,adult present
+424,18690,264351,0,food,4.12,adult present,adult present
+424,18690,264351,0,kitchenware,4.12,adult present,adult present
+424,18690,264351,0,other_object,4.12,adult present,adult present
+424,18690,264351,0,screen,4.12,adult present,adult present
+424,18690,264351,0,toy,4.12,adult present,adult present
+424,19440,264351,0,book,4.12,alone,alone
+424,19440,264351,0,food,4.12,alone,alone
+424,19440,264351,0,kitchenware,4.12,alone,alone
+424,19440,264351,0,other_object,4.12,alone,alone
+424,19440,264351,0,screen,4.12,alone,alone
+424,19440,264351,0,toy,4.12,alone,alone
+424,19710,264351,0,book,4.12,adult present,adult present
+424,19710,264351,0,food,4.12,adult present,adult present
+424,19710,264351,0,kitchenware,4.12,adult present,adult present
+424,19710,264351,0,other_object,4.12,adult present,adult present
+424,19710,264351,0,screen,4.12,adult present,adult present
+424,19710,264351,0,toy,4.12,adult present,adult present
+424,19950,264351,0,book,4.12,adult present,adult present
+424,19950,264351,0,food,4.12,adult present,adult present
+424,19950,264351,0,kitchenware,4.12,adult present,adult present
+424,19950,264351,0,other_object,4.12,adult present,adult present
+424,19950,264351,0,screen,4.12,adult present,adult present
+424,19950,264351,0,toy,4.12,adult present,adult present
+424,20000,264351,0,book,4.12,adult present,adult present
+424,20000,264351,0,food,4.12,adult present,adult present
+424,20000,264351,0,kitchenware,4.12,adult present,adult present
+424,20000,264351,0,other_object,4.12,adult present,adult present
+424,20000,264351,0,screen,4.12,adult present,adult present
+424,20000,264351,0,toy,4.12,adult present,adult present
+424,20430,264351,0,book,4.12,adult present,adult present
+424,20430,264351,0,food,4.12,adult present,adult present
+424,20430,264351,0,kitchenware,4.12,adult present,adult present
+424,20430,264351,0,other_object,4.12,adult present,adult present
+424,20430,264351,0,screen,4.12,adult present,adult present
+424,20430,264351,0,toy,4.12,adult present,adult present
+424,20700,264351,0,book,4.12,alone,alone
+424,20700,264351,0,food,4.12,alone,alone
+424,20700,264351,0,kitchenware,4.12,alone,alone
+424,20700,264351,0,other_object,4.12,alone,alone
+424,20700,264351,0,screen,4.12,alone,alone
+424,20700,264351,0,toy,4.12,alone,alone
+424,21670,264351,0,book,4.12,adult present,adult present
+424,21670,264351,0,food,4.12,adult present,adult present
+424,21670,264351,0,kitchenware,4.12,adult present,adult present
+424,21670,264351,0,other_object,4.12,adult present,adult present
+424,21670,264351,0,screen,4.12,adult present,adult present
+424,21670,264351,0,toy,4.12,adult present,adult present
+424,22060,264351,0,book,4.12,adult present,adult present
+424,22060,264351,0,food,4.12,adult present,adult present
+424,22060,264351,0,kitchenware,4.12,adult present,adult present
+424,22060,264351,0,other_object,4.12,adult present,adult present
+424,22060,264351,0,screen,4.12,adult present,adult present
+424,22060,264351,1,toy,4.12,adult present,adult present
+424,22420,264351,0,book,4.12,adult present,adult present
+424,22420,264351,0,food,4.12,adult present,adult present
+424,22420,264351,0,kitchenware,4.12,adult present,adult present
+424,22420,264351,0,other_object,4.12,adult present,adult present
+424,22420,264351,0,screen,4.12,adult present,adult present
+424,22420,264351,0,toy,4.12,adult present,adult present
+424,23180,264351,0,book,4.12,child present,child present
+424,23180,264351,0,food,4.12,child present,child present
+424,23180,264351,0,kitchenware,4.12,child present,child present
+424,23180,264351,0,other_object,4.12,child present,child present
+424,23180,264351,0,screen,4.12,child present,child present
+424,23180,264351,1,toy,4.12,child present,child present
+424,24020,264351,0,book,4.12,adult present,adult present
+424,24020,264351,0,food,4.12,adult present,adult present
+424,24020,264351,0,kitchenware,4.12,adult present,adult present
+424,24020,264351,0,other_object,4.12,adult present,adult present
+424,24020,264351,0,screen,4.12,adult present,adult present
+424,24020,264351,0,toy,4.12,adult present,adult present
+424,24150,264351,0,book,4.12,adult present,adult present
+424,24150,264351,0,food,4.12,adult present,adult present
+424,24150,264351,0,kitchenware,4.12,adult present,adult present
+424,24150,264351,0,other_object,4.12,adult present,adult present
+424,24150,264351,0,screen,4.12,adult present,adult present
+424,24150,264351,0,toy,4.12,adult present,adult present
+424,24300,264351,0,book,4.12,adult present,adult present
+424,24300,264351,0,food,4.12,adult present,adult present
+424,24300,264351,0,kitchenware,4.12,adult present,adult present
+424,24300,264351,1,other_object,4.12,adult present,adult present
+424,24300,264351,0,screen,4.12,adult present,adult present
+424,24300,264351,0,toy,4.12,adult present,adult present
+424,25130,264351,0,book,4.12,adult present,adult present
+424,25130,264351,0,food,4.12,adult present,adult present
+424,25130,264351,0,kitchenware,4.12,adult present,adult present
+424,25130,264351,0,other_object,4.12,adult present,adult present
+424,25130,264351,0,screen,4.12,adult present,adult present
+424,25130,264351,0,toy,4.12,adult present,adult present
+424,25390,264351,0,book,4.12,adult present,adult present
+424,25390,264351,0,food,4.12,adult present,adult present
+424,25390,264351,0,kitchenware,4.12,adult present,adult present
+424,25390,264351,1,other_object,4.12,adult present,adult present
+424,25390,264351,0,screen,4.12,adult present,adult present
+424,25390,264351,0,toy,4.12,adult present,adult present
+424,25680,264351,0,book,4.12,adult present,adult present
+424,25680,264351,0,food,4.12,adult present,adult present
+424,25680,264351,0,kitchenware,4.12,adult present,adult present
+424,25680,264351,0,other_object,4.12,adult present,adult present
+424,25680,264351,0,screen,4.12,adult present,adult present
+424,25680,264351,0,toy,4.12,adult present,adult present
+424,26410,264351,0,book,4.12,adult present,adult present
+424,26410,264351,0,food,4.12,adult present,adult present
+424,26410,264351,0,kitchenware,4.12,adult present,adult present
+424,26410,264351,0,other_object,4.12,adult present,adult present
+424,26410,264351,0,screen,4.12,adult present,adult present
+424,26410,264351,0,toy,4.12,adult present,adult present
+424,26710,264351,0,book,4.12,alone,alone
+424,26710,264351,0,food,4.12,alone,alone
+424,26710,264351,0,kitchenware,4.12,alone,alone
+424,26710,264351,0,other_object,4.12,alone,alone
+424,26710,264351,0,screen,4.12,alone,alone
+424,26710,264351,0,toy,4.12,alone,alone
+424,26860,264351,0,book,4.12,adult present,adult present
+424,26860,264351,0,food,4.12,adult present,adult present
+424,26860,264351,0,kitchenware,4.12,adult present,adult present
+424,26860,264351,0,other_object,4.12,adult present,adult present
+424,26860,264351,0,screen,4.12,adult present,adult present
+424,26860,264351,0,toy,4.12,adult present,adult present
+424,27280,264351,0,book,4.12,adult present,adult present
+424,27280,264351,0,food,4.12,adult present,adult present
+424,27280,264351,0,kitchenware,4.12,adult present,adult present
+424,27280,264351,0,other_object,4.12,adult present,adult present
+424,27280,264351,0,screen,4.12,adult present,adult present
+424,27280,264351,0,toy,4.12,adult present,adult present
+424,27310,264351,0,book,4.12,adult present,adult present
+424,27310,264351,0,food,4.12,adult present,adult present
+424,27310,264351,0,kitchenware,4.12,adult present,adult present
+424,27310,264351,0,other_object,4.12,adult present,adult present
+424,27310,264351,0,screen,4.12,adult present,adult present
+424,27310,264351,0,toy,4.12,adult present,adult present
+424,28210,264351,0,book,4.12,adult present,adult present
+424,28210,264351,0,food,4.12,adult present,adult present
+424,28210,264351,0,kitchenware,4.12,adult present,adult present
+424,28210,264351,0,other_object,4.12,adult present,adult present
+424,28210,264351,0,screen,4.12,adult present,adult present
+424,28210,264351,0,toy,4.12,adult present,adult present
+424,29190,264351,0,book,4.12,adult present,adult present
+424,29190,264351,0,food,4.12,adult present,adult present
+424,29190,264351,0,kitchenware,4.12,adult present,adult present
+424,29190,264351,0,other_object,4.12,adult present,adult present
+424,29190,264351,0,screen,4.12,adult present,adult present
+424,29190,264351,0,toy,4.12,adult present,adult present
+424,32890,264351,0,book,4.12,adult present,adult present
+424,32890,264351,0,food,4.12,adult present,adult present
+424,32890,264351,0,kitchenware,4.12,adult present,adult present
+424,32890,264351,0,other_object,4.12,adult present,adult present
+424,32890,264351,0,screen,4.12,adult present,adult present
+424,32890,264351,0,toy,4.12,adult present,adult present
+424,33180,264351,0,book,4.12,adult present,adult present
+424,33180,264351,0,food,4.12,adult present,adult present
+424,33180,264351,0,kitchenware,4.12,adult present,adult present
+424,33180,264351,0,other_object,4.12,adult present,adult present
+424,33180,264351,0,screen,4.12,adult present,adult present
+424,33180,264351,0,toy,4.12,adult present,adult present
+424,33970,264351,0,book,4.12,adult present,adult present
+424,33970,264351,0,food,4.12,adult present,adult present
+424,33970,264351,0,kitchenware,4.12,adult present,adult present
+424,33970,264351,0,other_object,4.12,adult present,adult present
+424,33970,264351,0,screen,4.12,adult present,adult present
+424,33970,264351,0,toy,4.12,adult present,adult present
+424,34570,264351,0,book,4.12,adult present,adult present
+424,34570,264351,0,food,4.12,adult present,adult present
+424,34570,264351,0,kitchenware,4.12,adult present,adult present
+424,34570,264351,1,other_object,4.12,adult present,adult present
+424,34570,264351,0,screen,4.12,adult present,adult present
+424,34570,264351,0,toy,4.12,adult present,adult present
+424,35310,264351,0,book,4.12,adult present,adult present
+424,35310,264351,0,food,4.12,adult present,adult present
+424,35310,264351,0,kitchenware,4.12,adult present,adult present
+424,35310,264351,0,other_object,4.12,adult present,adult present
+424,35310,264351,0,screen,4.12,adult present,adult present
+424,35310,264351,1,toy,4.12,adult present,adult present
+424,35430,264351,0,book,4.12,adult present,adult present
+424,35430,264351,0,food,4.12,adult present,adult present
+424,35430,264351,0,kitchenware,4.12,adult present,adult present
+424,35430,264351,0,other_object,4.12,adult present,adult present
+424,35430,264351,0,screen,4.12,adult present,adult present
+424,35430,264351,1,toy,4.12,adult present,adult present
+424,36360,264351,0,book,4.12,adult present,adult present
+424,36360,264351,0,food,4.12,adult present,adult present
+424,36360,264351,0,kitchenware,4.12,adult present,adult present
+424,36360,264351,0,other_object,4.12,adult present,adult present
+424,36360,264351,0,screen,4.12,adult present,adult present
+424,36360,264351,0,toy,4.12,adult present,adult present
+424,36370,264351,0,book,4.12,adult present,adult present
+424,36370,264351,0,food,4.12,adult present,adult present
+424,36370,264351,0,kitchenware,4.12,adult present,adult present
+424,36370,264351,0,other_object,4.12,adult present,adult present
+424,36370,264351,0,screen,4.12,adult present,adult present
+424,36370,264351,0,toy,4.12,adult present,adult present
+424,38130,264351,0,book,4.12,adult present,adult present
+424,38130,264351,0,food,4.12,adult present,adult present
+424,38130,264351,0,kitchenware,4.12,adult present,adult present
+424,38130,264351,0,other_object,4.12,adult present,adult present
+424,38130,264351,0,screen,4.12,adult present,adult present
+424,38130,264351,0,toy,4.12,adult present,adult present
+424,38590,264351,0,book,4.12,adult present,adult present
+424,38590,264351,0,food,4.12,adult present,adult present
+424,38590,264351,0,kitchenware,4.12,adult present,adult present
+424,38590,264351,0,other_object,4.12,adult present,adult present
+424,38590,264351,0,screen,4.12,adult present,adult present
+424,38590,264351,0,toy,4.12,adult present,adult present
+424,39200,264351,0,book,4.12,adult present,adult present
+424,39200,264351,0,food,4.12,adult present,adult present
+424,39200,264351,0,kitchenware,4.12,adult present,adult present
+424,39200,264351,0,other_object,4.12,adult present,adult present
+424,39200,264351,0,screen,4.12,adult present,adult present
+424,39200,264351,0,toy,4.12,adult present,adult present
+424,39920,264351,0,book,4.12,adult present,adult present
+424,39920,264351,0,food,4.12,adult present,adult present
+424,39920,264351,0,kitchenware,4.12,adult present,adult present
+424,39920,264351,0,other_object,4.12,adult present,adult present
+424,39920,264351,0,screen,4.12,adult present,adult present
+424,39920,264351,0,toy,4.12,adult present,adult present
+424,40250,264351,0,book,4.12,adult present,adult present
+424,40250,264351,0,food,4.12,adult present,adult present
+424,40250,264351,0,kitchenware,4.12,adult present,adult present
+424,40250,264351,0,other_object,4.12,adult present,adult present
+424,40250,264351,0,screen,4.12,adult present,adult present
+424,40250,264351,0,toy,4.12,adult present,adult present
+424,41700,264351,0,book,4.12,alone,alone
+424,41700,264351,0,food,4.12,alone,alone
+424,41700,264351,0,kitchenware,4.12,alone,alone
+424,41700,264351,0,other_object,4.12,alone,alone
+424,41700,264351,0,screen,4.12,alone,alone
+424,41700,264351,0,toy,4.12,alone,alone
+424,41900,264351,0,book,4.12,alone,alone
+424,41900,264351,0,food,4.12,alone,alone
+424,41900,264351,0,kitchenware,4.12,alone,alone
+424,41900,264351,1,other_object,4.12,alone,alone
+424,41900,264351,0,screen,4.12,alone,alone
+424,41900,264351,0,toy,4.12,alone,alone
+424,43860,264351,0,book,4.12,child and adult present,child and adult present
+424,43860,264351,0,food,4.12,child and adult present,child and adult present
+424,43860,264351,0,kitchenware,4.12,child and adult present,child and adult present
+424,43860,264351,0,other_object,4.12,child and adult present,child and adult present
+424,43860,264351,0,screen,4.12,child and adult present,child and adult present
+424,43860,264351,0,toy,4.12,child and adult present,child and adult present
+424,44090,264351,0,book,4.12,alone,alone
+424,44090,264351,0,food,4.12,alone,alone
+424,44090,264351,0,kitchenware,4.12,alone,alone
+424,44090,264351,1,other_object,4.12,alone,alone
+424,44090,264351,0,screen,4.12,alone,alone
+424,44090,264351,0,toy,4.12,alone,alone
+424,44120,264351,0,book,4.12,alone,alone
+424,44120,264351,0,food,4.12,alone,alone
+424,44120,264351,0,kitchenware,4.12,alone,alone
+424,44120,264351,1,other_object,4.12,alone,alone
+424,44120,264351,0,screen,4.12,alone,alone
+424,44120,264351,0,toy,4.12,alone,alone
+424,44230,264351,0,book,4.12,adult present,adult present
+424,44230,264351,0,food,4.12,adult present,adult present
+424,44230,264351,0,kitchenware,4.12,adult present,adult present
+424,44230,264351,0,other_object,4.12,adult present,adult present
+424,44230,264351,0,screen,4.12,adult present,adult present
+424,44230,264351,0,toy,4.12,adult present,adult present
+424,44980,264351,1,book,4.12,alone,alone
+424,44980,264351,0,food,4.12,alone,alone
+424,44980,264351,0,kitchenware,4.12,alone,alone
+424,44980,264351,0,other_object,4.12,alone,alone
+424,44980,264351,0,screen,4.12,alone,alone
+424,44980,264351,0,toy,4.12,alone,alone
+424,46430,264351,0,book,4.12,alone,alone
+424,46430,264351,0,food,4.12,alone,alone
+424,46430,264351,0,kitchenware,4.12,alone,alone
+424,46430,264351,0,other_object,4.12,alone,alone
+424,46430,264351,0,screen,4.12,alone,alone
+424,46430,264351,0,toy,4.12,alone,alone
+424,49070,264351,0,book,4.12,alone,alone
+424,49070,264351,0,food,4.12,alone,alone
+424,49070,264351,0,kitchenware,4.12,alone,alone
+424,49070,264351,0,other_object,4.12,alone,alone
+424,49070,264351,0,screen,4.12,alone,alone
+424,49070,264351,0,toy,4.12,alone,alone
+424,50580,264351,0,book,4.12,alone,alone
+424,50580,264351,0,food,4.12,alone,alone
+424,50580,264351,0,kitchenware,4.12,alone,alone
+424,50580,264351,0,other_object,4.12,alone,alone
+424,50580,264351,0,screen,4.12,alone,alone
+424,50580,264351,0,toy,4.12,alone,alone
+424,50900,264351,0,book,4.12,child and adult present,child and adult present
+424,50900,264351,0,food,4.12,child and adult present,child and adult present
+424,50900,264351,0,kitchenware,4.12,child and adult present,child and adult present
+424,50900,264351,0,other_object,4.12,child and adult present,child and adult present
+424,50900,264351,0,screen,4.12,child and adult present,child and adult present
+424,50900,264351,0,toy,4.12,child and adult present,child and adult present
+424,51330,264351,0,book,4.12,child and adult present,child and adult present
+424,51330,264351,0,food,4.12,child and adult present,child and adult present
+424,51330,264351,0,kitchenware,4.12,child and adult present,child and adult present
+424,51330,264351,0,other_object,4.12,child and adult present,child and adult present
+424,51330,264351,0,screen,4.12,child and adult present,child and adult present
+424,51330,264351,0,toy,4.12,child and adult present,child and adult present
+424,51350,264351,0,book,4.12,adult present,adult present
+424,51350,264351,0,food,4.12,adult present,adult present
+424,51350,264351,0,kitchenware,4.12,adult present,adult present
+424,51350,264351,0,other_object,4.12,adult present,adult present
+424,51350,264351,0,screen,4.12,adult present,adult present
+424,51350,264351,0,toy,4.12,adult present,adult present
+424,52250,264351,0,book,4.12,adult present,adult present
+424,52250,264351,0,food,4.12,adult present,adult present
+424,52250,264351,0,kitchenware,4.12,adult present,adult present
+424,52250,264351,0,other_object,4.12,adult present,adult present
+424,52250,264351,0,screen,4.12,adult present,adult present
+424,52250,264351,0,toy,4.12,adult present,adult present
+424,53710,264351,0,book,4.12,adult present,adult present
+424,53710,264351,0,food,4.12,adult present,adult present
+424,53710,264351,0,kitchenware,4.12,adult present,adult present
+424,53710,264351,0,other_object,4.12,adult present,adult present
+424,53710,264351,0,screen,4.12,adult present,adult present
+424,53710,264351,0,toy,4.12,adult present,adult present
+424,53930,264351,0,book,4.12,adult present,adult present
+424,53930,264351,0,food,4.12,adult present,adult present
+424,53930,264351,0,kitchenware,4.12,adult present,adult present
+424,53930,264351,0,other_object,4.12,adult present,adult present
+424,53930,264351,0,screen,4.12,adult present,adult present
+424,53930,264351,0,toy,4.12,adult present,adult present
+28,120,265834,0,book,3.68,alone,alone
+28,120,265834,0,food,3.68,alone,alone
+28,120,265834,0,kitchenware,3.68,alone,alone
+28,120,265834,0,other_object,3.68,alone,alone
+28,120,265834,0,screen,3.68,alone,alone
+28,120,265834,0,toy,3.68,alone,alone
+28,1000,265834,0,book,3.68,alone,alone
+28,1000,265834,0,food,3.68,alone,alone
+28,1000,265834,0,kitchenware,3.68,alone,alone
+28,1000,265834,0,other_object,3.68,alone,alone
+28,1000,265834,0,screen,3.68,alone,alone
+28,1000,265834,0,toy,3.68,alone,alone
+28,4280,265834,0,book,3.68,alone,alone
+28,4280,265834,0,food,3.68,alone,alone
+28,4280,265834,0,kitchenware,3.68,alone,alone
+28,4280,265834,0,other_object,3.68,alone,alone
+28,4280,265834,0,screen,3.68,alone,alone
+28,4280,265834,0,toy,3.68,alone,alone
+28,4630,265834,0,book,3.68,child and adult present,child and adult present
+28,4630,265834,0,food,3.68,child and adult present,child and adult present
+28,4630,265834,0,kitchenware,3.68,child and adult present,child and adult present
+28,4630,265834,0,other_object,3.68,child and adult present,child and adult present
+28,4630,265834,0,screen,3.68,child and adult present,child and adult present
+28,4630,265834,0,toy,3.68,child and adult present,child and adult present
+28,4690,265834,0,book,3.68,adult present,adult present
+28,4690,265834,0,food,3.68,adult present,adult present
+28,4690,265834,0,kitchenware,3.68,adult present,adult present
+28,4690,265834,0,other_object,3.68,adult present,adult present
+28,4690,265834,0,screen,3.68,adult present,adult present
+28,4690,265834,0,toy,3.68,adult present,adult present
+28,4760,265834,0,book,3.68,adult present,adult present
+28,4760,265834,0,food,3.68,adult present,adult present
+28,4760,265834,0,kitchenware,3.68,adult present,adult present
+28,4760,265834,0,other_object,3.68,adult present,adult present
+28,4760,265834,0,screen,3.68,adult present,adult present
+28,4760,265834,0,toy,3.68,adult present,adult present
+28,5030,265834,0,book,3.68,adult present,adult present
+28,5030,265834,0,food,3.68,adult present,adult present
+28,5030,265834,0,kitchenware,3.68,adult present,adult present
+28,5030,265834,0,other_object,3.68,adult present,adult present
+28,5030,265834,0,screen,3.68,adult present,adult present
+28,5030,265834,0,toy,3.68,adult present,adult present
+28,5790,265834,0,book,3.68,adult present,adult present
+28,5790,265834,0,food,3.68,adult present,adult present
+28,5790,265834,0,kitchenware,3.68,adult present,adult present
+28,5790,265834,0,other_object,3.68,adult present,adult present
+28,5790,265834,0,screen,3.68,adult present,adult present
+28,5790,265834,0,toy,3.68,adult present,adult present
+28,6650,265834,0,book,3.68,adult present,adult present
+28,6650,265834,0,food,3.68,adult present,adult present
+28,6650,265834,0,kitchenware,3.68,adult present,adult present
+28,6650,265834,0,other_object,3.68,adult present,adult present
+28,6650,265834,0,screen,3.68,adult present,adult present
+28,6650,265834,0,toy,3.68,adult present,adult present
+28,6980,265834,0,book,3.68,adult present,adult present
+28,6980,265834,0,food,3.68,adult present,adult present
+28,6980,265834,0,kitchenware,3.68,adult present,adult present
+28,6980,265834,0,other_object,3.68,adult present,adult present
+28,6980,265834,0,screen,3.68,adult present,adult present
+28,6980,265834,0,toy,3.68,adult present,adult present
+28,7130,265834,0,book,3.68,adult present,adult present
+28,7130,265834,0,food,3.68,adult present,adult present
+28,7130,265834,0,kitchenware,3.68,adult present,adult present
+28,7130,265834,0,other_object,3.68,adult present,adult present
+28,7130,265834,0,screen,3.68,adult present,adult present
+28,7130,265834,0,toy,3.68,adult present,adult present
+494,620,266063,0,book,3.52,alone,alone
+494,620,266063,0,food,3.52,alone,alone
+494,620,266063,0,kitchenware,3.52,alone,alone
+494,620,266063,0,other_object,3.52,alone,alone
+494,620,266063,0,screen,3.52,alone,alone
+494,620,266063,1,toy,3.52,alone,alone
+494,750,266063,0,book,3.52,alone,alone
+494,750,266063,0,food,3.52,alone,alone
+494,750,266063,0,kitchenware,3.52,alone,alone
+494,750,266063,1,other_object,3.52,alone,alone
+494,750,266063,0,screen,3.52,alone,alone
+494,750,266063,1,toy,3.52,alone,alone
+494,1820,266063,0,book,3.52,child present,child present
+494,1820,266063,0,food,3.52,child present,child present
+494,1820,266063,0,kitchenware,3.52,child present,child present
+494,1820,266063,0,other_object,3.52,child present,child present
+494,1820,266063,0,screen,3.52,child present,child present
+494,1820,266063,0,toy,3.52,child present,child present
+494,1900,266063,0,book,3.52,alone,alone
+494,1900,266063,0,food,3.52,alone,alone
+494,1900,266063,0,kitchenware,3.52,alone,alone
+494,1900,266063,0,other_object,3.52,alone,alone
+494,1900,266063,0,screen,3.52,alone,alone
+494,1900,266063,0,toy,3.52,alone,alone
+494,2090,266063,0,book,3.52,alone,alone
+494,2090,266063,0,food,3.52,alone,alone
+494,2090,266063,0,kitchenware,3.52,alone,alone
+494,2090,266063,1,other_object,3.52,alone,alone
+494,2090,266063,0,screen,3.52,alone,alone
+494,2090,266063,0,toy,3.52,alone,alone

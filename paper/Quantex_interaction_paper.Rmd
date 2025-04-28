@@ -46,6 +46,7 @@ keywords: "Quantex Dataset, egocentric video, audio dataset, children, social in
 output:
   papaja::apa6_pdf:
     keep_tex: true
+    extra_dependencies: ["colortbl", "booktabs", "array", "multirow"]
 bibliography: "bibliography.bib"
 
 
@@ -87,6 +88,10 @@ library(magick)
 library(ggplotify)
 library(png)
 library(jpeg)
+library(lme4)
+library(data.table)
+library(broom)
+library(brms)
 
 
 estimate_mode <- function(s) {
@@ -360,41 +365,22 @@ By integrating these modules, our pipeline enables a comprehensive analysis of c
 In the following sections, we describe each module in detail, including training data, model architecture, and evaluation metrics. A full technical analysis of each algorithm is provided in the [Supplementary Material].
 
 ## Yolo11x: Multi-Class Detection of Persons, Faces, and Objects {#yolo11x}
-We used Ultralytics’ YOLO11, the "latest iteration in the YOLO series of real-time object detectors" [@jocherUltralyticsYOLO112024], pretrained on the COCO dataset [@linMicrosoftCOCOCommon2014], which contains labeled images for 80 everyday object categories and is widely used for object detection and segmentation tasks. Released in October 2024, YOLO11 introduces architectural improvements like the C2PSA block for enhanced spatial attention and the C3K2 block for faster, more efficient feature aggregation [@khanamYOLOv11OverviewKey2024]. These advancements make it well-suited for our egocentric dataset, which captures dynamic movements from a chest-mounted camera. We selected YOLO11x, the largest model in the series, with 56.9M parameters and 194.9 GFLOPs. With the highest accuracy (mAP$^{val}_{50-95}$ = 54.7) among YOLO11 variants, it was the best choice for our task, given our available computational resources.
+We used Ultralytics’ YOLO11, a "state-of-the-art real-time object detector" [@jocherUltralyticsYOLO112024], pretrained on COCO [@linMicrosoftCOCOCommon2014]. Released in October 2024, YOLO11 introduces C2PSA and C3K2 blocks for enhanced spatial attention and feature aggregation [@khanamYOLOv11OverviewKey2024]. Given our egocentric dataset’s dynamic nature, we selected YOLO11x, the largest model (56.9M parameters, 194.9 GFLOPs), offering the highest accuracy (mAP$^{val}_{50-95}$ = 54.7) among YOLO11 variants.
 
 ### Dataset Annotation and Preprocessing
-Our egocentric dataset presents challenges as the child’s body parts frequently appear in the footage. To prevent misclassification, we assign all individuals the label “person” with unique IDs, consistently marking the key child (wearing the camera) as ID = 1. During preprocessing, this ID is mapped to a separate “child body parts” category to distinguish the child from others. We refine the “person” and “face” categories beyond standard YOLO models by:
+Egocentric recordings often include the child’s body parts, so we assigned all individuals the label “person” with unique IDs, marking the key child as ID = 1. This ID was later mapped to a “child body parts” category. We refined the “person” and “face” labels by:
 
-- Differentiating the key child from other individuals.
-- Distinguishing adults from children/infants in both full-body detections and faces.
+- Differentiating the key child from others.
+- Distinguishing adults from children/infants in both full-body and face detections.
 
-Our fine-tuned YOLO11x model also classifies five object categories relevant to the child’s interactions: toy, book, kitchenware, screen, and other object. Due to low occurrences, "animal" (19 instances, 0.015%) and "food" (1,115 instances, 0.84%) were included into "other object", leaving five final object categories with at least 2,000 instances each.
+Our fine-tuned YOLO11x model also classifies five key object categories: toy, book, kitchenware, screen, and other object. Due to low occurrences, “animal” and “food” were merged into “other object,” ensuring all final object classes had at least 2,000 instances.
 
-The Quantex dataset consists of `r quantex_num_videos` videos recorded at 30fps, resulting in `r quantex_num_frames` frames. From this, we annotated `r det_total_num_videos` videos (`r det_total_num_frames` frames). To address class imbalance—where “Adult” was the most frequent—we applied a stratified 80/10/10 split, preserving the original class distribution across training (`r num_det_frames_train`), validation (`r num_det_frames_val`), and testing (`r num_det_frames_test`) sets (see Table \@ref(tab:det-dataset-splits-short) and [YOLO11x: Multi-Class Detection of Persons, Faces, and Objects](#sup-yolo11x) in the Supplementary Material for details).
+The Quantex dataset contains `r quantex_num_videos` videos recorded at 30fps, resulting in `r quantex_num_frames` frames. We annotated `r det_total_num_videos` videos (`r det_total_num_frames` frames) and applied a stratified 80/10/10 split to preserve class distributions across training (`r num_det_frames_train`), validation (`r num_det_frames_val`), and testing (`r num_det_frames_test`) sets.
 
-```{r det-dataset-splits-short, echo=FALSE, message=FALSE, warnings=FALSE, results='asis', eval=TRUE}
-my.data <- "                  | Training  | Validation  | Testing | Total
-            Number of frames  | 91039     | 11380       | 11380   | 113799"
-  
-df <- read.delim(textConnection(my.data), header=FALSE, sep="|", strip.white=TRUE, stringsAsFactors=FALSE)
-
-# Set the column names
-names(df) <- unname(as.list(df[1,]))
-df <- df[-1,]  # Remove the first row with column names
-row.names(df) <- NULL
-
-
-# Print the updated table
-apa_table(
-  df,
-  caption = "Number of frames in the training, validation, and testing datasets for the YOLO11 detection model.",
-  escape = FALSE
-)
-```
 ### Training and Evaluation {#training-face}
-Model training was conducted on a Linux server with a Quadro RTX 8000 GPU, 48-core Intel Xeon CPU, and 188 GB RAM. The YOLO11x model was trained for `r det_num_epochs` epochs (`r det_training_time` hours) using an image size of 640, batch size of 16, cosine annealing learning rate scheduling [@loshchilovSGDRStochasticGradient2017], and early stopping after 10 epochs without improvement (max 200 epochs).
+We trained YOLO11x on a Linux server (Quadro RTX 8000 GPU, 48-core Intel Xeon CPU, 188 GB RAM) for `r det_num_epochs` epochs (`r det_training_time` hours) using 640px images, a batch size of 16, cosine annealing learning rate scheduling [@loshchilovSGDRStochasticGradient2017], and early stopping after 10 epochs without improvement(max 200).
 
-The loss function comprises Box Loss, Classification Loss, and Distribution Focal Loss (DFL) [@tervenLossFunctionsMetrics2024; @liGeneralizedFocalLoss2020], ensuring precise localization and classification. All loss components steadily decreased over time, indicating effective learning (see Supplementary Material for detailed loss curves).
+The loss function comprises Box Loss, Classification Loss, and Distribution Focal Loss (DFL) [@tervenLossFunctionsMetrics2024; @liGeneralizedFocalLoss2020], ensuring precise localization and classification. Evaluation with a confusion matrix and precision-recall curves showed strong class separation, achieving a precision of `r det_precision`, recall of `r det_recall`, F1-score of `r det_f1_score`, and mAP of `r det_map` (Table \@ref(tab:det-metrics-short)).
 ```{r det-metrics-short, echo=FALSE, message=FALSE, warnings=FALSE, results='asis', eval=TRUE}
 my.data <- "mAP@0.5 | Precision | Recall  | F1-Score
              0.870  | 0.91      | 0.80    | 0.85"
@@ -442,7 +428,7 @@ final_labeled_layout <- final_layout +
 final_labeled_layout
 ```
 
-Evaluation was conducted using a confusion matrix and precision-recall curves. The model achieved a precision of `r det_precision`, recall of `r det_recall`, and F1-score of `r det_f1_score`, with a mean Average Precision (mAP) of `r det_map` (see Table \@ref(tab:det-metrics-short)). The confusion matrix shows strong class separation, with high AP scores for people and objects like “book” and “screen.” However, “toy” (`r ap_toy`), “kitchenware” (`r ap_kitchenware`), and “other object” (`r ap_other_object`) had lower AP scores, often misclassified as background. This misclassification likely stems from our annotation strategy, which prioritized labeling only objects directly interacted with by the child. As a result, visually similar objects in the background remained unannotated, leading to ambiguity during training. Additionally, “infant/child” and “infant/child face” showed notable false negatives, likely due to occlusions and the limited number of annotated instances. Future improvements could enhance detection by increasing annotated samples and incorporating data augmentation techniques to better handle occluded or unannotated objects. Overall, the model performs well in detecting people, faces, and key object categories, as shown in Figure \@ref(fig:det-detection-examples-short).
+While people, books, and screens had high AP scores, “toy” (`r ap_toy`), “kitchenware” (`r ap_kitchenware`), and “other object” (`r ap_other_object`) were often misclassified as background, likely due to selective annotation of child-interacted objects. Similarly, “infant/child” and “infant/child face” had false negatives, possibly due to occlusions and limited annotated samples. Future improvements could address these issues by expanding annotations and applying data augmentation. Overall, the model effectively detects people, faces, and key objects, as illustrated in Figure \@ref(fig:det-detection-examples-short).
 
 ## Yolo11x-cls: Gaze Classification {#yolo11x-cls}
 ```{r gaze-statistics_short, echo=FALSE, message=FALSE, warning=FALSE}
@@ -550,7 +536,7 @@ Where:
 
 This logarithmic transformation compresses proximity values for large faces (close to the camera) and stretches them for small faces (farther away), aligning with human perceptual sensitivity to relative size changes [@stevensPsychophysicsIntroductionIts2017].
 
-```{r proximity-classifications, echo=FALSE, dpi=600, fig.align='center', fig.cap="Proximity Heuristic examples. Example \\textbf{A} shows a face far away from the camera (proximity score = 0.07), example \\textbf{B} depicts a face slighlty closer (proximity score = 0.2). Example \\textbf{C} shows a face quite close to the camera (proximity score = 0.6), and example \\textbf{D} illustrates a face extremely close to the camera (proximity score = 1)."}
+```{r proximity-classifications, echo=FALSE, dpi=600, fig.align='center', fig.cap="Proximity Heuristic Examples. Example \\textbf{A} shows a face far away from the camera (proximity score = 0.07), example \\textbf{B} depicts a face slighlty closer (proximity score = 0.2). Example \\textbf{C} shows a face quite close to the camera (proximity score = 0.6), and example \\textbf{D} illustrates a face extremely close to the camera (proximity score = 1)."}
 
 
 img1 <- ggdraw() + draw_image("images/face_0.jpg", scale = 0.95)
@@ -580,17 +566,56 @@ final_labeled_layout
 Additional to face size, we use the faces' width-to-height ratio as cues for proximity. 
 Based on reference images of full, front-facing faces, we define an expected aspect ratio for adults and children. If a detected face’s ratio deviates significantly, we infer that the face is extremely close to the camera, causing partial cropping of the bounding box. If the deviation exceeds a defined threshold ($\epsilon$), the proximity score is set to 1.
 
-This heuristic approach, which combines face area and aspect ratio, provides an efficient and interpretable method for estimating proximity without requiring additional sensors or depth information. It enables us to examine the spatial dynamics of social interactions in egocentric recordings, offering insights into the relationships between children and others during everyday experiences. Examples of proximity estimation are shown in Figure \@ref(fig:proximity-classifications), illustrating the range of proximity scores from 0 (far away) to 1 (extremely close).
+This heuristic approach, which combines face area and aspect ratio, provides an efficient and interpretable method for estimating proximity without requiring additional sensors or depth information. Its validity is supported by a strong Pearson correlation coefficient (r = 0.95) between the heuristic estimates and human-annotated proximity values, based on 364 annotated frames from the Quantex dataset. This high correlation indicates that the heuristic effectively captures the relative distances between the child and others in the recordings, thereby enabling the integration of spatial dynamics into our interaction analyses. Examples of proximity estimations are shown in Figure \@ref((fig:proximity-classifications), illustrating the range of proximity scores from 0 (far away) to 1 (extremely close).
 
-## Voice Type Classification {#voice-type}
+## Voice Type Classification (VTC) {#voice-type}
 Regarding the audio component of our interaction analysis, we utilized the Voice Type Classifier [@lavechinOpensourceVoiceType2020], an open-source model designed to distinguishes between five key voice types: key child (KCHI), other child (OCHI), female adult (FEM), male adult (MAL), and general speech (SPEECH). The model employs a convolutional neural network (CNN) architecture with SincNet components, which extract meaningful frequency representations, and bi-directional long short-term memory (LSTM) layers. The model was trained on 260 hours of child-centered recordings across 10 languages, making it suitable for handling overlapping speech and varying acoustic conditions. Its multi-label classification capability enables the simultaneous detection of multiple voice types, which is particularly useful in natural interactions. The VTC outperforms the widely used LENA system with an absolute improvement of 10.6 in the average F1-measure across the five voice type classes. Additionally, the VTC demonstrated comparable performance on our lab's ChildLens dataset, achieving an F1 score of 58.1, which is comparable to the F1 score of 57.3 reported on the original training dataset. This performance validates the VTC's effectiveness for our data.
 
 # Results
 
-## Presence of Aspects of Social Interaction
 
-### Presence of a Person
+## Developmental Trends in Social Interaction
 
+
+### Age-related changes in social engagement 
+
+### Gaze Direction Dynamics
+```{r gaze-direction-stats}
+child_gaze_overall <- 70.80
+adult_gaze_overall <- 64.55
+```
+- another interesting interaction aspect is the percentage of faces with gaze directed at the child and how this percentage develops over time. we furthermore analyse the percentage of adult faces with gaze directed at the child and the percentage of child faces with gaze directed at the child and whether there are differences between the age groups. as visible in Figure \@ref(fig:gaze-patterns-by-age), the percentage of faces with gaze directed at the child increases with age, with 3-year-olds showing the lowest percentage and 5-year-olds the highest. this trend is consistent for both adult and child faces, indicating a developmental shift towards more focused attention on the child.
+- overall the percentage of faces with gaze directed at the child do not show any age-related differences, neither for adult faces nor for child faces. in both face categories the percentage stay rather stable, as shown in Table \@ref(tab:gaze-percentage-overall-comparison). however, when comparing the percentage of adult and child faces with gaze directed at the child (child `r adult_gaze_overall`% vs. adult `r child_gaze_overall`%), we find that child faces are more likely to look at the child than adult faces, with a significant difference across all age groups. this suggests that children are more often the focus of attention in social interactions, regardless of the age of the interacting partner. while it often can also be possible that adults are present but do not interact with the child, the higher percentage of child faces with gaze directed at the child indicates that children are actively engaged in social interactions with the key child.
+
+Another interesting interaction aspect is the percentage of faces with gaze directed at the child and how this percentage develops with increasing age of the key child. We furthermore analyze the percentage of adult faces with gaze directed at the child and the percentage of child faces with gaze directed at the child, and whether there are differences between the age groups. As visible in Figure \@ref(fig:gaze-patterns), the percentage of faces with gaze directed at the child stays rather stable across all age groups. This trend is consistent for both adult and child faces.
+
+Overall, the percentage of faces with gaze directed at the child does not show any age-related differences, neither for adult faces nor for child faces. In both face categories, the percentages remain rather stable, as shown in Table @ref(tab:gaze-percentage-overall-comparison). However, when comparing the percentage of adult and child faces with gaze directed at the child (child r adult_gaze_overall% vs. adult r child_gaze_overall%), we find that child faces are more likely to look at the child than adult faces, with a significant difference across all age groups. This suggests that children are more often the focus of attention in social interactions, regardless of the age of the interacting partner. While it is often possible that adults are present but do not interact with the child, the higher percentage of child faces with gaze directed at the child indicates that children are actively engaged in social interactions with the key child.
+
+```{r gaze-patterns, fig.align='center', fig.cap="Percentage of faces wth gaze directed at child across different age groups.", out.width="450px"}
+knitr::include_graphics("images/gaze_patterns_by_age.png")
+```
+
+```{r gaze-percentage-overall-comparison, echo=FALSE, message=FALSE, warnings=FALSE, results='asis', eval=TRUE}
+my.data <- "Group   | Adult Gaze (%) | Child Gaze (%) | t-stat    | p-value   | N
+            Overall | 64.55          | 70.80          | -5.191    | 0.0000*** | 401
+            Age 3   | 63.95          | 70.88          | -4.416    | 0.0000*** | 139
+            Age 4   | 64.90          | 69.74          | -1.924    | 0.0566    | 125
+            Age 5   | 64.85          | 71.68          | -3.172    | 0.0019**  | 137"
+
+df <- read.delim(textConnection(my.data), header=FALSE, sep="|", strip.white=TRUE, stringsAsFactors=FALSE)
+
+# Set column names
+names(df) <- unname(as.list(df[1,]))
+df <- df[-1,]  # Remove the first row with column names
+row.names(df) <- NULL
+
+# Print the formatted table
+apa_table(
+  df,
+  caption = "Overall Adult vs. Child Gaze Comparison. The table shows the percentage of adult and child faces with gaze directed at the child across different age groups. The t-statistic and p-value are reported for the overall comparison and each age group comparison.",
+  escape = TRUE
+)
+```
 ### Presence of a Face
 
 ### Presence of Gaze
@@ -774,7 +799,7 @@ apa_table(
   escape = FALSE
 )
 ```
-### Training and Convergence {#training-face}
+### Training and Convergence {#sup-training-face}
 Model training was conducted on a Linux server equipped with an Intel(R) Xeon(R) Silver 4214Y CPU @ 2.20GHz with 48 cores, a Quadro RTX 8000 GPU and 188 GB of RAM. The model was trained for a total of `r det_num_epochs` epochs, taking `r det_training_time` hours to complete. Training utilized YOLO11’s built-in data augmentation, an image size of 640, a batch size of 16, a cosine annealing learning rate scheduler [@loshchilovSGDRStochasticGradient2017], and early stopping after 10 epochs without improvement, with a maximum of 200 epochs.
 
 ```{r det-loss-curves, fig.align='center', fig.cap="Training and Validation Loss Curves for the YOLO11x detection model.", out.width="450px"}
@@ -883,7 +908,13 @@ final_labeled_layout <- final_layout +
 final_labeled_layout
 ```
 ### Model Evaluation Metrics
-The performance of the object detection model was evaluated using a confusion matrix and precision-recall (PR) curves. The YOLO11 model achieved a precision of `r det_precision` and a recall of `r det_recall` on the testing set, resulting in an F1-score of `r det_f1_score`. The F1 metric is particularly important as it reflects both the accuracy of identifying each class instance (precision) and the model’s ability to detect all occurrences of the class (recall). The normalized confusion matrix (see figure \@ref(fig:det-metrics)) reveals strong overall performance with mean Average Precision across all classes mAP=`r det_map`. The averaged precision-recall curve remains close to the top-left corner and signifies that the model maintains high precision and recall across various thresholds, underscoring its effectiveness in detecting the different classes. Notably, the confusion matrix demonstrates minimal confusion between most classes, indicating that the model can effectively distinguish between them (see Figure \@ref(fig:det-metrics)). A closer look at class-wise performance reveals that the model excels in detecting people and certain objects. The “infant/child,” “adult,” and “adult face” classes, as well as “child body parts,” “infant/child face,” “book,” and “screen,” all achieve high Average Precision (AP) scores. This indicates that the model reliably identifies these categories with strong precision and recall (see figure \@ref(fig:det-metrics)).
+The performance of the object detection model was evaluated using a confusion matrix and precision-recall (PR) curves. The YOLO11 model achieved a precision of `r det_precision` and a recall of `r det_recall` on the testing set, resulting in an F1-score of `r det_f1_score`. The F1 metric is particularly important as it reflects both the accuracy of identifying each class instance (precision) and the model’s ability to detect all occurrences of the class (recall). The normalized confusion matrix (see figure \@ref(fig:det-metrics)) reveals strong overall performance with mean Average Precision across all classes mAP=`r det_map`. The averaged precision-recall curve remains close to the top-left corner and signifies that the model maintains high precision and recall across various thresholds, underscoring its effectiveness in detecting the different classes. 
+
+To further refine detection results, we adjusted the built-in non-max suppression (NMS) threshold. YOLO already applies an NMS threshold of 0.7, where detections of the same class with an Intersection over Union (IoU) exceeding this threshold are suppressed. After evaluating different thresholds, we set the NMS IoU to 0.5, as this provided the best F1-score. However, this default NMS is only applied to bounding boxes of the same class, and manual inspection of detections revealed that some faces and persons were redundantly detected in multiple classes (e.g., a face detected as both “adult face” and “child face”).
+
+To address this issue, we implemented a custom cross-class NMS to remove duplicate detections across all classes. Using the same NMS logic, we applied an IoU threshold of 0.9 to ensure only nearly identical bounding boxes were removed while retaining valid detections. In cases where two overlapping bounding boxes exceeded this threshold, we kept the detection with the higher confidence score to minimize incorrect suppressions. This adjustment significantly reduced redundant detections while preserving true positive detections, leading to a more accurate and reliable final inference output.
+
+Notably, the confusion matrix demonstrates minimal confusion between most classes, indicating that the model can effectively distinguish between them (see Figure \@ref(fig:det-metrics)). A closer look at class-wise performance reveals that the model excels in detecting people and certain objects. The “infant/child,” “adult,” and “adult face” classes, as well as “child body parts,” “infant/child face,” “book,” and “screen,” all achieve high Average Precision (AP) scores. This indicates that the model reliably identifies these categories with strong precision and recall (see figure \@ref(fig:det-metrics)).
 
 On the other hand, some object classes remain more challenging. In particular, the “toy,” “kitchenware,” and “other object” categories exhibit lower AP scores of `r ap_toy`, `r ap_kitchenware`, and `r ap_other_object`, respectively. The confusion matrix confirms that `r fn_kitchenware*100`% of “kitchenware” and `r fn_toy*100`% of “toy” instances are frequently misclassified as “background.” This issue likely stems from the annotation strategy, which prioritized labeling only objects that the child directly interacted with. As a result, other visually similar objects in the background remain unannotated, introducing ambiguity during training. Additionally, “infant/child” and “infant/child face” also show notable false negative rates of 17%, further contributing to misclassification. These findings suggest that increasing the number of annotated samples—particularly for objects with which the child interacts with—could improve detection performance. Future work could also explore model refinements or data augmentation techniques to enhance the detection of small, occluded, or partially visible objects. In conclusion, the YOLO11 model demonstrates strong performance in detecting people, faces, and several object classes, as displayed in Figure \@ref(fig:det-detection-examples).
 
@@ -912,6 +943,9 @@ gaze_f1_score <- 0.70
 
 gaze_num_epochs <- 37
 gaze_training_time <- 10.4
+
+adult_gt_heuristic_corr <- 1
+child_gt_heuristic_corr <- 1
 ```
 Selecting an appropriate model for gaze classification in our automated pipeline presented unique challenges due to the egocentric perspective of our dataset. Many gaze estimation methods rely on high-quality eye images, either extracted separately [@zhangAppearancebasedGazeEstimation2015] or as part of the full face [@zhangItsWrittenAll2016]. However, our dataset often contains blurry or partially occluded faces captured at varying angles, making such approaches not suitable. Additionally, rather than predicting fine-grained gaze direction (e.g., left or right), our focus is on the binary classification of whether a person’s gaze is directed toward the child or not.
 
@@ -951,7 +985,7 @@ apa_table(
 )
 ```
 ### Training and Convergence
-We trained the gaze classification model on the same Linux server used for person and object detection model training. For details, see [Training and Convergence](#training-face). Training ran for `r gaze_num_epochs` epochs, completing in `r gaze_training_time` hours . Similar to the YOLO detection model, we used an input image size of 640, a batch size of 16, a cosine annealing learning rate scheduler [@loshchilovSGDRStochasticGradient2017], and early stopping after 10 epochs without improvement, with a maximum of 200 epochs.
+We trained the gaze classification model on the same Linux server used for person and object detection model training. For details, see [Training and Convergence](#sup-training-face). Training ran for `r gaze_num_epochs` epochs, completing in `r gaze_training_time` hours . Similar to the YOLO detection model, we used an input image size of 640, a batch size of 16, a cosine annealing learning rate scheduler [@loshchilovSGDRStochasticGradient2017], and early stopping after 10 epochs without improvement, with a maximum of 200 epochs.
 
 ```{r gaze-loss-confusion-matrix, fig.align='center', fig.cap="\\textbf{A} - Training and Validation Loss Curves for the YOLO11x gaze classification model. \\textbf{B} - Confusion Matrix for the YOLO11x gaze classification model trained on the Quantex dataset."}
 # Load images
@@ -1062,7 +1096,54 @@ r_{\text{expected}} = \frac{w_{\text{expected}}}{h_{\text{expected}}}
 \text{If} \quad |r_{\text{detected}} - r_{\text{expected}}| > \epsilon, \quad P = 1
 \]
 
-With (\(\epsilon\)=0.5), this heuristic efficiently estimates proximity using only image-based cues, avoiding the need for additional sensors. It helps analyze social interactions in egocentric recordings, offering insights into children’s spatial relationships. Figure \@ref(fig:proximity-heuristic) illustrates proximity scores from 0 (far) to 1 (very close).
+With (\(\epsilon\)=1), this heuristic efficiently estimates proximity using only image-based cues, avoiding the need for additional sensors. It helps analyze social interactions in egocentric recordings, offering insights into children’s spatial relationships. Figure \@ref(fig:proximity-heuristic) illustrates proximity scores from 0 (far) to 1 (very close).
+
+### Proximity Heuristic Evaluation
+To validate our proximity heuristic, we conducted a quality check using human annotations. A total of 364 frames (185 adult faces and 179 child faces) were evaluated by two independent annotators. Each annotator directly assigned a proximity value between 0 and 1, with 0 representing the furthest distance and 1 the closest.
+
+Prior to the assessment task, annotators were shown the same reference images used for calculating the reference face sizes in the proximity estimation. They were informed that the closest reference image corresponded to a value of 1, while the furthest reference image corresponded to a value of 0. This ensured a shared understanding of the proximity scale and minimized subjective interpretation differences.
+
+```{r proximity-metrics, echo=FALSE, message=FALSE, warnings=FALSE, results='asis', eval=TRUE}
+gt_heuristic_corr <- 0.9492
+adult_gt_heuristic_corr <- 0.9548
+child_gt_heuristic_corr <- 0.9372
+prox_mae <- 0.0914
+prox_r2 <- 0.8403
+
+my.data <- "Metrics   | prox              | prox_1  | prox_2  | adult   | adult_1  | adult_2  | child   | child_1 | child_2
+            Pearson   | \\textbf{0.9492}  | 0.9373  | 0.9035  | \\textbf{0.9548}  | 0.9518   | 0.9078   | \\textbf{0.9372}  | 0.9163  | 0.8877
+            MAE       | 0.0914            | 0.0947  | 0.1596  | 0.1015  | 0.0864   | 0.1573   | 0.0809  | 0.1033  | 0.1621
+            RMSE      | 0.1111            | 0.1180  | 0.1875  | 0.1207  | 0.1086   | 0.1857   | 0.1001  | 0.1270  | 0.1893
+            R2        | 0.8403            | 0.8615  | 0.4588  | 0.8207  | 0.8861   | 0.4992   | 0.8381  | 0.7958  | 0.3518     
+            Bias      | 0.0682            | -0.0134 | 0.1498  | 0.0860  | 0.0254   | 0.1464   | 0.0499  | -0.0536 | 0.1533"
+  
+# Set proper column names for LaTeX formatting
+df <- read.delim(textConnection(my.data), header=FALSE, sep="|", strip.white=TRUE, stringsAsFactors=FALSE)
+names(df) <- c(
+  "Metrics","\\( prox_{mean} \\)", "\\( prox_1 \\)", "\\( prox_2 \\)",
+  "\\( prox_{mean} \\)", "\\( prox_1 \\)", "\\( prox_2\\)",
+  "\\( prox_{mean} \\)", "\\( prox_1 \\)", "\\( prox_2 \\)"
+)
+df <- df[-1, ]
+row.names(df) <- NULL
+
+# Simplified table without striped styling
+kable(df, 
+      format = "latex", 
+      booktabs = TRUE, 
+      escape = FALSE,
+      caption = "Proximity evaluation metrics. The table shows the Pearson correlation coefficient (Pearson), Mean Absolute Error (MAE), Root Mean Squared Error (RMSE), Coefficient of Determination (R²), and Bias for the proximity heuristic compared to human annotations."
+) %>%
+  kable_styling(latex_options = "scale_down") %>%
+  add_header_above(c(" " = 1, "all faces" = 3, "adult faces" = 3, "child faces" = 3))
+```
+
+```{r proximity-plot, fig.align='center', fig.cap="The plot shows the correlation between the heuristic proximity values and the human-annotated proximity values for both adult and child faces. The red line represents the linear regression fit, while the shaded area indicates the 95% confidence interval.", out.width="450px"}
+knitr::include_graphics("images/proximity_eval_plot.png")
+```
+
+Using this approach, the ground truth proximity for each frame is calculated as the mean of the two annotator ratings. We then compute how well the heuristic captures the human-annotated proximity values for both adult and child faces. Figure \@ref(fig:proximity-plot)  displays the correlation between the heuristic proximity values and the human-annotated proximity values for both adult and child faces. Both regression lines are close to the diagonal, indicating a strong correlation between the heuristic and human-annotated proximity values. Overall, the heuristic performs well, with a strong Pearson correlation coefficient of `r gt_heuristic_corr` for all faces, `r adult_gt_heuristic_corr` for adult faces and `r child_gt_heuristic_corr` for child faces. The mean absolute error (MAE=`r prox_mae`) for all faces is acceptably low and the coefficient of determination (R²=`r prox_r2`) for all faces indicates that the heuristic explains a significant portion of the variance in human-annotated proximity values. 
+To conclude, the proximity heuristic provides a reliable estimate of interpersonal distance in our dataset, allowing us to add another reliable aspect of social interactions without the need for additional sensors or annotations.
 
 ## Voice Type Classification {#sup-voice-type}
 Regarding the audio component of our interaction analysis, we aimed to use a model that does not only detect the presence of speech but also distinguishes between the key child wearing the camera and other speakers. This distinction is crucial for understanding the dynamics of the interactions and the role of the key child in the social context. To achieve this, we applied the Voice Type Classifier [@lavechinOpensourceVoiceType2020], an open-source model designed to identify five different voice types: key child (KCHI), other child (OCH), female adult (FEM), male adult (MAL), and speech in general (SPEECH). This multi-label classification enables the detection of multiple classes simultaneously, which is particularly useful when faced with overlapping speech segments, which frequently occurs in natural interactions.
@@ -1075,7 +1156,7 @@ Model performance was evaluated using the F1-measure, with the classifier showin
 
 Although the Quantex dataset does not include explicit audio labels, we are confident in the model’s suitability for our data. Prior testing on a similar labeled dataset which was also collected in our lab, ChildLens, demonstrated that the Voice Type Classifier achieved an F1 score of 58.1 (reference to ChildLens paper), which is comparable to the F1 score of 57.3 reported on the original training dataset. These results indicate that the model performs similarly to the original work.
 
-## Results {#sup-results}
+## Results and Analysis {#sup-results}
 
 \newpage
 # References
