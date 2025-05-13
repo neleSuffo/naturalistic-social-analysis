@@ -25,7 +25,7 @@ def draw_detections(image, detections, output_path):
         bbox = det["bbox"]
         age = det["age"]
         proximity = det["proximity"]
-        age_conf = det["age_confidence"]
+        #age_conf = det["age_confidence"]
         
         # Draw bounding box
         cv2.rectangle(image, 
@@ -35,8 +35,9 @@ def draw_detections(image, detections, output_path):
                       thickness)
         
         # Prepare text
-        text = f"{age} Proximity: {proximity:.2f} (Age: {age_conf:.2f})"
-        
+        #text = f"{age} Proximity: {proximity:.2f} (Age: {age_conf:.2f})"
+        text = f"{age} Proximity: {proximity:.2f}"
+
         # Calculate text position
         (text_width, text_height), _ = cv2.getTextSize(text, font, font_scale, thickness)
         text_y = bbox[1] - 10 if bbox[1] - 10 > 10 else bbox[1] + 20
@@ -50,7 +51,7 @@ def draw_detections(image, detections, output_path):
         
         # Draw text
         cv2.putText(image, text, 
-                    (bbox[0], text_y), 
+                    (bbox[0]-100, text_y), 
                     font, font_scale, 
                     (255, 255, 255),  # White text
                     thickness)
@@ -62,11 +63,13 @@ def draw_detections(image, detections, output_path):
 def main():
     parser = argparse.ArgumentParser(description='Calculate proximity for faces in an image')
     parser.add_argument('--image_path', type=str, required=True, help='Path to the input image')
+    parser.add_argument('--age', type=str, required=True, choices=['child', 'adult'], help='Age classification (child/adult)')
     args = parser.parse_args()
 
     # Initialize models
     detector = YOLO("/home/nele_pauline_suffo/models/yolo11_face_detection.pt")
-    age_classifier = YOLO(ClassificationPaths.face_trained_weights_path)
+    #detector = YOLO("/home/nele_pauline_suffo/models/yolo11_person_face_detection.pt")
+    #age_classifier = YOLO(ClassificationPaths.face_trained_weights_path)
 
     # Load image
     videos_folder = "/home/nele_pauline_suffo/ProcessedData/quantex_videos_processed"
@@ -96,8 +99,9 @@ def main():
         face_roi = img[y1:y2, x1:x2]
         
         # Classify age
-        age_result = age_classifier(face_roi)[0]
-        is_child = int(age_result.probs.top1) == 1
+        age_result = args.age
+        #age_result = age_classifier(face_roi)[0]
+        is_child = True if age_result == "child" else False
         
         # Calculate proximity
         proximity = prox_calculator.calculate((x1, y1, x2, y2), is_child)
@@ -106,7 +110,7 @@ def main():
         results.append({
             "bbox": [x1, y1, x2, y2],
             "age": "child" if is_child else "adult",
-            "age_confidence": float(age_result.probs.top1conf),
+            #"age_confidence": float(age_result.probs.top1conf),
             "proximity": float(proximity),
         })
     
