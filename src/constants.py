@@ -177,12 +177,12 @@ class ClassificationPaths:
     
 class VTCPaths:
     childlens_audio_dir = Path(BasePaths.data_dir/"childlens_audio")
-    quantex_output_dir = Path(BasePaths.output_dir/"quantex_audio")
-    childlens_output_dir = Path(BasePaths.output_dir/"childlens_audio")
-    childlens_df_file_path_01 = Path(childlens_output_dir/"childlens_df_duration_off_01.pkl")
-    childlens_df_file_path_02 = Path(childlens_output_dir/"childlens_df_duration_off_02.pkl")
-    childlens_df_file_path_20 = Path(childlens_output_dir/"childlens_df_duration_off_20.pkl")
-    childlens_gt_df_file_path = Path(DetectionPaths.childlens_annotations_dir/"childlens_annotations.pkl")
+    quantex_output_dir = Path(BasePaths.output_dir/"vtc/quantex_audio")
+    childlens_output_dir = Path(BasePaths.output_dir/"vtc/childlens_audio")
+    childlens_df_file_path_01 = Path(BasePaths.output_dir/"vtc/childlens_df_duration_off_01.pkl")
+    childlens_df_file_path_02 = Path(BasePaths.output_dir/"vtc/childlens_df_duration_off_02.pkl")
+    childlens_df_file_path_20 = Path(BasePaths.output_dir/"vtc/childlens_df_duration_off_20.pkl")
+    childlens_gt_df_file_path = Path(DetectionPaths.childlens_annotations_dir/"processed/childlens_annotations.pkl")
 
     quantex_audio_dir = Path(BasePaths.data_dir/"quantex_audio")
 
