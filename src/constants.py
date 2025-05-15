@@ -188,7 +188,7 @@ class VTCPaths:
     childlens_df_file_path_01 = Path(vtc_output_dir/"childlens_df_duration_off_01.pkl")
     childlens_df_file_path_02 = Path(vtc_output_dir/"childlens_df_duration_off_02.pkl")
     childlens_df_file_path_20 = Path(vtc_output_dir/"childlens_df_duration_off_20.pkl")
-    childlens_gt_df_file_path = Path(DetectionPaths.childlens_annotations_dir/"processed/childlens_annotations.pkl")
+    childlens_gt_df_file_path = Path(DetectionPaths.childlens_annotations_dir/"processed/childlens_annotations_gt.pkl")
 
 
 
