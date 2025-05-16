@@ -444,33 +444,16 @@ train_time_scratch <- 12.86
 ### Data Preparation
 We used the following mapping strategy to align our audio-based activity classes with the VTC's output classes:
 
-- Child talking → **`Key Child`** & **`Speech`**
-- Singing/Humming → **`Key Child`** & **`Speech`**
+- Child talking & Singing/Humming → **`Key Child`** (859.27 min)
 - Other person talking:
-  - If `age = "Child"` → **`Other Child`** & **`Speech`**
-  - If `age = "Adult"` & `gender = "Female"` → **`Female Speech`** & **`Speech`**
-  - If `age = "Adult"` & `gender = "Male"` → **`Male Speech`** & **`Speech`**
-- Overheard Speech → **`Speech`**
+  - If age = `"Child"` → **`Other Child`** (43.98 min)
+  - If age = `"Adult"` & gender = `"Female"` → **`Female Speech`** (455.90 min)
+  - If age = `"Adult"` & gender = `"Male"` → **`Male Speech`** (200.41 min)
+- Overheard Speech, Child talking, Singing/Humming, Other person talking  → **`Speech`** (2361.87 min)
 
-"Listening to music/audiobook" was excluded, as it’s often background audio, lacks speaker age/gender details, and includes music irrelevant to VTC. "Overheard Speech", indicating speech not directed at the key child, was mapped to SPEECH due to missing age/gender annotations, potentially underestimating VTC performance (e.g., correct FEM predictions scored as SPEECH). In this context, we retain this mapping, as re-annotation would be time-consuming, and the class is designed for complex models, like NLP architectures, that can detect the speech recipient context effectively. Total durations for each VTC class are shown in Table \@ref(tab:vtc-classes-statistics).
-
-### Implementation Details
-We first applied te pretrained VTC model directly, using the available VTC implementation. We then fine-tuned the model on our ChildLens dataset for `r num_epochs_finetune` epochs (`r train_time_finetune` hours) on the same Linux server as the BMN model. Finally, we trained the VTC model from scratch for `r num_epochs_scratch` epochs (`r train_time_scratch` hours) using the ChildLens dataset to assess its standalone value
+"Listening to music/audiobook" was excluded, as it’s often background audio, lacks speaker age/gender details, and includes music irrelevant to VTC. "Overheard Speech", indicating speech not directed at the key child, was mapped to SPEECH due to missing age/gender annotations, potentially underestimating VTC performance (e.g., correct FEM predictions scored as SPEECH). In this context, we retain this mapping, as re-annotation would be time-consuming, and the class is designed for complex models, like NLP architectures, that can detect the speech recipient context effectively.
 
 ```{r vtc-classes-statistics, echo=FALSE, message=FALSE, warnings=FALSE, results='asis', eval=TRUE}
-my.data <- "                | KCHI    | CHI   | MAL     | FEM    | SPEECH 
-            Total Duration  | 859.27  | 43.98 | 200.41  | 455.90 | 2361.87"
-
-df <- read.delim(textConnection(my.data), header=FALSE, sep="|", strip.white=TRUE, stringsAsFactors=FALSE)
-names(df) <- unname(as.list(df[1,]))
-df <- df[-1,] 
-row.names(df) <- NULL
-apa_table(
-  df,
-  caption = "Cumulative Duration (in minutes) of Utterances Categorized by Voice Type",
-  escape = TRUE,
-)
-
 vtc_og_f1 <- 41.7
 vtc_og_kchi <- 62.8
 vtc_og_chi <- 5.3
@@ -492,12 +475,11 @@ vtc_cl_mal <- 42.7
 vtc_cl_fem <- 52.1
 vtc_cl_speech <- 82.4
 ```
-
-### Evaluation
-Table \@ref(tab:vtc-results) shows \( F_1 \)-scores for three VTC setups on the ChildLens dataset: the original model \( VTC_{og} \), fine-tuned model \( VTC_{ft} \), and model trained from scratch \( VTC_{cl} \), compared to the benchmark dataset. \( VTC_{og} \) scores `r vtc_og_f1`, slightly below the benchmark, with best performance on `KCHI` (`r vtc_og_kchi`) and worst on `CHI` (`r vtc_og_chi`). Fine-tuning \( VTC_{ft} \) training from scratch \( VTC_{cl} \) achieve `r vtc_ft_f1` and `r vtc_cl_f1`, respectively, showing significant improvement. The low `CHI` scores are primarily due to frequent misclassifications as `KCHI`. This likely results from the vocal similarity between the key child and other children in the ChildLens dataset. In many cases, distinguishing between them may rely more on acoustic cues like proximity to the microphone than on vocal characteristics. In contrast, the original VTC dataset includes audio from infants and toddlers, where the distinction between the key child (often babbling or younger) and other speakers is more pronounced, making classification tasks easier. Importantly, these scores are expected to improve as more annotated data becomes available, since annotation is still ongoing. Figure \@ref(fig:vtc-evaluations) visualizes how model predictions compare to the ground truth annotations for the \( VTC_{ft} \) model.
+### Implementation Details
+We first applied te pretrained VTC model directly, using the available VTC implementation. We then fine-tuned the model on our ChildLens dataset for `r num_epochs_finetune` epochs (`r train_time_finetune` hours) on the same Linux server as the BMN model. Finally, we trained the VTC model from scratch for `r num_epochs_scratch` epochs (`r train_time_scratch` hours) using the ChildLens dataset to assess its standalone value
 
 ```{r vtc-results, echo=FALSE, message=FALSE, warnings=FALSE, results='asis', eval=TRUE}
-my.data <- "Dataset       | Architecture  | KCHI | CHI  | MAL   | FEM  | SPEECH | AVG
+my.data <- "Dataset       | Model         | KCHI | CHI  | MAL   | FEM  | SPEECH | AVG
             ACLEW-Random  | VTC-OG        | 68.7 | 33.2 | 42.9  | 63.4 | 78.4   | 57.3
             ChildLens     | VTC-OG        | 62.8 | 5.3  | 23.9  | 39.4 | 77.0   | 41.7
             ChildLens     | VTC-FT        | 79.0 | 10.0 | 44.9  | 52.0 | 86.7   | 54.5
@@ -514,6 +496,9 @@ apa_table(
   escape = TRUE,
 )
 ```
+
+### Evaluation
+Table \@ref(tab:vtc-results) shows \( F_1 \)-scores for three VTC setups on the ChildLens dataset: the original model \( VTC_{og} \), fine-tuned model \( VTC_{ft} \), and model trained from scratch \( VTC_{cl} \), compared to the benchmark dataset. \( VTC_{og} \) scores `r vtc_og_f1`, slightly below the benchmark, with best performance on `KCHI` (`r vtc_og_kchi`) and worst on `CHI` (`r vtc_og_chi`). Fine-tuning \( VTC_{ft} \) training from scratch \( VTC_{cl} \) achieve `r vtc_ft_f1` and `r vtc_cl_f1`, respectively, showing significant improvement. The low `CHI` scores are primarily due to frequent misclassifications as `KCHI`. This likely results from the vocal similarity between the key child and other children in the ChildLens dataset. In many cases, distinguishing between them may rely more on acoustic cues like proximity to the microphone than on vocal characteristics. In contrast, the original VTC dataset includes audio from infants and toddlers, where the distinction between the key child (often babbling or younger) and other speakers is more pronounced, making classification tasks easier. Importantly, these scores are expected to improve as more annotated data becomes available, since annotation is still ongoing. Figure \@ref(fig:vtc-evaluations) visualizes how model predictions compare to the ground truth annotations for the \( VTC_{ft} \) model.
 
 ```{r vtc-evaluations, dpi=180, fig.align='center', fig.cap="VTC Predictions compared to Ground Truth Annotations"}
 knitr::include_graphics("images/vtc_performance_evaluation.png")

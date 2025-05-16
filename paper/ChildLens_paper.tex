@@ -408,54 +408,28 @@ We used the following mapping strategy to align our audio-based activity classes
 \begin{itemize}
 \tightlist
 \item
-  Child talking → \textbf{\texttt{Key\ Child}} \& \textbf{\texttt{Speech}}
-\item
-  Singing/Humming → \textbf{\texttt{Key\ Child}} \& \textbf{\texttt{Speech}}
+  Child talking \& Singing/Humming → \textbf{\texttt{Key\ Child}} (859.27 min)
 \item
   Other person talking:
 
   \begin{itemize}
   \tightlist
   \item
-    If \texttt{age\ =\ "Child"} → \textbf{\texttt{Other\ Child}} \& \textbf{\texttt{Speech}}
+    If age = \texttt{"Child"} → \textbf{\texttt{Other\ Child}} (43.98 min)
   \item
-    If \texttt{age\ =\ "Adult"} \& \texttt{gender\ =\ "Female"} → \textbf{\texttt{Female\ Speech}} \& \textbf{\texttt{Speech}}
+    If age = \texttt{"Adult"} \& gender = \texttt{"Female"} → \textbf{\texttt{Female\ Speech}} (455.90 min)
   \item
-    If \texttt{age\ =\ "Adult"} \& \texttt{gender\ =\ "Male"} → \textbf{\texttt{Male\ Speech}} \& \textbf{\texttt{Speech}}
+    If age = \texttt{"Adult"} \& gender = \texttt{"Male"} → \textbf{\texttt{Male\ Speech}} (200.41 min)
   \end{itemize}
 \item
-  Overheard Speech → \textbf{\texttt{Speech}}
+  Overheard Speech, Child talking, Singing/Humming, Other person talking → \textbf{\texttt{Speech}} (2361.87 min)
 \end{itemize}
 
-``Listening to music/audiobook'' was excluded, as it's often background audio, lacks speaker age/gender details, and includes music irrelevant to VTC. ``Overheard Speech'', indicating speech not directed at the key child, was mapped to SPEECH due to missing age/gender annotations, potentially underestimating VTC performance (e.g., correct FEM predictions scored as SPEECH). In this context, we retain this mapping, as re-annotation would be time-consuming, and the class is designed for complex models, like NLP architectures, that can detect the speech recipient context effectively. Total durations for each VTC class are shown in Table \ref{tab:vtc-classes-statistics}.
+``Listening to music/audiobook'' was excluded, as it's often background audio, lacks speaker age/gender details, and includes music irrelevant to VTC. ``Overheard Speech'', indicating speech not directed at the key child, was mapped to SPEECH due to missing age/gender annotations, potentially underestimating VTC performance (e.g., correct FEM predictions scored as SPEECH). In this context, we retain this mapping, as re-annotation would be time-consuming, and the class is designed for complex models, like NLP architectures, that can detect the speech recipient context effectively.
 
 \subsubsection{Implementation Details}\label{implementation-details-1}
 
 We first applied te pretrained VTC model directly, using the available VTC implementation. We then fine-tuned the model on our ChildLens dataset for 200 epochs (12.86 hours) on the same Linux server as the BMN model. Finally, we trained the VTC model from scratch for 200 epochs (12.86 hours) using the ChildLens dataset to assess its standalone value
-
-\begin{table}[tbp]
-
-\begin{center}
-\begin{threeparttable}
-
-\caption{\label{tab:vtc-classes-statistics}Cumulative Duration (in minutes) of Utterances Categorized by Voice Type}
-
-\begin{tabular}{llllll}
-\toprule
- & \multicolumn{1}{c}{KCHI} & \multicolumn{1}{c}{CHI} & \multicolumn{1}{c}{MAL} & \multicolumn{1}{c}{FEM} & \multicolumn{1}{c}{SPEECH}\\
-\midrule
-Total Duration & 859.27 & 43.98 & 200.41 & 455.90 & 2361.87\\
-\bottomrule
-\end{tabular}
-
-\end{threeparttable}
-\end{center}
-
-\end{table}
-
-\subsubsection{Evaluation}\label{evaluation-1}
-
-Table \ref{tab:vtc-results} shows \(F_1\)-scores for three VTC setups on the ChildLens dataset: the original model \(VTC_{og}\), fine-tuned model \(VTC_{ft}\), and model trained from scratch \(VTC_{cl}\), compared to the benchmark dataset. \(VTC_{og}\) scores 41.70, slightly below the benchmark, with best performance on \texttt{KCHI} (62.80) and worst on \texttt{CHI} (5.30). Fine-tuning \(VTC_{ft}\) training from scratch \(VTC_{cl}\) achieve 54.50 and 53.20, respectively, showing significant improvement. The low \texttt{CHI} scores are primarily due to frequent misclassifications as \texttt{KCHI}. This likely results from the vocal similarity between the key child and other children in the ChildLens dataset. In many cases, distinguishing between them may rely more on acoustic cues like proximity to the microphone than on vocal characteristics. In contrast, the original VTC dataset includes audio from infants and toddlers, where the distinction between the key child (often babbling or younger) and other speakers is more pronounced, making classification tasks easier. Importantly, these scores are expected to improve as more annotated data becomes available, since annotation is still ongoing. Figure \ref{fig:vtc-evaluations} visualizes how model predictions compare to the ground truth annotations for the \(VTC_{ft}\) model.
 
 \begin{table}[tbp]
 
@@ -467,7 +441,7 @@ Table \ref{tab:vtc-results} shows \(F_1\)-scores for three VTC setups on the Chi
 
 \begin{tabular}{llllllll}
 \toprule
-Dataset & \multicolumn{1}{c}{Architecture} & \multicolumn{1}{c}{KCHI} & \multicolumn{1}{c}{CHI} & \multicolumn{1}{c}{MAL} & \multicolumn{1}{c}{FEM} & \multicolumn{1}{c}{SPEECH} & \multicolumn{1}{c}{AVG}\\
+Dataset & \multicolumn{1}{c}{Model} & \multicolumn{1}{c}{KCHI} & \multicolumn{1}{c}{CHI} & \multicolumn{1}{c}{MAL} & \multicolumn{1}{c}{FEM} & \multicolumn{1}{c}{SPEECH} & \multicolumn{1}{c}{AVG}\\
 \midrule
 ACLEW-Random & VTC-OG & 68.7 & 33.2 & 42.9 & 63.4 & 78.4 & 57.3\\
 ChildLens & VTC-OG & 62.8 & 5.3 & 23.9 & 39.4 & 77.0 & 41.7\\
@@ -480,6 +454,10 @@ ChildLens & VTC-CL & 79.7 & 8.9 & 42.7 & 52.1 & 82.4 & 53.2\\
 \end{center}
 
 \end{table}
+
+\subsubsection{Evaluation}\label{evaluation-1}
+
+Table \ref{tab:vtc-results} shows \(F_1\)-scores for three VTC setups on the ChildLens dataset: the original model \(VTC_{og}\), fine-tuned model \(VTC_{ft}\), and model trained from scratch \(VTC_{cl}\), compared to the benchmark dataset. \(VTC_{og}\) scores 41.70, slightly below the benchmark, with best performance on \texttt{KCHI} (62.80) and worst on \texttt{CHI} (5.30). Fine-tuning \(VTC_{ft}\) training from scratch \(VTC_{cl}\) achieve 54.50 and 53.20, respectively, showing significant improvement. The low \texttt{CHI} scores are primarily due to frequent misclassifications as \texttt{KCHI}. This likely results from the vocal similarity between the key child and other children in the ChildLens dataset. In many cases, distinguishing between them may rely more on acoustic cues like proximity to the microphone than on vocal characteristics. In contrast, the original VTC dataset includes audio from infants and toddlers, where the distinction between the key child (often babbling or younger) and other speakers is more pronounced, making classification tasks easier. Importantly, these scores are expected to improve as more annotated data becomes available, since annotation is still ongoing. Figure \ref{fig:vtc-evaluations} visualizes how model predictions compare to the ground truth annotations for the \(VTC_{ft}\) model.
 
 \begin{figure}
 
