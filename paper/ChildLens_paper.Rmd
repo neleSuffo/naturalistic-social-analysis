@@ -197,7 +197,7 @@ Perhaps the most significant obstacle in this field is the extensive amount of d
 
 Several publicly available datasets have made valuable contributions to our understanding of children’s social and communicative behavior. For example, the SAYCam dataset [@sullivanSAYCamLargeLongitudinal2021] provides audio-video recordings from 3 infants (6–32 months) who wore head-mounted cameras over two years, to capture naturalistic speech and behaviors. Similarly, the DAMI-P2C dataset [@chenDyadicAffectParentChild2023] includes audio and video recordings of parent-child interactions during story reading, with annotations for body movements in a controlled environment. The MMDB dataset [@rehgDecodingChildrensSocial2013] offers multimodal data (audio, video, physiological) of children (15–30 months) engaged in semi-structured play interactions, recorded in a lab. Another example is the UpStory dataset [@fraileUpStoryUppsalaStorytelling2024], which features audio and video of primary school children (8-10 years) in dyadic storytelling interactions, also recorded in a lab setting. Additionally, the BabyView dataset [@longBabyViewDatasetHighresolution2024] provides high-resolution, egocentric video of children aged 6 months to 5 years, recorded at home and in preschool environments, with annotations for speech transcription and pose estimation. Whereas these datasets vary in age, setting, and target behaviors, they collectively highlight the need for more naturalistic, at-home datasets that can capture the full range of children’s daily activities.
 
-To address this gap, we introduce the publicly available ChildLens dataset, which focuses on activity annotations for children aged 3–5 years. The dataset consists of 106 hours of video and audio recordings collected from 61 children in their home environment through a 140° wide-lens camera, recording video and audio, which was embedded in a child-friendly vest. It includes detailed annotations for five location classes and 14 activity classes, which are further categorized based on whether the child is interacting alone or with others. Designed to support research in developmental psychology and computer vision, the ChildLens dataset offers a rich resource for advancing multimodal learning and studying the full spectrum of children’s daily activities. As of now, `r annotation_progess`% of the dataset are annotated. The remaining videos will be annotated when new funding is available.
+To address this gap, we introduce the publicly available ChildLens dataset, which focuses on activity annotations for children aged 3–5 years. The dataset consists of 106 hours of video and audio recordings collected from 61 children in their home environment through a 140° wide-lens camera, recording video and audio, which was embedded in a child-friendly vest. It includes detailed annotations for five location classes and 14 activity classes, which are further categorized based on whether the child is interacting alone or with others. Designed to support research in developmental psychology and computer vision, the ChildLens dataset offers a rich resource for advancing multimodal learning and studying the full spectrum of children’s daily activities. As of now, `r annotation_progress`% of the dataset are annotated. The remaining videos will be annotated when new funding is available.
 
 # Dataset Generation
 This section outlines the steps taken to create the ChildLens dataset. We provide detailed information on the video collection process, the labeling strategy employed, and the generation of activity labels.
@@ -214,7 +214,7 @@ In order to obtain a decent coverage for the different activity classes we plann
 - Child is invited to draw/craft something
 
 ## Step 2: Creation of Labeling Strategy
-To create a comprehensive labeling strategy for the ChildLens dataset, we first defined a list of activities that children typically engage in. This list was based on previous research on child development and the activities that children are known to participate in (CITE). From this, we derived a detailed catalog of activities that were likely to be captured in the videos and chose to make the activity classes more granular by distinguishing between activities like "making music" and "singing/humming" or "drawing" and "crafting things". 
+To create a comprehensive labeling strategy for the ChildLens dataset, we first defined a list of activities that children typically engage in. This list was inspired by previous research on activities that children are known to participate in [@hofferthHowAmericanChildren2001; @ginsburgImportancePlayPromoting2007]. From this, we derived a detailed catalog of activities that were likely to be captured in the videos and chose to make the activity classes more granular by distinguishing between activities like "making music" and "singing/humming" or "drawing" and "crafting things". 
 
 After an initial review of the videos, we decided to add another class "overheard speech" to capture situations in which the child is not directly involved in a conversation but can hear it. We also added "pretend play" as a separate class to capture situations in which the child is engaged in imaginative play. This approach allowed us to capture the diversity of activities that children engage in and create a comprehensive dataset for activity analysis.
 
@@ -227,13 +227,59 @@ The videos were manually annotated by native German speakers who watched each vi
 # Dataset Overview
 
 #### Activity Classes
-The ChildLens dataset includes 14 activity classes and 5 location classes. A brief description of each class can be found in the appendix. The location classes describe the room the child interacts in within the child's home. The activity classes are categorized based on the child’s interactions within the video and can be divided into _person-only_ activities (e.g. "child talking", "other person talking"), and _person-object_ activities (e.g. "drawing", "playing with object"). These activities are further categorized into _audio-based_, _visual-based_, and _multimodal_ activities, as presented in Figure \@ref(fig:camera-superannotate-activity-classes). Below is an overview of the different activity types:
+The ChildLens dataset includes 14 activity classes and 5 location classes. A brief description of each class can be found in \@ref(tab:activity-classes-description). The location classes describe the current location of the child in the video and include _livingroom_, _playroom_, _bathroom_, _hallway_, and _other_.
+The activity classes are categorized based on the child’s interactions within the video and can be divided into _person-only_ activities (e.g. "child talking", "other person talking"), and _person-object_ activities (e.g. "drawing", "playing with object"). These activities are further categorized into _audio-based_, _visual-based_, and _multimodal_ activities, as presented in Figure \@ref(fig:camera-superannotate-activity-classes). Below is an overview of the different activity types:
 
 - **Audio-based activities**: _child talking_, _other person talking_, _overheard speech_, _singing / humming_, _listening to music / audiobook_
 - **Visual-based activities**: _watching something_, _drawing_, _crafting things_, _dancing_
 - **Multimodal activities**: _playing with object_, _playing without object_, _making music_, _pretend play_, _reading book_ 
 
-The location classes describe the current location of the child in the video and include _livingroom_, _playroom_, _bathroom_, _hallway_, and _other_.
+```{r activity-classes-description, echo=FALSE, dpi=600, fig.align='center'}
+# Define the table data as a string with "|" delimiters
+activity_data <- "Activity Class                | Description: The child is ...
+                  Child talking                 | ... talking to themselves or to someone else.
+                  Singing/Humming               | ... singing or humming a song or a melody.
+                  Listening to music/audiobook  | ... listening to music or an audiobook.
+                  Watching something            | ... watching a movie or video on either a screen or a device.
+                  Drawing                       | ... drawing or coloring a picture.
+                  Crafting things               | ... engaged in a craft activity, such as making a bracelet.
+                  Dancing                       | ... dancing to music or moving to a rhythm.
+                  Playing with object           | ... playing or interacting with an object, such as a toy or a ball.
+                  Playing without object        | ... playing without an object, such as playing hide and seek
+                  Pretend play                  | ... engaged in imaginative play, such as pretending to be a doctor.
+                  Reading a book                | ... reading a book or looking at pictures in a book.
+                  Making music                  | ... playing a musical instrument or making music in another way.
+                                                |     
+                  Other person talking          | Another person is talking to the child.
+                  Overheard Speech              | Conversations the child can hear but is not directly involved in."
+
+# Read the table into a data frame
+activity_classes_table <- read.delim(
+  textConnection(activity_data), 
+  header = FALSE, 
+  sep = "|", 
+  strip.white = TRUE, 
+  stringsAsFactors = FALSE
+)
+
+# Assign column names from the first row
+names(activity_classes_table) <- unname(as.list(activity_classes_table[1, ]))
+
+# Remove the first row (header row) from the data frame
+activity_classes_table <- activity_classes_table[-1, ]
+
+# Reset row names to NULL
+row.names(activity_classes_table) <- NULL
+
+# Use apa_table to display the table with a caption
+apa_table(
+  activity_classes_table,
+  caption = "Activity classes in the ChildLens dataset.",
+  escape = TRUE
+)
+
+```
+
 
 ```{r camera-superannotate-activity-classes, echo=FALSE, dpi=600, fig.align='center', fig.cap="\\textbf{A} – Vest with the embedded camera worn by the children, \\textbf{B} – Platform utilized for video annotation, \\textbf{C} – Activity classes in the ChildLens dataset."}
 img1 <- ggdraw() + draw_image("images/camera_worn_close.png", scale = 0.8)
@@ -258,7 +304,7 @@ final_labeled_layout
 #### Statistics
 The ChildLens dataset comprises of `r sum_videos` video files with a total of `r sum_hours` hours recorded by `r nr_children` children aged 3 to 5 years (M=`r mean_age`, SD=`r sd_age`). This includes `r count_3_plus` videos from children aged 3, `r count_4_plus` videos from children aged 4, and `r count_5_plus` videos from children aged 5. The video duration per child varies between `r min_minutes` and `r max_minutes` minutes (M=`r mean_minutes`, SD=`r sd_minutes`). A detailed distribution of the video duration per child is shown in figure \@ref(fig:minutes-per-child). 
 
-This diverse dataset includes a varying number of instances across the 14 activity classes. While annotations are still ongoing, the current annotations (49% annotated) include between 2 and 319 instances per class. The duration of each instance varies by activity. For instance, audio-based activities like "child talking" may last only a few seconds, while activities like "reading a book" can span several minutes. The table with the total number of instances and summed duration for all activity classes is available in the appendix.
+This diverse dataset includes a varying number of instances across the 14 activity classes. While annotations are still ongoing, the current annotations (`r annotation_progress`% annotated) include between 2 and 319 instances per class. The duration of each instance varies by activity. For instance, audio-based activities like "child talking" may last only a few seconds, while activities like "reading a book" can span several minutes. The table with the total number of instances and summed duration for all activity classes is available in the appendix.
 
 ```{r minutes-per-child-density, echo=FALSE, message=FALSE, warning=FALSE, eval=FALSE}
 unique_data$ID <- as.factor(unique_data$ID)
@@ -492,11 +538,11 @@ knitr::include_graphics("images/vtc_performance_evaluation.png")
 ```
 
 # General Discussion
-We present the ChildLens dataset, a unique egocentric video-audio dataset that documents naturalistic everyday experiences,in preschool children. This dataset is particularly distinctive due to its diversity in terms of the number of children it includes and the variety of activity labels it covers. By focusing on both visual and auditory data, the ChildLens dataset provides comprehensive annotations for a broad spectrum of key activities, including multi-modal social interactions. This makes it a valuable resource for studying developmental processes in children, with a focus on their cognitive, emotional, and social growth.
+We present the ChildLens dataset, a unique egocentric video-audio dataset that documents naturalistic everyday experiences,in preschool children. This dataset is particularly distinctive due to its diversity in terms of the number of children it includes and the variety of activity labels it covers. By encorporating both visual and auditory data, the ChildLens dataset provides comprehensive annotations for a broad spectrum of key activities, including multi-modal social interactions. These annotations support the training and evaluation of models for the automatic analysis of children’s activities and therefore allow for scaling up data collection. A rich and representative dataset like ChildLens is essential for understanding individual differences in children's daily experiences and how they relate to different cognitive and social outcomes.
 
 In comparison to other freely available datasets, the ChildLens dataset stands out due to its broad age span and diverse set of activity labels. Most other datasets focus either on toddlers, are limited to dyadic interactions or were recorded in lab settings, with all of them lacking a comprehensive range of activity labels. Furthermore, most of these datasets either capture only audio or video. In contrast, ChildLens includes naturalistic recordings from children’s home environments, over an extended period, and features a variety of activity types. The dataset also captures whether children are engaged in activities alone or with others and provides basic demographic information - age, sex - about all individuals involved.
 
-The usefulness of the ChildLens dataset is demonstrated by its successful application to well-established models. For example, the pretrained Voice-Type Classifier for audio transcription achieves performance comparable to previous datasets, while the Boundary-Matching Network (BMN) produces robust results for activity localization, consistent with its performance on widely used datasets such as ActiviyNet. One way of using the ChildLens dataset to advance methodological development are multi-method approaches. For example, activity localization could be further enhanced by incorporating object identification, allowing for better tracking of the objects children interact with during daily routines. Such an approach has beed used in adult-focused studies [@kazakosLittleHelpMy2021]. Research by Bambach et al. [@bambachLendingHandDetecting2015] also emphasizes the importance of hand detection in egocentric video for activity recognition. Their work on using Convolutional Neural Networks for hand segmentation highlights how such techniques can differentiate activities. (Say here what would need to happen to do something comparabel with ChildLens)
+The usefulness of the ChildLens dataset is demonstrated by its successful application to well-established models. For example, the pretrained Voice-Type Classifier for audio transcription achieves performance comparable to previous datasets, while the Boundary-Matching Network (BMN) produces robust results for activity localization, consistent with its performance on widely used datasets such as ActiviyNet. One way of using the ChildLens dataset to advance methodological development are multi-method approaches. For example, activity localization could be further enhanced by incorporating object identification, allowing for better tracking of the objects children interact with during daily routines. Such an approach has beed used in adult-focused studies [@kazakosLittleHelpMy2021]. Research by @bambachLendingHandDetecting2015 also emphasizes the importance of hand detection in egocentric video for activity recognition. Their use of Convolutional Neural Networks (CNNs) for hand segmentation demonstrates how such techniques can help differentiate between activities. To apply a similar approach to the ChildLens dataset, we would first need to run a pretrained hand detection model on the dataset. In a second step, we would train a CNN to classify frames containing hands into activity classes, following the method described by @bambachLendingHandDetecting2015. If the performance of the hand detection performance is insufficient, additional hand annotations would be required to improve the model's accuracy.
 
 The integration of visual and auditory data in the ChildLens dataset enables a more detailed and comprehensive understanding of children’s daily experiences. Complex activities such as pretend play and reading a book, which require both audio and video for accurate detection, exemplify the strength of this multimodal approach. While previous studies, such as those analyzing disfluencies in children’s speech during computer game play [@yildirimAutomaticDetectionDisfluency2009], have demonstrated that combining visual and auditory information can improve performance, few studies have explored this in the context of children’s naturalistic activities. With ChildLens, the combination of naturalistic data and multimodal analysis creates new opportunities for in-depth insights into children’s cognitive, emotional, and social development, particularly for activities best captured through both modalities.
 
@@ -520,33 +566,6 @@ r_refs(file = "bibliography.bib")
 
 \newpage
 # Appendix
-
-## List of ChildLens Activity Classes
-
-The dataset contains the following list of activities.
-
-1. **playing with object**: The child is playing with an object, such as a toy or a ball.
-2. **playing without object**: The child is playing without an object, such as playing hide and seek or catch.
-3. **pretend play**: The child is engaged in imaginative play, such as pretending to be a doctor or a firefighter.
-4. **watching something**: The child is watching a movie, TV show, or video on either a screen or a device.
-5. **reading book**: The child is reading a book or looking at pictures in a book.
-6. **child talking**: The child is talking to themselves or to someone else.
-7. **other person talking**: Another person is talking to the child.
-8. **overheard speech**: Conversations that the child can hear but is not directly involved in.
-9. **drawing**: The child is drawing or coloring a picture.
-10. **crafting things**: The child is engaged in a craft activity, such as making a bracelet or decoration.
-11. **singing / humming**: The child is singing or humming a song or a melody.
-12. **making music**: The child is playing a musical instrument or making music in another way.
-13. **dancing**: The child is dancing to music or moving to a rhythm.
-14. **listening to music / audiobook**: The child is listening to music or an audiobook.
-
-## List of ChildLens Location Classes
-
-1. livingroom
-2. playroom
-3. bathroom
-4. hallway
-5. other
 
 ## Activity Class Statistics
 ```{r activity-classes-statistics, echo=FALSE, dpi=600, fig.align='center'}
