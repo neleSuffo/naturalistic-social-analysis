@@ -487,26 +487,27 @@ We used the following mapping strategy to align our audio-based activity classes
 "Listening to music/audiobook" was excluded, as it’s often background audio, lacks speaker age/gender details, and includes music irrelevant to VTC. "Overheard Speech" refers to speech not directed at the key child and was mapped to SPEECH due to missing age/gender annotations. This may underestimate VTC performance, for example, correct FEM predictions have SPEECH as ground truth. We retain this mapping, as re-annotation would be time-consuming. Moreover, the class is conceptually incompatible with the VTC output: it captures the recipient of speech rather than the speaker type. It is intended for more advanced models (for instance NLP architectures) that can infer not just who is talking, but also to whom, based on semantic content. 
 
 ```{r vtc-classes-statistics, echo=FALSE, message=FALSE, warnings=FALSE, results='asis', eval=TRUE}
-vtc_og_f1 <- 44.4
-vtc_og_kchi <- 68.3
-vtc_og_chi <- 5.4
-vtc_og_mal <- 25.2
-vtc_og_fem <- 41.0
+vtc_og_f1 <- 44.6
+vtc_og_kchi <- 68.5
+vtc_og_chi <- 4.5
+vtc_og_mal <- 19.6
+vtc_og_fem <- 46.7
 vtc_og_speech <- 82.2
 
-vtc_ft_f1 <- 54.9
-vtc_ft_kchi <- 79.3
-vtc_ft_chi <- 10.0
-vtc_ft_mal <- 45.5
-vtc_ft_fem <- 53.2
-vtc_ft_speech <- 86.4
+vtc_ft_f1 <- 53.2
+vtc_ft_kchi <- 75.7
+vtc_ft_chi <- 12.0
+vtc_ft_mal <- 39.2
+vtc_ft_fem <- 54.2
+vtc_ft_speech <- 85.2
 
-vtc_cl_f1 <- 55.7
-vtc_cl_kchi <- 79.6
-vtc_cl_chi <- 7.9
-vtc_cl_mal <- 52.5
-vtc_cl_fem <- 52.2
-vtc_cl_speech <- 86.2
+vtc_cl_f1 <- 55.0
+vtc_cl_kchi <- 74.7
+vtc_cl_chi <- 9.6
+vtc_cl_mal <- 53.8
+vtc_cl_fem <- 52.5
+vtc_cl_speech <- 84.7
+
 ```
 ### Implementation Details
 We first applied the pretrained VTC model directly, using the available VTC implementation. We then fine-tuned the model on our ChildLens dataset for `r num_epochs_finetune` epochs (`r train_time_finetune` hours) on the same Linux server as the BMN model. Finally, we trained the VTC model from scratch for `r num_epochs_scratch` epochs (`r train_time_scratch` hours) using the ChildLens dataset to assess its standalone value
@@ -514,9 +515,9 @@ We first applied the pretrained VTC model directly, using the available VTC impl
 ```{r vtc-results, echo=FALSE, message=FALSE, warnings=FALSE, results='asis', eval=TRUE}
 my.data <- "Dataset       | Model         | KCHI | CHI  | MAL   | FEM  | SPEECH | AVG
             ACLEW-Random  | VTC-OG        | 68.7 | 33.2 | 42.9  | 63.4 | 78.4   | 57.3
-            ChildLens     | VTC-OG        | 68.3 | 5.4  | 25.2  | 41.0 | 82.2   | 44.4
-            ChildLens     | VTC-FT        | 79.3 | 10.0 | 45.5  | 53.2 | 86.4   | 54.9
-            ChildLens     | VTC-CL        | 79.6 | 7.9  | 52.5  | 52.2 | 86.2   | 55.7"
+            ChildLens     | VTC-OG        | 68.5 | 4.5  | 19.6  | 46.7 | 82.2   | 44.6
+            ChildLens     | VTC-FT        | 75.7 | 12.0 | 39.2  | 54.2 | 85.2   | 53.2
+            ChildLens     | VTC-CL        | 74.7 | 9.6  | 53.8  | 52.5 | 84.7   | 55.0"
 
 df <- read.delim(textConnection(my.data), header=FALSE, sep="|", strip.white=TRUE, stringsAsFactors=FALSE)
 names(df) <- unname(as.list(df[1,]))
@@ -540,7 +541,7 @@ knitr::include_graphics("images/vtc_performance_evaluation.png")
 # General Discussion
 We present the ChildLens dataset, a unique egocentric video-audio dataset that documents naturalistic everyday experiences,in preschool children. This dataset is particularly distinctive due to its diversity in terms of the number of children it includes and the variety of activity labels it covers. By encorporating both visual and auditory data, the ChildLens dataset provides comprehensive annotations for a broad spectrum of key activities, including multi-modal social interactions. These annotations support the training and evaluation of models for the automatic analysis of children’s activities and therefore allow for scaling up data collection. A rich and representative dataset like ChildLens is essential for understanding individual differences in children's daily experiences and how they relate to different cognitive and social outcomes.
 
-In comparison to other freely available datasets, the ChildLens dataset stands out due to its broad age span and diverse set of activity labels. Most existing datasets either focus on toddlers, are limited to dyadic interactions or were recorded in lab settings, with all of them lacking a comprehensive range of activity labels. Furthermore, most of these datasets either capture only audio or video. In contrast, ChildLens includes naturalistic recordings from children’s home environments, collected over an extended period, and features a wide variety of activity types. Particularly noteworthy is the activity class `Overheard Speech` which captures speech that children can hear but are not directly involved in. This class is important for studying the impact of overheard speech on children's cognitive development - an area that has largely relied on labor-intensive manual annotations due to the difficulty of distinguishing between child-available and child-directed speech [@bergelsonEverydayLanguageInput2023a]. Existing models, like the classifier developed by @bangAutomatedClassifierPeriods2023 could be enhanced by incorporating visual features - such as eye contact or the use of gestures - in addition to audio inputs. The ChildLens dataset also captures whether children are engaged in activities alone or with others and provides basic demographic information - age, sex -about all individuals involved.
+In comparison to other freely available datasets, the ChildLens dataset stands out due to its broad age span and diverse set of activity labels. Most existing datasets either focus on toddlers, are limited to dyadic interactions or were recorded in lab settings, with all of them lacking a comprehensive range of activity labels. Furthermore, most of these datasets either capture only audio or video. In contrast, ChildLens includes naturalistic recordings from children’s home environments, collected over an extended period, and features a wide variety of activity types. Particularly noteworthy is the activity class `Overheard Speech` which captures speech that children can hear but are not directly involved in. This class is important for studying the impact of overheard speech on children's cognitive development - an area that has largely relied on labor-intensive manual annotations due to the difficulty of automatically distinguishing between child-available and child-directed speech [@bergelsonEverydayLanguageInput2023a]. Existing models, like the classifier developed by @bangAutomatedClassifierPeriods2023 could be enhanced by incorporating visual features - such as eye contact or the use of gestures - in addition to audio inputs. The ChildLens dataset also captures whether children are engaged in activities alone or with others and provides basic demographic information - age, sex -about all individuals involved.
 
 The usefulness of the ChildLens dataset is demonstrated by its successful application to well-established models. For example, the pretrained Voice-Type Classifier for audio transcription achieves performance comparable to previous datasets, while the Boundary-Matching Network (BMN) produces robust results for activity localization, consistent with its performance on widely used datasets such as ActiviyNet. One way of using the ChildLens dataset to advance methodological development are multi-method approaches. For example, activity localization could be further enhanced by incorporating object identification, allowing for better tracking of the objects children interact with during daily routines. Such an approach has beed used in adult-focused studies [@kazakosLittleHelpMy2021]. Research by @bambachLendingHandDetecting2015 also emphasizes the importance of hand detection in egocentric video for activity recognition. Their use of Convolutional Neural Networks (CNNs) for hand segmentation demonstrates how such techniques can help differentiate between activities. To apply a similar approach to the ChildLens dataset, we would first need to run a pretrained hand detection model on the dataset. In a second step, we would train a CNN to classify frames containing hands into activity classes, following the method described by @bambachLendingHandDetecting2015. If the performance of the hand detection performance is insufficient, additional hand annotations would be required to improve the model's accuracy.
 
