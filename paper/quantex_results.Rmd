@@ -1,0 +1,34 @@
+---
+title: "quantex_results"
+author: "Nele-Pauline Suffo"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readr)
+library(dplyr)
+library(lme4)
+library(lmerTest)
+```
+
+```{r load-data}
+utterance_01a_df <- read_csv("/Users/nelesuffo/Promotion/projects/leuphana-IPE/paper/data/utterance_01a_df.csv")
+
+# Make sure 'play_context' is a factor with the correct reference level
+utterance_01a_df <- utterance_01a_df %>%
+  mutate(play_context = factor(play_context, levels = c("alone", "social")),
+         child_id = factor(child_id))
+
+# Quick look at the data
+summary(utterance_01a_df)
+```
+
+```{r glmm-alone-vs-social}
+# Fit the model: context as fixed effect, with random slopes/intercepts per child
+model <- glmer(kchi_present ~ age * play_context + (play_context | child_id),
+               data = data,
+               family = binomial)
+
+summary(model)
