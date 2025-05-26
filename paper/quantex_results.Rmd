@@ -10,17 +10,25 @@ knitr::opts_chunk$set(echo = TRUE)
 library(readr)
 library(dplyr)
 library(lme4)
+library(brms)
 library(lmerTest)
 ```
 
 ```{r load-data}
 utterance_01a_df <- read_csv("/Users/nelesuffo/Promotion/projects/leuphana-IPE/paper/data/utterance_01a_df.csv", show_col_types = FALSE)
+
+utterance_01a_df <- read_csv("../paper/data/utterance_01a_df.csv", show_col_types = FALSE) # use relative paths so we can use the same code
+
 utterance_01b_df <- read_csv("/Users/nelesuffo/Promotion/projects/leuphana-IPE/paper/data/utterance_01b_df.csv", show_col_types = FALSE)
+
+utterance_01c_df <- read_csv("../paper/data/utterance_01c_df.csv", show_col_types = FALSE)
+
 utterance_01c_df <- read_csv("/Users/nelesuffo/Promotion/projects/leuphana-IPE/paper/data/utterance_01c_df.csv", show_col_types = FALSE)
 # Make sure 'play_context' is a factor with the correct reference level
 utterance_01a_df <- utterance_01a_df %>%
   mutate(play_context = factor(play_context, levels = c("alone", "social")),
-         child_id = factor(child_id))
+         child_id = factor(child_id),
+         z_age = scale(age)) # scale age to make model fitting easier
 
 utterance_01b_df <- utterance_01b_df %>%
   mutate(object_class = factor(object_class),  # make sure it's a factor
@@ -28,10 +36,11 @@ utterance_01b_df <- utterance_01b_df %>%
 
 utterance_01c_df <- utterance_01c_df %>%
   mutate(child_id = factor(child_id),
-         age_class = factor(person_age_class, levels = c("adult", "child")),
-         face = factor(close_face_present, levels = c("no", "yes")),
-         gaze = factor(gaze_direction, levels = c("no", "yes"))
+         face = factor(close_face_present, levels = c(1, 0), labels = c("yes","no")),
+         z_age = scale(age)
         )
+
+unique(utterance_01c_df$face)
 ```
 
 ```{r glmm01a-alone-vs-social}
@@ -41,7 +50,7 @@ model_01a <- glmer(kchi_present ~ age * play_context + (play_context | child_id)
 
 summary(model_01a)
 ```
-  
+
 
 ```{r glmm01b-alone}
 model_01b <- glmer(kchi_present ~ age * object_class + (object_class | child_id),
@@ -57,5 +66,47 @@ model_01c <- glmer(kchi_present ~ age * age_class  +  (1 | child_id),
                    data = utterance_01c_df,
                    family = binomial)
 summary(model_01c)
+```
+
+```{r}
+# bayesian model - no convergence problems and more options for visuals
+
+bmodel_01c <- brm(kchi_present ~ z_age * person_age_class * close_face_present * gaze_direction + (1 | child_id), # remove random slopes within child just because it takes long to run them, bring them back later
+               data = utterance_01c_df,
+               family = bernoulli(),
+               chains = 4, 
+               cores = 4,
+               iter = 2000,
+               #threads = threading(8), # to speed things up wehn on a cluster
+               #backend = "cmdstanr", # to speed things up wehn on a cluster
+               #control = list(adapt_delta = 0.95, max_treedepth = 20) # control option in case of nonconvergence of chains
+    )%>%add_criterion("loo") # add loo for model comparison
+
+
+bmodel_01c
+```
+
+## visuals
+
+```{r}
+ndata1 <- utterance_01c_df%>%
+  distinct(z_age, age,person_age_class,  close_face_present,  gaze_direction ) # generate new data set for which we want to generate predictions based on the model, this does not include child because we want the "average" or "marginal" predicitons, that is, average developmental trajectory for each play context. We need age in there for plotting
+
+
+post1 <- fitted(bmodel_01a, newdata = ndata1, re_formula = NA)%>%
+  as_tibble() %>%
+  bind_cols(ndata1)
+
+ggplot()+
+  geom_smooth(data = post1, aes(x = age, y = Estimate, ymin = Q2.5, ymax = Q97.5, fill =play_context, col = play_context), stat = "identity", alpha = .25)+ # plot the predicted trajectories
+  theme_bw()+
+  scale_color_ptol(name = "Play context")+
+  scale_fill_ptol(name = "Play context")+
+  ylim(0,1)+
+  #facet_grid(~ variable) # use when there are more variables 
+  labs(x = "Age in years", y="Probability of key child utterance being present")+
+  theme(
+    #legend.position = c(0.8, 0.15), 
+    legend.background = element_rect(colour = "black", size = 0.5, linetype = "solid"))
 ```
 
