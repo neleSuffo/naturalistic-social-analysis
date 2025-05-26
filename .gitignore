@@ -571,7 +571,6 @@ share/python-wheels/
 *.egg
 MANIFEST
 pretrained_models/
-data/
 databases/
 outputs/
 saved_outputs/
