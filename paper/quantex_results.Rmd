@@ -15,13 +15,13 @@ library(lmerTest)
 ```
 
 ```{r load-data}
-utterance_01a_df <- read_csv("/Users/nelesuffo/Promotion/projects/leuphana-IPE/paper/data/utterance_01a_df.csv", show_col_types = FALSE)
+utterance_01a_df <- read_csv("../paper/data/utterance_01a_df.csv", show_col_types = FALSE)
 
-utterance_01b_df <- read_csv("/Users/nelesuffo/Promotion/projects/leuphana-IPE/paper/data/utterance_01b_df.csv", show_col_types = FALSE)
+utterance_01b_df <- read_csv("../paper/data/utterance_01b_df.csv", show_col_types = FALSE)
 
-utterance_01c_df <- read_csv("/Users/nelesuffo/Promotion/projects/leuphana-IPE/paper/data/utterance_01c_df.csv", show_col_types = FALSE)
+utterance_01c_df <- read_csv("../paper/data/utterance_01c_df.csv", show_col_types = FALSE)
 
-utterance_01_df <- read_csv("../paper/data/utterance_01_df.csv", show_col_types = FALSE) # realtive paths!
+utterance_01_df <- read_csv("../paper/data/utterance_01_df.csv", show_col_types = FALSE)
 
 
 # Make sure 'play_context' is a factor with the correct reference level
@@ -31,16 +31,14 @@ utterance_01a_df <- utterance_01a_df %>%
          z_age = scale(age)) # scale age to make model fitting easier
 
 utterance_01b_df <- utterance_01b_df %>%
-  mutate(object_class = factor(object_class),  # make sure it's a factor
-         child_id = factor(child_id)) 
+  mutate(across(starts_with("object_class"), factor),
+         child_id = factor(child_id))
 
 utterance_01c_df <- utterance_01c_df %>%
   mutate(child_id = factor(child_id),
-         face = factor(close_face_present, levels = c(1, 0), labels = c("yes","no")),
+         face = factor(face_present, levels = c(1, 0)),
          z_age = scale(age)
         )
-
-
 ```
 # Model 1a
 
