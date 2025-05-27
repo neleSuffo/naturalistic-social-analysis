@@ -53,10 +53,10 @@ model_01a
 
 ```{r}
 ndata1a <- m_utterance_01a_df%>%
-  distinct(z_age, age, play_context ) # generate new data set for which we want to generate predictions based on the model, this does not include child because we want the "average" or "marginal" predicitons, that is, average developmental trajectory for each play context. We need age in there for plotting
+  distinct(z_age, age, play_context) # generate new data set for which we want to generate predictions based on the model, this does not include child because we want the "average" or "marginal" predicitons, that is, average developmental trajectory for each play context. We need age in there for plotting
 
 
-post1a <- fitted(bmodel_01a, newdata = ndata1a, re_formula = NA)%>%
+post1a <- fitted(model_01a, newdata = ndata1a, re_formula = NA)%>%
   as_tibble() %>%
   bind_cols(ndata1a)
 
@@ -77,22 +77,22 @@ ggplot()+
 # new data file for modelling
 utterance_01b_df <- utterance_01_df%>%
     filter(play_context == "alone")%>%
+    filter(!object_class %in% c("food", "kitchenware"))%>%
     mutate(child_id = factor(child_id),
            gaze = factor(gaze_direction, levels = c("none", "1.0", "0.0"), labels = c("na", "yes", "no")),
-           object_class = factor(object_class, levels = c("none", "book", "toy", "kitchenware", "screen", "food", "other object", "multiple")),
            z_age = scale(age),
         )
 # bayesian model - no convergence problems and more options for visuals
 
-model_01b <- brm(kchi_present ~ z_age * object_class + ( object_class | child_id),
+model_01b <- brm(kchi_present ~ z_age * object_class + (1 | child_id),
                data = utterance_01b_df,
                family = bernoulli(),
                chains = 4, 
                cores = 4,
-               iter = 2000,
+               iter = 4000,
                #threads = threading(8), # to speed things up wehn on a cluster
                #backend = "cmdstanr", # to speed things up wehn on a cluster
-               #control = list(adapt_delta = 0.95, max_treedepth = 20) # control option in case of nonconvergence of chains
+               control = list(adapt_delta = 0.95, max_treedepth = 20) # control option in case of nonconvergence of chains
     )%>%add_criterion("loo") # add loo for model comparison
 
 model_01b
@@ -131,6 +131,7 @@ utterance_01c_df <- utterance_01_df%>%
            #z_proximity = scale(proximity),
            #face_present = factor(face_present, levels = c("none", "1.0", "0.0"), labels = c("na", "yes", "no")),
         )
+#model_01c <- brm(kchi_present ~ z_age * person_age_class *gaze * proximity * face_present + (1 | child_id)
 
 model_01c <- brm(kchi_present ~ z_age * person_age_class + (1 | child_id), # remove random slopes within child just because it takes long to run them, bring them back later; also need to remove some variables becasue too little data
                data = utterance_01c_df,
