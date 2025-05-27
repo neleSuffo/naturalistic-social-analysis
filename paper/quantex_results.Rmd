@@ -17,12 +17,15 @@ library(ggthemes)
 library(tidybayes)
 library(forcats)
 library(stringr)
+library(tidyr)
 ```
 
 ```{r load-data}
 utterance_01_df <- read_csv("../paper/data/utterance_01_df.csv", show_col_types = FALSE)
 utterance_02_df <- read_csv("../paper/data/utterance_02_df.csv", show_col_types = FALSE)
 person_presence_03_df <- read_csv("../paper/data/person_presence_03_df.csv", show_col_types = FALSE)
+interactions_04_df <- read_csv("../paper/data/interactions_04_df.csv", show_col_types = FALSE)
+toys_05_df <- read_csv("../paper/data/toys_05_df.csv", show_col_types = FALSE)
 ```
 
 # Model 1a
@@ -269,4 +272,102 @@ ggplot(post3_long, aes(x = age, y = estimate, fill = person_age_class)) +
     y = "Predicted Probability"
   ) +
   theme_bw()
+```
+
+# Model 4
+## Run model 4
+```{r}
+interactions_04_df <- interactions_04_df%>%
+    mutate(child_id = factor(child_id),
+           z_age = scale(age),
+        )
+
+model_04 <- brm(interaction_type ~ z_age + (1 | child_id), # remove random slopes within child just because it takes long to run them, bring them back later; also need to remove some variables becasue too little data
+               data = interactions_04_df,
+               family = categorical(),
+               chains = 4, 
+               cores = 4,
+               iter = 2000,
+               #threads = threading(8), # to speed things up wehn on a cluster
+               #backend = "cmdstanr", # to speed things up wehn on a cluster
+               #control = list(adapt_delta = 0.95, max_treedepth = 20) # control option in case of nonconvergence of chains
+    )%>%add_criterion("loo") # add loo for model comparison
+
+model_04
+```
+
+## Visuals 4
+```{r}
+ndata4 <- interactions_04_df%>%
+  distinct(z_age, age) # generate new data set for which we want to generate predictions based on the model, this does not include child because we want the "average" or "marginal" predicitons, that is, average developmental trajectory for each play context. We need age in there for plotting
+
+post4 <- fitted(model_04, newdata = ndata4, re_formula = NA)%>%
+  as_tibble() %>%
+  bind_cols(ndata4)
+post4_long <- post4 %>%
+  select(starts_with("Estimate"), z_age, age) %>%
+  pivot_longer(
+    cols = starts_with("Estimate"),
+    names_to = "interaction_type",
+    values_to = "estimate"
+  ) %>%
+  mutate(
+    interaction_type = str_remove_all(interaction_type, "Estimate.P\\(Y = |\\)")
+  )
+
+# Step 3: Plot as flag (stacked area) plot
+ggplot(post4_long, aes(x = age, y = estimate, fill = interaction_type)) +
+  geom_area(color = "black", size = 0.3) +
+  scale_fill_brewer(palette = "Set2", name = "Interaction Type") +
+  labs(
+    title = "Predicted Probability of Interaction Types Over Time",
+    x = "Age (in years)",
+    y = "Predicted Probability"
+  ) +
+  theme_bw()
+```
+
+# Model 5
+## Run model 5
+```{r}
+toys_05_df <- toys_05_df%>%
+    mutate(child_id = factor(child_id),
+           z_age = scale(age),
+           toy_present = factor(toy_present, levels = c("none", "1.0", "0.0"), labels = c("na", "yes", "no")),
+        )
+
+model_05 <- brm(toy_present ~ z_age * toy_class * social_context + (toy_class * social_context | child_id), 
+               data = toys_05_df,
+               family = bernoulli(),
+               chains = 4, 
+               cores = 4,
+               iter = 2000,
+               #threads = threading(8), # to speed things up wehn on a cluster
+               #backend = "cmdstanr", # to speed things up wehn on a cluster
+               #control = list(adapt_delta = 0.95, max_treedepth = 20) # control option in case of nonconvergence of chains
+    )%>%add_criterion("loo") # add loo for model comparison
+
+model_05
+```
+
+## Visuals 5
+```{r}
+ndata5 <-toys_05_df%>%
+  distinct(z_age, age, toy_class, social_context)
+
+
+post5 <- fitted(model_05, newdata = ndata5, re_formula = NA)%>%
+  as_tibble() %>%
+  bind_cols(ndata1a)
+
+ggplot()+
+  geom_smooth(data = post5, aes(x = age, y = Estimate, ymin = Q2.5, ymax = Q97.5, fill =play_context, col = play_context), stat = "identity", alpha = .25)+ # plot the predicted trajectories
+  theme_bw()+
+  scale_color_ptol(name = "Play context")+
+  scale_fill_ptol(name = "Play context")+
+  ylim(0,1)+
+  labs(x = "Age in years", y="Probability of key child utterance being present")+
+  theme(
+    #legend.position = c(0.8, 0.15), 
+    legend.background = element_rect(colour = "black", size = 0.5, linetype = "solid"))
 ```
