@@ -330,14 +330,14 @@ ggplot(post4_long, aes(x = age, y = estimate, fill = interaction_type)) +
 # Model 5
 ## Run model 5
 ```{r}
-toys_05_df <- toys_05_df%>%
+ntoys_05_df <- toys_05_df%>%
     mutate(child_id = factor(child_id),
            z_age = scale(age),
-           toy_present = factor(toy_present, levels = c("none", "1.0", "0.0"), labels = c("na", "yes", "no")),
-        )
+           toy_present = factor(toy_present, levels = c("0", "1"), labels = c("no", "yes")),
+    )
 
 model_05 <- brm(toy_present ~ z_age * toy_class * social_context + (toy_class * social_context | child_id), 
-               data = toys_05_df,
+               data = ntoys_05_df,
                family = bernoulli(),
                chains = 4, 
                cores = 4,
@@ -352,7 +352,7 @@ model_05
 
 ## Visuals 5
 ```{r}
-ndata5 <-toys_05_df%>%
+ndata5 <-ntoys_05_df%>%
   distinct(z_age, age, toy_class, social_context)
 
 
