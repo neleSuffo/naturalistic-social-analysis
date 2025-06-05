@@ -90,7 +90,6 @@ def fetch_all_annotations(
     conn.close()
     # log all unique category ids
     unique_category_ids = set(annotation[0] for annotation in annotations)
-    logging.info(f"Unique category IDs in fetched annotations: {unique_category_ids}")
     return annotations
 
 
