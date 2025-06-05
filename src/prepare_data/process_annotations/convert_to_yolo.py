@@ -180,7 +180,7 @@ def save_annotations(annotations, target):
 
     logging.info(f"Processed {processed_count} annotations, skipped {skipped_count}.")
 
-def main(target):
+def main(target: str):
     """Main function to fetch and save YOLO annotations."""
     logging.info(f"Starting conversion process for YOLO {target} detection.")
 
