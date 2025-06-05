@@ -125,25 +125,22 @@ def main(target: str = None):
     Parameters
     ----------
     target : str, optional
-        Target type to crop ('person_cls' or 'face_cls'). If None, will parse from command line.
+        Target type to crop ('person_cls', 'face_cls', 'gaze_cls'). If None, it will prompt for input.
     """
     if target is None:
         parser = argparse.ArgumentParser(description='Crop person or face detections from images.')
         parser.add_argument(
             '--target', 
             type=str,
-            choices=['person_cls', 'face_cls'],
+            choices=['person_cls', 'face_cls', 'gaze_cls'],
             required=True,
             help='Target type to crop (person or face)'
         )
         args = parser.parse_args()
         target = args.target
-
-    if target not in ['person_cls', 'face_cls']:
-        raise ValueError("Target must be either 'person_cls' or 'face_cls'")
-
-    if target == 'face_cls':
-        logging.info("Processing face detections...")
+    
+    logging.info(f"Processing {target} detections...")
+    if target in ['face_cls', 'gaze_cls']:
         crop_detections_from_labels(
             labels_input_dir=ClassificationPaths.face_labels_input_dir,
             rawframe_dir=DetectionPaths.images_input_dir,
@@ -152,8 +149,7 @@ def main(target: str = None):
             missing_frames_file=ClassificationPaths.gaze_missing_frames_file_path,
             detection_type="face"
         )
-    else:  # person
-        logging.info("Processing person detections...")
+    elif target == 'person_cls':
         crop_detections_from_labels(
             labels_input_dir=ClassificationPaths.person_labels_input_dir,
             rawframe_dir=DetectionPaths.images_input_dir,
@@ -162,7 +158,8 @@ def main(target: str = None):
             missing_frames_file=ClassificationPaths.person_missing_frames_file_path,
             detection_type="person"
         )
-
+    else:
+        raise ValueError("Invalid target specified. Use 'person_cls' or 'face_cls'.")
     logging.info(f"Completed processing {target} detections")
 
 if __name__ == "__main__":
