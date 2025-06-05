@@ -4,45 +4,67 @@ from prepare_data.process_annotations.create_database import (
     write_xml_to_database,
     create_child_class_in_db,
 )
-from prepare_data.process_annotations.convert_to_yolo import main as convert_to_yolo
-from constants import DetectionPaths
+from prepare_data.process_annotations.convert_to_yolo import main as convert_to_yolo_format
+from constants import DetectionPaths, VALID_TARGETS
 
-def main(yolo_target: str = None, setup_db: bool = False) -> None:
+def setup_database() -> None:
     """
-    Main function to process annotations. This function creates a database 
-    and converts annotations to YOLO format.
-    
-    Parameters
-    ----------
-    yolo_target : str, optional
-        Target YOLO label, defaults to None.
-    setup_db : bool
-        Whether to set up the database
+    Sets up the database by writing XML data and creating child classes.
     """
-    # Validate arguments
-    valid_targets = {"person_face", "person_face_object", "person_cls", "face_cls", "gaze_cls"}
-    
-    if yolo_target not in valid_targets:
-        raise ValueError(f"Invalid model '{model}'. Must be one of: {valid_models}")
-        
     try:
         os.environ['OMP_NUM_THREADS'] = '20'
-        if setup_db:
-            write_xml_to_database()
-            create_child_class_in_db()
-
-        convert_to_yolo(yolo_target)
-            
+        print("Setting up the database...")
+        write_xml_to_database()
+        create_child_class_in_db()
+        print("Database setup complete.")
     except Exception as e:
-        print(f"Error processing annotations: {str(e)}")
+        print(f"Error setting up database: {str(e)}")
+        raise
+
+def run_yolo_conversion(yolo_target: str) -> None:
+    """
+    Converts annotations to YOLO format for the specified target.
+
+    Parameters
+    ----------
+    yolo_target : str
+        Target YOLO label.
+    """
+    if yolo_target not in VALID_TARGETS:
+        raise ValueError(f"Invalid yolo_target '{yolo_target}'. Must be one of: {VALID_TARGETS}")
+    
+    try:
+        os.environ['OMP_NUM_THREADS'] = '20'
+        print(f"Starting YOLO conversion for target: {yolo_target}...")
+        convert_to_yolo_format(yolo_target)
+        print(f"YOLO conversion for target {yolo_target} complete.")
+    except Exception as e:
+        print(f"Error during YOLO conversion for target {yolo_target}: {str(e)}")
         raise
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Process annotations")
-    parser.add_argument('--yolo_target', type=str, default=None,
-                       help='Target YOLO label')
-    parser.add_argument('--setup_db', action='store_true', 
-                       help='Whether to set up the database')
+    parser = argparse.ArgumentParser(description="Process annotations: setup database or convert to YOLO format.")
+    
+    subparsers = parser.add_subparsers(dest='command', help='Available commands')
+
+    # Subparser for setting up the database
+    parser_setup_db = subparsers.add_parser('setup_db', help='Set up the annotation database.')
+    
+    # Subparser for converting to YOLO
+    parser_convert_yolo = subparsers.add_parser('convert_yolo', help='Convert annotations to YOLO format.')
+    parser_convert_yolo.add_argument(
+        '--yolo_target', 
+        type=str, 
+        required=True,
+        choices=list(VALID_TARGETS),
+        help=f'Target YOLO label. Choose from: {", ".join(VALID_TARGETS)}'
+    )
 
     args = parser.parse_args()
-    main(yolo_target=args.yolo_target, setup_db=args.setup_db)
+
+    if args.command == 'setup_db':
+        setup_database()
+    elif args.command == 'convert_yolo':
+        run_yolo_conversion(yolo_target=args.yolo_target)
+    else:
+        parser.print_help()
