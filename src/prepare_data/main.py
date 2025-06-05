@@ -34,7 +34,7 @@ class DataPipeline:
             'setup_db'
         ]
         try:
-            subprocess.run(db_cmd, check=True, capture_output=True, text=True)
+            subprocess.run(db_cmd, check=True, text=True)
             logging.info("Annotation database setup complete.")
         except subprocess.CalledProcessError as e:
             logging.error(f"Error setting up annotation database: {e}")
@@ -56,7 +56,7 @@ class DataPipeline:
             '--yolo_target', self.yolo_target
         ]
         try:
-            subprocess.run(yolo_cmd, check=True, capture_output=True, text=True)
+            subprocess.run(yolo_cmd, check=True, text=True)
             logging.info(f"YOLO conversion for {self.yolo_target} complete.")
         except subprocess.CalledProcessError as e:
             logging.error(f"Error converting annotations to YOLO format: {e}")
