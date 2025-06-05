@@ -28,7 +28,7 @@ def main():
     torch.set_num_threads(4)  # PyTorch threads
 
     # Load the YOLO model
-    model = YOLO("/home/nele_pauline_suffo/models/yolo11x-cls.pt")
+    model = YOLO("yolo11x-cls.pt")
     # Define experiment name and output directory
     experiment_name = f"yolo_{target}_cls_{timestamp}"
     output_dir = getattr(ClassificationPaths, f"{target}_output_dir") / experiment_name
