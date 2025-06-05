@@ -23,7 +23,7 @@ class DetectionPaths:
     images_input_dir = Path(BasePaths.data_dir/"quantex_videos_processed/")
     childlens_images_input_dir = Path(BasePaths.data_dir/"childlens_videos_processed/")
     face_images_input_dir = Path(BasePaths.data_dir/"quantex_rawframes_face/")
-    gaze_images_input_dir = face_images_input_dir
+    gaze_images_input_dir = Path(BasePaths.data_dir/"quantex_rawframes_gaze/")
     person_images_input_dir = Path(BasePaths.data_dir/"quantex_rawframes_person/")
     # Path variable to the annotation xml files
     quantex_annotations_dir = Path(BasePaths.data_dir/"quantex_annotations/")
