@@ -13,7 +13,7 @@ def crop_detections_from_labels(
     output_dir: Path,
     progress_file: Path,
     missing_frames_file: Path,
-    detection_type: str,  # "face" or "person"
+    detection_type: str,
 ):
     """ 
     Reads YOLO annotations and crops faces or persons from rawframes.
@@ -31,7 +31,7 @@ def crop_detections_from_labels(
     missing_frames_file : Path
         File to log missing frames.
     detection_type : str
-        Either "face" or "person" to specify the crop type.
+        Either 'face', 'gaze', or 'person' to specify the type of detection to crop.
     """
     cv2.setNumThreads(1)
 
@@ -139,15 +139,23 @@ def main(target: str = None):
         args = parser.parse_args()
         target = args.target
     
-    logging.info(f"Processing {target} detections...")
-    if target in ['face_cls', 'gaze_cls']:
+    if target == 'face_cls':
         crop_detections_from_labels(
             labels_input_dir=ClassificationPaths.face_labels_input_dir,
             rawframe_dir=DetectionPaths.images_input_dir,
             output_dir=DetectionPaths.face_images_input_dir,
+            progress_file=ClassificationPaths.face_extraction_progress_file_path,
+            missing_frames_file=ClassificationPaths.face_missing_frames_file_path,
+            detection_type="face"
+        )
+    elif target == 'gaze_cls':
+        crop_detections_from_labels(
+            labels_input_dir=ClassificationPaths.gaze_labels_input_dir,
+            rawframe_dir=DetectionPaths.images_input_dir,
+            output_dir=DetectionPaths.gaze_images_input_dir,
             progress_file=ClassificationPaths.gaze_extraction_progress_file_path,
             missing_frames_file=ClassificationPaths.gaze_missing_frames_file_path,
-            detection_type="face"
+            detection_type="gaze"
         )
     elif target == 'person_cls':
         crop_detections_from_labels(
@@ -159,8 +167,7 @@ def main(target: str = None):
             detection_type="person"
         )
     else:
-        raise ValueError("Invalid target specified. Use 'person_cls' or 'face_cls'.")
-    logging.info(f"Completed processing {target} detections")
+        raise ValueError("Invalid target specified. Use 'person_cls', 'face_cls' or 'gaze_cls'.")
 
 if __name__ == "__main__":
     main()
