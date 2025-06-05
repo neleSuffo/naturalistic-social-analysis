@@ -1,6 +1,8 @@
 from pathlib import Path
 from typing import Optional, Tuple
 
+VALID_TARGETS = {"person_face", "person_face_object", "person_cls", "face_cls", "gaze_cls"}
+
 class BasePaths:
     home_dir = Path("/home/nele_pauline_suffo")
     models_dir = Path(home_dir/"models")
