@@ -3,7 +3,6 @@ from utils import extract_every_nth_frame_from_videos_in_folder
 from constants import DetectionPaths, VideoParameters, VTCPaths
 from config import DetectionParameters
 from utils import extract_audio_from_videos_in_folder
-from prepare_data.crop_detections import main as crop_detections
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -22,11 +21,6 @@ def main() -> None:
     #                                               VideoParameters.childlens_rawframes_extraction_error_log,
     #                                               VideoParameters.childlens_processed_videos_log)
     logging.info("Finished extracting frames from videos.")
-    
-    #logging.info("Starting to crop detections from labels.")
-    # extract persons and faces from the images
-    #crop_detections()
-    #logging.info("Finished cropping detections from labels.")
     
     logging.info("Starting to extract audio from videos.")
     #Extract audio from video
