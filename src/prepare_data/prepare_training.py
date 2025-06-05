@@ -8,7 +8,7 @@ import pandas as pd
 from collections import defaultdict
 from pathlib import Path
 from sklearn.model_selection import train_test_split
-from constants import DetectionPaths, BasePaths, ClassificationPaths
+from constants import DetectionPaths, BasePaths, ClassificationPaths, VALID_TARGETS
 from config import TrainingConfig
 from iterstrat.ml_stratifiers import MultilabelStratifiedShuffleSplit as MSSS
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -365,10 +365,6 @@ def move_images(yolo_target: str,
                 
                 # Extract frame number from filename
                 frame_num = int(image_name.split("_")[-1].split(".")[0])
-            
-                # Only process every 30th frame (those with annotations)
-                if frame_num % 30 != 0:
-                    return True  # Return True to not count as failure
                 
                 image_src = DetectionPaths.images_input_dir / image_folder / f"{image_name}.jpg"
                 label_src = label_path / f"{image_name}.txt"
@@ -391,10 +387,6 @@ def move_images(yolo_target: str,
                 # Handle classification cases
                 # Extract frame number from filename
                 frame_num = int(image_name.split("_")[-1].split(".")[0])
-
-                # Only process every 30th frame
-                if frame_num % 30 != 0:
-                    return True  # Return True to not count as failure
                 
                 input_dir = input_dir_mapping.get(yolo_target)
                 if not input_dir:
@@ -885,7 +877,7 @@ def main(yolo_target: str):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Prepare dataset for model training.")
-    parser.add_argument("--yolo_target", choices=["gaze_cls", "person_cls", "face_cls", "person_face", "person_face_object"], required=True, help="Specify the YOLO target type")
+    parser.add_argument("--yolo_target", choices=VALID_TARGETS, required=True, help="Specify the YOLO target type")
     
     args = parser.parse_args()
     main(args.yolo_target)
