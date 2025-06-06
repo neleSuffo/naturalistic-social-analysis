@@ -4,7 +4,7 @@ import logging
 import os
 from pathlib import Path
 from typing import Optional, List
-from prepare_data.prepare_training import main as prepare_training
+from prepare_data.prepare_dataset import main as prepare_dataset
 from prepare_data.process_videos import main as process_videos
 from prepare_data.crop_detections import main as crop_detections
 from constants import VALID_TARGETS
@@ -75,7 +75,7 @@ class DataPipeline:
         if not self.target:
             raise ValueError("YOLO target is required to prepare the dataset.")
         logging.info(f"Preparing training dataset for {self.target}...")
-        prepare_training(self.target)
+        prepare_dataset(self.target)
         
     def run_pipeline(self, steps: List[str]):
         """Run specified pipeline steps in order."""
