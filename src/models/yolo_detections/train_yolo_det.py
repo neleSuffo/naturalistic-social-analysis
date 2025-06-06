@@ -10,10 +10,7 @@ from constants import DetectionPaths
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train YOLO model for different detection tasks')
-    parser.add_argument('--yolo_target', type=str, required=True,
-                      choices=['person_face_object', 'object', 'person_face'],
-                      help='Target detection task', default='all')
-    parser.add_argument('--epochs', type=int, default=200,
+    parser.add_argument('--epochs', type=int, default=300,
                       help='Number of training epochs')
     parser.add_argument('--batch_size', type=int, default=16,
                       help='Batch size for training')
@@ -24,6 +21,7 @@ def parse_args():
     return parser.parse_args()
 
 def main():
+    target = "all"
     args = parse_args()
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
@@ -31,15 +29,14 @@ def main():
     os.environ['OMP_NUM_THREADS'] = '24'  # OpenMP threads
     torch.set_num_threads(24)  # PyTorch threads
 
-    # Get appropriate paths based on yolo_target
-    data_config_path = getattr(DetectionPaths, f"{args.yolo_target}_data_config_path")
-    base_output_dir = getattr(DetectionPaths, f"{args.yolo_target}_output_dir")
+    data_config_path = getattr(DetectionPaths, f"{target}_data_config_path")
+    base_output_dir = getattr(DetectionPaths, f"{target}_output_dir")
     
     # Load the YOLO model
     model = YOLO("yolo11x.pt")
 
     # Define experiment name and output directory
-    experiment_name = f"{timestamp}_yolo_{args.yolo_target}"
+    experiment_name = f"{timestamp}_yolo_{target}"
     output_dir = base_output_dir / experiment_name
 
     # Train the model with a cosine annealing learning rate scheduler
@@ -61,7 +58,7 @@ def main():
     )
 
     # Copy the script to the output directory after training starts
-    script_copy = output_dir / f"train_yolo_{args.yolo_target}.py"
+    script_copy = output_dir / f"train_yolo_{target}.py"
     if os.path.exists(__file__):
         shutil.copy(__file__, script_copy)
 
