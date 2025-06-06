@@ -141,8 +141,6 @@ def get_ground_truth_from_label_file(
 
 def main():
     parser = argparse.ArgumentParser(description='YOLO Image Classification Inference')
-    parser.add_argument('--model_path', type=str, required=True,
-                        help='Path to trained YOLO classification model (.pt file)')
     parser.add_argument('--image_path', type=str, required=True,
                         help='Path to input image (e.g., .../quantex_at_home_id261609_2022_04_01_01_000000_person_2.jpg)')
     parser.add_argument('--target', type=str, required=True, choices=["gaze", "person", "face"],
@@ -150,7 +148,16 @@ def main():
     
     args = parser.parse_args()
 
-    model_p = Path(args.model_path)
+    if target == "gaze":
+        model_p = ClassificationPaths.gaze_trained_weights_path
+    elif target == "person":
+        model_p = ClassificationPaths.person_trained_weights_path
+    elif target == "face":
+        model_p = ClassificationPaths.face_trained_weights_path
+    else:
+        logging.error(f"Unknown target '{args.target}' specified. Must be one of: gaze, person, face.")
+        return 1
+    # Set paths based on targe
     image_p = Path(args.image_path)
 
     if not model_p.exists():
