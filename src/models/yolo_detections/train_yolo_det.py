@@ -12,7 +12,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Train YOLO model for different detection tasks')
     parser.add_argument('--yolo_target', type=str, required=True,
                       choices=['person_face_object', 'object', 'person_face'],
-                      help='Target detection task')
+                      help='Target detection task', default='all')
     parser.add_argument('--epochs', type=int, default=200,
                       help='Number of training epochs')
     parser.add_argument('--batch_size', type=int, default=16,
@@ -36,7 +36,7 @@ def main():
     base_output_dir = getattr(DetectionPaths, f"{args.yolo_target}_output_dir")
     
     # Load the YOLO model
-    model = YOLO("/home/nele_pauline_suffo/models/yolo11x.pt")
+    model = YOLO("yolo11x.pt")
 
     # Define experiment name and output directory
     experiment_name = f"{timestamp}_yolo_{args.yolo_target}"
