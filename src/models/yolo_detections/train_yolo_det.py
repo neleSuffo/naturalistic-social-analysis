@@ -57,6 +57,7 @@ def main():
         patience=10, # Stop training if no improvement for 5 consecutive epochs
         device=args.device, # GPU (use "cpu" for CPU training)
         plots=True, # Plot training results
+        dfl=2.5, # Distribution Focal Loss parameter
     )
 
     # Copy the script to the output directory after training starts
