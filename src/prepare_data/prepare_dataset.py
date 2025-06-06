@@ -127,134 +127,163 @@ def get_class_distribution(total_images: list, annotation_folder: Path, target_t
        
 def multilabel_stratified_split(df: pd.DataFrame,
                               train_ratio: float = TrainingConfig.train_test_split_ratio,
-                              val_ratio: float = 0.1, # Explicitly define val_ratio
                               random_seed: int = TrainingConfig.random_seed,
                               target: str = None):
     """
-    Performs a group-based stratified split that guarantees all classes are present
-    in every split (train, val, test), if possible.
-
+    Performs a group-based stratified split balancing three factors:
+    1. Group Integrity: Keeps all frames from an ID in one split.
+    2. Class Representation: Prioritizes ensuring all classes are present in val/test.
+    3. True Frame Distribution: Bases the split ratio on the number of frames.
+    
     Parameters:
     ----------
     df: pd.DataFrame
         DataFrame containing image filenames, IDs, and one-hot encoded class labels.
     train_ratio: float
-        Target ratio for the training set.
+        Target ratio for the training set based on frame count.
     val_ratio: float
-        Target ratio for the validation set. The test set will be the remainder.
+        Target ratio for the validation set based on frame count.
     random_seed: int
         Random seed for reproducibility.
     target: str
-        The target type for YOLO.
-
+        A name for the dataset, used for the output log file.
+        
     Returns:
     -------
     Tuple[List[str], List[str], List[str], pd.DataFrame, pd.DataFrame, pd.DataFrame]
         Lists of filenames and DataFrames for train, val, and test splits.
     """
-    np.random.seed(random_seed)
-    random.seed(random_seed)
+    val_ratio = (1.0 - train_ratio) / 2.0  # Ensure val and test are equal
 
-    # Create output directory for split information
-    output_dir = Path(BasePaths.output_dir/"dataset_statistics")
+    # --- 1. Setup and Pre-analysis ---
+    output_dir = BasePaths.output_dir / "dataset_statistics"
     output_dir.mkdir(parents=True, exist_ok=True)
     timestamp = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")
     output_file = output_dir / f"split_distribution_{target}_{timestamp}.txt"
 
-    logging.info(f"Unique IDs in input: {df['id'].nunique()}")
+    logging.info(f"Starting split for {df.shape[0]} frames and {df['id'].nunique()} unique IDs.")
     if df.empty:
         raise ValueError("Input DataFrame is empty!")
 
-    # Get class columns and map IDs to the classes they contain
     class_columns = [col for col in df.columns if col not in ['filename', 'id', 'has_annotation']]
     id_class_map = df.groupby('id')[class_columns].sum().apply(lambda s: s[s > 0].index.to_list(), axis=1).to_dict()
 
-    # --- New Seeding Algorithm ---
-    available_ids = set(id_class_map.keys())
+    # Pre-calculate the 'weight' (frame count) of each ID
+    id_frame_count_map = df['id'].value_counts().to_dict()
+    total_frame_count = df.shape[0]
+
+    # --- 2. Main Hybrid Scoring Algorithm ---
+    available_ids = sorted(list(id_class_map.keys()))
+    random.shuffle(available_ids) # Shuffle to prevent any bias from sorting order
+
     train_ids, val_ids, test_ids = set(), set(), set()
     
-    # Target number of IDs for each split
-    total_id_count = len(available_ids)
-    val_target_count = max(1, int(total_id_count * val_ratio))
-    test_target_count = max(1, int(total_id_count * (1.0 - train_ratio - val_ratio)))
-
-    # 1. Seed val and test sets to guarantee class coverage
-    for class_col in class_columns:
-        # Find IDs that contain this class
-        ids_with_class = {id_ for id_, classes in id_class_map.items() if class_col in classes}
-
-        # Seed validation set
-        if not val_ids.intersection(ids_with_class):
-            candidate_ids = list(available_ids.intersection(ids_with_class))
-            if not candidate_ids:
-                logging.warning(f"Could not find an available ID for class '{class_col}' to seed the validation set. The split might be impossible.")
-                continue
-            seed_id = random.choice(candidate_ids)
-            val_ids.add(seed_id)
-            available_ids.remove(seed_id)
-
-        # Seed test set
-        if not test_ids.intersection(ids_with_class):
-            candidate_ids = list(available_ids.intersection(ids_with_class))
-            if not candidate_ids:
-                logging.warning(f"Could not find an available ID for class '{class_col}' to seed the test set. The split might be impossible.")
-                continue
-            seed_id = random.choice(candidate_ids)
-            test_ids.add(seed_id)
-            available_ids.remove(seed_id)
-
-    # 2. Fill val and test sets up to their target size
-    while len(val_ids) < val_target_count and available_ids:
-        move_id = random.choice(list(available_ids))
-        val_ids.add(move_id)
-        available_ids.remove(move_id)
+    # Track split sizes by cumulative frame count
+    train_frames, val_frames, test_frames = 0, 0, 0
     
-    while len(test_ids) < test_target_count and available_ids:
-        move_id = random.choice(list(available_ids))
-        test_ids.add(move_id)
-        available_ids.remove(move_id)
+    # Track classes still needed in val and test
+    uncovered_val_classes = set(class_columns)
+    uncovered_test_classes = set(class_columns)
 
-    # 3. Assign all remaining IDs to the training set
-    train_ids.update(available_ids)
+    # Define weights for the scoring model. Coverage bonus must be very high.
+    COVERAGE_BONUS_WEIGHT = 1000.0
+    RATIO_PENALTY_WEIGHT = 1.0 / total_frame_count # Normalize penalty by total frames
 
-    # --- Finalization and Logging (same as before) ---
+    for id_to_assign in available_ids:
+        id_classes = set(id_class_map[id_to_assign])
+        id_frame_count = id_frame_count_map[id_to_assign]
+        
+        scores = {'train': 0.0, 'val': 0.0, 'test': 0.0}
+
+        # === Score for assigning to VALIDATION set ===
+        # 1. Coverage Score: Huge bonus for covering a needed class
+        val_coverage_gain = len(id_classes.intersection(uncovered_val_classes))
+        scores['val'] += val_coverage_gain * COVERAGE_BONUS_WEIGHT
+        
+        # 2. Ratio Score: Penalty for making the split larger than its target frame count
+        if val_frames >= total_frame_count * val_ratio:
+            potential_new_val_frames = val_frames + id_frame_count
+            overage_penalty = potential_new_val_frames - (total_frame_count * val_ratio)
+            scores['val'] -= overage_penalty * RATIO_PENALTY_WEIGHT
+
+        # === Score for assigning to TEST set ===
+        # 1. Coverage Score
+        test_coverage_gain = len(id_classes.intersection(uncovered_test_classes))
+        scores['test'] += test_coverage_gain * COVERAGE_BONUS_WEIGHT
+
+        # 2. Ratio Score
+        test_ratio = 1.0 - train_ratio - val_ratio
+        if test_frames >= total_frame_count * test_ratio:
+            potential_new_test_frames = test_frames + id_frame_count
+            overage_penalty = potential_new_test_frames - (total_frame_count * test_ratio)
+            scores['test'] -= overage_penalty * RATIO_PENALTY_WEIGHT
+            
+        # === Assign ID to the split with the highest score ===
+        best_split = max(scores, key=scores.get)
+        
+        if best_split == 'val':
+            val_ids.add(id_to_assign)
+            val_frames += id_frame_count
+            uncovered_val_classes.difference_update(id_classes)
+        elif best_split == 'test':
+            test_ids.add(id_to_assign)
+            test_frames += id_frame_count
+            uncovered_test_classes.difference_update(id_classes)
+        else: # best_split == 'train'
+            train_ids.add(id_to_assign)
+            train_frames += id_frame_count
+
+    # --- 3. Finalization and Enhanced Logging ---
     train_df = df[df['id'].isin(train_ids)].copy()
     val_df = df[df['id'].isin(val_ids)].copy()
     test_df = df[df['id'].isin(test_ids)].copy()
 
-    # Check for impossible splits post-assignment
-    for split_name, split_df in [('Validation', val_df), ('Test', test_df)]:
-        for class_col in class_columns:
-            if split_df[class_col].sum() == 0:
-                logging.error(f"FATAL: Class '{class_col}' has 0 instances in the {split_name} set. "
-                              "This means the data distribution makes a fully stratified group split impossible. "
-                              "Consider merging rare classes or collecting more data.")
+    # Final check to warn about impossible splits
+    for class_col in class_columns:
+        if val_df[class_col].sum() == 0:
+            logging.error(f"WARNING: Class '{class_col}' has 0 instances in the Validation set.")
+        if test_df[class_col].sum() == 0:
+            logging.error(f"WARNING: Class '{class_col}' has 0 instances in the Test set.")
 
-    # Logging code from your original script...
+    # Prepare detailed log report
     split_info = [f"Dataset Split Information - {timestamp}\n"]
-    split_info.append("\nClass Distribution:")
-    split_info.append("-" * 55)
-    header = f"{'Category':<18} {'Train':<8} {'Val':<8} {'Test':<8} {'Total':<8}"
+    split_info.append(f"Total Frames: {total_frame_count}, Total IDs: {len(id_class_map)}\n")
+
+    split_info.append("--- Split Distribution by FRAMES (Primary Goal) ---")
+    split_info.append(f"{'Split':<12} {'Frames':<10} {'Percentage':<10}")
+    split_info.append("-" * 40)
+    split_info.append(f"{'Train':<12} {train_frames:<10} {train_frames/total_frame_count:<10.1%}")
+    split_info.append(f"{'Validation':<12} {val_frames:<10} {val_frames/total_frame_count:<10.1%}")
+    split_info.append(f"{'Test':<12} {test_frames:<10} {test_frames/total_frame_count:<10.1%}")
+    
+    split_info.append("\n--- Split Distribution by IDs (For Information) ---")
+    split_info.append(f"{'Split':<12} {'IDs':<10} {'Percentage':<10}")
+    split_info.append("-" * 40)
+    split_info.append(f"{'Train':<12} {len(train_ids):<10} {len(train_ids)/len(id_class_map):<10.1%}")
+    split_info.append(f"{'Validation':<12} {len(val_ids):<10} {len(val_ids)/len(id_class_map):<10.1%}")
+    split_info.append(f"{'Test':<12} {len(test_ids):<10} {len(test_ids)/len(id_class_map):<10.1%}")
+    
+    split_info.append("\n--- Class Distribution (by annotation instances) ---")
+    header = f"{'Category':<20} {'Train':<10} {'Val':<10} {'Test':<10} {'Total':<10}"
     split_info.append(header)
-    split_info.append("-" * 55)
+    split_info.append("-" * 65)
     
     for col in class_columns:
         train_count = train_df[col].sum()
         val_count = val_df[col].sum()
         test_count = test_df[col].sum()
         total = train_count + val_count + test_count
-        row = (f"{col:<18} {int(train_count):<8} {int(val_count):<8} "
-               f"{int(test_count):<8} {int(total):<8}")
+        row = (f"{col:<20} {int(train_count):<10} {int(val_count):<10} "
+               f"{int(test_count):<10} {int(total):<10}")
         split_info.append(row)
     
-    split_info.append("\nID Distribution:")
-    split_info.append(f"Training IDs:   {len(train_ids)} {sorted(list(train_ids))}")
-    split_info.append(f"Validation IDs: {len(val_ids)} {sorted(list(val_ids))}")
-    split_info.append(f"Test IDs:       {len(test_ids)} {sorted(list(test_ids))}")
+    # Write report to file and log to console
+    report_string = '\n'.join(split_info)
+    with open(output_file, 'w') as f:
+        f.write(report_string)
     
-    with open(output_file, 'w') as f: f.write('\n'.join(split_info))
-    logging.info(f"\nSplit distribution saved to: {output_file}")
-    for line in split_info: logging.info(line)
+    logging.info(f"\nSplit distribution report saved to: {output_file}\n")
+    logging.info(report_string)
     
     return (train_df['filename'].tolist(), val_df['filename'].tolist(), test_df['filename'].tolist(),
             train_df, val_df, test_df)
@@ -383,10 +412,7 @@ def move_images(target: str,
                 pbar.update(1)
 
     # Log results
-    logging.info(f"\nCompleted moving {split_type} images:")
-    logging.info(f"Successful: {successful}")
-    logging.info(f"Failed: {failed}")
-    
+    logging.info(f"\nCompleted moving {split_type} images:")    
     return successful, failed
 
 def extract_id(filename):
