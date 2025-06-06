@@ -8,9 +8,9 @@ from supervision import Detections
 from pathlib import Path
 from typing import Tuple
 from PIL import Image
-from constants import YoloPaths, DetectionPaths
+from constants import DetectionPaths
 
-def load_model(model_path: Path = YoloPaths.person_trained_weights_path) -> YOLO:
+def load_model(model_path: Path) -> YOLO:
     """Load YOLO model from path"""
     try:
         model = YOLO(str(model_path))
@@ -103,8 +103,11 @@ def load_ground_truth(label_path: str, img_width: int, img_height: int) -> np.nd
     return np.array(ground_truth_boxes)
 
 def main():
-    parser = argparse.ArgumentParser(description='YOLO Person Detection')
-    parser.add_argument('--image', type=str, required=True, help='Path to input image')
+    parser = argparse.ArgumentParser(description='YOLO Image Detection Inference')
+    parser.add_argument('--image_path', type=str, required=True,
+                        help='Path to input image (e.g., .../quantex_at_home_id261609_2022_04_01_01_000000.jpg)')
+    parser.add_argument('--target', type=str, required=True, choices=["all", "person_face", "person_face_object"],
+                        help="Target classification type (gaze, person, or face) to locate correct label files.")
     args = parser.parse_args()  
     
     # Configure logging
@@ -126,7 +129,16 @@ def main():
         image_path = DetectionPaths.images_input_dir/ video_folder / args.image
         label_path = Path("/home/nele_pauline_suffo/ProcessedData/yolo_person_input/labels/test") / Path(args.image).with_suffix('.txt')
         
-        model = load_model()
+        if target == "all":
+            model_path = YoloPaths.yolo11_model_path
+        elif target == "person_face":
+            model_path = YoloPaths.yolo11_person_face_model_path
+        elif target == "person_face_object":
+            model_path = YoloPaths.yolo11_person_face_object_model_path
+        else:
+            logging.error(f"Unknown target '{args.target}' for determining model path.")
+            return 1
+        model = load_model(model_path)
         image, results = process_image(model, image_path)
         
         # Retrieve class names from the model
