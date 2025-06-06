@@ -5,18 +5,27 @@ test: /home/nele_pauline_suffo/ProcessedData/yolo_all_input/images/test
 
 
 # Number of classes
-nc: 11
+#nc: 10
+nc: 7
 
 # Class names
 names:
-  0: "infant/child"
-  1: "adult"
-  2: "infant/child face"
-  3: "adult face"
-  4: "child body parts"
-  5: "book"
-  6: "toy"
-  7: "kitchenware"
-  8: "screen"
-  9: "food"
-  10: "other_object"
+  0: "person"
+  1: "face"
+  2: "child body parts"
+  3: "book"
+  4: "toy"
+  5: "kitchenware"
+  6: "other_object"
+
+# names:
+#   0: "person"
+#   1: "face"
+#   2: "child body parts"
+#   3: "book"
+#   4: "toy"
+#   5: "kitchenware"
+#   6: "screen"
+#   7: "animal"
+#   8: "food"
+#   9: "other_object"
