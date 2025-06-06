@@ -77,7 +77,7 @@ def get_class_distribution(total_images: list, annotation_folder: Path, target_t
     annotation_folder: Path
         Path to the directory containing label files.
     target_type: str
-        The target type for classification (e.g., "person_face_object")
+        The target type for classification (e.g., "all")
 
     Returns:
     -------
@@ -89,9 +89,9 @@ def get_class_distribution(total_images: list, annotation_folder: Path, target_t
         "person_face": {
             0: "person", 1: "face", 2: "child_body_parts"
         },
-        "person_face_object": {
+        "all": {
             0: "person", 1: "face", 2: "child_body_parts", 3: "book",
-            4: "toy", 5: "kitchenware", 6: "screen", 7: "other_object",
+            4: "toy", 5: "kitchenware", 6: "other_object", 7: "other_object", # map screen for now to other_object
             8: "other_object", 9: "other_object" # map former food and animal class to other_object
         }
     }
@@ -127,172 +127,134 @@ def get_class_distribution(total_images: list, annotation_folder: Path, target_t
        
 def multilabel_stratified_split(df: pd.DataFrame,
                               train_ratio: float = TrainingConfig.train_test_split_ratio,
-                              min_val_test_ratio: float = 0.05,
+                              val_ratio: float = 0.1, # Explicitly define val_ratio
                               random_seed: int = TrainingConfig.random_seed,
                               target: str = None):
     """
-    Improved stratified split with integrated distribution logging.
-    
+    Performs a group-based stratified split that guarantees all classes are present
+    in every split (train, val, test), if possible.
+
     Parameters:
     ----------
     df: pd.DataFrame
-        DataFrame containing image filenames, IDs, and class labels.
+        DataFrame containing image filenames, IDs, and one-hot encoded class labels.
     train_ratio: float
-        Target ratio for training set.
-    min_val_test_ratio: float
-        Minimum ratio of each class in val/test sets.
+        Target ratio for the training set.
+    val_ratio: float
+        Target ratio for the validation set. The test set will be the remainder.
     random_seed: int
         Random seed for reproducibility.
     target: str
         The target type for YOLO.
-    
+
     Returns:
     -------
     Tuple[List[str], List[str], List[str], pd.DataFrame, pd.DataFrame, pd.DataFrame]
-        Lists of filenames and DataFrames for train, val, test splits.
+        Lists of filenames and DataFrames for train, val, and test splits.
     """
     np.random.seed(random_seed)
-    
+    random.seed(random_seed)
+
     # Create output directory for split information
     output_dir = Path(BasePaths.output_dir/"dataset_statistics")
     output_dir.mkdir(parents=True, exist_ok=True)
     timestamp = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")
     output_file = output_dir / f"split_distribution_{target}_{timestamp}.txt"
-    
-    split_info = []
-    split_info.append(f"Dataset Split Information - {timestamp}\n")
-    
-    # Log input details
+
     logging.info(f"Unique IDs in input: {df['id'].nunique()}")
     if df.empty:
-        logging.error("Input DataFrame is empty!")
-        raise ValueError("No data to split")
+        raise ValueError("Input DataFrame is empty!")
 
-    # Get class columns (excluding metadata columns)
+    # Get class columns and map IDs to the classes they contain
     class_columns = [col for col in df.columns if col not in ['filename', 'id', 'has_annotation']]
+    id_class_map = df.groupby('id')[class_columns].sum().apply(lambda s: s[s > 0].index.to_list(), axis=1).to_dict()
+
+    # --- New Seeding Algorithm ---
+    available_ids = set(id_class_map.keys())
+    train_ids, val_ids, test_ids = set(), set(), set()
     
-    # Track which IDs contain which classes
-    id_class_map = defaultdict(set)
-    for _, row in df.iterrows():
-        for class_col in class_columns:
-            if row[class_col] == 1:
-                id_class_map[row['id']].add(class_col)
+    # Target number of IDs for each split
+    total_id_count = len(available_ids)
+    val_target_count = max(1, int(total_id_count * val_ratio))
+    test_target_count = max(1, int(total_id_count * (1.0 - train_ratio - val_ratio)))
+
+    # 1. Seed val and test sets to guarantee class coverage
+    for class_col in class_columns:
+        # Find IDs that contain this class
+        ids_with_class = {id_ for id_, classes in id_class_map.items() if class_col in classes}
+
+        # Seed validation set
+        if not val_ids.intersection(ids_with_class):
+            candidate_ids = list(available_ids.intersection(ids_with_class))
+            if not candidate_ids:
+                logging.warning(f"Could not find an available ID for class '{class_col}' to seed the validation set. The split might be impossible.")
+                continue
+            seed_id = random.choice(candidate_ids)
+            val_ids.add(seed_id)
+            available_ids.remove(seed_id)
+
+        # Seed test set
+        if not test_ids.intersection(ids_with_class):
+            candidate_ids = list(available_ids.intersection(ids_with_class))
+            if not candidate_ids:
+                logging.warning(f"Could not find an available ID for class '{class_col}' to seed the test set. The split might be impossible.")
+                continue
+            seed_id = random.choice(candidate_ids)
+            test_ids.add(seed_id)
+            available_ids.remove(seed_id)
+
+    # 2. Fill val and test sets up to their target size
+    while len(val_ids) < val_target_count and available_ids:
+        move_id = random.choice(list(available_ids))
+        val_ids.add(move_id)
+        available_ids.remove(move_id)
     
-    # Initialize splits
-    train_ids = set()
-    val_ids = set()
-    test_ids = set()
-    
-    # Track class counts per split
-    class_counts = {c: {'train': 0, 'val': 0, 'test': 0} for c in class_columns}
-    
-    # Sort IDs by number of classes to handle diverse ones first
-    sorted_ids = sorted(id_class_map.keys(), 
-                       key=lambda x: len(id_class_map[x]), 
-                       reverse=True)
-    
-    # Expected train size to guide prioritization
-    expected_train_size = int(train_ratio * len(sorted_ids))
-    
-    for id in sorted_ids:
-        # Calculate current class ratios if we add this ID to each split
-        temp_counts = {split: defaultdict(int) for split in ['train', 'val', 'test']}
-        
-        for class_col in id_class_map[id]:
-            temp_counts['train'][class_col] = class_counts[class_col]['train'] + 1
-            temp_counts['val'][class_col] = class_counts[class_col]['val'] + 1
-            temp_counts['test'][class_col] = class_counts[class_col]['test'] + 1
-        
-        # Evaluate best split for this ID
-        best_split = None
-        best_score = float('-inf')
-        
-        for split in ['train', 'val', 'test']:
-            score = 0
-            target_ratio = train_ratio if split == 'train' else (1 - train_ratio) / 2
-            current_ratio = (len(eval(f"{split}_ids")) + 1) / len(sorted_ids)
-            ratio_diff = abs(current_ratio - target_ratio)
-            
-            if split == 'train' and len(train_ids) < expected_train_size * 0.8:
-                score += 10
-            score -= ratio_diff * 5
-            
-            if split != 'train':
-                for class_col in id_class_map[id]:
-                    current_count = temp_counts[split][class_col]
-                    total_class = sum(class_counts[class_col].values()) + 1
-                    min_needed = total_class * min_val_test_ratio
-                    if current_count < min_needed:
-                        score += (min_needed - current_count) * 5
-            
-            if score > best_score:
-                best_score = score
-                best_split = split
-        
-        # Assign to best split
-        if best_split == 'train':
-            train_ids.add(id)
-        elif best_split == 'val':
-            val_ids.add(id)
-        else:
-            test_ids.add(id)
-            
-        # Update class counts
-        for class_col in id_class_map[id]:
-            class_counts[class_col][best_split] += 1
-    
-    # Create final splits
+    while len(test_ids) < test_target_count and available_ids:
+        move_id = random.choice(list(available_ids))
+        test_ids.add(move_id)
+        available_ids.remove(move_id)
+
+    # 3. Assign all remaining IDs to the training set
+    train_ids.update(available_ids)
+
+    # --- Finalization and Logging (same as before) ---
     train_df = df[df['id'].isin(train_ids)].copy()
     val_df = df[df['id'].isin(val_ids)].copy()
     test_df = df[df['id'].isin(test_ids)].copy()
-    
-    # After creating the final splits (train_df, val_df, test_df)
+
+    # Check for impossible splits post-assignment
+    for split_name, split_df in [('Validation', val_df), ('Test', test_df)]:
+        for class_col in class_columns:
+            if split_df[class_col].sum() == 0:
+                logging.error(f"FATAL: Class '{class_col}' has 0 instances in the {split_name} set. "
+                              "This means the data distribution makes a fully stratified group split impossible. "
+                              "Consider merging rare classes or collecting more data.")
+
+    # Logging code from your original script...
+    split_info = [f"Dataset Split Information - {timestamp}\n"]
     split_info.append("\nClass Distribution:")
     split_info.append("-" * 55)
-    
-    # Header
     header = f"{'Category':<18} {'Train':<8} {'Val':<8} {'Test':<8} {'Total':<8}"
     split_info.append(header)
     split_info.append("-" * 55)
     
-    # Calculate totals for each class
-    class_totals = {}
     for col in class_columns:
         train_count = train_df[col].sum()
         val_count = val_df[col].sum()
         test_count = test_df[col].sum()
         total = train_count + val_count + test_count
-        
-        class_totals[col] = {
-            'train': train_count,
-            'val': val_count,
-            'test': test_count,
-            'total': total
-        }
-        
-        # Format row with aligned columns
         row = (f"{col:<18} {int(train_count):<8} {int(val_count):<8} "
                f"{int(test_count):<8} {int(total):<8}")
         split_info.append(row)
     
     split_info.append("\nID Distribution:")
-    split_info.append(f"Training IDs:   {len(train_ids)} {sorted(train_ids)}")
-    split_info.append(f"Validation IDs: {len(val_ids)} {sorted(val_ids)}")
-    split_info.append(f"Test IDs:       {len(test_ids)} {sorted(test_ids)}")
+    split_info.append(f"Training IDs:   {len(train_ids)} {sorted(list(train_ids))}")
+    split_info.append(f"Validation IDs: {len(val_ids)} {sorted(list(val_ids))}")
+    split_info.append(f"Test IDs:       {len(test_ids)} {sorted(list(test_ids))}")
     
-    # Write to file
-    with open(output_file, 'w') as f:
-        f.write('\n'.join(split_info))
-    
+    with open(output_file, 'w') as f: f.write('\n'.join(split_info))
     logging.info(f"\nSplit distribution saved to: {output_file}")
-    
-    # Log formatted table to console
-    logging.info("\nClass Distribution:")
-    logging.info("-" * 55)
-    logging.info(header)
-    logging.info("-" * 55)
-    for line in split_info[4:4+len(class_columns)]:  # Print only the table rows
-        logging.info(line)
+    for line in split_info: logging.info(line)
     
     return (train_df['filename'].tolist(), val_df['filename'].tolist(), test_df['filename'].tolist(),
             train_df, val_df, test_df)
@@ -358,7 +320,7 @@ def move_images(target: str,
     def process_single_image(image_name: str) -> bool:
         """Process a single image and its label."""
         try:
-            if target in ["person_face", "person_face_object"]:
+            if target in ["person_face", "all"]:
                 # Handle detection cases
                 image_parts = image_name.split("_")[:8]
                 image_folder = "_".join(image_parts)
@@ -866,7 +828,7 @@ def main(target: str):
     """
     path_mapping = {
         "person_face": DetectionPaths.person_face_labels_input_dir,
-        "person_face_object": DetectionPaths.person_face_object_labels_input_dir,
+        "all": DetectionPaths.all_labels_input_dir,
         "person_cls": ClassificationPaths.person_labels_input_dir,
         "face_cls": ClassificationPaths.face_labels_input_dir,
         "gaze_cls": ClassificationPaths.gaze_labels_input_dir
