@@ -35,7 +35,7 @@ class YoloConfig:
     num_epochs = 100
     iou_threshold = 0.35 # the intersection over union threshold
     img_size = (320, 640) # multi scale training
-    person_face_object_target_class_ids = [1,2,3,4,5,6,7,8,10,11,12]
+    all_target_class_ids = [1,2,3,4,5,6,7,8,10,11,12]
     face_cls_target_class_ids = [10]
     person_face_target_class_ids = [1,2,10,11]
     person_cls_target_class_ids = [1,2]
@@ -198,7 +198,7 @@ class CategoryMappings:
         11: 2
     }
     
-    person_face_object_det = {
+    all_det = {
         1: 0,
         2: 0,
         10: 1,
