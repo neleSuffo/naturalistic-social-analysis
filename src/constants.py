@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Optional, Tuple
 
-VALID_TARGETS = {"person_face", "person_face_object", "person_cls", "face_cls", "gaze_cls"}
+VALID_TARGETS = {"person_face", "all", "person_cls", "face_cls", "gaze_cls"}
 
 class BasePaths:
     home_dir = Path("/home/nele_pauline_suffo")
@@ -53,22 +53,22 @@ class DetectionPaths:
     person_face_data_input_dir = Path(BasePaths.data_dir/"person_face_det_input")
     person_face_output_dir = Path(BasePaths.output_dir/"person_face_detections/")
     
-    person_face_object_trained_weights_path = Path(BasePaths.models_dir/'yolo11_person_face_object_detection.pt')
-    person_face_object_data_config_path = yolo_detections_dir/"person_face_object_dataset.yaml"
-    person_face_object_labels_input_dir = Path(BasePaths.data_dir/"person_face_object_det_labels")
-    person_face_object_data_input_dir = Path(BasePaths.data_dir/"person_face_object_det_input")
-    person_face_object_output_dir = Path(BasePaths.output_dir/"person_face_object_detections/")
+    all_trained_weights_path = Path(BasePaths.models_dir/'yolo11_all_detection.pt')
+    all_data_config_path = yolo_detections_dir/"all_dataset.yaml"
+    all_labels_input_dir = Path(BasePaths.data_dir/"all_det_labels")
+    all_data_input_dir = Path(BasePaths.data_dir/"all_det_input")
+    all_output_dir = Path(BasePaths.output_dir/"all_detections/")
     
     person_face_cls_classes = ['child_person_face', 'adult_person_face']
 
     @classmethod
-    def get_target_paths(cls, yolo_target: str, split_type: str) -> Optional[Tuple[Path, Path]]:
+    def get_target_paths(cls, target: str, split_type: str) -> Optional[Tuple[Path, Path]]:
         """
         Get image and label destination paths for a given target and split type.
         
         Parameters
         ----------
-        yolo_target : str 
+        target : str 
             The specific class to get paths for (e.g., 'gaze', 'child_person_face', 'object')
         split_type : str
             The dataset split ('train', 'val', or 'test')
@@ -93,15 +93,15 @@ class DetectionPaths:
             # Object detection paths
             'object': (cls.object_data_input_dir / "images" / split_type,
                     cls.object_data_input_dir / "labels" / split_type),
-            'person_face_object': (cls.person_face_object_data_input_dir / "images" / split_type,
-                                cls.person_face_object_data_input_dir / "labels" / split_type),
+            'all': (cls.all_data_input_dir / "images" / split_type,
+                                cls.all_data_input_dir / "labels" / split_type),
             'person_face': (cls.person_face_data_input_dir / "images" / split_type,
                         cls.person_face_data_input_dir / "labels" / split_type)
         }
 
         # Return paths if target exists
-        if yolo_target in path_mappings:
-            return path_mappings[yolo_target]
+        if target in path_mappings:
+            return path_mappings[target]
 
         return None
 
