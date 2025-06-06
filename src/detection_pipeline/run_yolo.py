@@ -465,37 +465,6 @@ def store_voice_detections(video_file_name: str, results_file: Path, fps: int = 
         conn.commit()
         conn.close()
         logging.info("Voice detections stored in the database.")
-    
-    
-def run_voice_type_classifier(video_file_name):
-    """
-    This function runs the voice type classifier on the given video.
-    
-    Parameters:
-    ----------
-    video_path : Path
-        Path to the video file
-    """
-    # get corresponding audio file
-    audio_file_name = video_file_name.replace(".MP4", "_16kHz.wav")
-    audio_file_path = VTCPaths.quantex_output_folder / audio_file_name
-     # Run voice type classifier using apply.sh.
-    # This command changes to the 'projects/voice-type-classifier' directory, activates the pyannote conda environment,
-    # and executes the apply.sh script.
-    voice_command = (
-        "cd /home/nele_pauline_suffo/projects/voice-type-classifier && " 
-        f"conda run -n pyannote ./apply.sh {audio_file_path} --device=gpu"
-    )
-    subprocess.run(voice_command, shell=True, check=True)
-    
-    # Assume the classifier writes its output to an 'all.rttm' file in the designated results directory.
-    vtc_results_dir = VTCPaths.vtc_results_dir
-    rttm_file = vtc_results_dir / video_file_name / "all.rttm"
-    
-    if rttm_file.exists():
-        store_voice_detections(video_file_name, rttm_file)
-    else:
-        logging.error(f"RTTM results file not found: {rttm_file}")
  
 def register_model(cursor: sqlite3.Cursor, model_name: str, model: YOLO) -> int:
     """
@@ -583,7 +552,6 @@ def main(num_videos_to_process: int = None,
     # Process videos
     for video in videos_to_process:
         process_video(video, detection_model, gaze_model, cursor, conn, frame_skip)
-        #run_voice_type_classifier(video_path.name)
     
     conn.close()
 
