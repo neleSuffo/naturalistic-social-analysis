@@ -15,8 +15,8 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 class DataPipeline:
     """Handles the data preparation pipeline steps."""
     
-    def __init__(self, yolo_target: Optional[str], threads: int = 2):
-        self.yolo_target = yolo_target
+    def __init__(self, target: Optional[str], threads: int = 2):
+        self.target = target
         os.environ['OMP_NUM_THREADS'] = str(threads)
         
     def process_videos(self):
@@ -44,38 +44,38 @@ class DataPipeline:
         
     def convert_annotations_and_crop(self):
         """Converts annotations to YOLO format and crops detections."""
-        if not self.yolo_target:
-            raise ValueError("YOLO target is required for YOLO conversion and cropping.")
+        if not self.target:
+            raise ValueError("Target is required for YOLO conversion and cropping.")
             
-        logging.info(f"Converting annotations to YOLO format for {self.yolo_target}...")
+        logging.info(f"Converting annotations to YOLO format for {self.target}...")
         yolo_cmd = [
             'python', 
             '-m', 
             'prepare_data.process_annotations.__main__',
             'convert_yolo',
-            '--yolo_target', self.yolo_target
+            '--target', self.target
         ]
         try:
             subprocess.run(yolo_cmd, check=True, text=True)
-            logging.info(f"YOLO conversion for {self.yolo_target} complete.")
+            logging.info(f"YOLO conversion for {self.target} complete.")
         except subprocess.CalledProcessError as e:
             logging.error(f"Error converting annotations to YOLO format: {e}")
             logging.error(f"Stdout: {e.stdout}")
             logging.error(f"Stderr: {e.stderr}")
             raise
         
-        # Cropping is part of the annotation processing that depends on yolo_target
-        if self.yolo_target in ['face_cls', 'person_cls', 'gaze_cls']:
-            logging.info(f"Starting to crop detections from labels for {self.yolo_target}.")
-            crop_detections(self.yolo_target)
-            logging.info(f"Finished cropping detections from labels for {self.yolo_target}.")
+        # Cropping is part of the annotation processing that depends on target
+        if self.target in ['face_cls', 'person_cls', 'gaze_cls']:
+            logging.info(f"Starting to crop detections from labels for {self.target}.")
+            crop_detections(self.target)
+            logging.info(f"Finished cropping detections from labels for {self.target}.")
             
     def prepare_dataset(self):
         """Prepare training dataset."""
-        if not self.yolo_target:
+        if not self.target:
             raise ValueError("YOLO target is required to prepare the dataset.")
-        logging.info(f"Preparing training dataset for {self.yolo_target}...")
-        prepare_training(self.yolo_target)
+        logging.info(f"Preparing training dataset for {self.target}...")
+        prepare_training(self.target)
         
     def run_pipeline(self, steps: List[str]):
         """Run specified pipeline steps in order."""
@@ -102,35 +102,35 @@ def main():
     parser.add_argument('--setup_annotations_db', action='store_true', help='Set up the annotation database')
     parser.add_argument('--annotations', action='store_true', help='Convert annotations to YOLO format and crop detections')
     parser.add_argument('--dataset', action='store_true', help='Prepare training dataset')
-    parser.add_argument('--yolo_target', type=str, choices=VALID_TARGETS, 
+    parser.add_argument('--target', type=str, choices=VALID_TARGETS, 
                         help='Target YOLO label for annotations and dataset preparation. Required for annotations and dataset steps.')
     parser.add_argument('--all', action='store_true', help='Run full pipeline (videos, setup_annotations_db, annotations, dataset)')
     parser.add_argument('--threads', type=int, default=2, help='Number of threads for OMP_NUM_THREADS')
     
     args = parser.parse_args()
     
-    pipeline = DataPipeline(args.yolo_target, args.threads)
+    pipeline = DataPipeline(args.target, args.threads)
     
     steps_to_run = []
     canonical_order = ['videos', 'setup_annotations_db', 'annotations', 'dataset']
 
     if args.all:
-        if not args.yolo_target:
-            parser.error("--yolo_target is required when --all is specified.")
+        if not args.target:
+            parser.error("--target is required when --all is specified.")
         steps_to_run = canonical_order
     else:
         # Collect steps based on flags, maintaining canonical order
         if args.videos:
             steps_to_run.append('videos')
         if args.setup_annotations_db:
-            steps_to_run.append('setup_annotations_db') # This step does not require yolo_target
+            steps_to_run.append('setup_annotations_db') # This step does not require target
         if args.annotations:
-            if not args.yolo_target:
-                parser.error("--yolo_target is required when --annotations is specified.")
+            if not args.target:
+                parser.error("--target is required when --annotations is specified.")
             steps_to_run.append('annotations')
         if args.dataset:
-            if not args.yolo_target:
-                parser.error("--yolo_target is required when --dataset is specified.")
+            if not args.target:
+                parser.error("--target is required when --dataset is specified.")
             steps_to_run.append('dataset')
         
         final_ordered_steps = []
@@ -140,7 +140,7 @@ def main():
         steps_to_run = final_ordered_steps
         
     if not steps_to_run:
-        # This means no action flags were set, or yolo_target was missing for a required action (which parser.error would have caught)
+        # This means no action flags were set, or target was missing for a required action (which parser.error would have caught)
         if not (args.videos or args.setup_annotations_db or args.annotations or args.dataset or args.all):
             parser.error("No pipeline steps specified. Use --videos, --setup_annotations_db, --annotations, --dataset, or --all.")
         # If steps_to_run is empty but some flags were set, it implies an issue already handled by parser.error

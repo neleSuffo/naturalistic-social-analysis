@@ -21,25 +21,25 @@ def setup_database() -> None:
         print(f"Error setting up database: {str(e)}")
         raise
 
-def run_yolo_conversion(yolo_target: str) -> None:
+def run_yolo_conversion(target: str) -> None:
     """
     Converts annotations to YOLO format for the specified target.
 
     Parameters
     ----------
-    yolo_target : str
+    target : str
         Target YOLO label.
     """
-    if yolo_target not in VALID_TARGETS:
-        raise ValueError(f"Invalid yolo_target '{yolo_target}'. Must be one of: {VALID_TARGETS}")
+    if target not in VALID_TARGETS:
+        raise ValueError(f"Invalid target '{target}'. Must be one of: {VALID_TARGETS}")
     
     try:
         os.environ['OMP_NUM_THREADS'] = '20'
-        print(f"Starting YOLO conversion for target: {yolo_target}...")
-        convert_to_yolo_format(yolo_target)
-        print(f"YOLO conversion for target {yolo_target} complete.")
+        print(f"Starting YOLO conversion for target: {target}...")
+        convert_to_yolo_format(target)
+        print(f"YOLO conversion for target {target} complete.")
     except Exception as e:
-        print(f"Error during YOLO conversion for target {yolo_target}: {str(e)}")
+        print(f"Error during YOLO conversion for target {target}: {str(e)}")
         raise
 
 if __name__ == "__main__":
@@ -53,7 +53,7 @@ if __name__ == "__main__":
     # Subparser for converting to YOLO
     parser_convert_yolo = subparsers.add_parser('convert_yolo', help='Convert annotations to YOLO format.')
     parser_convert_yolo.add_argument(
-        '--yolo_target', 
+        '--target', 
         type=str, 
         required=True,
         choices=list(VALID_TARGETS),
@@ -65,6 +65,6 @@ if __name__ == "__main__":
     if args.command == 'setup_db':
         setup_database()
     elif args.command == 'convert_yolo':
-        run_yolo_conversion(yolo_target=args.yolo_target)
+        run_yolo_conversion(target=args.target)
     else:
         parser.print_help()

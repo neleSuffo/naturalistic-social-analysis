@@ -129,7 +129,7 @@ def multilabel_stratified_split(df: pd.DataFrame,
                               train_ratio: float = TrainingConfig.train_test_split_ratio,
                               min_val_test_ratio: float = 0.05,
                               random_seed: int = TrainingConfig.random_seed,
-                              yolo_target: str = None):
+                              target: str = None):
     """
     Improved stratified split with integrated distribution logging.
     
@@ -143,7 +143,7 @@ def multilabel_stratified_split(df: pd.DataFrame,
         Minimum ratio of each class in val/test sets.
     random_seed: int
         Random seed for reproducibility.
-    yolo_target: str
+    target: str
         The target type for YOLO.
     
     Returns:
@@ -157,7 +157,7 @@ def multilabel_stratified_split(df: pd.DataFrame,
     output_dir = Path(BasePaths.output_dir/"dataset_statistics")
     output_dir.mkdir(parents=True, exist_ok=True)
     timestamp = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")
-    output_file = output_dir / f"split_distribution_{yolo_target}_{timestamp}.txt"
+    output_file = output_dir / f"split_distribution_{target}_{timestamp}.txt"
     
     split_info = []
     split_info.append(f"Dataset Split Information - {timestamp}\n")
@@ -297,7 +297,7 @@ def multilabel_stratified_split(df: pd.DataFrame,
     return (train_df['filename'].tolist(), val_df['filename'].tolist(), test_df['filename'].tolist(),
             train_df, val_df, test_df)
          
-def move_images(yolo_target: str, 
+def move_images(target: str, 
                 image_names: list, 
                 split_type: str, 
                 label_path: Path,
@@ -308,7 +308,7 @@ def move_images(yolo_target: str,
     
     Parameters
     ----------
-    yolo_target: str
+    target: str
         Target type for YOLO
     image_names: list
         List of image names to process
@@ -327,19 +327,19 @@ def move_images(yolo_target: str,
     Raises
     ------
     ValueError
-        If yolo_target is invalid or paths cannot be determined
+        If target is invalid or paths cannot be determined
     """
     if not image_names:
-        logging.info(f"No images to move for {yolo_target} {split_type}")
+        logging.info(f"No images to move for {target} {split_type}")
         return (0, 0)
 
     # Get destination paths
-    paths = (ClassificationPaths.get_target_paths(yolo_target, split_type) 
-            if yolo_target in ["child_face", "adult_face", "adult_person", "child_person", "gaze", "no_gaze"]
-            else DetectionPaths.get_target_paths(yolo_target, split_type))
+    paths = (ClassificationPaths.get_target_paths(target, split_type) 
+            if target in ["child_face", "adult_face", "adult_person", "child_person", "gaze", "no_gaze"]
+            else DetectionPaths.get_target_paths(target, split_type))
     
     if not paths:
-        raise ValueError(f"Invalid yolo_target: {yolo_target}")
+        raise ValueError(f"Invalid target: {target}")
     
     image_dst_dir, label_dst_dir = paths
     image_dst_dir.mkdir(parents=True, exist_ok=True)
@@ -358,7 +358,7 @@ def move_images(yolo_target: str,
     def process_single_image(image_name: str) -> bool:
         """Process a single image and its label."""
         try:
-            if yolo_target in ["person_face", "person_face_object"]:
+            if target in ["person_face", "person_face_object"]:
                 # Handle detection cases
                 image_parts = image_name.split("_")[:8]
                 image_folder = "_".join(image_parts)
@@ -388,9 +388,9 @@ def move_images(yolo_target: str,
                 # Extract frame number from filename
                 frame_num = int(image_name.split("_")[-1].split(".")[0])
                 
-                input_dir = input_dir_mapping.get(yolo_target)
+                input_dir = input_dir_mapping.get(target)
                 if not input_dir:
-                    logging.error(f"No input directory for target: {yolo_target}")
+                    logging.error(f"No input directory for target: {target}")
                     return False
 
                 image_src = input_dir / image_name
@@ -653,7 +653,7 @@ def balance_train_set(train_input_images: list,
     
 def split_dataset(input_folder: str, 
                   annotation_folder: str,
-                  yolo_target: str,
+                  target: str,
                   class_mapping: dict = None) -> Tuple[list, list, list]:
     """
     Split the dataset into train, val, and test sets while 
@@ -664,7 +664,7 @@ def split_dataset(input_folder: str,
         Path to the folder containing input images.
     annotation_folder: str
         Path to the folder containing annotation files.
-    yolo_target: str
+    target: str
         The target type for YOLO detection or classification.
     class_mapping: dict
         Optional mapping of class IDs to names.
@@ -678,11 +678,11 @@ def split_dataset(input_folder: str,
     output_dir = Path(BasePaths.output_dir/"dataset_statistics")
     output_dir.mkdir(parents=True, exist_ok=True)
     timestamp = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")
-    output_file = output_dir / f"split_distribution_{yolo_target}_{timestamp}.txt"
+    output_file = output_dir / f"split_distribution_{target}_{timestamp}.txt"
     
     split_info = []
     split_info.append(f"Dataset Split Information - {timestamp}\n")
-    split_info.append(f"Found {len(all_input_images)} {yolo_target} images in {input_folder}\n")
+    split_info.append(f"Found {len(all_input_images)} {target} images in {input_folder}\n")
     
     # Compute class counts per ID
     id_counts, missing_annotations = compute_id_counts(all_input_images, annotation_folder)
@@ -766,7 +766,7 @@ def split_dataset(input_folder: str,
     
     return train_balanced, val_input_images, test_input_images
            
-def split_yolo_data(annotation_folder: Path, yolo_target: str):
+def split_yolo_data(annotation_folder: Path, target: str):
     """
     This function prepares the dataset for YOLO training by splitting the images into train, val, and test sets.
     
@@ -774,10 +774,10 @@ def split_yolo_data(annotation_folder: Path, yolo_target: str):
     ----------
     annotation_folder: Path
         Path to the directory containing label files.
-    yolo_target: str
+    target: str
         The target object for YOLO detection or classification.
     """
-    logging.info(f"Starting dataset preparation for {yolo_target}")
+    logging.info(f"Starting dataset preparation for {target}")
 
     try:
         # Define mappings for different target types
@@ -798,13 +798,13 @@ def split_yolo_data(annotation_folder: Path, yolo_target: str):
         # Get annotated frames
         total_images = get_total_number_of_annotated_frames(annotation_folder)
         
-        if yolo_target in target_mappings:
+        if target in target_mappings:
             # Get source directories based on target type
-            input_folder = target_mappings[yolo_target][0][1]  # Use first mapping's input dir
-            class_mapping = target_mappings[yolo_target]
+            input_folder = target_mappings[target][0][1]  # Use first mapping's input dir
+            class_mapping = target_mappings[target]
             # Get custom splits
             train_images, val_images, test_images = split_dataset(
-                input_folder, annotation_folder, yolo_target, class_mapping)
+                input_folder, annotation_folder, target, class_mapping)
                 
             # Process each split
             for split_name, split_images in [("train", train_images), 
@@ -815,9 +815,9 @@ def split_yolo_data(annotation_folder: Path, yolo_target: str):
                     class_images = [img for img in split_images 
                                   if get_class(img, annotation_folder) == class_id]
                     if class_images:
-                        target = target_mappings[yolo_target][class_id][0]
+                        target = target_mappings[target][class_id][0]
                         successful, failed = move_images(
-                            yolo_target=target,
+                            target=target,
                             image_names=class_images,
                             split_type=split_name,
                             label_path=annotation_folder,
@@ -825,13 +825,13 @@ def split_yolo_data(annotation_folder: Path, yolo_target: str):
                         )   
                         logging.info(f"{split_name} {target}: Moved {successful}, Failed {failed}")
                     else:
-                        target = target_mappings[yolo_target][class_id][0]
+                        target = target_mappings[target][class_id][0]
                         logging.warning(f"No {target} images for {split_name}")
         else:         
             # Multi-class detection case
-            df = get_class_distribution(total_images, annotation_folder, yolo_target)
+            df = get_class_distribution(total_images, annotation_folder, target)
             # split data grouped by id
-            train, val, test, *_ = multilabel_stratified_split(df, yolo_target=yolo_target)
+            train, val, test, *_ = multilabel_stratified_split(df, target=target)
 
             # Move images for each split
             for split_name, split_set in [("train", train), 
@@ -839,7 +839,7 @@ def split_yolo_data(annotation_folder: Path, yolo_target: str):
                                         ("test", test)]:
                 if split_set:
                     successful, failed = move_images(
-                        yolo_target=yolo_target,
+                        target=target,
                         image_names=split_set,
                         split_type=split_name,
                         label_path=annotation_folder,
@@ -850,18 +850,18 @@ def split_yolo_data(annotation_folder: Path, yolo_target: str):
                     logging.warning(f"No images for {split_name} split")
     
     except Exception as e:
-        logging.error(f"Error processing target {yolo_target}: {str(e)}")
+        logging.error(f"Error processing target {target}: {str(e)}")
         raise
     
-    logging.info(f"\nCompleted dataset preparation for {yolo_target}")
+    logging.info(f"\nCompleted dataset preparation for {target}")
     
-def main(yolo_target: str):
+def main(target: str):
     """
     Main function to prepare the dataset for model training.
     
     Parameters:
     ----------
-    yolo_target : str
+    target : str
         The target type for YOLO (e.g., "person" or "face").
     """
     path_mapping = {
@@ -871,13 +871,13 @@ def main(yolo_target: str):
         "face_cls": ClassificationPaths.face_labels_input_dir,
         "gaze_cls": ClassificationPaths.gaze_labels_input_dir
     }
-    label_path = path_mapping[yolo_target]
-    split_yolo_data(label_path, yolo_target)
+    label_path = path_mapping[target]
+    split_yolo_data(label_path, target)
     logging.info("Dataset preparation for YOLO completed.")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Prepare dataset for model training.")
-    parser.add_argument("--yolo_target", choices=VALID_TARGETS, required=True, help="Specify the YOLO target type")
+    parser.add_argument("--target", choices=VALID_TARGETS, required=True, help="Specify the YOLO target type")
     
     args = parser.parse_args()
-    main(args.yolo_target)
+    main(args.target)
