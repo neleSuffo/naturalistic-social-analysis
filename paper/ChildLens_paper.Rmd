@@ -11,6 +11,9 @@ author:
       - "Conceptualization"
       - "Writing - Original Draft Preparation"
       - "Writing - Review & Editing"
+  - name: "Anas Suffo"
+    affiliation: '1'
+    corresponding: false
   - name: "Pierre-Etienne Martin"
     affiliation: '2'
     corresponding: false

@@ -227,7 +227,7 @@ Childrens everyday experiences are known to shape childrens development but only
 
 \section{Introduction}\label{introduction}
 
-According to various developmental psychologists, children's everyday experiences play a vital role in their development (Carpendale \& Lewis, 2020; Piaget, 1964; Rogoff, Dahl, \& Callanan, 2018; Smith, Jayaraman, Clerkin, \& Yu, 2018; Tomasello, 2009; Vygotsky, 1978; \textbf{heyesCognitiveGadg?}; \textbf{fetsCultural2018?}). Everyday interactions, in particular, have been recognized for decades as crucial in the process of actively constructing knowledge (Piaget, 1964) and in transforming sensory experiences into structured understanding (Vygotsky, 1978). Building upon these foundational theories, more recent research has examined the mechanisms of social interaction further. For instance, Tomasello (2009) introduced the concept of shared intentionality, illustrating how collaborative activities enable children to comprehend others' intentions and perspectives, leading to cooperative behaviors and cultural learning .
+According to various developmental psychologists, children's everyday experiences play a vital role in their development (Carpendale \& Lewis, 2020; Heyes, 2018; Piaget, 1964; Rogoff, Dahl, \& Callanan, 2018; Smith, Jayaraman, Clerkin, \& Yu, 2018; Tomasello, 2009; Vygotsky, 1978). Everyday interactions, in particular, have been recognized for decades as crucial in the process of actively constructing knowledge (Piaget, 1964) and in transforming sensory experiences into structured understanding (Vygotsky, 1978). Building upon these foundational theories, more recent research has examined the mechanisms of social interaction further. For instance, Tomasello (2009) introduced the concept of shared intentionality, illustrating how collaborative activities enable children to comprehend others' intentions and perspectives, leading to cooperative behaviors and cultural learning .
 
 Whereas theoretical frameworks and controlled laboratory studies have significantly advanced our understanding of children's social development, they often fail to capture the complexities of interactions occurring in naturalistic settings. Observing children in their everyday environments offers a more authentic view of their social behaviors; however, this approach presents challenges due to the extensive data collection and analysis required.
 
@@ -496,9 +496,9 @@ Based on reference images of full, front-facing faces, we define an expected asp
 
 This heuristic approach, which combines face area and aspect ratio, provides an efficient and interpretable method for estimating proximity without requiring additional sensors or depth information. Its validity is supported by a strong Pearson correlation coefficient (r = 0.95) between the heuristic estimates and human-annotated proximity values, based on 364 annotated frames from the Quantex dataset. This high correlation indicates that the heuristic effectively captures the relative distances between the child and others in the recordings, thereby enabling the integration of spatial dynamics into our interaction analyses. Examples of proximity estimations are shown in Figure @ref((fig:proximity-classifications), illustrating the range of proximity scores from 0 (far away) to 1 (extremely close).
 
-\subsection{Voice Type Classification (VTC)}\label{voice-type}
+\subsection{Participation Role Classification (PRC)}\label{voice-type}
 
-Regarding the audio component of our interaction analysis, we utilized the Voice Type Classifier (Lavechin, Bousbib, Bredin, Dupoux, \& Cristia, 2020), an open-source model designed to distinguishes between five key voice types: key child (KCHI), other child (OCHI), female adult (FEM), male adult (MAL), and general speech (SPEECH). The model employs a convolutional neural network (CNN) architecture with SincNet components, which extract meaningful frequency representations, and bi-directional long short-term memory (LSTM) layers. The model was trained on 260 hours of child-centered recordings across 10 languages, making it suitable for handling overlapping speech and varying acoustic conditions. Its multi-label classification capability enables the simultaneous detection of multiple voice types, which is particularly useful in natural interactions. The VTC outperforms the widely used LENA system with an absolute improvement of 10.6 in the average F1-measure across the five voice type classes. Additionally, the VTC demonstrated comparable performance on our lab's ChildLens dataset, achieving an F1 score of 58.1, which is comparable to the F1 score of 57.3 reported on the original training dataset. This performance validates the VTC's effectiveness for our data.
+Regarding the audio component of our interaction analysis, we classified audio by speaker and intended target into four types: key child (KCHI), child-directed speech (CDS), overheard speech (OHS), and general speech (SPEECH). To achieve this, we adapted the open-source Voice Type Classifier (VTC) (Lavechin, Bousbib, Bredin, Dupoux, \& Cristia, 2020), designed to distinguish key child, other child, female adult, male adult, and general speech. The resulting architecture, referred to as the Participation Role Classifier (PRC), uses a SincNet front-end, a 3-layer bi-directional GRU (512 units), and extended input segments (4.0s) to better model interaction patterns. On our labeled ChildLens dataset (CHILDLENS PAPER REFERENCE), the PRC achieved an average F1 score of 65.40, matching the original VTC's performance (57.30) and confirming its suitability for our data.
 
 \section{Results}\label{results}
 
@@ -992,17 +992,35 @@ Bias & 0.0682 & -0.0134 & 0.1498 & 0.0860 & 0.0254 & 0.1464 & 0.0499 & -0.0536 &
 Using this approach, the ground truth proximity for each frame is calculated as the mean of the two annotator ratings. We then compute how well the heuristic captures the human-annotated proximity values for both adult and child faces. Figure \ref{fig:proximity-plot} displays the correlation between the heuristic proximity values and the human-annotated proximity values for both adult and child faces. Both regression lines are close to the diagonal, indicating a strong correlation between the heuristic and human-annotated proximity values. Overall, the heuristic performs well, with a strong Pearson correlation coefficient of 0.95 for all faces, 0.95 for adult faces and 0.94 for child faces. The mean absolute error (MAE=0.09) for all faces is acceptably low and the coefficient of determination (R²=0.84) for all faces indicates that the heuristic explains a significant portion of the variance in human-annotated proximity values.
 To conclude, the proximity heuristic provides a reliable estimate of interpersonal distance in our dataset, allowing us to add another reliable aspect of social interactions without the need for additional sensors or annotations.
 
-\subsection{Voice Type Classification}\label{sup-voice-type}
+\subsection{Participation Role Classifier}\label{sup-voice-direction}
 
-Regarding the audio component of our interaction analysis, we aimed to use a model that does not only detect the presence of speech but also distinguishes between the key child wearing the camera and other speakers. This distinction is crucial for understanding the dynamics of the interactions and the role of the key child in the social context. To achieve this, we applied the Voice Type Classifier (Lavechin et al., 2020), an open-source model designed to identify five different voice types: key child (KCHI), other child (OCH), female adult (FEM), male adult (MAL), and speech in general (SPEECH). This multi-label classification enables the detection of multiple classes simultaneously, which is particularly useful when faced with overlapping speech segments, which frequently occurs in natural interactions.
+Regarding the audio component of our interaction analysis, we aimed to classify speech not only by its presence but by its source and intended target. Specifically, we distinguish between four speech types: First, speech from the key child wearing the camera (KCHI), second, speech directed at the child from adults or other children (CDS), third, overheard speech (OHS), defined as conversations the child can hear but is not direcetly part of and fourth, general speech (SPEECH), which simply captures any type of speech. This distinction is crucial for understanding the interaction dynamics and the key child's role in the social context.
 
-The model, as described by Lavechin et al. (2020), is based on a convolutional neural network (CNN) architecture that includes SincNet components. These components are designed to extract meaningful frequency representations, which are then processed by a stack of bi-directional long short-term memory (LSTM) and fully connected layers. The final layer applies a sigmoid activation function to output a score between 0 and 1 for each class, representing the probability of that voice type being present in the audio segment. The network is trained using binary cross-entropy loss, optimizing each class independently.
+To achieve this, we adapted the Voice Type Classifier (VTC) (Lavechin et al., 2020), an open-source model originally trained to identify five voice types---key child, other child, female adult, male adult, and general speech. We restructured the model for our new four-class task and refer to this adapted version as the Participation Role Classifier (PRC).
 
-The Voice Type Classifier was trained on 260 hours of child-centered recordings spanning 10 different languages. Its architecture is specifically designed to handle the unique challenges of child-centered audio, such as overlapping speech and varying acoustic conditions. To address these complexities, the model incorporates a multi-label classification approach, allowing it to detect multiple voice types simultaneously.
+Compared to the original VTC, the PRC enhanced model capacity and sequence modeling depth: the first-layer SincNet output channels were increased from 256 to 512, the bi-directional LSTM was replaced with a bi-directional GRU (3 layers, 512 hidden units), and the fully connected stack was deepened to 256--256--128 units. We also extended the input segment duration from 2.0 to 4.0 seconds to better capture turn-taking dynamics and adjusted the batch size accordingly. These changes improved the model's ability to distinguish overlapping and context-dependent speech events relevant to our classification task.
 
-Model performance was evaluated using the F1-measure, with the classifier showing a significant performance advantage over the widely used, closed-source LENA system (Ford, Baer, Xu, Yapanel, \& Gray, 2008). Specifically, the classifier achieved an improvement of 10.6 in the average F1-measure across the five voice type classes.
+\begin{table}[tbp]
 
-Although the Quantex dataset does not include explicit audio labels, we are confident in the model's suitability for our data. Prior testing on a similar labeled dataset which was also collected in our lab, ChildLens, demonstrated that the Voice Type Classifier achieved an F1 score of 58.1 (reference to ChildLens paper), which is comparable to the F1 score of 57.3 reported on the original training dataset. These results indicate that the model performs similarly to the original work.
+\begin{center}
+\begin{threeparttable}
+
+\caption{\label{tab:vtc-results}Performance of the Participation Role Classifier (PRC) on the ChildLens dataset. The table shows the F1 scores for each voice type (KCHI, CDS, OHS, SPEECH) and the average F1 score across all classes.}
+
+\begin{tabular}{llllll}
+\toprule
+Dataset & \multicolumn{1}{c}{KCHI} & \multicolumn{1}{c}{CDS} & \multicolumn{1}{c}{OHS} & \multicolumn{1}{c}{SPEECH} & \multicolumn{1}{c}{AVG}\\
+\midrule
+ChildLens & 72.3 & 65.3 & 48.7 & cc & 44.6\\
+\bottomrule
+\end{tabular}
+
+\end{threeparttable}
+\end{center}
+
+\end{table}
+
+Although the Quantex dataset lacks explicit audio labels, we validated the adapted model architecture on ChildLens, a similarly structured, labeled dataset from our lab (REFERENCE TO CHILDLENS PAPER). The PRC achieved an average F1 score of 65.40 on ChildLens, (Table \ref{tab:vtc-results}) comparable to the original VTC's F1 score (57.30) on its benchmark dataset (Lavechin et al., 2020). These results support the architecture's robustness and suitability for our analysis.
 
 \subsection{Results and Analysis}\label{sup-results}
 
@@ -1025,11 +1043,11 @@ Cheng, Y., Wang, H., Bao, Y., \& Lu, F. (2021). Appearance-based {Gaze Estimatio
 \bibitem[\citeproctext]{ref-daiLongitudinalDataCollection2022}
 Dai, S., Bouchet, H., Karsai, M., Chevrot, J.-P., Fleury, E., \& Nardy, A. (2022). Longitudinal data collection to follow social network and language development dynamics at preschool. \emph{Scientific Data}, \emph{9}(1), 777. \url{https://doi.org/10.1038/s41597-022-01756-x}
 
-\bibitem[\citeproctext]{ref-fordLENALanguageEnvironment2008}
-Ford, M., Baer, C. T., Xu, D., Yapanel, U., \& Gray, S. (2008). \emph{The {LENA Language Environment Analysis System}: {Audio Specifications} of the {DLP-0121}}. Retrieved from \url{https://www.lena.org/wp-content/uploads/2016/07/LTR-03-2_Audio_Specifications.pdf}
-
 \bibitem[\citeproctext]{ref-hernandez-herediaProximitySensorMeasuring2024}
 Hernández-Heredia, T. K., Reyes-Manzano, C. F., Flores-Hernández, D. A., Ramos-Fernández, G., \& Guzmán-Vargas, L. (2024). Proximity {Sensor} for {Measuring Social Interaction} in a {School Environment}. \emph{Sensors}, \emph{24}(15), 4822. \url{https://doi.org/10.3390/s24154822}
+
+\bibitem[\citeproctext]{ref-heyesCognitiveGadgetsCultural2018}
+Heyes, C. M. (2018). \emph{Cognitive gadgets: The cultural evolution of thinking}. Cambridge (Mass.): Harvard University press.
 
 \bibitem[\citeproctext]{ref-janssenTrackingRealtimeProximity2024}
 Janssen, L. H. C., Verkuil, B., Nedderhoff, A., Van Houtum, L. A. E. M., Wever, M. C. M., \& Elzinga, B. M. (2024). Tracking real-time proximity in daily life: {A} new tool to examine social interactions. \emph{Behavior Research Methods}, \emph{56}(7), 7482--7497. \url{https://doi.org/10.3758/s13428-024-02432-1}
