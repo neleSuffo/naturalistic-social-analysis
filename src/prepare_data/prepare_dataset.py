@@ -90,10 +90,13 @@ def get_class_distribution(total_images: list, annotation_folder: Path, target_t
             0: "person", 1: "face", 2: "child_body_parts"
         },
         "all": {
-            0: "person", 1: "face", 2: "child_body_parts", 3: "book",
-            4: "toy", 5: "kitchenware", 6: "other_object", 7: "other_object", # map screen for now to other_object
-            8: "other_object", 9: "other_object" # map former food and animal class to other_object
+            0: "person", 1: "face", 2: "child_body_parts", 3: "object",
         }
+        # "all": {
+        #     0: "person", 1: "face", 2: "child_body_parts", 3: "book",
+        #     4: "toy", 5: "kitchenware", 6: "screen", 7: "other_object", # map screen for now to other_object
+        #     8: "other_object", 9: "other_object" # map former food and animal class to other_object
+        # }
     }
 
     # Get the appropriate class mapping
