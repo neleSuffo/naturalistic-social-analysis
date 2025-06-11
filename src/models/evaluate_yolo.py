@@ -7,37 +7,37 @@ from constants import DetectionPaths, ClassificationPaths
 def main():
     parser = argparse.ArgumentParser(description="Evaluate YOLO model.")
     parser.add_argument(
-        "--yolo_target", 
+        "--target", 
         type=str, 
         help="What yolo model to evaluate."
     )
     args = parser.parse_args()
 
     # Load the YOLO model with the supplied target weights
-    if args.yolo_target == "person_face":
-        model = YOLO(DetectionPaths.person_face_trained_weights_path)
-        folder_name = "person_face_validation_" + datetime.now().strftime("%Y%m%d_%H%M%S")
-        data_config = str(DetectionPaths.person_face_data_config_path)
-        project_folder = str(DetectionPaths.person_face_output_dir)
-        output_path = DetectionPaths.person_face_output_dir / folder_name
-    elif args.yolo_target == "gaze":
+    if args.target == "gaze_cls":
         model = YOLO(ClassificationPaths.gaze_trained_weights_path)
-        folder_name = "yolo_gaze_validation_" + datetime.now().strftime("%Y%m%d_%H%M%S")
+        folder_name = "yolo_gaze_cls_validation_" + datetime.now().strftime("%Y%m%d_%H%M%S")
         data_config = str(ClassificationPaths.gaze_data_config_path)
         project_folder = str(ClassificationPaths.gaze_output_dir)
         output_path = ClassificationPaths.gaze_output_dir / folder_name
-    elif args.yolo_target == "face":
+    elif args.target == "face_cls":
         model = YOLO(ClassificationPaths.face_trained_weights_path)
-        folder_name = "yolo_face_validation_" + datetime.now().strftime("%Y%m%d_%H%M%S")
+        folder_name = "yolo_face_cls_validation_" + datetime.now().strftime("%Y%m%d_%H%M%S")
         data_config = str(ClassificationPaths.face_data_config_path)
         project_folder = str(ClassificationPaths.face_output_dir)
         output_path = ClassificationPaths.face_output_dir / folder_name
-    elif args.yolo_target == "person":
+    elif args.target == "person_cls":
         model = YOLO(ClassificationPaths.person_trained_weights_path)
-        folder_name = "yolo_person_validation_" + datetime.now().strftime("%Y%m%d_%H%M%S")
+        folder_name = "yolo_person_cls_validation_" + datetime.now().strftime("%Y%m%d_%H%M%S")
         data_config = str(ClassificationPaths.person_data_config_path)
         project_folder = str(ClassificationPaths.person_output_dir)
         output_path = ClassificationPaths.person_output_dir / folder_name
+    elif args.target == "all":
+        model = YOLO(DetectionPaths.all_trained_weights_path)
+        folder_name = "yolo_all_validation_" + datetime.now().strftime("%Y%m%d_%H%M%S")
+        data_config = str(DetectionPaths.all_data_config_path)
+        project_folder = str(DetectionPaths.all_output_dir)
+        output_path = DetectionPaths.all_output_dir / folder_name
     # Validate the model
     metrics = model.val(
         data=data_config,
@@ -49,7 +49,7 @@ def main():
     )
 
     # Extract precision and recall
-    if args.yolo_target == "person_face" or args.yolo_target == "all":
+    if args.target == "all":
         precision = metrics.results_dict['metrics/precision(B)']
         recall = metrics.results_dict['metrics/recall(B)']
         f1_score = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
@@ -65,7 +65,7 @@ def main():
             f.write(f"Recall: {recall}\n")
             f.write(f"F1 Score: {f1_score}\n")
 
-    elif args.yolo_target in ["gaze", "face", "person"]:
+    elif args.target in ["gaze_cls", "face_cls", "person_cls"]:
         accuracy_top1 = metrics.results_dict['metrics/accuracy_top1']
         accuracy_top5 = metrics.results_dict['metrics/accuracy_top5']
         fitness = metrics.results_dict['fitness']
