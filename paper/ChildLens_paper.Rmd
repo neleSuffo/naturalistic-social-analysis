@@ -11,14 +11,14 @@ author:
       - "Conceptualization"
       - "Writing - Original Draft Preparation"
       - "Writing - Review & Editing"
-  - name: "Anas Suffo"
-    affiliation: '1'
-    corresponding: false
   - name: "Pierre-Etienne Martin"
     affiliation: '2'
     corresponding: false
     address: "Deutscher Pl. 6, 04103 Leipzig"
     email: "pierre_etienne_martin@eva.mpg.de"
+  - name: "Anas Suffo"
+    affiliation: '1'
+    corresponding: false
   - name: "Daniel Haun"
     affiliation: '2'
     corresponding: false
@@ -47,7 +47,7 @@ output:
   papaja::apa6_pdf:
     keep_tex: true
 bibliography: "bibliography.bib"
-
+csl: "ieee-with-url.csl"
 
 floatsintext      : yes
 figurelist        : no
@@ -191,7 +191,7 @@ youngest_month <- as.numeric(format(youngest_date, "%m"))
 time_span_months <- (youngest_year - oldest_year) * 12 + (youngest_month - oldest_month)+1
 ```
 
-# Introduction
+# Background & Summary
 In developmental psychology, everyday experiences play a central role when theorizing about the causes and dynamics of developmental change [@piagetPartCognitiveDevelopment1964; @vygotskyMindSocietyDevelopment1978; @rogoffImportanceUnderstandingChildrens2018; @carpendaleWhatMakesUs2020; @smithDevelopingInfantCreates2018; @tomaselloCulturalOriginsHuman2009; @heyesCognitiveGadgetsCultural2018]. Famously, the two central processes in Piaget's theory of cognitive development - assimilation and accommodation - describe how children's cognitive abilities change in line with the experiences they make [@vygotskyMindSocietyDevelopment1978]. Vygotsky emphasized the role of social interactions between children and (knowledgeable) adults for the acquisition of culturally relevant knowledge [@vygotskyMindSocietyDevelopment1978]. Contemporary theorists rest on similar ideas. For example, @tomaselloCulturalOriginsHuman2009 pointed out how everyday social interactions, particularly those involving shared intentionality, foster uniquely human forms of communication, cooperation and cognition. For @heyesCognitiveGadgetsCultural2018, culturally evolved "cognitive gadgets" are transmitted via language in conversations between adults and children. 
 
 These broad theoretical accounts are based on empirical support. Reviewing all such studies is beyond the scope of this paper so we want to point out only a few examples from the domain of language development. Across languages and cultural settings, the amount of language children hear is related to their language development [@bergelsonEverydayLanguageInput2023]. There is also a relationship between the amount of conversational turn-taking children are engaged in and their vocabulary growth [@ferjanramirezParentCoachingIncreases2020; @donnellyLongitudinalRelationshipConversational2021]. @royPredictingBirthSpoken2015 showed that words that are heard in distinct contexts at distinct times are more likely to be learned. @ruffmanExposureBehavioralRegularities2023 used head-mounted video cameras to study how repeated behaviors in everyday life correlate with the acquisition of mental state vocabulary. Taken together, such studies illustrate how important is to study naturalistic everyday experiences to understand children's development. However, studies linking everyday experience and development are still vastly underrepresented [@debarbaroTenLessonsInfants2022; @rogoffImportanceUnderstandingChildrens2018] because they come with a set of unique challenges.
@@ -202,10 +202,10 @@ Several publicly available datasets have made valuable contributions to our unde
 
 To address this gap, we introduce the publicly available ChildLens dataset, which focuses on activity annotations for children aged 3–5 years. The dataset consists of 106 hours of video and audio recordings collected from 61 children in their home environment through a 140° wide-lens camera, recording video and audio, which was embedded in a child-friendly vest. It includes detailed annotations for five location classes and 14 activity classes, which are further categorized based on whether the child is interacting alone or with others. Designed to support research in developmental psychology and computer vision, the ChildLens dataset offers a rich resource for advancing multimodal learning and studying the full spectrum of children’s daily activities. As of now, `r annotation_progress`% of the dataset are annotated. The remaining videos will be annotated when new funding is available.
 
-# Dataset Generation
+# Methods
 This section outlines the steps taken to create the ChildLens dataset. We provide detailed information on the video collection process, the labeling strategy employed, and the generation of activity labels.
 
-## Step 1: Collection of Egocentric Videos
+## Collection of Egocentric Videos
 The ChildLens dataset consists of egocentric videos recorded by children aged 3 to 5 years over a period of `r time_span_months` months. A total of `r nr_children` children from families living in a mid-sized city in Germany, participated in the study. The videos were captured at home using a camera embedded in a vest worn by the children, as shown in figure \@ref(fig:camera-superannotate-activity-classes). This setup allowed the children to move freely throughout their homes while recording their activities. The camera, a _PatrolEyes WiFi HD Infrared Police Body Camera_, was equipped with a 140° wide-angle lens and captured the space in front of the child with a resolution of 1920x1080p at 30 fps. The camera also recorded high-quality audio, allowing us to capture the child's speech and other sounds in the environment. 
 
 In order to obtain a decent coverage for the different activity classes we planned to annotate, we handed parents a short checklist of activities to record. The focus was on capturing everyday activities that children typically engage in. Parents were therefore asked to include the following elements in the recordings:
@@ -216,20 +216,20 @@ In order to obtain a decent coverage for the different activity classes we plann
 - Child is invited to play with toys with someone else (adult or child)
 - Child is invited to draw/craft something
 
-## Step 2: Creation of Labeling Strategy
+## Creation of Labeling Strategy
 To create a comprehensive labeling strategy for the ChildLens dataset, we first defined a list of activities that children typically engage in. This list was inspired by previous research on activities that children are known to participate in [@hofferthHowAmericanChildren2001; @ginsburgImportancePlayPromoting2007]. From this, we derived a detailed catalog of activities that were likely to be captured in the videos and chose to make the activity classes more granular by distinguishing between activities like "making music" and "singing/humming" or "drawing" and "crafting things". 
 
 After an initial review of the videos, we decided to add another class "overheard speech" to capture situations in which the child is not directly involved in a conversation but can hear it. We also added "pretend play" as a separate class to capture situations in which the child is engaged in imaginative play. This approach allowed us to capture the diversity of activities that children engage in and create a comprehensive dataset for activity analysis.
 
-## Step 3: Manual Labeling Process
+## Manual Labeling Process
 Before the actual annotation process, a setup meeting was held to introduce the annotators to the labeling strategy. To familiarize themselves with the task, the annotators were assigned 25 sample videos to practice and gain hands-on experience. These initial annotations were reviewed by the research team, and feedback was provided to refine the approach. A total of three feedback loops were conducted to ensure that the annotators follow the labeling strategy properly.
 
 The videos were manually annotated by native German speakers who watched each video and labeled the activities present in the footage. Annotators marked the start and end points of each activity. For audio annotations, we implemented a 2-second rule for the categories ‘other person talking’ and ‘child talking’: if the break between two utterances was 2 seconds or less, it was considered a single event; breaks longer than 2 seconds split the activity into separate instances.
 
 
-# Dataset Overview
+# Data Record
 
-#### Activity Classes
+## Activity Classes
 The ChildLens dataset includes 14 activity classes and 5 location classes. A brief description of each class can be found in \@ref(tab:activity-classes-description). The location classes describe the current location of the child in the video and include _livingroom_, _playroom_, _bathroom_, _hallway_, and _other_.
 The activity classes are categorized based on the child’s interactions within the video and can be divided into _person-only_ activities (e.g. "child talking", "other person talking"), and _person-object_ activities (e.g. "drawing", "playing with object"). These activities are further categorized into _audio-based_, _visual-based_, and _multimodal_ activities, as presented in Figure \@ref(fig:camera-superannotate-activity-classes). Below is an overview of the different activity types:
 
@@ -304,61 +304,12 @@ final_labeled_layout <- final_layout +
 final_labeled_layout
 ```
 
-#### Statistics
+## Statistics
 The ChildLens dataset comprises of `r sum_videos` video files with a total of `r sum_hours` hours recorded by `r nr_children` children aged 3 to 5 years (M=`r mean_age`, SD=`r sd_age`). This includes `r count_3_plus` videos from children aged 3, `r count_4_plus` videos from children aged 4, and `r count_5_plus` videos from children aged 5. The video duration per child varies between `r min_minutes` and `r max_minutes` minutes (M=`r mean_minutes`, SD=`r sd_minutes`). A detailed distribution of the video duration per child is shown in figure \@ref(fig:minutes-per-child). 
 
 This diverse dataset includes a varying number of instances across the 14 activity classes. While annotations are still ongoing, the current annotations (`r annotation_progress`% annotated) include between 2 and 319 instances per class. The duration of each instance varies by activity. For instance, audio-based activities like "child talking" may last only a few seconds, while activities like "reading a book" can span several minutes. The table with the total number of instances and summed duration for all activity classes is available in the appendix.
 
-```{r minutes-per-child-density, echo=FALSE, message=FALSE, warning=FALSE, eval=FALSE}
-unique_data$ID <- as.factor(unique_data$ID)
-
-ggplot(unique_data, aes(x = Minutes_per_ID)) +
-  geom_histogram(binwidth = 10) +
-  scale_y_continuous(breaks = scales::pretty_breaks(n = 10), labels = scales::label_number(accuracy = 1)) +
-  labs(x = "Minutes per ID", y = "Count") +
-  theme_minimal()
-```
-
-```{r age-distribution, echo=FALSE, message=FALSE, warning=FALSE, eval=FALSE, fig.cap="Number of videos per age group."}
-data_age_count_plot <- data_age_count
-data_age_count_plot$ID <- as.factor(data_age_count_plot$ID)
-
-ggplot(data_age_count_plot, aes(x = Age_group, fill = Age_group)) +
-  geom_bar(position = "dodge", alpha = 0.7, width = 0.5) +
-  scale_fill_manual(values = c("3+" = "#A6ADAF", "4+" = "#A18D92", "5+" = "#BBBB9B")) + 
-  theme_minimal() +
-  labs(
-    x = "Age Group",
-    y = "Count",
-    fill = "Age Group"
-  ) +
-  theme(legend.position = "none")
-
-plot_age <- ggplot(data_age_count_plot, aes(x = Age_group, fill = Age_group)) +
-  geom_bar(position = "dodge", alpha = 0.7, width = 0.5) +
-  scale_fill_manual(values = c("3+" = "#B7B794", "4+" = "#8A8A8A", "5+" = "#B7AD94")) + 
-  theme(
-    legend.position = "none",
-    axis.title = element_text(size = 25),      # Increase label size
-    axis.text = element_text(size = 25),       # Increase tick label size
-    axis.ticks.length = unit(0.5, "cm")        # Increase tick size
-  ) +  labs(
-    x = "Age Group",
-    y = "Count",
-    fill = "Age Group"
-  ) +
-  theme(legend.position = "none")
-
-# Specify the file path and name
-output_folder <- "/Users/nelesuffo/Promotion/projects/leuphana-IPE/paper/images" 
-file_name <- "video_count_per_age_group.png"
-file_path <- file.path(output_folder, file_name)
-
-# Save the plot
-ggsave(filename = file_path, plot = plot_age, width = 8, height = 6, dpi = 300)
-```
-
-```{r minutes-per-child, echo=FALSE, message=FALSE, warning=FALSE, fig.cap="Video recording duration (in minutes) per child ID.", fig.height=2.5, fig.width=3.5}
+```{r minutes-per-child, echo=FALSE, message=FALSE, warning=FALSE, eval=FALSE, fig.cap="Video recording duration (in minutes) per child ID.", fig.height=2.5, fig.width=3.5}
 unique_data$ID <- as.factor(unique_data$ID)
 
 ggplot(unique_data, aes(x = Minutes_per_ID)) +
@@ -397,15 +348,15 @@ ggplot(unique_data, aes(x = Minutes_per_ID)) +
 #ggsave(filename = file_path, plot = plot, width = 3, height = 2, dpi = 100)
 ```
 
-#### Data Access
+## Data Access
 The ChildLens dataset will be made available to scientists for research purposes. It includes video and audio recordings, along with activity labels. Due to the sensitive nature of the data—recordings of children in their homes—access will be restricted.
 
 Researchers can submit requests for access through the , which will be carefully reviewed to ensure proper handling and compliance with privacy standards. Please contact [ra@eva.mpg.de](mailto:ra@eva.mpg.de) to request access to the dataset. As noted above, the annotation process is still ongoing and the dataset will be updated regularly. A brief project overview, information about how to access the dataset along with the latest dataset version can be found [here](https://www.eva.mpg.de/comparative-cultural-psychology/technical-development/childlens/) 
 
-#### Exhaustive multi-label annotations
+## Exhaustive multi-label annotations
 The dataset provides detailed annotations for each video file. These annotations specify the child’s current location within the video, the start and end times of each activity, the activity class, and whether the child is engaged alone or with somebody else. For every person involved in the activity, we capture age class and gender. If multiple activities occur simultaneously in a video, each activity is individually labeled. For example, if a segment shows a child “reading a book” while also “talking,” two separate annotations are created: one for “reading a book” and another for “child talking.” This exhaustive labeling strategy ensures that each activity is accurately represented in the dataset. 
 
-# Benchmark Performance
+# Technical Validation
 In this chapter, we present the results of applying two model architectures to the ChildLens dataset for two specific tasks: temporal activity localization using video data and voice type classification using audio data. For temporal activity localization, we used the Boundary-Matching Network (BMN) model [@linBMNBoundaryMatchingNetwork2019], a state-of-the-art approach in this domain, and trained it from scratch on the unique activity classes in the ChildLens video data. For voice type classification, we applied the Voice Type Classifier (VTC) [@lavechinOpensourceVoiceType2020], also state-of-the-art, which was trained on similar data. Both models provide initial results and establish a benchmark for future research. 
 
 ```{r bmn-architecture, dpi=600, fig.align='center', eval=FALSE, fig.cap="Boundary Matching Network architecture applied to ChildLens video data"}
@@ -554,8 +505,15 @@ Despite its strengths, the ChildLens dataset also has its limitations. First, th
 
 The study of children’s everyday experiences is crucial for understanding their cognitive, emotional, and social development. These daily interactions provide important insights into how children learn, grow, and engage with their environment. The ChildLens dataset makes a valuable contribution to this field by offering a rich multi-modal resource that captures children’s experiences in naturalistic settings. With its comprehensive annotations and potential to automate the analysis of children’s activities, the dataset enables researchers to develop, fine-tune and apply automized processing algorithms that help to scale-up the study of situated development. By virtue of being an openly accessible resource, the ChildLens dataset creates new opportunities for understanding the complexities of early childhood development and provides a foundation for future research in this area.
 
+# Code Availability
+
+# Acknowledgements
+This work is supported by the German Research Foundation (DFG) project NFDI4DS under Grant No.: 460234259. We thank the participating families and children, and acknowledge the support from our research institutions and funding bodies.
+
+# Competing Interests
+The authors declare no competing interests.
 \newpage
-# References
+References
 <!--e used `r cite_r("bibliography.bib")` for all our analyses.-->    
 ```{r create_r-references}
 r_refs(file = "bibliography.bib")

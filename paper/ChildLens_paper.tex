@@ -193,14 +193,14 @@
 \urlstyle{same}
 \hypersetup{
   pdftitle={ChildLens: An Egocentric Video Dataset for Activity Analysis in Children},
-  pdfauthor={Nele-Pauline Suffo1, Anas Suffo1, Pierre-Etienne Martin2, Daniel Haun2, \& Manuel Bohn1, 2},
+  pdfauthor={Nele-Pauline Suffo1, Pierre-Etienne Martin2, Anas Suffo1, Daniel Haun2, \& Manuel Bohn1, 2},
   pdflang={en-EN},
   pdfkeywords={child development, egocentric video, audio dataset, multimodal learning, computer vision, developmental psychology},
   hidelinks,
   pdfcreator={LaTeX via pandoc}}
 
 \title{ChildLens: An Egocentric Video Dataset for Activity Analysis in Children}
-\author{Nele-Pauline Suffo\textsuperscript{1}, Anas Suffo\textsuperscript{1}, Pierre-Etienne Martin\textsuperscript{2}, Daniel Haun\textsuperscript{2}, \& Manuel Bohn\textsuperscript{1, 2}}
+\author{Nele-Pauline Suffo\textsuperscript{1}, Pierre-Etienne Martin\textsuperscript{2}, Anas Suffo\textsuperscript{1}, Daniel Haun\textsuperscript{2}, \& Manuel Bohn\textsuperscript{1, 2}}
 \date{}
 
 
@@ -225,23 +225,23 @@ We present ChildLens, an egocentric video and audio dataset capturing naturalist
 \begin{document}
 \maketitle
 
-\section{Introduction}\label{introduction}
+\section{Background \& Summary}\label{background-summary}
 
-In developmental psychology, everyday experiences play a central role when theorizing about the causes and dynamics of developmental change (Carpendale \& Lewis, 2020; Heyes, 2018; Piaget, 1964; Rogoff, Dahl, \& Callanan, 2018; Smith, Jayaraman, Clerkin, \& Yu, 2018; Tomasello, 2009; Vygotsky, 1978). Famously, the two central processes in Piaget's theory of cognitive development - assimilation and accommodation - describe how children's cognitive abilities change in line with the experiences they make (Vygotsky, 1978). Vygotsky emphasized the role of social interactions between children and (knowledgeable) adults for the acquisition of culturally relevant knowledge (Vygotsky, 1978). Contemporary theorists rest on similar ideas. For example, Tomasello (2009) pointed out how everyday social interactions, particularly those involving shared intentionality, foster uniquely human forms of communication, cooperation and cognition. For Heyes (2018), culturally evolved ``cognitive gadgets'' are transmitted via language in conversations between adults and children.
+In developmental psychology, everyday experiences play a central role when theorizing about the causes and dynamics of developmental change {[}1{]}, {[}2{]}, {[}3{]}, {[}4{]}, {[}5{]}, {[}6{]}, {[}7{]}. Famously, the two central processes in Piaget's theory of cognitive development - assimilation and accommodation - describe how children's cognitive abilities change in line with the experiences they make {[}2{]}. Vygotsky emphasized the role of social interactions between children and (knowledgeable) adults for the acquisition of culturally relevant knowledge {[}2{]}. Contemporary theorists rest on similar ideas. For example, {[}6{]} pointed out how everyday social interactions, particularly those involving shared intentionality, foster uniquely human forms of communication, cooperation and cognition. For {[}7{]}, culturally evolved ``cognitive gadgets'' are transmitted via language in conversations between adults and children.
 
-These broad theoretical accounts are based on empirical support. Reviewing all such studies is beyond the scope of this paper so we want to point out only a few examples from the domain of language development. Across languages and cultural settings, the amount of language children hear is related to their language development (Bergelson et al., 2023a). There is also a relationship between the amount of conversational turn-taking children are engaged in and their vocabulary growth (Donnelly \& Kidd, 2021; Ferjan Ramírez, Lytle, \& Kuhl, 2020). Roy, Frank, DeCamp, Miller, and Roy (2015) showed that words that are heard in distinct contexts at distinct times are more likely to be learned. Ruffman et al. (2023) used head-mounted video cameras to study how repeated behaviors in everyday life correlate with the acquisition of mental state vocabulary. Taken together, such studies illustrate how important is to study naturalistic everyday experiences to understand children's development. However, studies linking everyday experience and development are still vastly underrepresented (De Barbaro \& Fausey, 2022; Rogoff et al., 2018) because they come with a set of unique challenges.
+These broad theoretical accounts are based on empirical support. Reviewing all such studies is beyond the scope of this paper so we want to point out only a few examples from the domain of language development. Across languages and cultural settings, the amount of language children hear is related to their language development {[}8{]}. There is also a relationship between the amount of conversational turn-taking children are engaged in and their vocabulary growth {[}9{]}, {[}10{]}. {[}11{]} showed that words that are heard in distinct contexts at distinct times are more likely to be learned. {[}12{]} used head-mounted video cameras to study how repeated behaviors in everyday life correlate with the acquisition of mental state vocabulary. Taken together, such studies illustrate how important is to study naturalistic everyday experiences to understand children's development. However, studies linking everyday experience and development are still vastly underrepresented {[}3{]}, {[}13{]} because they come with a set of unique challenges.
 
-Perhaps the most significant obstacle in this field is the extensive amount of data needed to comprehensively study children's everyday experiences. Traditional methods, such as manual annotation, are time-consuming and impractical for large-scale datasets. To address this, Computer Vision or Natural Language Processing models offer scalable solutions for analyzing social interactions and behaviors. For instance, OpenPose (Cao, Hidalgo, Simon, Wei, \& Sheikh, 2018) allows the tracking of human body, face, and hand poses which provides valuable insights into gestures and engagement. YOLOv8 (Redmon, Divvala, Girshick, \& Farhadi, 2015) offers efficient object detection and models like I3D (Carreira \& Zisserman, 2017) provide an automated solution for classifying activities in video data. For audio, Wave2Vec 2.0 (Baevski, Zhou, Mohamed, \& Auli, 2020) provides robust speech-to-text and speech representation capabilities, enabling the study of conversational dynamics. Together, these models facilitate the efficient analysis of multimodal data. However, even the best model architecture needs diverse, high-quality datasets to learn from. A notable example of such a dataset is ImageNet (Russakovsky et al., 2014); in fact, the release of this dataset sparked the development of some of the most prominent Computer Vision models available today. Similarly, expanding publicly available datasets in developmental psychology could accelerate progress in studying children's everyday experiences.
+Perhaps the most significant obstacle in this field is the extensive amount of data needed to comprehensively study children's everyday experiences. Traditional methods, such as manual annotation, are time-consuming and impractical for large-scale datasets. To address this, Computer Vision or Natural Language Processing models offer scalable solutions for analyzing social interactions and behaviors. For instance, OpenPose {[}14{]} allows the tracking of human body, face, and hand poses which provides valuable insights into gestures and engagement. YOLOv8 {[}15{]} offers efficient object detection and models like I3D {[}16{]} provide an automated solution for classifying activities in video data. For audio, Wave2Vec 2.0 {[}17{]} provides robust speech-to-text and speech representation capabilities, enabling the study of conversational dynamics. Together, these models facilitate the efficient analysis of multimodal data. However, even the best model architecture needs diverse, high-quality datasets to learn from. A notable example of such a dataset is ImageNet {[}18{]}; in fact, the release of this dataset sparked the development of some of the most prominent Computer Vision models available today. Similarly, expanding publicly available datasets in developmental psychology could accelerate progress in studying children's everyday experiences.
 
-Several publicly available datasets have made valuable contributions to our understanding of children's social and communicative behavior. For example, the SAYCam dataset (Sullivan, Mei, Perfors, Wojcik, \& Frank, 2021) provides audio-video recordings from 3 infants (6--32 months) who wore head-mounted cameras over two years, to capture naturalistic speech and behaviors. Similarly, the DAMI-P2C dataset (Chen, Alghowinem, Jang, Breazeal, \& Park, 2023) includes audio and video recordings of parent-child interactions during story reading, with annotations for body movements in a controlled environment. The MMDB dataset (Rehg et al., 2013) offers multimodal data (audio, video, physiological) of children (15--30 months) engaged in semi-structured play interactions, recorded in a lab. Another example is the UpStory dataset (Fraile et al., 2024), which features audio and video of primary school children (8-10 years) in dyadic storytelling interactions, also recorded in a lab setting. Additionally, the BabyView dataset (Long et al., 2024) provides high-resolution, egocentric video of children aged 6 months to 5 years, recorded at home and in preschool environments, with annotations for speech transcription and pose estimation. Whereas these datasets vary in age, setting, and target behaviors, they collectively highlight the need for more naturalistic, at-home datasets that can capture the full range of children's daily activities.
+Several publicly available datasets have made valuable contributions to our understanding of children's social and communicative behavior. For example, the SAYCam dataset {[}19{]} provides audio-video recordings from 3 infants (6--32 months) who wore head-mounted cameras over two years, to capture naturalistic speech and behaviors. Similarly, the DAMI-P2C dataset {[}20{]} includes audio and video recordings of parent-child interactions during story reading, with annotations for body movements in a controlled environment. The MMDB dataset {[}21{]} offers multimodal data (audio, video, physiological) of children (15--30 months) engaged in semi-structured play interactions, recorded in a lab. Another example is the UpStory dataset {[}22{]}, which features audio and video of primary school children (8-10 years) in dyadic storytelling interactions, also recorded in a lab setting. Additionally, the BabyView dataset {[}23{]} provides high-resolution, egocentric video of children aged 6 months to 5 years, recorded at home and in preschool environments, with annotations for speech transcription and pose estimation. Whereas these datasets vary in age, setting, and target behaviors, they collectively highlight the need for more naturalistic, at-home datasets that can capture the full range of children's daily activities.
 
 To address this gap, we introduce the publicly available ChildLens dataset, which focuses on activity annotations for children aged 3--5 years. The dataset consists of 106 hours of video and audio recordings collected from 61 children in their home environment through a 140° wide-lens camera, recording video and audio, which was embedded in a child-friendly vest. It includes detailed annotations for five location classes and 14 activity classes, which are further categorized based on whether the child is interacting alone or with others. Designed to support research in developmental psychology and computer vision, the ChildLens dataset offers a rich resource for advancing multimodal learning and studying the full spectrum of children's daily activities. As of now, 49\% of the dataset are annotated. The remaining videos will be annotated when new funding is available.
 
-\section{Dataset Generation}\label{dataset-generation}
+\section{Methods}\label{methods}
 
 This section outlines the steps taken to create the ChildLens dataset. We provide detailed information on the video collection process, the labeling strategy employed, and the generation of activity labels.
 
-\subsection{Step 1: Collection of Egocentric Videos}\label{step-1-collection-of-egocentric-videos}
+\subsection{Collection of Egocentric Videos}\label{collection-of-egocentric-videos}
 
 The ChildLens dataset consists of egocentric videos recorded by children aged 3 to 5 years over a period of 12 months. A total of 61 children from families living in a mid-sized city in Germany, participated in the study. The videos were captured at home using a camera embedded in a vest worn by the children, as shown in figure \ref{fig:camera-superannotate-activity-classes}. This setup allowed the children to move freely throughout their homes while recording their activities. The camera, a \emph{PatrolEyes WiFi HD Infrared Police Body Camera}, was equipped with a 140° wide-angle lens and captured the space in front of the child with a resolution of 1920x1080p at 30 fps. The camera also recorded high-quality audio, allowing us to capture the child's speech and other sounds in the environment.
 
@@ -261,21 +261,21 @@ In order to obtain a decent coverage for the different activity classes we plann
   Child is invited to draw/craft something
 \end{itemize}
 
-\subsection{Step 2: Creation of Labeling Strategy}\label{step-2-creation-of-labeling-strategy}
+\subsection{Creation of Labeling Strategy}\label{creation-of-labeling-strategy}
 
-To create a comprehensive labeling strategy for the ChildLens dataset, we first defined a list of activities that children typically engage in. This list was inspired by previous research on activities that children are known to participate in (Ginsburg, and the Committee on Communications, \& and the Committee on Psychosocial Aspects of Child and Family Health, 2007; Hofferth \& Sandberg, 2001). From this, we derived a detailed catalog of activities that were likely to be captured in the videos and chose to make the activity classes more granular by distinguishing between activities like ``making music'' and ``singing/humming'' or ``drawing'' and ``crafting things''.
+To create a comprehensive labeling strategy for the ChildLens dataset, we first defined a list of activities that children typically engage in. This list was inspired by previous research on activities that children are known to participate in {[}24{]}, {[}25{]}. From this, we derived a detailed catalog of activities that were likely to be captured in the videos and chose to make the activity classes more granular by distinguishing between activities like ``making music'' and ``singing/humming'' or ``drawing'' and ``crafting things''.
 
 After an initial review of the videos, we decided to add another class ``overheard speech'' to capture situations in which the child is not directly involved in a conversation but can hear it. We also added ``pretend play'' as a separate class to capture situations in which the child is engaged in imaginative play. This approach allowed us to capture the diversity of activities that children engage in and create a comprehensive dataset for activity analysis.
 
-\subsection{Step 3: Manual Labeling Process}\label{step-3-manual-labeling-process}
+\subsection{Manual Labeling Process}\label{manual-labeling-process}
 
 Before the actual annotation process, a setup meeting was held to introduce the annotators to the labeling strategy. To familiarize themselves with the task, the annotators were assigned 25 sample videos to practice and gain hands-on experience. These initial annotations were reviewed by the research team, and feedback was provided to refine the approach. A total of three feedback loops were conducted to ensure that the annotators follow the labeling strategy properly.
 
 The videos were manually annotated by native German speakers who watched each video and labeled the activities present in the footage. Annotators marked the start and end points of each activity. For audio annotations, we implemented a 2-second rule for the categories `other person talking' and `child talking': if the break between two utterances was 2 seconds or less, it was considered a single event; breaks longer than 2 seconds split the activity into separate instances.
 
-\section{Dataset Overview}\label{dataset-overview}
+\section{Data Record}\label{data-record}
 
-\paragraph{Activity Classes}\label{activity-classes}
+\subsection{Activity Classes}\label{activity-classes}
 
 The ChildLens dataset includes 14 activity classes and 5 location classes. A brief description of each class can be found in \ref{tab:activity-classes-description}. The location classes describe the current location of the child in the video and include \emph{livingroom}, \emph{playroom}, \emph{bathroom}, \emph{hallway}, and \emph{other}.
 The activity classes are categorized based on the child's interactions within the video and can be divided into \emph{person-only} activities (e.g.~``child talking'', ``other person talking''), and \emph{person-object} activities (e.g.~``drawing'', ``playing with object''). These activities are further categorized into \emph{audio-based}, \emph{visual-based}, and \emph{multimodal} activities, as presented in Figure \ref{fig:camera-superannotate-activity-classes}. Below is an overview of the different activity types:
@@ -333,40 +333,34 @@ Overheard Speech & Conversations the child can hear but is not directly involved
 \caption{\textbf{A} – Vest with the embedded camera worn by the children, \textbf{B} – Platform utilized for video annotation, \textbf{C} – Activity classes in the ChildLens dataset.}\label{fig:camera-superannotate-activity-classes}
 \end{figure}
 
-\paragraph{Statistics}\label{statistics}
+\subsection{Statistics}\label{statistics}
 
 The ChildLens dataset comprises of 343 video files with a total of 106.10 hours recorded by 61 children aged 3 to 5 years (M=4.52, SD=0.92). This includes 107 videos from children aged 3, 122 videos from children aged 4, and 114 videos from children aged 5. The video duration per child varies between 4.03 and 303.42 minutes (M=104.37, SD=51.65). A detailed distribution of the video duration per child is shown in figure \ref{fig:minutes-per-child}.
 
 This diverse dataset includes a varying number of instances across the 14 activity classes. While annotations are still ongoing, the current annotations (49\% annotated) include between 2 and 319 instances per class. The duration of each instance varies by activity. For instance, audio-based activities like ``child talking'' may last only a few seconds, while activities like ``reading a book'' can span several minutes. The table with the total number of instances and summed duration for all activity classes is available in the appendix.
 
-\begin{figure}
-\centering
-\includegraphics{ChildLens_paper_files/figure-latex/minutes-per-child-1.pdf}
-\caption{\label{fig:minutes-per-child}Video recording duration (in minutes) per child ID.}
-\end{figure}
-
-\paragraph{Data Access}\label{data-access}
+\subsection{Data Access}\label{data-access}
 
 The ChildLens dataset will be made available to scientists for research purposes. It includes video and audio recordings, along with activity labels. Due to the sensitive nature of the data---recordings of children in their homes---access will be restricted.
 
 Researchers can submit requests for access through the , which will be carefully reviewed to ensure proper handling and compliance with privacy standards. Please contact \href{mailto:ra@eva.mpg.de}{\nolinkurl{ra@eva.mpg.de}} to request access to the dataset. As noted above, the annotation process is still ongoing and the dataset will be updated regularly. A brief project overview, information about how to access the dataset along with the latest dataset version can be found \href{https://www.eva.mpg.de/comparative-cultural-psychology/technical-development/childlens/}{here}
 
-\paragraph{Exhaustive multi-label annotations}\label{exhaustive-multi-label-annotations}
+\subsection{Exhaustive multi-label annotations}\label{exhaustive-multi-label-annotations}
 
 The dataset provides detailed annotations for each video file. These annotations specify the child's current location within the video, the start and end times of each activity, the activity class, and whether the child is engaged alone or with somebody else. For every person involved in the activity, we capture age class and gender. If multiple activities occur simultaneously in a video, each activity is individually labeled. For example, if a segment shows a child ``reading a book'' while also ``talking,'' two separate annotations are created: one for ``reading a book'' and another for ``child talking.'' This exhaustive labeling strategy ensures that each activity is accurately represented in the dataset.
 
-\section{Benchmark Performance}\label{benchmark-performance}
+\section{Technical Validation}\label{technical-validation}
 
-In this chapter, we present the results of applying two model architectures to the ChildLens dataset for two specific tasks: temporal activity localization using video data and voice type classification using audio data. For temporal activity localization, we used the Boundary-Matching Network (BMN) model (Lin, Liu, Li, Ding, \& Wen, 2019), a state-of-the-art approach in this domain, and trained it from scratch on the unique activity classes in the ChildLens video data. For voice type classification, we applied the Voice Type Classifier (VTC) (Lavechin, Bousbib, Bredin, Dupoux, \& Cristia, 2020), also state-of-the-art, which was trained on similar data. Both models provide initial results and establish a benchmark for future research.
+In this chapter, we present the results of applying two model architectures to the ChildLens dataset for two specific tasks: temporal activity localization using video data and voice type classification using audio data. For temporal activity localization, we used the Boundary-Matching Network (BMN) model {[}26{]}, a state-of-the-art approach in this domain, and trained it from scratch on the unique activity classes in the ChildLens video data. For voice type classification, we applied the Voice Type Classifier (VTC) {[}27{]}, also state-of-the-art, which was trained on similar data. Both models provide initial results and establish a benchmark for future research.
 
 \subsection{Temporal Activity Localization}\label{temporal-activity-localization}
 
 The BMN generates action proposals by predicting activity start and end boundaries and classifying these proposals into activity classes. The architecture consists of two main components: (1) a proposal generation network, which identifies candidate proposals, and (2) a proposal classification network, which classifies these proposals. The model prioritizes proposals with high recall and high temporal overlap with ground truth.
-BMN performance is evaluated using Average Recall (AR) and Area Under the Curve (AUC) metrics. AR is computed at various Intersection over Union (IoU) thresholds and for different Average Numbers of Proposals (AN) as \href{mailto:AR@AN}{\nolinkurl{AR@AN}}, where AN ranges from 0 to 100. \href{mailto:AR@100}{\nolinkurl{AR@100}} reflects recall performance with 100 proposals per video, while AUC quantifies the trade-off between recall and number of generated proposal. On the ActivityNet-1.3 test set (Heilbron, Escorcia, Ghanem, \& Niebles, 2015), BMN demonstrates effective activity localization with an \href{mailto:AR@100}{\nolinkurl{AR@100}} of 72.46 and an AUC of 64.47.
+BMN performance is evaluated using Average Recall (AR) and Area Under the Curve (AUC) metrics. AR is computed at various Intersection over Union (IoU) thresholds and for different Average Numbers of Proposals (AN) as \href{mailto:AR@AN}{\nolinkurl{AR@AN}}, where AN ranges from 0 to 100. \href{mailto:AR@100}{\nolinkurl{AR@100}} reflects recall performance with 100 proposals per video, while AUC quantifies the trade-off between recall and number of generated proposal. On the ActivityNet-1.3 test set {[}28{]}, BMN demonstrates effective activity localization with an \href{mailto:AR@100}{\nolinkurl{AR@100}} of 72.46 and an AUC of 64.47.
 
 \subsubsection{Data Preparation}\label{data-preparation}
 
-The BMN implementation, including video preprocessing and model training, was conducted using the MMAction2 toolbox (Contributors, 2020). Data preparation involved several key steps, such as raw frame extraction and the generation of both RGB and optical flow features for each video. Before training the model, we analyzed the distribution of activity instances across the classes for the annotated videos to assess the data's sufficiency for both training and testing. A detailed summary of the activity instances and their total durations can be found in the appendix.
+The BMN implementation, including video preprocessing and model training, was conducted using the MMAction2 toolbox {[}29{]}. Data preparation involved several key steps, such as raw frame extraction and the generation of both RGB and optical flow features for each video. Before training the model, we analyzed the distribution of activity instances across the classes for the annotated videos to assess the data's sufficiency for both training and testing. A detailed summary of the activity instances and their total durations can be found in the appendix.
 
 Our analysis highlighted a significant class imbalance in the dataset, both in terms of instance count and the total duration of recordings. Given the primary goal of establishing initial benchmark results, no data augmentation methods were employed to mitigate this imbalance. Instead, we focused on the more frequent activity classes, which also had the longest durations: ``Playing with Object'' (22.85 hours of recording), ``Drawing'' (6.24 hours of recording), and ``Reading a Book'' (5.48 hours of recording).
 
@@ -374,7 +368,7 @@ For feature extraction and model training optimization, the videos were divided 
 
 \subsubsection{Implementation Details}\label{implementation-details}
 
-The BMN model was trained from scratch on the ChildLens dataset to predict the start and end boundaries of activity classes in the videos. The model was implemented using MMAction2, an open-source toolbox for video understanding based on PyTorch (Contributors, 2020). Training took place on a Linux server with 48 cores and 187 GB of RAM. The Adam optimizer was used with a learning rate of 0.001 and a batch size of 4. To avoid overfitting, early stopping based on validation loss was applied during training.
+The BMN model was trained from scratch on the ChildLens dataset to predict the start and end boundaries of activity classes in the videos. The model was implemented using MMAction2, an open-source toolbox for video understanding based on PyTorch {[}29{]}. Training took place on a Linux server with 48 cores and 187 GB of RAM. The Adam optimizer was used with a learning rate of 0.001 and a batch size of 4. To avoid overfitting, early stopping based on validation loss was applied during training.
 
 \subsubsection{Evaluation}\label{evaluation}
 
@@ -403,9 +397,9 @@ ChildLens & 77.43 & 69.21\\
 
 \subsection{Voice Type Classification}\label{voice-type-classification}
 
-Voice Type Classification is the task of identifying audio utterances and assigning them to predefined classes. In line with previous work, we focus on the following classes: \texttt{Key\ Child\ (KCHI)}, \texttt{Other\ Child\ (CHI)}, \texttt{Male\ Speech\ (MAL)}, \texttt{Female\ Speech\ (FEM)}, and \texttt{Speech\ (SPEECH)} (Lavechin et al., 2020). The Voice Type Classifier model (VTC) is designed to perform this task efficiently. Its architecture is composed of a SincNet layer, two bi-directional LSTMs, and three feed-forward layers. The model takes a 2-second audio chunk as input and outputs a score between 0 and 1 for each class. The VTC was originally trained on the BabyTrain dataset which includes 260 hours of child-centered audio in multiple languages from children mostly aged 0-3 years.
+Voice Type Classification is the task of identifying audio utterances and assigning them to predefined classes. In line with previous work, we focus on the following classes: \texttt{Key\ Child\ (KCHI)}, \texttt{Other\ Child\ (CHI)}, \texttt{Male\ Speech\ (MAL)}, \texttt{Female\ Speech\ (FEM)}, and \texttt{Speech\ (SPEECH)} {[}27{]}. The Voice Type Classifier model (VTC) is designed to perform this task efficiently. Its architecture is composed of a SincNet layer, two bi-directional LSTMs, and three feed-forward layers. The model takes a 2-second audio chunk as input and outputs a score between 0 and 1 for each class. The VTC was originally trained on the BabyTrain dataset which includes 260 hours of child-centered audio in multiple languages from children mostly aged 0-3 years.
 
-The model architecture utilizes the open-source pyannote library for speaker diarization (Bredin, 2023; Plaquet \& Bredin, 2023) which provides pre-trained models and pipelines for various audio processing tasks. By adjusting the model architecture and training process using pyannote, we evaluated the ChildLens dataset's quality through three distinct VTC training setups: We first applied the pretrained VTC model directly to the ChildLens dataset. In the second setup we fine-tuned the VTC model on the ChildLens data. Finally, we trained the VTC model from scratch using only the ChildLens dataset. These setups test the dataset's annotation consistency and standalone value, with performance measured by the \(F_1\)-measure, which combines precision and recall.
+The model architecture utilizes the open-source pyannote library for speaker diarization {[}30{]}, {[}31{]} which provides pre-trained models and pipelines for various audio processing tasks. By adjusting the model architecture and training process using pyannote, we evaluated the ChildLens dataset's quality through three distinct VTC training setups: We first applied the pretrained VTC model directly to the ChildLens dataset. In the second setup we fine-tuned the VTC model on the ChildLens data. Finally, we trained the VTC model from scratch using only the ChildLens dataset. These setups test the dataset's annotation consistency and standalone value, with performance measured by the \(F_1\)-measure, which combines precision and recall.
 
 \subsubsection{Data Preparation}\label{data-preparation-1}
 
@@ -478,139 +472,185 @@ Table \ref{tab:vtc-results} shows \(F_1\)-scores for three VTC setups on the Chi
 
 We present the ChildLens dataset, a unique egocentric video-audio dataset that documents naturalistic everyday experiences,in preschool children. This dataset is particularly distinctive due to its diversity in terms of the number of children it includes and the variety of activity labels it covers. By encorporating both visual and auditory data, the ChildLens dataset provides comprehensive annotations for a broad spectrum of key activities, including multi-modal social interactions. These annotations support the training and evaluation of models for the automatic analysis of children's activities and therefore allow for scaling up data collection. A rich and representative dataset like ChildLens is essential for understanding individual differences in children's daily experiences and how they relate to different cognitive and social outcomes.
 
-In comparison to other freely available datasets, the ChildLens dataset stands out due to its broad age span and diverse set of activity labels. Most existing datasets either focus on toddlers, are limited to dyadic interactions or were recorded in lab settings, with all of them lacking a comprehensive range of activity labels. Furthermore, most of these datasets either capture only audio or video. In contrast, ChildLens includes naturalistic recordings from children's home environments, collected over an extended period, and features a wide variety of activity types. Particularly noteworthy is the activity class \texttt{Overheard\ Speech} which captures speech that children can hear but are not directly involved in. This class is important for studying the impact of overheard speech on children's cognitive development - an area that has largely relied on labor-intensive manual annotations due to the difficulty of automatically distinguishing between child-available and child-directed speech (Bergelson et al., 2023b). Existing models, like the classifier developed by Bang, Kachergis, Weisleder, and Marchman (2023) could be enhanced by incorporating visual features - such as eye contact or the use of gestures - in addition to audio inputs. The ChildLens dataset also captures whether children are engaged in activities alone or with others and provides basic demographic information - age, sex -about all individuals involved.
+In comparison to other freely available datasets, the ChildLens dataset stands out due to its broad age span and diverse set of activity labels. Most existing datasets either focus on toddlers, are limited to dyadic interactions or were recorded in lab settings, with all of them lacking a comprehensive range of activity labels. Furthermore, most of these datasets either capture only audio or video. In contrast, ChildLens includes naturalistic recordings from children's home environments, collected over an extended period, and features a wide variety of activity types. Particularly noteworthy is the activity class \texttt{Overheard\ Speech} which captures speech that children can hear but are not directly involved in. This class is important for studying the impact of overheard speech on children's cognitive development - an area that has largely relied on labor-intensive manual annotations due to the difficulty of automatically distinguishing between child-available and child-directed speech {[}32{]}. Existing models, like the classifier developed by {[}33{]} could be enhanced by incorporating visual features - such as eye contact or the use of gestures - in addition to audio inputs. The ChildLens dataset also captures whether children are engaged in activities alone or with others and provides basic demographic information - age, sex -about all individuals involved.
 
-The usefulness of the ChildLens dataset is demonstrated by its successful application to well-established models. For example, the pretrained Voice-Type Classifier for audio transcription achieves performance comparable to previous datasets, while the Boundary-Matching Network (BMN) produces robust results for activity localization, consistent with its performance on widely used datasets such as ActiviyNet. One way of using the ChildLens dataset to advance methodological development are multi-method approaches. For example, activity localization could be further enhanced by incorporating object identification, allowing for better tracking of the objects children interact with during daily routines. Such an approach has beed used in adult-focused studies (Kazakos, Huh, Nagrani, Zisserman, \& Damen, 2021). Research by Bambach, Lee, Crandall, and Yu (2015) also emphasizes the importance of hand detection in egocentric video for activity recognition. Their use of Convolutional Neural Networks (CNNs) for hand segmentation demonstrates how such techniques can help differentiate between activities. To apply a similar approach to the ChildLens dataset, we would first need to run a pretrained hand detection model on the dataset. In a second step, we would train a CNN to classify frames containing hands into activity classes, following the method described by Bambach et al. (2015). If the performance of the hand detection performance is insufficient, additional hand annotations would be required to improve the model's accuracy.
+The usefulness of the ChildLens dataset is demonstrated by its successful application to well-established models. For example, the pretrained Voice-Type Classifier for audio transcription achieves performance comparable to previous datasets, while the Boundary-Matching Network (BMN) produces robust results for activity localization, consistent with its performance on widely used datasets such as ActiviyNet. One way of using the ChildLens dataset to advance methodological development are multi-method approaches. For example, activity localization could be further enhanced by incorporating object identification, allowing for better tracking of the objects children interact with during daily routines. Such an approach has beed used in adult-focused studies {[}34{]}. Research by {[}35{]} also emphasizes the importance of hand detection in egocentric video for activity recognition. Their use of Convolutional Neural Networks (CNNs) for hand segmentation demonstrates how such techniques can help differentiate between activities. To apply a similar approach to the ChildLens dataset, we would first need to run a pretrained hand detection model on the dataset. In a second step, we would train a CNN to classify frames containing hands into activity classes, following the method described by {[}35{]}. If the performance of the hand detection performance is insufficient, additional hand annotations would be required to improve the model's accuracy.
 
-The integration of visual and auditory data in the ChildLens dataset enables a more detailed and comprehensive understanding of children's daily experiences. Complex activities such as pretend play and reading a book, which require both audio and video for accurate detection, exemplify the strength of this multimodal approach. While previous studies, such as those analyzing disfluencies in children's speech during computer game play (Yildirim \& Narayanan, 2009), have demonstrated that combining visual and auditory information can improve performance, few studies have explored this in the context of children's naturalistic activities. With ChildLens, the combination of naturalistic data and multimodal analysis creates new opportunities for in-depth insights into children's cognitive, emotional, and social development, particularly for activities best captured through both modalities.
+The integration of visual and auditory data in the ChildLens dataset enables a more detailed and comprehensive understanding of children's daily experiences. Complex activities such as pretend play and reading a book, which require both audio and video for accurate detection, exemplify the strength of this multimodal approach. While previous studies, such as those analyzing disfluencies in children's speech during computer game play {[}36{]}, have demonstrated that combining visual and auditory information can improve performance, few studies have explored this in the context of children's naturalistic activities. With ChildLens, the combination of naturalistic data and multimodal analysis creates new opportunities for in-depth insights into children's cognitive, emotional, and social development, particularly for activities best captured through both modalities.
 
-Despite its strengths, the ChildLens dataset also has its limitations. First, there is class imbalance, especially in underrepresented activity classes, which could affect model training and evaluation. More frequent activities, such as ``child talking'' (7447 instances, 649 minutes) and ``playing with object'' (317 instances, 1371 minutes), dominate the dataset, whereas less common activities like ``dancing'' (2 instances, 0.57 minutes) and ``making music'' (2 instances, 2.13 minutes) are scarcely represented. Similarly, activities like ``pretend play'' (59 instances, 158.84 minutes) and ``reading a book'' (81 instances, 328.70 minutes) appear less frequently. This imbalance may lead to skewed model performance, making it harder to accurately classify rare activities. Possible solutions to this challenge could involve merging rare activity classes into broader categories or excluding them from model training, though these approaches may reduce the dataset's diversity. Other methods, such as resampling or augmentation, could help balance the dataset and improve model performance (Alani, Cosma, \& Taherkhani, 2020; Spelmen \& Porkodi, 2018). Second, there is sampling bias. Since the recordings are largely influenced by parental decisions about when and how often activities are captured, certain activities or settings may be overrepresented or underrepresented based on these preferences. Furthermore, the dataset primarily focuses on families from a mid-sized German city, limiting its geographic and cultural diversity. Expanding the dataset to include a broader range of families from different regions and cultures would enhance its generalizability and applicability to various research contexts.
+Despite its strengths, the ChildLens dataset also has its limitations. First, there is class imbalance, especially in underrepresented activity classes, which could affect model training and evaluation. More frequent activities, such as ``child talking'' (7447 instances, 649 minutes) and ``playing with object'' (317 instances, 1371 minutes), dominate the dataset, whereas less common activities like ``dancing'' (2 instances, 0.57 minutes) and ``making music'' (2 instances, 2.13 minutes) are scarcely represented. Similarly, activities like ``pretend play'' (59 instances, 158.84 minutes) and ``reading a book'' (81 instances, 328.70 minutes) appear less frequently. This imbalance may lead to skewed model performance, making it harder to accurately classify rare activities. Possible solutions to this challenge could involve merging rare activity classes into broader categories or excluding them from model training, though these approaches may reduce the dataset's diversity. Other methods, such as resampling or augmentation, could help balance the dataset and improve model performance {[}37{]}, {[}38{]}. Second, there is sampling bias. Since the recordings are largely influenced by parental decisions about when and how often activities are captured, certain activities or settings may be overrepresented or underrepresented based on these preferences. Furthermore, the dataset primarily focuses on families from a mid-sized German city, limiting its geographic and cultural diversity. Expanding the dataset to include a broader range of families from different regions and cultures would enhance its generalizability and applicability to various research contexts.
 
 The study of children's everyday experiences is crucial for understanding their cognitive, emotional, and social development. These daily interactions provide important insights into how children learn, grow, and engage with their environment. The ChildLens dataset makes a valuable contribution to this field by offering a rich multi-modal resource that captures children's experiences in naturalistic settings. With its comprehensive annotations and potential to automate the analysis of children's activities, the dataset enables researchers to develop, fine-tune and apply automized processing algorithms that help to scale-up the study of situated development. By virtue of being an openly accessible resource, the ChildLens dataset creates new opportunities for understanding the complexities of early childhood development and provides a foundation for future research in this area.
 
-\newpage
+\section{Code Availability}\label{code-availability}
 
-\section{References}\label{references}
+\section{Acknowledgements}\label{acknowledgements}
+
+This work is supported by the German Research Foundation (DFG) project NFDI4DS under Grant No.: 460234259. We thank the participating families and children, and acknowledge the support from our research institutions and funding bodies.
+
+\section{Competing Interests}\label{competing-interests}
+
+The authors declare no competing interests.
+\newpage
+References
 
 \begingroup
 \setlength{\parindent}{-0.5in}
 \setlength{\leftskip}{0.5in}
 
 \phantomsection\label{refs}
-\begin{CSLReferences}{1}{0}
-\bibitem[\citeproctext]{ref-alaniClassifyingImbalancedMultimodal2020}
-Alani, A. A., Cosma, G., \& Taherkhani, A. (2020). Classifying {Imbalanced Multi-modal Sensor Data} for {Human Activity Recognition} in a {Smart Home} using {Deep Learning}. \emph{2020 {International Joint Conference} on {Neural Networks} ({IJCNN})}, 1--8. Glasgow, United Kingdom: IEEE. \url{https://doi.org/10.1109/IJCNN48605.2020.9207697}
-
-\bibitem[\citeproctext]{ref-baevskiWav2vec20Framework2020}
-Baevski, A., Zhou, H., Mohamed, A., \& Auli, M. (2020). Wav2vec 2.0: {A Framework} for {Self-Supervised Learning} of {Speech Representations}. \url{https://doi.org/10.48550/ARXIV.2006.11477}
-
-\bibitem[\citeproctext]{ref-bambachLendingHandDetecting2015}
-Bambach, S., Lee, S., Crandall, D. J., \& Yu, C. (2015). Lending {A Hand}: {Detecting Hands} and {Recognizing Activities} in {Complex Egocentric Interactions}. \emph{2015 {IEEE International Conference} on {Computer Vision} ({ICCV})}, 1949--1957. Santiago, Chile: IEEE. \url{https://doi.org/10.1109/ICCV.2015.226}
-
-\bibitem[\citeproctext]{ref-bangAutomatedClassifierPeriods2023}
-Bang, J. Y., Kachergis, G., Weisleder, A., \& Marchman, V. (2023). An automated classifier for periods of sleep and target-child-directed speech from {LENA} recordings. \emph{Language Development Research}, \emph{3.0}(1.0). \url{https://doi.org/10.34842/XMRQ-ER43}
-
-\bibitem[\citeproctext]{ref-bergelsonEverydayLanguageInput2023}
-Bergelson, E., Soderstrom, M., Schwarz, I.-C., Rowland, C. F., Ramírez-Esparza, N., R. Hamrick, L., \ldots{} Cristia, A. (2023a). Everyday language input and production in 1,001 children from six continents. \emph{Proceedings of the National Academy of Sciences}, \emph{120}(52), e2300671120. \url{https://doi.org/10.1073/pnas.2300671120}
-
-\bibitem[\citeproctext]{ref-bergelsonEverydayLanguageInput2023a}
-Bergelson, E., Soderstrom, M., Schwarz, I.-C., Rowland, C. F., Ramírez-Esparza, N., R. Hamrick, L., \ldots{} Cristia, A. (2023b). Everyday language input and production in 1,001 children from six continents. \emph{Proceedings of the National Academy of Sciences}, \emph{120}(52), e2300671120. \url{https://doi.org/10.1073/pnas.2300671120}
-
-\bibitem[\citeproctext]{ref-bredinPyannoteaudio21Speaker2023}
-Bredin, H. (2023). Pyannote.audio 2.1 speaker diarization pipeline: Principle, benchmark, and recipe. \emph{{INTERSPEECH} 2023}, 1983--1987. ISCA. \url{https://doi.org/10.21437/Interspeech.2023-105}
-
-\bibitem[\citeproctext]{ref-caoOpenPoseRealtimeMultiPerson2018}
-Cao, Z., Hidalgo, G., Simon, T., Wei, S.-E., \& Sheikh, Y. (2018). {OpenPose}: {Realtime Multi-Person 2D Pose Estimation} using {Part Affinity Fields}. \url{https://doi.org/10.48550/ARXIV.1812.08008}
-
-\bibitem[\citeproctext]{ref-carpendaleWhatMakesUs2020}
-Carpendale, J., \& Lewis, C. (2020). \emph{What {Makes Us Human}: {How Minds Develop} through {Social Interactions}} (1st ed.). Routledge. \url{https://doi.org/10.4324/9781003125105}
-
-\bibitem[\citeproctext]{ref-carreiraQuoVadisAction2017}
-Carreira, J., \& Zisserman, A. (2017). Quo {Vadis}, {Action Recognition}? {A New Model} and the {Kinetics Dataset}. \url{https://doi.org/10.48550/ARXIV.1705.07750}
-
-\bibitem[\citeproctext]{ref-chenDyadicAffectParentChild2023}
-Chen, H., Alghowinem, S., Jang, S. J., Breazeal, C., \& Park, H. W. (2023). Dyadic {Affect} in {Parent-Child Multimodal Interaction}: {Introducing} the {DAMI-P2C Dataset} and its {Preliminary Analysis}. \emph{IEEE Transactions on Affective Computing}, \emph{14}(4), 3345--3361. \url{https://doi.org/10.1109/TAFFC.2022.3178689}
-
-\bibitem[\citeproctext]{ref-mmaction2contributorsOpenMMLabsNextGeneration2020}
-Contributors, M. (2020). \emph{{OpenMMLab}'s {Next Generation Video Understanding Toolbox} and {Benchmark}}. Retrieved from \url{urlhttps://github.com/open-mmlab/mmaction2}
-
-\bibitem[\citeproctext]{ref-debarbaroTenLessonsInfants2022}
-De Barbaro, K., \& Fausey, C. M. (2022). Ten {Lessons About Infants}' {Everyday Experiences}. \emph{Current Directions in Psychological Science}, \emph{31}(1), 28--33. \url{https://doi.org/10.1177/09637214211059536}
-
-\bibitem[\citeproctext]{ref-donnellyLongitudinalRelationshipConversational2021}
-Donnelly, S., \& Kidd, E. (2021). The {Longitudinal Relationship Between Conversational Turn}‐{Taking} and {Vocabulary Growth} in {Early Language Development}. \emph{Child Development}, \emph{92}(2), 609--625. \url{https://doi.org/10.1111/cdev.13511}
-
-\bibitem[\citeproctext]{ref-ferjanramirezParentCoachingIncreases2020}
-Ferjan Ramírez, N., Lytle, S. R., \& Kuhl, P. K. (2020). Parent coaching increases conversational turns and advances infant language development. \emph{Proceedings of the National Academy of Sciences}, \emph{117}(7), 3484--3491. \url{https://doi.org/10.1073/pnas.1921653117}
-
-\bibitem[\citeproctext]{ref-fraileUpStoryUppsalaStorytelling2024}
-Fraile, M., Calvo-Barajas, N., Apeiron, A. S., Varni, G., Lindblad, J., Sladoje, N., \& Castellano, G. (2024). {UpStory}: The {Uppsala Storytelling} dataset. \url{https://doi.org/10.48550/ARXIV.2407.04352}
-
-\bibitem[\citeproctext]{ref-ginsburgImportancePlayPromoting2007}
-Ginsburg, K. R., and the Committee on Communications, \& and the Committee on Psychosocial Aspects of Child and Family Health. (2007). The {Importance} of {Play} in {Promoting Healthy Child Development} and {Maintaining Strong Parent-Child Bonds}. \emph{Pediatrics}, \emph{119}(1), 182--191. \url{https://doi.org/10.1542/peds.2006-2697}
-
-\bibitem[\citeproctext]{ref-heilbronActivityNetLargescaleVideo2015}
-Heilbron, F. C., Escorcia, V., Ghanem, B., \& Niebles, J. C. (2015). {ActivityNet}: {A} large-scale video benchmark for human activity understanding. \emph{2015 {IEEE Conference} on {Computer Vision} and {Pattern Recognition} ({CVPR})}, 961--970. Boston, MA, USA: IEEE. \url{https://doi.org/10.1109/CVPR.2015.7298698}
-
-\bibitem[\citeproctext]{ref-heyesCognitiveGadgetsCultural2018}
-Heyes, C. M. (2018). \emph{Cognitive gadgets: The cultural evolution of thinking}. Cambridge (Mass.): Harvard University press.
-
-\bibitem[\citeproctext]{ref-hofferthHowAmericanChildren2001}
-Hofferth, S. L., \& Sandberg, J. F. (2001). How {American Children Spend Their Time}. \emph{Journal of Marriage and Family}, \emph{63}(2), 295--308. \url{https://doi.org/10.1111/j.1741-3737.2001.00295.x}
-
-\bibitem[\citeproctext]{ref-kazakosLittleHelpMy2021}
-Kazakos, E., Huh, J., Nagrani, A., Zisserman, A., \& Damen, D. (2021). With a {Little Help} from my {Temporal Context}: {Multimodal Egocentric Action Recognition}. \url{https://doi.org/10.48550/ARXIV.2111.01024}
-
-\bibitem[\citeproctext]{ref-lavechinOpensourceVoiceType2020}
-Lavechin, M., Bousbib, R., Bredin, H., Dupoux, E., \& Cristia, A. (2020). An open-source voice type classifier for child-centered daylong recordings. \url{https://doi.org/10.48550/ARXIV.2005.12656}
-
-\bibitem[\citeproctext]{ref-linBMNBoundaryMatchingNetwork2019}
-Lin, T., Liu, X., Li, X., Ding, E., \& Wen, S. (2019). {BMN}: {Boundary-Matching Network} for {Temporal Action Proposal Generation}. \url{https://doi.org/10.48550/ARXIV.1907.09702}
-
-\bibitem[\citeproctext]{ref-longBabyViewDatasetHighresolution2024}
-Long, B., Xiang, V., Stojanov, S., Sparks, R. Z., Yin, Z., Keene, G. E., \ldots{} Frank, M. C. (2024, June 14). The {BabyView} dataset: {High-resolution} egocentric videos of infants' and young children's everyday experiences. \url{https://doi.org/10.48550/arXiv.2406.10447}
-
+\begin{CSLReferences}{0}{0}
 \bibitem[\citeproctext]{ref-piagetPartCognitiveDevelopment1964}
-Piaget, J. (1964). Part {I}: {Cognitive} development in children: {Piaget} development and learning. \emph{Journal of Research in Science Teaching}, \emph{2}(3), 176--186. \url{https://doi.org/10.1002/tea.3660020306}
-
-\bibitem[\citeproctext]{ref-plaquetPowersetMulticlassCross2023}
-Plaquet, A., \& Bredin, H. (2023). Powerset multi-class cross entropy loss for neural speaker diarization. \emph{{INTERSPEECH} 2023}, 3222--3226. ISCA. \url{https://doi.org/10.21437/Interspeech.2023-205}
-
-\bibitem[\citeproctext]{ref-redmonYouOnlyLook2015}
-Redmon, J., Divvala, S., Girshick, R., \& Farhadi, A. (2015). You {Only Look Once}: {Unified}, {Real-Time Object Detection}. \url{https://doi.org/10.48550/ARXIV.1506.02640}
-
-\bibitem[\citeproctext]{ref-rehgDecodingChildrensSocial2013}
-Rehg, J. M., Abowd, G. D., Rozga, A., Romero, M., Clements, M. A., Sclaroff, S., \ldots{} Ye, Z. (2013). Decoding {Children}'s {Social Behavior}. \emph{2013 {IEEE Conference} on {Computer Vision} and {Pattern Recognition}}, 3414--3421. Portland, OR, USA: IEEE. \url{https://doi.org/10.1109/CVPR.2013.438}
-
-\bibitem[\citeproctext]{ref-rogoffImportanceUnderstandingChildrens2018}
-Rogoff, B., Dahl, A., \& Callanan, M. (2018). The importance of understanding children's lived experience. \emph{Developmental Review}, \emph{50}, 5--15. \url{https://doi.org/10.1016/j.dr.2018.05.006}
-
-\bibitem[\citeproctext]{ref-royPredictingBirthSpoken2015}
-Roy, B. C., Frank, M. C., DeCamp, P., Miller, M., \& Roy, D. (2015). Predicting the birth of a spoken word. \emph{Proceedings of the National Academy of Sciences}, \emph{112}(41), 12663--12668. \url{https://doi.org/10.1073/pnas.1419773112}
-
-\bibitem[\citeproctext]{ref-ruffmanExposureBehavioralRegularities2023}
-Ruffman, T., Chen, L., Lorimer, B., Vanier, S., Edgar, K., Scarf, D., \& Taumoepeau, M. (2023). Exposure to behavioral regularities in everyday life predicts infants' acquisition of mental state vocabulary. \emph{Developmental Science}, \emph{26}(4), e13343. \url{https://doi.org/10.1111/desc.13343}
-
-\bibitem[\citeproctext]{ref-russakovskyImageNetLargeScale2014}
-Russakovsky, O., Deng, J., Su, H., Krause, J., Satheesh, S., Ma, S., \ldots{} Fei-Fei, L. (2014). {ImageNet Large Scale Visual Recognition Challenge}. \url{https://doi.org/10.48550/ARXIV.1409.0575}
-
-\bibitem[\citeproctext]{ref-smithDevelopingInfantCreates2018}
-Smith, L. B., Jayaraman, S., Clerkin, E., \& Yu, C. (2018). The {Developing Infant Creates} a {Curriculum} for {Statistical Learning}. \emph{Trends in Cognitive Sciences}, \emph{22}(4), 325--336. \url{https://doi.org/10.1016/j.tics.2018.02.004}
-
-\bibitem[\citeproctext]{ref-spelmenReviewHandlingImbalanced2018}
-Spelmen, V. S., \& Porkodi, R. (2018). A {Review} on {Handling Imbalanced Data}. \emph{2018 {International Conference} on {Current Trends} Towards {Converging Technologies} ({ICCTCT})}, 1--11. Coimbatore: IEEE. \url{https://doi.org/10.1109/ICCTCT.2018.8551020}
-
-\bibitem[\citeproctext]{ref-sullivanSAYCamLargeLongitudinal2021}
-Sullivan, J., Mei, M., Perfors, A., Wojcik, E., \& Frank, M. C. (2021). {SAYCam}: {A Large}, {Longitudinal Audiovisual Dataset Recorded From} the {Infant}'s {Perspective}. \emph{Open Mind}, \emph{5}, 20--29. \url{https://doi.org/10.1162/opmi_a_00039}
-
-\bibitem[\citeproctext]{ref-tomaselloCulturalOriginsHuman2009}
-Tomasello, M. (2009). \emph{Cultural {Origins} of {Human Cognition}}. Cambridge: Harvard University Press.
+\CSLLeftMargin{{[}1{]} }%
+\CSLRightInline{J. Piaget, {``Part {I}: {Cognitive} development in children: {Piaget} development and learning,''} \emph{J Res Sci Teach}, vol. 2, no. 3, pp. 176--186, Sep. 1964, doi: \href{https://doi.org/10.1002/tea.3660020306}{10.1002/tea.3660020306}. Available: \url{https://onlinelibrary.wiley.com/doi/10.1002/tea.3660020306}. {[}Accessed: Jan. 11, 2025{]}}
 
 \bibitem[\citeproctext]{ref-vygotskyMindSocietyDevelopment1978}
-Vygotsky, L. S. (1978). \emph{Mind in {Society}: {The Development} of {Higher Psychological Processes}}. Cambridge, MA: Harvard University Press.
+\CSLLeftMargin{{[}2{]} }%
+\CSLRightInline{L. S. Vygotsky, \emph{Mind in {Society}: {The Development} of {Higher Psychological Processes}}. Cambridge, MA: Harvard University Press, 1978.}
+
+\bibitem[\citeproctext]{ref-rogoffImportanceUnderstandingChildrens2018}
+\CSLLeftMargin{{[}3{]} }%
+\CSLRightInline{B. Rogoff, A. Dahl, and M. Callanan, {``The importance of understanding children's lived experience,''} \emph{Developmental Review}, vol. 50, pp. 5--15, Dec. 2018, doi: \href{https://doi.org/10.1016/j.dr.2018.05.006}{10.1016/j.dr.2018.05.006}. Available: \url{https://linkinghub.elsevier.com/retrieve/pii/S0273229718300236}. {[}Accessed: Dec. 23, 2024{]}}
+
+\bibitem[\citeproctext]{ref-carpendaleWhatMakesUs2020}
+\CSLLeftMargin{{[}4{]} }%
+\CSLRightInline{J. Carpendale and C. Lewis, \emph{What {Makes Us Human}: {How Minds Develop} through {Social Interactions}}, 1st ed. Routledge, 2020. doi: \href{https://doi.org/10.4324/9781003125105}{10.4324/9781003125105}. Available: \url{https://www.taylorfrancis.com/books/9781000283983}. {[}Accessed: Jan. 11, 2025{]}}
+
+\bibitem[\citeproctext]{ref-smithDevelopingInfantCreates2018}
+\CSLLeftMargin{{[}5{]} }%
+\CSLRightInline{L. B. Smith, S. Jayaraman, E. Clerkin, and C. Yu, {``The {Developing Infant Creates} a {Curriculum} for {Statistical Learning},''} \emph{Trends in Cognitive Sciences}, vol. 22, no. 4, pp. 325--336, Apr. 2018, doi: \href{https://doi.org/10.1016/j.tics.2018.02.004}{10.1016/j.tics.2018.02.004}. Available: \url{https://linkinghub.elsevier.com/retrieve/pii/S1364661318300275}. {[}Accessed: Jan. 11, 2025{]}}
+
+\bibitem[\citeproctext]{ref-tomaselloCulturalOriginsHuman2009}
+\CSLLeftMargin{{[}6{]} }%
+\CSLRightInline{M. Tomasello, \emph{Cultural {Origins} of {Human Cognition}}. Cambridge: Harvard University Press, 2009.}
+
+\bibitem[\citeproctext]{ref-heyesCognitiveGadgetsCultural2018}
+\CSLLeftMargin{{[}7{]} }%
+\CSLRightInline{C. M. Heyes, \emph{Cognitive gadgets: The cultural evolution of thinking}. Cambridge (Mass.): Harvard University press, 2018.}
+
+\bibitem[\citeproctext]{ref-bergelsonEverydayLanguageInput2023}
+\CSLLeftMargin{{[}8{]} }%
+\CSLRightInline{E. Bergelson \emph{et al.}, {``Everyday language input and production in 1,001 children from six continents,''} \emph{Proc. Natl. Acad. Sci. U.S.A.}, vol. 120, no. 52, p. e2300671120, Dec. 2023, doi: \href{https://doi.org/10.1073/pnas.2300671120}{10.1073/pnas.2300671120}. Available: \url{https://pnas.org/doi/10.1073/pnas.2300671120}. {[}Accessed: Jan. 11, 2025{]}}
+
+\bibitem[\citeproctext]{ref-ferjanramirezParentCoachingIncreases2020}
+\CSLLeftMargin{{[}9{]} }%
+\CSLRightInline{N. Ferjan Ramírez, S. R. Lytle, and P. K. Kuhl, {``Parent coaching increases conversational turns and advances infant language development,''} \emph{Proc. Natl. Acad. Sci. U.S.A.}, vol. 117, no. 7, pp. 3484--3491, Feb. 2020, doi: \href{https://doi.org/10.1073/pnas.1921653117}{10.1073/pnas.1921653117}. Available: \url{https://pnas.org/doi/full/10.1073/pnas.1921653117}. {[}Accessed: May 19, 2025{]}}
+
+\bibitem[\citeproctext]{ref-donnellyLongitudinalRelationshipConversational2021}
+\CSLLeftMargin{{[}10{]} }%
+\CSLRightInline{S. Donnelly and E. Kidd, {``The {Longitudinal Relationship Between Conversational Turn}‐{Taking} and {Vocabulary Growth} in {Early Language Development},''} \emph{Child Development}, vol. 92, no. 2, pp. 609--625, Mar. 2021, doi: \href{https://doi.org/10.1111/cdev.13511}{10.1111/cdev.13511}. Available: \url{https://srcd.onlinelibrary.wiley.com/doi/10.1111/cdev.13511}. {[}Accessed: Jan. 11, 2025{]}}
+
+\bibitem[\citeproctext]{ref-royPredictingBirthSpoken2015}
+\CSLLeftMargin{{[}11{]} }%
+\CSLRightInline{B. C. Roy, M. C. Frank, P. DeCamp, M. Miller, and D. Roy, {``Predicting the birth of a spoken word,''} \emph{Proc. Natl. Acad. Sci. U.S.A.}, vol. 112, no. 41, pp. 12663--12668, Oct. 2015, doi: \href{https://doi.org/10.1073/pnas.1419773112}{10.1073/pnas.1419773112}. Available: \url{https://pnas.org/doi/full/10.1073/pnas.1419773112}. {[}Accessed: Dec. 20, 2024{]}}
+
+\bibitem[\citeproctext]{ref-ruffmanExposureBehavioralRegularities2023}
+\CSLLeftMargin{{[}12{]} }%
+\CSLRightInline{T. Ruffman \emph{et al.}, {``Exposure to behavioral regularities in everyday life predicts infants' acquisition of mental state vocabulary,''} \emph{Developmental Science}, vol. 26, no. 4, p. e13343, Jul. 2023, doi: \href{https://doi.org/10.1111/desc.13343}{10.1111/desc.13343}. Available: \url{https://onlinelibrary.wiley.com/doi/10.1111/desc.13343}. {[}Accessed: Jan. 11, 2025{]}}
+
+\bibitem[\citeproctext]{ref-debarbaroTenLessonsInfants2022}
+\CSLLeftMargin{{[}13{]} }%
+\CSLRightInline{K. De Barbaro and C. M. Fausey, {``Ten {Lessons About Infants}' {Everyday Experiences},''} \emph{Curr Dir Psychol Sci}, vol. 31, no. 1, pp. 28--33, Feb. 2022, doi: \href{https://doi.org/10.1177/09637214211059536}{10.1177/09637214211059536}. Available: \url{https://journals.sagepub.com/doi/10.1177/09637214211059536}. {[}Accessed: Dec. 23, 2024{]}}
+
+\bibitem[\citeproctext]{ref-caoOpenPoseRealtimeMultiPerson2018}
+\CSLLeftMargin{{[}14{]} }%
+\CSLRightInline{Z. Cao, G. Hidalgo, T. Simon, S.-E. Wei, and Y. Sheikh, {``{OpenPose}: {Realtime Multi-Person 2D Pose Estimation} using {Part Affinity Fields},''} 2018. doi: \href{https://doi.org/10.48550/ARXIV.1812.08008}{10.48550/ARXIV.1812.08008}. Available: \url{https://arxiv.org/abs/1812.08008}. {[}Accessed: Jan. 11, 2025{]}}
+
+\bibitem[\citeproctext]{ref-redmonYouOnlyLook2015}
+\CSLLeftMargin{{[}15{]} }%
+\CSLRightInline{J. Redmon, S. Divvala, R. Girshick, and A. Farhadi, {``You {Only Look Once}: {Unified}, {Real-Time Object Detection},''} 2015. doi: \href{https://doi.org/10.48550/ARXIV.1506.02640}{10.48550/ARXIV.1506.02640}. Available: \url{https://arxiv.org/abs/1506.02640}. {[}Accessed: Jan. 11, 2025{]}}
+
+\bibitem[\citeproctext]{ref-carreiraQuoVadisAction2017}
+\CSLLeftMargin{{[}16{]} }%
+\CSLRightInline{J. Carreira and A. Zisserman, {``Quo {Vadis}, {Action Recognition}? {A New Model} and the {Kinetics Dataset},''} 2017. doi: \href{https://doi.org/10.48550/ARXIV.1705.07750}{10.48550/ARXIV.1705.07750}. Available: \url{https://arxiv.org/abs/1705.07750}. {[}Accessed: Jan. 12, 2025{]}}
+
+\bibitem[\citeproctext]{ref-baevskiWav2vec20Framework2020}
+\CSLLeftMargin{{[}17{]} }%
+\CSLRightInline{A. Baevski, H. Zhou, A. Mohamed, and M. Auli, {``Wav2vec 2.0: {A Framework} for {Self-Supervised Learning} of {Speech Representations},''} 2020. doi: \href{https://doi.org/10.48550/ARXIV.2006.11477}{10.48550/ARXIV.2006.11477}. Available: \url{https://arxiv.org/abs/2006.11477}. {[}Accessed: Jan. 12, 2025{]}}
+
+\bibitem[\citeproctext]{ref-russakovskyImageNetLargeScale2014}
+\CSLLeftMargin{{[}18{]} }%
+\CSLRightInline{O. Russakovsky \emph{et al.}, {``{ImageNet Large Scale Visual Recognition Challenge},''} 2014. doi: \href{https://doi.org/10.48550/ARXIV.1409.0575}{10.48550/ARXIV.1409.0575}. Available: \url{https://arxiv.org/abs/1409.0575}. {[}Accessed: Jan. 12, 2025{]}}
+
+\bibitem[\citeproctext]{ref-sullivanSAYCamLargeLongitudinal2021}
+\CSLLeftMargin{{[}19{]} }%
+\CSLRightInline{J. Sullivan, M. Mei, A. Perfors, E. Wojcik, and M. C. Frank, {``{SAYCam}: {A Large}, {Longitudinal Audiovisual Dataset Recorded From} the {Infant}'s {Perspective},''} \emph{Open Mind}, vol. 5, pp. 20--29, May 2021, doi: \href{https://doi.org/10.1162/opmi_a_00039}{10.1162/opmi\_a\_00039}. Available: \url{https://direct.mit.edu/opmi/article/doi/10.1162/opmi_a_00039/97495/SAYCam-A-Large-Longitudinal-Audiovisual-Dataset}. {[}Accessed: Dec. 20, 2024{]}}
+
+\bibitem[\citeproctext]{ref-chenDyadicAffectParentChild2023}
+\CSLLeftMargin{{[}20{]} }%
+\CSLRightInline{H. Chen, S. Alghowinem, S. J. Jang, C. Breazeal, and H. W. Park, {``Dyadic {Affect} in {Parent-Child Multimodal Interaction}: {Introducing} the {DAMI-P2C Dataset} and its {Preliminary Analysis},''} \emph{IEEE Trans. Affective Comput.}, vol. 14, no. 4, pp. 3345--3361, Oct. 2023, doi: \href{https://doi.org/10.1109/TAFFC.2022.3178689}{10.1109/TAFFC.2022.3178689}. Available: \url{https://ieeexplore.ieee.org/document/9784429/}. {[}Accessed: Jan. 12, 2025{]}}
+
+\bibitem[\citeproctext]{ref-rehgDecodingChildrensSocial2013}
+\CSLLeftMargin{{[}21{]} }%
+\CSLRightInline{J. M. Rehg \emph{et al.}, {``Decoding {Children}'s {Social Behavior},''} in \emph{2013 {IEEE Conference} on {Computer Vision} and {Pattern Recognition}}, Portland, OR, USA: IEEE, Jun. 2013, pp. 3414--3421. doi: \href{https://doi.org/10.1109/CVPR.2013.438}{10.1109/CVPR.2013.438}. Available: \url{http://ieeexplore.ieee.org/document/6619282/}. {[}Accessed: Jan. 12, 2025{]}}
+
+\bibitem[\citeproctext]{ref-fraileUpStoryUppsalaStorytelling2024}
+\CSLLeftMargin{{[}22{]} }%
+\CSLRightInline{M. Fraile \emph{et al.}, {``{UpStory}: The {Uppsala Storytelling} dataset,''} 2024. doi: \href{https://doi.org/10.48550/ARXIV.2407.04352}{10.48550/ARXIV.2407.04352}. Available: \url{https://arxiv.org/abs/2407.04352}. {[}Accessed: Jan. 12, 2025{]}}
+
+\bibitem[\citeproctext]{ref-longBabyViewDatasetHighresolution2024}
+\CSLLeftMargin{{[}23{]} }%
+\CSLRightInline{B. Long \emph{et al.}, {``The {BabyView} dataset: {High-resolution} egocentric videos of infants' and young children's everyday experiences,''} Jun. 14, 2024. doi: \href{https://doi.org/10.48550/arXiv.2406.10447}{10.48550/arXiv.2406.10447}. Available: \url{http://arxiv.org/abs/2406.10447}. {[}Accessed: Dec. 20, 2024{]}}
+
+\bibitem[\citeproctext]{ref-hofferthHowAmericanChildren2001}
+\CSLLeftMargin{{[}24{]} }%
+\CSLRightInline{S. L. Hofferth and J. F. Sandberg, {``How {American Children Spend Their Time},''} \emph{J of Marriage and Family}, vol. 63, no. 2, pp. 295--308, May 2001, doi: \href{https://doi.org/10.1111/j.1741-3737.2001.00295.x}{10.1111/j.1741-3737.2001.00295.x}. Available: \url{https://onlinelibrary.wiley.com/doi/10.1111/j.1741-3737.2001.00295.x}. {[}Accessed: May 20, 2025{]}}
+
+\bibitem[\citeproctext]{ref-ginsburgImportancePlayPromoting2007}
+\CSLLeftMargin{{[}25{]} }%
+\CSLRightInline{K. R. Ginsburg, and the Committee on Communications, and and the Committee on Psychosocial Aspects of Child and Family Health, {``The {Importance} of {Play} in {Promoting Healthy Child Development} and {Maintaining Strong Parent-Child Bonds},''} \emph{Pediatrics}, vol. 119, no. 1, pp. 182--191, Jan. 2007, doi: \href{https://doi.org/10.1542/peds.2006-2697}{10.1542/peds.2006-2697}. Available: \url{https://publications.aap.org/pediatrics/article/119/1/182/70699/The-Importance-of-Play-in-Promoting-Healthy-Child}. {[}Accessed: May 20, 2025{]}}
+
+\bibitem[\citeproctext]{ref-linBMNBoundaryMatchingNetwork2019}
+\CSLLeftMargin{{[}26{]} }%
+\CSLRightInline{T. Lin, X. Liu, X. Li, E. Ding, and S. Wen, {``{BMN}: {Boundary-Matching Network} for {Temporal Action Proposal Generation},''} 2019. doi: \href{https://doi.org/10.48550/ARXIV.1907.09702}{10.48550/ARXIV.1907.09702}. Available: \url{https://arxiv.org/abs/1907.09702}. {[}Accessed: Nov. 13, 2024{]}}
+
+\bibitem[\citeproctext]{ref-lavechinOpensourceVoiceType2020}
+\CSLLeftMargin{{[}27{]} }%
+\CSLRightInline{M. Lavechin, R. Bousbib, H. Bredin, E. Dupoux, and A. Cristia, {``An open-source voice type classifier for child-centered daylong recordings,''} 2020. doi: \href{https://doi.org/10.48550/ARXIV.2005.12656}{10.48550/ARXIV.2005.12656}. Available: \url{https://arxiv.org/abs/2005.12656}. {[}Accessed: Nov. 14, 2024{]}}
+
+\bibitem[\citeproctext]{ref-heilbronActivityNetLargescaleVideo2015}
+\CSLLeftMargin{{[}28{]} }%
+\CSLRightInline{F. C. Heilbron, V. Escorcia, B. Ghanem, and J. C. Niebles, {``{ActivityNet}: {A} large-scale video benchmark for human activity understanding,''} in \emph{2015 {IEEE Conference} on {Computer Vision} and {Pattern Recognition} ({CVPR})}, Boston, MA, USA: IEEE, Jun. 2015, pp. 961--970. doi: \href{https://doi.org/10.1109/CVPR.2015.7298698}{10.1109/CVPR.2015.7298698}. Available: \url{http://ieeexplore.ieee.org/document/7298698/}. {[}Accessed: May 19, 2025{]}}
+
+\bibitem[\citeproctext]{ref-mmaction2contributorsOpenMMLabsNextGeneration2020}
+\CSLLeftMargin{{[}29{]} }%
+\CSLRightInline{M. Contributors, {``{OpenMMLab}'s {Next Generation Video Understanding Toolbox} and {Benchmark}.''} 2020. Available: \url{urlhttps://github.com/open-mmlab/mmaction2}}
+
+\bibitem[\citeproctext]{ref-plaquetPowersetMulticlassCross2023}
+\CSLLeftMargin{{[}30{]} }%
+\CSLRightInline{A. Plaquet and H. Bredin, {``Powerset multi-class cross entropy loss for neural speaker diarization,''} in \emph{{INTERSPEECH} 2023}, ISCA, Aug. 2023, pp. 3222--3226. doi: \href{https://doi.org/10.21437/Interspeech.2023-205}{10.21437/Interspeech.2023-205}. Available: \url{https://www.isca-archive.org/interspeech_2023/plaquet23_interspeech.html}. {[}Accessed: May 12, 2025{]}}
+
+\bibitem[\citeproctext]{ref-bredinPyannoteaudio21Speaker2023}
+\CSLLeftMargin{{[}31{]} }%
+\CSLRightInline{H. Bredin, {``Pyannote.audio 2.1 speaker diarization pipeline: Principle, benchmark, and recipe,''} in \emph{{INTERSPEECH} 2023}, ISCA, Aug. 2023, pp. 1983--1987. doi: \href{https://doi.org/10.21437/Interspeech.2023-105}{10.21437/Interspeech.2023-105}. Available: \url{https://www.isca-archive.org/interspeech_2023/bredin23_interspeech.html}. {[}Accessed: May 12, 2025{]}}
+
+\bibitem[\citeproctext]{ref-bergelsonEverydayLanguageInput2023a}
+\CSLLeftMargin{{[}32{]} }%
+\CSLRightInline{E. Bergelson \emph{et al.}, {``Everyday language input and production in 1,001 children from six continents,''} \emph{Proc. Natl. Acad. Sci. U.S.A.}, vol. 120, no. 52, p. e2300671120, Dec. 2023, doi: \href{https://doi.org/10.1073/pnas.2300671120}{10.1073/pnas.2300671120}. Available: \url{https://pnas.org/doi/10.1073/pnas.2300671120}. {[}Accessed: May 19, 2025{]}}
+
+\bibitem[\citeproctext]{ref-bangAutomatedClassifierPeriods2023}
+\CSLLeftMargin{{[}33{]} }%
+\CSLRightInline{J. Y. Bang, G. Kachergis, A. Weisleder, and V. Marchman, {``An automated classifier for periods of sleep and target-child-directed speech from {LENA} recordings,''} \emph{Language Development Research}, vol. 3.0, no. 1.0, 2023, doi: \href{https://doi.org/10.34842/XMRQ-ER43}{10.34842/XMRQ-ER43}. Available: \url{https://ldr.lps.library.cmu.edu/article/id/659/}. {[}Accessed: May 21, 2025{]}}
+
+\bibitem[\citeproctext]{ref-kazakosLittleHelpMy2021}
+\CSLLeftMargin{{[}34{]} }%
+\CSLRightInline{E. Kazakos, J. Huh, A. Nagrani, A. Zisserman, and D. Damen, {``With a {Little Help} from my {Temporal Context}: {Multimodal Egocentric Action Recognition},''} 2021. doi: \href{https://doi.org/10.48550/ARXIV.2111.01024}{10.48550/ARXIV.2111.01024}. Available: \url{https://arxiv.org/abs/2111.01024}. {[}Accessed: Jan. 02, 2025{]}}
+
+\bibitem[\citeproctext]{ref-bambachLendingHandDetecting2015}
+\CSLLeftMargin{{[}35{]} }%
+\CSLRightInline{S. Bambach, S. Lee, D. J. Crandall, and C. Yu, {``Lending {A Hand}: {Detecting Hands} and {Recognizing Activities} in {Complex Egocentric Interactions},''} in \emph{2015 {IEEE International Conference} on {Computer Vision} ({ICCV})}, Santiago, Chile: IEEE, Dec. 2015, pp. 1949--1957. doi: \href{https://doi.org/10.1109/ICCV.2015.226}{10.1109/ICCV.2015.226}. Available: \url{http://ieeexplore.ieee.org/document/7410583/}. {[}Accessed: Jan. 02, 2025{]}}
 
 \bibitem[\citeproctext]{ref-yildirimAutomaticDetectionDisfluency2009}
-Yildirim, S., \& Narayanan, S. (2009). Automatic {Detection} of {Disfluency Boundaries} in {Spontaneous Speech} of {Children Using Audio}\&\#x2013;{Visual Information}. \emph{IEEE Transactions on Audio, Speech, and Language Processing}, \emph{17}(1), 2--12. \url{https://doi.org/10.1109/TASL.2008.2006728}
+\CSLLeftMargin{{[}36{]} }%
+\CSLRightInline{S. Yildirim and S. Narayanan, {``Automatic {Detection} of {Disfluency Boundaries} in {Spontaneous Speech} of {Children Using Audio}\&\#x2013;{Visual Information},''} \emph{IEEE Trans. Audio Speech Lang. Process.}, vol. 17, no. 1, pp. 2--12, Jan. 2009, doi: \href{https://doi.org/10.1109/TASL.2008.2006728}{10.1109/TASL.2008.2006728}. Available: \url{http://ieeexplore.ieee.org/document/4740159/}. {[}Accessed: Jan. 12, 2025{]}}
+
+\bibitem[\citeproctext]{ref-spelmenReviewHandlingImbalanced2018}
+\CSLLeftMargin{{[}37{]} }%
+\CSLRightInline{V. S. Spelmen and R. Porkodi, {``A {Review} on {Handling Imbalanced Data},''} in \emph{2018 {International Conference} on {Current Trends} towards {Converging Technologies} ({ICCTCT})}, Coimbatore: IEEE, Mar. 2018, pp. 1--11. doi: \href{https://doi.org/10.1109/ICCTCT.2018.8551020}{10.1109/ICCTCT.2018.8551020}. Available: \url{https://ieeexplore.ieee.org/document/8551020/}. {[}Accessed: Jan. 02, 2025{]}}
+
+\bibitem[\citeproctext]{ref-alaniClassifyingImbalancedMultimodal2020}
+\CSLLeftMargin{{[}38{]} }%
+\CSLRightInline{A. A. Alani, G. Cosma, and A. Taherkhani, {``Classifying {Imbalanced Multi-modal Sensor Data} for {Human Activity Recognition} in a {Smart Home} using {Deep Learning},''} in \emph{2020 {International Joint Conference} on {Neural Networks} ({IJCNN})}, Glasgow, United Kingdom: IEEE, Jul. 2020, pp. 1--8. doi: \href{https://doi.org/10.1109/IJCNN48605.2020.9207697}{10.1109/IJCNN48605.2020.9207697}. Available: \url{https://ieeexplore.ieee.org/document/9207697/}. {[}Accessed: Jan. 02, 2025{]}}
 
 \end{CSLReferences}
 

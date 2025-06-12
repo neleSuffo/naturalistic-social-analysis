@@ -19,6 +19,9 @@ author:
   - name: "Anam Zahra"
     affiliation: '2'
     corresponding: false
+  - name: "Anas Suffo"
+    affiliation: '1'
+    corresponding: false
   - name: "Daniel Haun"
     affiliation: '2'
     corresponding: false
