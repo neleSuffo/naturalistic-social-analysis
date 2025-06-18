@@ -1,4 +1,6 @@
 import numpy as np
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Suppress INFO and WARNING messages
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 import tensorflow as tf
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Input, Conv2D, MaxPooling2D, GRU, Dense, Dropout, BatchNormalization, Reshape, Permute, multiply, Lambda, Activation, Flatten, RepeatVector
@@ -6,11 +8,12 @@ from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
 import librosa
 import os
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder, MultiLabelBinarizer
+from sklearn.preprocessing import MultiLabelBinarizer
 from tensorflow.keras.losses import BinaryCrossentropy
-import pandas as pd # For easier handling of RTTM data
-from tqdm import tqdm # For progress bars
+import pandas as pd
+from tqdm import tqdm
+import re
+
 
 # --- 1. Feature Extraction (Mel-spectrograms from fixed-duration windows) ---
 def extract_mel_spectrogram_fixed_window(audio_path, start_time, duration, sr=16000, n_mels=128, hop_length=512):
@@ -57,24 +60,28 @@ def extract_mel_spectrogram_fixed_window(audio_path, start_time, duration, sr=16
         print(f"Error processing segment from {audio_path} [{start_time}s, duration {duration}s]: {e}")
         return None
 
-# --- 2. RTTM Parsing and Multi-Label Data Preparation ---
+# --- 2. RTTM Parsing and Multi-Label Data Preparation (Slightly adjusted) ---
 def parse_rttm_for_multi_label(rttm_path, audio_files_dir, window_duration, window_step):
     """
-    Parses an RTTM file and generates fixed-duration windows with multi-hot labels.
+    Parses a single RTTM file and generates fixed-duration windows with multi-hot labels.
     
     Args:
         rttm_path (str): Path to the RTTM file.
         audio_files_dir (str): Directory where all audio files are located.
         window_duration (float): The fixed duration of each analysis window in seconds.
         window_step (float): The step size between consecutive windows in seconds.
-        
+                                                 
     Returns:
-        list: List of dictionaries, each containing 'audio_path', 'start', 'duration', 'labels' (list of strings).
-        list: List of all unique class labels found.
+        tuple: (list of window data, list of unique class labels found).
     """
-    rttm_df = pd.read_csv(rttm_path, sep=' ', header=None, 
-                          names=['type', 'file_id', 'channel', 'start', 'duration', 
-                                 'NA1', 'NA2', 'speaker_id', 'NA3', 'NA4'])
+    try:
+        rttm_df = pd.read_csv(rttm_path, sep=' ', header=None, 
+                              names=['type', 'file_id', 'channel', 'start', 'duration', 
+                                     'NA1', 'NA2', 'speaker_id', 'NA3', 'NA4'])
+    except Exception as e:
+        print(f"Error reading RTTM file {rttm_path}: {e}")
+        return [], []
+
 
     all_window_data = []
     all_unique_labels = set()
@@ -82,34 +89,31 @@ def parse_rttm_for_multi_label(rttm_path, audio_files_dir, window_duration, wind
     # Get unique audio files present in the RTTM
     unique_file_ids = rttm_df['file_id'].unique()
 
-    print(f"Processing {len(unique_file_ids)} audio files from RTTM...")
+    print(f"Processing {len(unique_file_ids)} audio files from RTTM: {os.path.basename(rttm_path)}...")
     for file_id in tqdm(unique_file_ids):
-        audio_path = os.path.join(audio_files_dir, f"{file_id}.wav") # Adjust extension if needed
+        audio_path = os.path.join(audio_files_dir, f"{file_id}.wav") # Adjust extension if needed (e.g., .flac, .mp3)
 
         if not os.path.exists(audio_path):
             print(f"Warning: Audio file not found for RTTM entry: {audio_path}. Skipping.")
             continue
 
-        # Get all segments for the current audio file
         file_segments = rttm_df[rttm_df['file_id'] == file_id].copy()
         file_segments['end'] = file_segments['start'] + file_segments['duration']
 
-        # Determine the maximum time point for this audio file from RTTM
-        # Or, ideally, load the audio file to get its actual duration.
         try:
             audio_duration = librosa.get_duration(path=audio_path)
         except Exception as e:
             print(f"Warning: Could not get duration for {audio_path}: {e}. Skipping file.")
             continue
             
-        # The end of analysis should be the max of RTTM segments or audio duration
-        max_time_rttm = file_segments['end'].max()
-        analysis_end_time = min(audio_duration, max_time_rttm) # Don't analyze beyond actual audio
+        max_time_rttm = file_segments['end'].max() if not file_segments.empty else 0
+        analysis_end_time = min(audio_duration, max_time_rttm)
 
         current_time = 0.0
         while current_time < analysis_end_time:
             window_start = current_time
-            window_end = min(current_time + window_duration, audio_duration) # Cap at audio end
+            # Ensure window does not exceed audio_duration or analysis_end_time
+            window_end = min(current_time + window_duration, audio_duration, analysis_end_time) 
 
             active_speaker_ids = set()
             for idx, row in file_segments.iterrows():
@@ -126,12 +130,12 @@ def parse_rttm_for_multi_label(rttm_path, audio_files_dir, window_duration, wind
                 active_labels.add(speaker_id)
                 all_unique_labels.add(speaker_id)
             
-            # Only add segments that have at least one valid mapped label
-            if active_labels:
+            # Only add segments that have at least one valid mapped label AND actual duration
+            if active_labels and (window_end - window_start) > 0: # Ensure non-zero duration
                 all_window_data.append({
                     'audio_path': audio_path,
                     'start': window_start,
-                    'duration': window_duration, # Always use the fixed window_duration
+                    'duration': window_duration, # Use the fixed window_duration for extraction
                     'labels': sorted(list(active_labels)) # Store as sorted list for consistency
                 })
 
@@ -264,60 +268,88 @@ class AudioSegmentDataGenerator(tf.keras.utils.Sequence):
 # --- Main Execution ---
 if __name__ == "__main__":
     # --- Configuration ---
-    AUDIO_FILES_DIR = '/home/nele_pauline_suffo/ProcessedData/childlens_audio' # Folder containing audio.wav, audioB.wav, etc.
-    RTTM_FILE_PATH = '/home/nele_pauline_suffo/ProcessedData/vtc_childlens_v2/complete.rttm' # Your RTTM file
-
-    # Parameters for feature extraction and windowing
+    AUDIO_FILES_DIR = '/home/nele_pauline_suffo/ProcessedData/childlens_audio'
+    
+    # Define paths to your pre-split RTTM files
+    TRAIN_RTTM_FILE = '/home/nele_pauline_suffo/ProcessedData/vtc_childlens_v2/train_small.rttm'
+    VAL_RTTM_FILE = '/home/nele_pauline_suffo/ProcessedData/vtc_childlens_v2/dev_small.rttm'
+    TEST_RTTM_FILE = '/home/nele_pauline_suffo/ProcessedData/vtc_childlens_v2/test_small.rttm'
+    
     SR = 16000
     N_MELS = 128
     HOP_LENGTH = 512
-    # IMPORTANT: These define the granularity of your overlap analysis
     WINDOW_DURATION = 0.5 # seconds (e.g., 500ms analysis window)
     WINDOW_STEP = 0.25    # seconds (e.g., 250ms hop between windows for more data)
 
-    # --- 1. Parse RTTM and Prepare Multi-Label Data ---
-    print("Parsing RTTM file and preparing multi-label fixed-duration windows...")
-    all_window_data, all_unique_labels = parse_rttm_for_multi_label(
-        RTTM_FILE_PATH, AUDIO_FILES_DIR, 
+    # --- 1. Parse RTTM files for each split ---
+    print("--- Processing Training Data ---")
+    train_segments, train_unique_labels = parse_rttm_for_multi_label(
+        TRAIN_RTTM_FILE, AUDIO_FILES_DIR, 
         WINDOW_DURATION, WINDOW_STEP
     )
-    
-    if not all_window_data:
-        print("No valid window segments found after parsing RTTM. Exiting.")
+    if not train_segments:
+        print("No training segments found. Exiting.")
         exit()
 
-    # Initialize MultiLabelBinarizer for your unique labels
-    mlb = MultiLabelBinarizer(classes=all_unique_labels)
+    print("\n--- Processing Validation Data ---")
+    val_segments, val_unique_labels = parse_rttm_for_multi_label(
+        VAL_RTTM_FILE, AUDIO_FILES_DIR, 
+        WINDOW_DURATION, WINDOW_STEP
+    )
+    if not val_segments:
+        print("No validation segments found. Exiting.")
+        exit()
+
+    # Optional: Process Test Data
+    print("\n--- Processing Test Data ---")
+    test_segments, test_unique_labels = [], []
+    if os.path.exists(TEST_RTTM_FILE):
+        test_segments, test_unique_labels = parse_rttm_for_multi_label(
+            TEST_RTTM_FILE, AUDIO_FILES_DIR, 
+            WINDOW_DURATION, WINDOW_STEP
+        )
+        if not test_segments:
+            print("No test segments found from the provided file.")
+    else:
+        print(f"Test RTTM file not found at {TEST_RTTM_FILE}. Skipping test data processing.")
+
+
+    # --- 2. Initialize MultiLabelBinarizer based on ALL labels ---
+    # It's crucial that MLB is fitted on the union of all possible labels across all splits
+    all_possible_labels = sorted(list(set(train_unique_labels + val_unique_labels + test_unique_labels)))
+    mlb = MultiLabelBinarizer(classes=all_possible_labels)
     mlb.fit([[]]) # Fit with an empty list to initialize classes correctly
     num_classes = len(mlb.classes_)
-    print(f"Detected {num_classes} unique target classes: {mlb.classes_}")
+    print(f"\nDetected {num_classes} unique target classes across all splits: {mlb.classes_}")
 
-    # --- 2. Determine Fixed Time Steps for Model Input ---
-    # This is fixed because we are now using fixed-duration windows.
-    # Calculate the exact number of Mel frames for one WINDOW_DURATION.
+    # --- 3. Determine Fixed Time Steps for Model Input ---
     FIXED_TIME_STEPS = int(np.ceil(WINDOW_DURATION * SR / HOP_LENGTH))
     print(f"Fixed Time Steps for Mel-spectrogram input (for {WINDOW_DURATION}s windows): {FIXED_TIME_STEPS}")
     print(f"Model input shape: ({N_MELS}, {FIXED_TIME_STEPS})")
 
-
-    # --- 3. Build Multi-Label Model ---
+    # --- 4. Build Multi-Label Model ---
     model = build_model_multi_label(n_mels=N_MELS, fixed_time_steps=FIXED_TIME_STEPS, num_classes=num_classes)
     model.summary()
 
-    # --- 4. Split Data and Create Generators ---
-    # Stratify by string representation of labels, as MultiLabelBinarizer outputs are arrays.
-    # This might not be perfectly balanced for all label combinations, but better than nothing.
-    train_segments, val_segments = train_test_split(
-        all_window_data, test_size=0.2, random_state=42, 
-        stratify=[str(s['labels']) for s in all_window_data] 
-    )
-    
+    # --- 5. Create Data Generators ---
+    print(f"Total training segments: {len(train_segments)}")
+    print(f"Total validation segments: {len(val_segments)}")
+    if test_segments:
+        print(f"Total test segments: {len(test_segments)}")
+
+
     train_generator = AudioSegmentDataGenerator(
         train_segments, mlb, N_MELS, HOP_LENGTH, SR, WINDOW_DURATION, FIXED_TIME_STEPS, batch_size=32, shuffle=True
     )
     val_generator = AudioSegmentDataGenerator(
         val_segments, mlb, N_MELS, HOP_LENGTH, SR, WINDOW_DURATION, FIXED_TIME_STEPS, batch_size=32, shuffle=False
     )
+    
+    test_generator = None
+    if test_segments:
+        test_generator = AudioSegmentDataGenerator(
+            test_segments, mlb, N_MELS, HOP_LENGTH, SR, WINDOW_DURATION, FIXED_TIME_STEPS, batch_size=32, shuffle=False
+        )
 
     # Callbacks for training
     early_stopping = EarlyStopping(monitor='val_loss', patience=15, restore_best_weights=True)
@@ -327,17 +359,26 @@ if __name__ == "__main__":
     history = model.fit(
         train_generator,
         validation_data=val_generator,
-        epochs=100, # Adjust number of epochs
+        epochs=100, # Adjust number of epochs as needed
         callbacks=[early_stopping, reduce_lr]
     )
 
-    # Evaluate the model on the validation set
-    print("\nEvaluating the model on validation data...")
-    loss, accuracy, precision, recall = model.evaluate(val_generator)
-    print(f"Validation Loss: {loss:.4f}")
-    print(f"Validation Accuracy: {accuracy:.4f}")
-    print(f"Validation Precision: {precision:.4f}")
-    print(f"Validation Recall: {recall:.4f}")
+    # Evaluate the model on the validation set (performance during training)
+    print("\nEvaluating the model on validation data (final validation metrics)...")
+    val_loss, val_accuracy, val_precision, val_recall = model.evaluate(val_generator)
+    print(f"Validation Loss: {val_loss:.4f}")
+    print(f"Validation Accuracy: {val_accuracy:.4f}")
+    print(f"Validation Precision: {val_precision:.4f}")
+    print(f"Validation Recall: {val_recall:.4f}")
+
+    # Evaluate on the separate test set if available (for final, unbiased performance)
+    if test_generator:
+        print("\nEvaluating the model on separate TEST data...")
+        test_loss, test_accuracy, test_precision, test_recall = model.evaluate(test_generator)
+        print(f"Test Loss: {test_loss:.4f}")
+        print(f"Test Accuracy: {test_accuracy:.4f}")
+        print(f"Test Precision: {test_precision:.4f}")
+        print(f"Test Recall: {test_recall:.4f}")
 
     # You can save the model
-    model.save('multi_label_speech_type_classifier.h5')
+    model.save('multi_label_speech_type_classifier_pre_split.h5')
