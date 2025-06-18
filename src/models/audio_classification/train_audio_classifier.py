@@ -1,0 +1,343 @@
+import numpy as np
+import tensorflow as tf
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Input, Conv2D, MaxPooling2D, GRU, Dense, Dropout, BatchNormalization, Reshape, Permute, multiply, Lambda, Activation, Flatten, RepeatVector
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
+import librosa
+import os
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder, MultiLabelBinarizer
+from tensorflow.keras.losses import BinaryCrossentropy
+import pandas as pd # For easier handling of RTTM data
+from tqdm import tqdm # For progress bars
+
+# --- 1. Feature Extraction (Mel-spectrograms from fixed-duration windows) ---
+def extract_mel_spectrogram_fixed_window(audio_path, start_time, duration, sr=16000, n_mels=128, hop_length=512):
+    """
+    Extracts a Mel-spectrogram from a fixed-duration segment of an audio file.
+    Pads with zeros if the segment is shorter than the requested duration.
+    """
+    try:
+        # Load the segment. librosa.load can handle offset and duration.
+        # It will zero-pad if the duration extends beyond the file, which is useful.
+        y, sr_loaded = librosa.load(audio_path, sr=sr, offset=start_time, duration=duration)
+        
+        # Ensure correct sampling rate
+        if sr_loaded != sr:
+            y = librosa.resample(y, orig_sr=sr_loaded, target_sr=sr)
+
+        # Pad if the loaded audio is shorter than expected (e.g., end of file)
+        expected_samples = int(duration * sr)
+        if len(y) < expected_samples:
+            y = np.pad(y, (0, expected_samples - len(y)), 'constant')
+        elif len(y) > expected_samples:
+            y = y[:expected_samples] # Truncate if somehow longer (shouldn't happen with exact duration)
+
+        if len(y) == 0:
+            # This can happen if start_time is beyond file end, or duration is 0
+            print(f"Warning: Empty audio segment from {audio_path} [{start_time}s, duration {duration}s]. Skipping.")
+            return None
+
+        mel_spectrogram = librosa.feature.melspectrogram(y=y, sr=sr, n_mels=n_mels, hop_length=hop_length)
+        mel_spectrogram_db = librosa.power_to_db(mel_spectrogram, ref=np.max)
+        
+        # Ensure consistent number of time frames for the fixed window duration
+        # Calculate expected frames based on the fixed window duration
+        expected_frames = int(np.ceil(duration * sr / hop_length))
+        
+        if mel_spectrogram_db.shape[1] < expected_frames:
+            pad_width = expected_frames - mel_spectrogram_db.shape[1]
+            mel_spectrogram_db = np.pad(mel_spectrogram_db, ((0, 0), (0, pad_width)), 'constant')
+        elif mel_spectrogram_db.shape[1] > expected_frames:
+            mel_spectrogram_db = mel_spectrogram_db[:, :expected_frames]
+
+        return mel_spectrogram_db
+    except Exception as e:
+        print(f"Error processing segment from {audio_path} [{start_time}s, duration {duration}s]: {e}")
+        return None
+
+# --- 2. RTTM Parsing and Multi-Label Data Preparation ---
+def parse_rttm_for_multi_label(rttm_path, audio_files_dir, window_duration, window_step):
+    """
+    Parses an RTTM file and generates fixed-duration windows with multi-hot labels.
+    
+    Args:
+        rttm_path (str): Path to the RTTM file.
+        audio_files_dir (str): Directory where all audio files are located.
+        window_duration (float): The fixed duration of each analysis window in seconds.
+        window_step (float): The step size between consecutive windows in seconds.
+        
+    Returns:
+        list: List of dictionaries, each containing 'audio_path', 'start', 'duration', 'labels' (list of strings).
+        list: List of all unique class labels found.
+    """
+    rttm_df = pd.read_csv(rttm_path, sep=' ', header=None, 
+                          names=['type', 'file_id', 'channel', 'start', 'duration', 
+                                 'NA1', 'NA2', 'speaker_id', 'NA3', 'NA4'])
+
+    all_window_data = []
+    all_unique_labels = set()
+
+    # Get unique audio files present in the RTTM
+    unique_file_ids = rttm_df['file_id'].unique()
+
+    print(f"Processing {len(unique_file_ids)} audio files from RTTM...")
+    for file_id in tqdm(unique_file_ids):
+        audio_path = os.path.join(audio_files_dir, f"{file_id}.wav") # Adjust extension if needed
+
+        if not os.path.exists(audio_path):
+            print(f"Warning: Audio file not found for RTTM entry: {audio_path}. Skipping.")
+            continue
+
+        # Get all segments for the current audio file
+        file_segments = rttm_df[rttm_df['file_id'] == file_id].copy()
+        file_segments['end'] = file_segments['start'] + file_segments['duration']
+
+        # Determine the maximum time point for this audio file from RTTM
+        # Or, ideally, load the audio file to get its actual duration.
+        try:
+            audio_duration = librosa.get_duration(path=audio_path)
+        except Exception as e:
+            print(f"Warning: Could not get duration for {audio_path}: {e}. Skipping file.")
+            continue
+            
+        # The end of analysis should be the max of RTTM segments or audio duration
+        max_time_rttm = file_segments['end'].max()
+        analysis_end_time = min(audio_duration, max_time_rttm) # Don't analyze beyond actual audio
+
+        current_time = 0.0
+        while current_time < analysis_end_time:
+            window_start = current_time
+            window_end = min(current_time + window_duration, audio_duration) # Cap at audio end
+
+            active_speaker_ids = set()
+            for idx, row in file_segments.iterrows():
+                segment_start = row['start']
+                segment_end = row['end']
+                
+                # Check for overlap between window and RTTM segment
+                if max(window_start, segment_start) < min(window_end, segment_end):
+                    active_speaker_ids.add(row['speaker_id'])
+
+            # Map active speaker IDs to your target class labels
+            active_labels = set()
+            for speaker_id in active_speaker_ids:
+                active_labels.add(speaker_id)
+                all_unique_labels.add(speaker_id)
+            
+            # Only add segments that have at least one valid mapped label
+            if active_labels:
+                all_window_data.append({
+                    'audio_path': audio_path,
+                    'start': window_start,
+                    'duration': window_duration, # Always use the fixed window_duration
+                    'labels': sorted(list(active_labels)) # Store as sorted list for consistency
+                })
+
+            current_time += window_step
+            
+    return all_window_data, sorted(list(all_unique_labels))
+
+
+# --- 3. Deep Learning Model Architecture (CNN-GRU with Attention) ---
+def build_model_multi_label(n_mels, fixed_time_steps, num_classes):
+    # Input shape: (n_mels, fixed_time_steps)
+    input_mel = Input(shape=(n_mels, fixed_time_steps), name='mel_spectrogram_input')
+
+    # Expand dims for Conv2D (add channel dimension)
+    x = tf.expand_dims(input_mel, -1) # Shape: (batch, n_mels, time_steps, 1)
+
+    # CNN Block 1
+    x = Conv2D(32, (3, 3), activation='relu', padding='same')(x)
+    x = BatchNormalization()(x)
+    x = MaxPooling2D((2, 2))(x)
+    x = Dropout(0.25)(x)
+
+    # CNN Block 2
+    x = Conv2D(64, (3, 3), activation='relu', padding='same')(x)
+    x = BatchNormalization()(x)
+    x = MaxPooling2D((2, 2))(x)
+    x = Dropout(0.25)(x)
+
+    # Reshape for GRU (flatten frequency dimension, keep time and channels)
+    reduced_n_mels = n_mels // 4 # Assuming 2x (2,2) pooling
+    reduced_time_steps = fixed_time_steps // 4 # Assuming 2x (2,2) pooling
+    channels_after_cnn = 64
+
+    # Permute to (batch, reduced_time_steps, reduced_n_mels, channels)
+    x = Permute((2, 1, 3))(x) 
+    
+    # Reshape to (batch, reduced_time_steps, reduced_n_mels * channels)
+    x = Reshape((reduced_time_steps, reduced_n_mels * channels_after_cnn))(x)
+    
+    # GRU Block
+    x = GRU(128, return_sequences=True)(x)
+    x = Dropout(0.3)(x)
+    x = GRU(128, return_sequences=True)(x)
+    x = Dropout(0.3)(x)
+
+    # Attention Mechanism
+    attention = Dense(1, activation='tanh')(x)
+    attention = Flatten()(attention) 
+    attention = Activation('softmax')(attention) 
+    attention = RepeatVector(x.shape[-1])(attention) 
+    attention = Permute((2, 1))(attention) 
+
+    sent_representation = multiply([x, attention])
+    sent_representation = Lambda(lambda xin: tf.reduce_sum(xin, axis=1))(sent_representation) 
+
+    # Dense Layers
+    x = Dense(128, activation='relu')(sent_representation)
+    x = BatchNormalization()(x)
+    x = Dropout(0.5)(x)
+
+    # Output layer for multi-label classification
+    output = Dense(num_classes, activation='sigmoid')(x) # <--- IMPORTANT: SIGMOID activation
+
+    model = Model(inputs=input_mel, outputs=output)
+    model.compile(optimizer=Adam(learning_rate=0.001),
+                  loss=BinaryCrossentropy(), # <--- IMPORTANT: BinaryCrossentropy loss
+                  metrics=['accuracy', tf.keras.metrics.Precision(), tf.keras.metrics.Recall()]) # Added Precision/Recall
+    return model
+
+# --- Data Generator for fixed-duration windows ---
+class AudioSegmentDataGenerator(tf.keras.utils.Sequence):
+    def __init__(self, segments_data, mlb, n_mels, hop_length, sr, window_duration, fixed_time_steps, batch_size=32, shuffle=True):
+        self.segments_data = segments_data
+        self.mlb = mlb # MultiLabelBinarizer instance
+        self.n_mels = n_mels
+        self.hop_length = hop_length
+        self.sr = sr
+        self.window_duration = window_duration # The duration of each window
+        self.fixed_time_steps = fixed_time_steps # The exact number of mel frames for the model input
+        self.batch_size = batch_size
+        self.shuffle = shuffle
+        self.on_epoch_end()
+
+    def __len__(self):
+        return int(np.floor(len(self.segments_data) / self.batch_size))
+
+    def __getitem__(self, index):
+        indexes = self.indexes[index * self.batch_size:(index + 1) * self.batch_size]
+        batch_segments = [self.segments_data[k] for k in indexes]
+
+        X_batch = []
+        y_batch = []
+
+        for segment in batch_segments:
+            mel = extract_mel_spectrogram_fixed_window(
+                segment['audio_path'], segment['start'], segment['duration'], # use segment's fixed duration
+                sr=self.sr, n_mels=self.n_mels, hop_length=self.hop_length
+            )
+            if mel is not None:
+                # Ensure the extracted Mel-spectrogram has the exact `fixed_time_steps`
+                # (extract_mel_spectrogram_fixed_window already handles this, but a safety check)
+                if mel.shape[1] != self.fixed_time_steps:
+                    print(f"Warning: Mel shape mismatch for {segment['audio_path']} [{segment['start']}s]. Expected {self.fixed_time_steps}, got {mel.shape[1]}. Resizing.")
+                    if mel.shape[1] < self.fixed_time_steps:
+                        pad_width = self.fixed_time_steps - mel.shape[1]
+                        mel = np.pad(mel, ((0, 0), (0, pad_width)), 'constant')
+                    else:
+                        mel = mel[:, :self.fixed_time_steps]
+
+                X_batch.append(mel)
+                
+                # Multi-hot encode the labels using MultiLabelBinarizer
+                multi_hot_labels = self.mlb.transform([segment['labels']])[0]
+                y_batch.append(multi_hot_labels)
+            else:
+                pass 
+                
+        if not X_batch:
+            # If all segments in a batch failed to extract, return empty arrays.
+            # This can happen if the last batch is too small and fails, or if many files are corrupt.
+            return np.array([]), np.array([])
+            
+        return np.array(X_batch), np.array(y_batch)
+
+    def on_epoch_end(self):
+        self.indexes = np.arange(len(self.segments_data))
+        if self.shuffle == True:
+            np.random.shuffle(self.indexes)
+
+# --- Main Execution ---
+if __name__ == "__main__":
+    # --- Configuration ---
+    AUDIO_FILES_DIR = '/home/nele_pauline_suffo/ProcessedData/childlens_audio' # Folder containing audio.wav, audioB.wav, etc.
+    RTTM_FILE_PATH = '/home/nele_pauline_suffo/ProcessedData/vtc_childlens_v2/complete.rttm' # Your RTTM file
+
+    # Parameters for feature extraction and windowing
+    SR = 16000
+    N_MELS = 128
+    HOP_LENGTH = 512
+    # IMPORTANT: These define the granularity of your overlap analysis
+    WINDOW_DURATION = 0.5 # seconds (e.g., 500ms analysis window)
+    WINDOW_STEP = 0.25    # seconds (e.g., 250ms hop between windows for more data)
+
+    # --- 1. Parse RTTM and Prepare Multi-Label Data ---
+    print("Parsing RTTM file and preparing multi-label fixed-duration windows...")
+    all_window_data, all_unique_labels = parse_rttm_for_multi_label(
+        RTTM_FILE_PATH, AUDIO_FILES_DIR, 
+        WINDOW_DURATION, WINDOW_STEP
+    )
+    
+    if not all_window_data:
+        print("No valid window segments found after parsing RTTM. Exiting.")
+        exit()
+
+    # Initialize MultiLabelBinarizer for your unique labels
+    mlb = MultiLabelBinarizer(classes=all_unique_labels)
+    mlb.fit([[]]) # Fit with an empty list to initialize classes correctly
+    num_classes = len(mlb.classes_)
+    print(f"Detected {num_classes} unique target classes: {mlb.classes_}")
+
+    # --- 2. Determine Fixed Time Steps for Model Input ---
+    # This is fixed because we are now using fixed-duration windows.
+    # Calculate the exact number of Mel frames for one WINDOW_DURATION.
+    FIXED_TIME_STEPS = int(np.ceil(WINDOW_DURATION * SR / HOP_LENGTH))
+    print(f"Fixed Time Steps for Mel-spectrogram input (for {WINDOW_DURATION}s windows): {FIXED_TIME_STEPS}")
+    print(f"Model input shape: ({N_MELS}, {FIXED_TIME_STEPS})")
+
+
+    # --- 3. Build Multi-Label Model ---
+    model = build_model_multi_label(n_mels=N_MELS, fixed_time_steps=FIXED_TIME_STEPS, num_classes=num_classes)
+    model.summary()
+
+    # --- 4. Split Data and Create Generators ---
+    # Stratify by string representation of labels, as MultiLabelBinarizer outputs are arrays.
+    # This might not be perfectly balanced for all label combinations, but better than nothing.
+    train_segments, val_segments = train_test_split(
+        all_window_data, test_size=0.2, random_state=42, 
+        stratify=[str(s['labels']) for s in all_window_data] 
+    )
+    
+    train_generator = AudioSegmentDataGenerator(
+        train_segments, mlb, N_MELS, HOP_LENGTH, SR, WINDOW_DURATION, FIXED_TIME_STEPS, batch_size=32, shuffle=True
+    )
+    val_generator = AudioSegmentDataGenerator(
+        val_segments, mlb, N_MELS, HOP_LENGTH, SR, WINDOW_DURATION, FIXED_TIME_STEPS, batch_size=32, shuffle=False
+    )
+
+    # Callbacks for training
+    early_stopping = EarlyStopping(monitor='val_loss', patience=15, restore_best_weights=True)
+    reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=7, min_lr=0.00001)
+
+    print("\nTraining the model...")
+    history = model.fit(
+        train_generator,
+        validation_data=val_generator,
+        epochs=100, # Adjust number of epochs
+        callbacks=[early_stopping, reduce_lr]
+    )
+
+    # Evaluate the model on the validation set
+    print("\nEvaluating the model on validation data...")
+    loss, accuracy, precision, recall = model.evaluate(val_generator)
+    print(f"Validation Loss: {loss:.4f}")
+    print(f"Validation Accuracy: {accuracy:.4f}")
+    print(f"Validation Precision: {precision:.4f}")
+    print(f"Validation Recall: {recall:.4f}")
+
+    # You can save the model
+    model.save('multi_label_speech_type_classifier.h5')
