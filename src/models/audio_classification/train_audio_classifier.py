@@ -21,15 +21,12 @@ class MacroPrecision(tf.keras.metrics.Metric):
     def __init__(self, name='macro_precision', threshold=0.5, **kwargs):
         super(MacroPrecision, self).__init__(name=name, **kwargs)
         self.threshold = threshold
-        self.per_class_tp = self.add_weight(name='per_class_tp', shape=(self.num_classes,), initializer='zeros')
-        self.per_class_fp = self.add_weight(name='per_class_fp', shape=(self.num_classes,), initializer='zeros')
-        # num_classes will be set later during build
 
     def build(self, input_shape):
         # input_shape is typically (batch_size, num_classes)
         self.num_classes = input_shape[-1]
-        self.per_class_tp.assign(tf.zeros(self.num_classes))
-        self.per_class_fp.assign(tf.zeros(self.num_classes))
+        self.per_class_tp = self.add_weight(name='per_class_tp', shape=(self.num_classes,), initializer='zeros')
+        self.per_class_fp = self.add_weight(name='per_class_fp', shape=(self.num_classes,), initializer='zeros')
         super().build(input_shape)
 
     def update_state(self, y_true, y_pred, sample_weight=None):
@@ -69,14 +66,11 @@ class MacroRecall(tf.keras.metrics.Metric):
     def __init__(self, name='macro_recall', threshold=0.5, **kwargs):
         super(MacroRecall, self).__init__(name=name, **kwargs)
         self.threshold = threshold
-        self.per_class_tp = self.add_weight(name='per_class_tp', shape=(self.num_classes,), initializer='zeros')
-        self.per_class_fn = self.add_weight(name='per_class_fn', shape=(self.num_classes,), initializer='zeros')
-        # num_classes will be set later during build
 
     def build(self, input_shape):
         self.num_classes = input_shape[-1]
-        self.per_class_tp.assign(tf.zeros(self.num_classes))
-        self.per_class_fn.assign(tf.zeros(self.num_classes))
+        self.per_class_tp = self.add_weight(name='per_class_tp', shape=(self.num_classes,), initializer='zeros')
+        self.per_class_fn = self.add_weight(name='per_class_fn', shape=(self.num_classes,), initializer='zeros')
         super().build(input_shape)
 
     def update_state(self, y_true, y_pred, sample_weight=None):
@@ -112,16 +106,12 @@ class MacroF1Score(tf.keras.metrics.Metric):
     def __init__(self, name='macro_f1', threshold=0.5, **kwargs):
         super(MacroF1Score, self).__init__(name=name, **kwargs)
         self.threshold = threshold
-        self.per_class_tp = self.add_weight(name='per_class_tp', shape=(self.num_classes,), initializer='zeros')
-        self.per_class_fp = self.add_weight(name='per_class_fp', shape=(self.num_classes,), initializer='zeros')
-        self.per_class_fn = self.add_weight(name='per_class_fn', shape=(self.num_classes,), initializer='zeros')
-        # num_classes will be set later during build
 
     def build(self, input_shape):
         self.num_classes = input_shape[-1]
-        self.per_class_tp.assign(tf.zeros(self.num_classes))
-        self.per_class_fp.assign(tf.zeros(self.num_classes))
-        self.per_class_fn.assign(tf.zeros(self.num_classes))
+        self.per_class_tp = self.add_weight(name='per_class_tp', shape=(self.num_classes,), initializer='zeros')
+        self.per_class_fp = self.add_weight(name='per_class_fp', shape=(self.num_classes,), initializer='zeros')
+        self.per_class_fn = self.add_weight(name='per_class_fn', shape=(self.num_classes,), initializer='zeros')
         super().build(input_shape)
 
     def update_state(self, y_true, y_pred, sample_weight=None):
@@ -330,7 +320,7 @@ def parse_rttm_for_multi_label(rttm_path, audio_files_dir, window_duration, wind
                 all_unique_labels.add(speaker_id)
             
             # Only add segments that have at least one valid mapped label AND actual duration AND are not 'SPEECH'
-            if active_labels and (window_end - window_start) > 0 and speaker_id != 'SPEECH':
+            if active_labels and (window_end - window_start) > 0 and "SPEECH" not in active_labels:
                 all_window_data.append({
                     'audio_path': audio_path,
                     'start': window_start,
