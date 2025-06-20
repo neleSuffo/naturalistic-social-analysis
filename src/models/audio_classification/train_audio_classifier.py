@@ -316,11 +316,14 @@ def parse_rttm_for_multi_label(rttm_path, audio_files_dir, window_duration, wind
             # Map active speaker IDs to your target class labels
             active_labels = set()
             for speaker_id in active_speaker_ids:
-                active_labels.add(speaker_id)
-                all_unique_labels.add(speaker_id)
+                # Directly check if the speaker_id is one of your desired labels
+                if speaker_id in ["OHS", "CDS", "KCHI"]:
+                    active_labels.add(speaker_id)
+                    all_unique_labels.add(speaker_id)
+
             
             # Only add segments that have at least one valid mapped label AND actual duration AND are not 'SPEECH'
-            if active_labels and (window_end - window_start) > 0 and "SPEECH" not in active_labels:
+            if active_labels and (window_end - window_start) > 0:
                 all_window_data.append({
                     'audio_path': audio_path,
                     'start': window_start,
@@ -462,11 +465,18 @@ if __name__ == "__main__":
     WINDOW_DURATION = 0.5 # seconds (e.g., 500ms analysis window)
     WINDOW_STEP = 0.25    # seconds (e.g., 250ms hop between windows for more data)
 
+    # --- Define the specific RTTM labels you want to include in classification ---
+    # Any speaker_id in the RTTM not in this list will be ignored.
+    VALID_RTTM_LABELS = ['OHS', 'CDS', 'KCHI'] 
+
+    # Initialize class_weights_for_keras here to ensure it's always defined
+    class_weights_for_keras = {} 
+
     # --- 1. Parse RTTM files for each split ---
     print("--- Processing Training Data ---")
     train_segments, train_unique_labels = parse_rttm_for_multi_label(
-        TRAIN_RTTM_FILE, AUDIO_FILES_DIR, 
-        WINDOW_DURATION, WINDOW_STEP
+        TRAIN_RTTM_FILE, AUDIO_FILES_DIR, VALID_RTTM_LABELS,
+        WINDOW_DURATION, WINDOW_STEP, SR, N_MELS, HOP_LENGTH 
     )
     if not train_segments:
         print("No training segments found. Exiting.")
@@ -474,20 +484,19 @@ if __name__ == "__main__":
 
     print("\n--- Processing Validation Data ---")
     val_segments, val_unique_labels = parse_rttm_for_multi_label(
-        VAL_RTTM_FILE, AUDIO_FILES_DIR, 
-        WINDOW_DURATION, WINDOW_STEP
+        VAL_RTTM_FILE, AUDIO_FILES_DIR, VALID_RTTM_LABELS,
+        WINDOW_DURATION, WINDOW_STEP, SR, N_MELS, HOP_LENGTH
     )
     if not val_segments:
         print("No validation segments found. Exiting.")
         exit()
 
-    # Optional: Process Test Data
     print("\n--- Processing Test Data ---")
     test_segments, test_unique_labels = [], []
     if os.path.exists(TEST_RTTM_FILE):
         test_segments, test_unique_labels = parse_rttm_for_multi_label(
-            TEST_RTTM_FILE, AUDIO_FILES_DIR, 
-            WINDOW_DURATION, WINDOW_STEP
+            TEST_RTTM_FILE, AUDIO_FILES_DIR, VALID_RTTM_LABELS,
+            WINDOW_DURATION, WINDOW_STEP, SR, N_MELS, HOP_LENGTH
         )
         if not test_segments:
             print("No test segments found from the provided file.")
@@ -496,12 +505,16 @@ if __name__ == "__main__":
 
 
     # --- 2. Initialize MultiLabelBinarizer based on ALL labels ---
-    # It's crucial that MLB is fitted on the union of all possible labels across all splits
-    all_possible_labels = sorted(list(set(train_unique_labels + val_unique_labels + test_unique_labels)))
-    mlb = MultiLabelBinarizer(classes=all_possible_labels)
+    all_possible_target_labels_seen = sorted(list(set(train_unique_labels + val_unique_labels + test_unique_labels)))
+    mlb = MultiLabelBinarizer(classes=all_possible_target_labels_seen)
     mlb.fit([[]]) # Fit with an empty list to initialize classes correctly
     num_classes = len(mlb.classes_)
     print(f"\nDetected {num_classes} unique target classes across all splits: {mlb.classes_}")
+
+    # Exit if no valid classes are found, as model building would fail
+    if num_classes == 0:
+        print("Error: No valid target classes detected after RTTM parsing with specified VALID_RTTM_LABELS. Cannot proceed.")
+        exit()
 
     # --- 3. Determine Fixed Time Steps for Model Input ---
     FIXED_TIME_STEPS = int(np.ceil(WINDOW_DURATION * SR / HOP_LENGTH))
@@ -512,8 +525,45 @@ if __name__ == "__main__":
     model = build_model_multi_label(n_mels=N_MELS, fixed_time_steps=FIXED_TIME_STEPS, num_classes=num_classes)
     model.summary()
 
-    # --- 5. Create Data Generators ---
-    print(f"Total training segments: {len(train_segments)}")
+    # --- 5. Calculate class_weights for Focal Loss (if desired, optional but recommended) ---
+    total_training_windows = len(train_segments)
+    
+    if total_training_windows == 0:
+        print("Warning: No training segments available. Class weights will be set to 1.0 for all classes.")
+        for i in range(num_classes):
+            class_weights_for_keras[i] = 1.0
+    else:
+        # Count occurrences of each valid label in the training set
+        class_counts_for_weights = {label: 0 for label in mlb.classes_} # Initialize counts for all known classes
+        for seg in train_segments:
+            for label in seg['labels']:
+                if label in class_counts_for_weights: # Ensure only counts for relevant classes
+                    class_counts_for_weights[label] += 1
+        
+        # Calculate inverse frequency weights
+        for i, class_name in enumerate(mlb.classes_):
+            count = class_counts_for_weights.get(class_name, 0) # Get count, default to 0 if class not in training data
+            if count > 0:
+                class_weights_for_keras[i] = total_training_windows / (num_classes * count)
+            else:
+                # If a class is never present in training data, assign a default weight (e.g., 1.0)
+                # This ensures it's not "inf" and doesn't crash, but it won't be actively trained on.
+                class_weights_for_keras[i] = 1.0 
+        
+        # Normalize weights so their average is 1.0 (optional, but can help with stability)
+        if len(class_weights_for_keras) > 0: # Ensure there are weights to average
+            avg_weight = sum(class_weights_for_keras.values()) / len(class_weights_for_keras)
+            class_weights_for_keras = {k: v / avg_weight for k, v in class_weights_for_keras.items()}
+        else:
+            print("Warning: No class weights to normalize. This should ideally not happen if num_classes > 0.")
+            # If this warning shows up, it means num_classes was > 0 but class_weights_for_keras ended up empty.
+            # This implies an issue in how mlb.classes_ or class_counts_for_weights were populated.
+
+    print("\nCalculated Keras Class Weights (for model.fit):", class_weights_for_keras)
+
+
+    # --- 6. Create Data Generators ---
+    print(f"\nTotal training segments: {len(train_segments)}")
     print(f"Total validation segments: {len(val_segments)}")
     if test_segments:
         print(f"Total test segments: {len(test_segments)}")
@@ -533,34 +583,93 @@ if __name__ == "__main__":
         )
 
     # Callbacks for training
-    early_stopping = EarlyStopping(monitor='val_loss', patience=15, restore_best_weights=True)
-    reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=7, min_lr=0.00001)
+    # It's better to monitor val_macro_f1 as it's more relevant for multi-label classification
+    early_stopping = EarlyStopping(monitor='val_macro_f1', patience=15, mode='max', restore_best_weights=True) 
+    reduce_lr = ReduceLROnPlateau(monitor='val_macro_f1', factor=0.2, patience=7, min_lr=0.00001, mode='max') 
 
     print("\nTraining the model...")
+    # Check if generators have any batches before fitting
+    if len(train_generator) == 0:
+        print("Error: Training generator has no batches. Training cannot proceed.")
+        exit()
+    if len(val_generator) == 0:
+        print("Error: Validation generator has no batches. Training cannot proceed.")
+        exit()
+
     history = model.fit(
         train_generator,
         validation_data=val_generator,
-        epochs=100,
+        epochs=100, 
         callbacks=[early_stopping, reduce_lr],
-        class_weight=class_weights_for_keras
+        class_weight=class_weights_for_keras # <-- This line should now work
     )
 
-    # Evaluate the model on the validation set (performance during training)
+    # Evaluate the model on the validation set (final validation metrics)
     print("\nEvaluating the model on validation data (final validation metrics)...")
-    val_loss, val_accuracy, val_precision, val_recall = model.evaluate(val_generator)
-    print(f"Validation Loss: {val_loss:.4f}")
-    print(f"Validation Accuracy: {val_accuracy:.4f}")
-    print(f"Validation Precision: {val_precision:.4f}")
-    print(f"Validation Recall: {val_recall:.4f}")
+    val_results = model.evaluate(val_generator)
+    val_metrics_dict = dict(zip(model.metrics_names, val_results))
+    for name, value in val_metrics_dict.items():
+        print(f"Validation {name}: {value:.4f}")
 
-    # Evaluate on the separate test set if available (for final, unbiased performance)
-    if test_generator:
-        print("\nEvaluating the model on separate TEST data...")
-        test_loss, test_accuracy, test_precision, test_recall = model.evaluate(test_generator)
-        print(f"Test Loss: {test_loss:.4f}")
-        print(f"Test Accuracy: {test_accuracy:.4f}")
-        print(f"Test Precision: {test_precision:.4f}")
-        print(f"Test Recall: {test_recall:.4f}")
+    # --- Evaluate on the separate test set and output per-class metrics ---
+    if test_generator and len(test_generator) > 0:
+        print("\n--- Detailed Evaluation on TEST data ---")
+        
+        # 1. Get predictions from the model
+        test_predictions = model.predict(test_generator)
+        
+        # 2. Get true labels from the test generator
+        test_true_labels = []
+        for i in tqdm(range(len(test_generator)), desc="Collecting true test labels"):
+            _, labels = test_generator[i]
+            test_true_labels.extend(labels)
+        test_true_labels = np.array(test_true_labels)
+
+        # Ensure that test_predictions and test_true_labels have matching numbers of samples
+        if test_predictions.shape[0] != test_true_labels.shape[0]:
+            print(f"Warning: Mismatch between number of predictions ({test_predictions.shape[0]}) and true labels ({test_true_labels.shape[0]}) for test set. This might indicate an issue with generator or prediction pipeline.")
+            # Adjust test_true_labels to match predictions length if necessary (e.g., if some samples were skipped)
+            min_samples = min(test_predictions.shape[0], test_true_labels.shape[0])
+            test_predictions = test_predictions[:min_samples]
+            test_true_labels = test_true_labels[:min_samples]
+
+        # 3. Binarize predictions using a threshold (e.5)
+        prediction_threshold = 0.5 
+        test_pred_binary = (test_predictions > prediction_threshold).astype(int) 
+
+        # 4. Calculate per-class Precision, Recall, and F1-score
+        # Ensure that test_true_labels has actual positive instances for calculation.
+        # This can sometimes be an issue with very small test sets or rare classes.
+        if test_true_labels.sum() == 0:
+            print("Warning: No positive instances in test_true_labels. Skipping detailed metrics calculation.")
+        else:
+            precision_per_class, recall_per_class, f1_per_class, _ = precision_recall_fscore_support(
+                test_true_labels, test_pred_binary, average=None, zero_division=0 
+            )
+            
+            # Also calculate macro averages using sklearn for consistency with per-class output
+            macro_precision = precision_score(test_true_labels, test_pred_binary, average='macro', zero_division=0)
+            macro_recall = recall_score(test_true_labels, test_pred_binary, average='macro', zero_division=0)
+            macro_f1 = f1_score(test_true_labels, test_pred_binary, average='macro', zero_division=0)
+
+            # And overall (micro) accuracy as a reference
+            overall_accuracy = accuracy_score(test_true_labels, test_pred_binary)
+
+            print(f"\nTest Overall Accuracy (threshold {prediction_threshold}): {overall_accuracy:.4f}")
+            print(f"Test Macro Precision (sklearn): {macro_precision:.4f}")
+            print(f"Test Macro Recall (sklearn): {macro_recall:.4f}")
+            print(f"Test Macro F1-score (sklearn): {macro_f1:.4f}")
+            print("\n--- Per-Class Metrics on Test Set (threshold 0.5) ---")
+            print("{:<15} {:<10} {:<10} {:<10}".format("Class", "Precision", "Recall", "F1-Score"))
+            print("-" * 55)
+            for i, class_name in enumerate(mlb.classes_):
+                print(f"{class_name:<15} {precision_per_class[i]:<10.4f} {recall_per_class[i]:<10.4f} {f1_per_class[i]:<10.4f}")
+            print("-" * 55)
+    else:
+        print("Skipping detailed test evaluation as test_generator is not available or empty.")
 
     # You can save the model
-    model.save('/home/nele_pauline_suffo/projects/leuphana-IPE/src/models/audio_classification/multi_label_speech_type_classifier.h5')
+    # To ensure it saves with custom objects, pass custom_objects dict
+    model.save('/home/nele_pauline_suffo/projects/leuphana-IPE/src/models/audio_classification/multi_label_speech_type_classifier.h5',
+               custom_objects={'FocalLoss': FocalLoss, 'MacroPrecision': MacroPrecision,
+                               'MacroRecall': MacroRecall, 'MacroF1Score': MacroF1Score})
