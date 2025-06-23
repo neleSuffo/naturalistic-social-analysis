@@ -1,16 +1,19 @@
 import os
+import datetime
+import csv
+import librosa
+import time
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Suppress INFO and WARNING messages
 import tensorflow as tf
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 from tensorflow.keras.layers import *
 from tensorflow.keras.models import Model
 from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
+from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
 from tensorflow.keras.metrics import Precision, Recall
-import numpy as np
-import pandas as pd
-import librosa
-import os
 from tqdm import tqdm
 from sklearn.preprocessing import MultiLabelBinarizer
 from sklearn.metrics import precision_recall_fscore_support, precision_score, recall_score, f1_score, accuracy_score
@@ -83,9 +86,14 @@ class MacroF1Score(tf.keras.metrics.Metric):
         for i in range(self.num_classes):
             p = self.precisions[i].result()
             r = self.recalls[i].result()
+            # Handle cases where p+r might be zero (e.g., no positive predictions or true positives)
             f1 = 2 * (p * r) / (p + r + tf.keras.backend.epsilon())
             f1_scores.append(f1)
         
+        # Ensure that if f1_scores list is empty (e.g., num_classes is 0),
+        # reduce_mean doesn't error. This should be handled by num_classes check earlier.
+        if not f1_scores:
+            return tf.constant(0.0, dtype=tf.float32) # Or raise error if 0 classes is unexpected
         return tf.reduce_mean(f1_scores)
 
     def reset_state(self):
@@ -128,6 +136,7 @@ def extract_mel_spectrogram_fixed_window(audio_path, start_time, duration, sr=16
             y = y[:expected_samples]
 
         if len(y) == 0:
+            # If audio segment is empty even after padding attempts, return zeros
             print(f"Warning: Empty audio segment from {audio_path} [{start_time}s, duration {duration}s]. Returning zeros.")
             return np.zeros((n_mels, fixed_time_steps), dtype=np.float32)
 
@@ -193,6 +202,7 @@ def parse_rttm_for_multi_label(rttm_path, audio_files_dir, valid_rttm_labels, wi
                 segment_start = row['start']
                 segment_end = row['end']
                 
+                # Check for overlap
                 if max(window_start, segment_start) < min(window_end, segment_end):
                     active_speaker_ids.add(row['speaker_id'])
 
@@ -235,7 +245,9 @@ def build_model_multi_label(n_mels, fixed_time_steps, num_classes):
     channels_after_cnn = 64
 
     # Reshape for RNN
+    # Permute to (batch, time_steps, n_mels, channels)
     x = Permute((2, 1, 3))(x) 
+    # Reshape to (batch, time_steps, n_mels * channels)
     x = Reshape((reduced_time_steps, reduced_n_mels * channels_after_cnn))(x)
     
     # RNN layers
@@ -327,6 +339,7 @@ class AudioSegmentDataGenerator(tf.keras.utils.Sequence):
             return np.array([]), np.array([])
             
         X_batch_np = np.array(X_batch)
+        # Add channel dimension for CNN input (batch, n_mels, fixed_time_steps, 1)
         X_batch_final = np.expand_dims(X_batch_np, -1)
 
         return X_batch_final, np.array(y_batch)
@@ -336,13 +349,109 @@ class AudioSegmentDataGenerator(tf.keras.utils.Sequence):
         if self.shuffle:
             np.random.shuffle(self.indexes)
 
+# --- Custom History and Plotting Callback ---
+class TrainingLogger(tf.keras.callbacks.Callback):
+    def __init__(self, log_dir, mlb_classes):
+        super().__init__()
+        self.log_dir = log_dir
+        self.csv_file_path = os.path.join(log_dir, 'results.csv')
+        self.start_time = 0
+        self.epoch_times = []
+        self.mlb_classes = mlb_classes
+        self.history = {
+            'loss': [], 'accuracy': [], 'precision': [], 'recall': [], 'macro_f1': [],
+            'val_loss': [], 'val_accuracy': [], 'val_precision': [], 'val_recall': [], 'val_macro_f1': [],
+            'lr': []
+        }
+        
+        self.csv_headers = [
+            'epoch', 'time_sec', 
+            'train_loss', 'train_accuracy', 'train_precision', 'train_recall', 'train_macro_f1',
+            'val_loss', 'val_accuracy', 'val_precision', 'val_recall', 'val_macro_f1',
+            'learning_rate'
+        ]
+        
+        # Initialize CSV file with headers
+        with open(self.csv_file_path, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(self.csv_headers)
+
+    def on_train_begin(self, logs=None):
+        self.start_time = time.time()
+        print(f"Training started. Logs will be saved to: {self.log_dir}")
+
+    def on_epoch_end(self, epoch, logs=None):
+        elapsed_time = time.time() - self.start_time
+        self.epoch_times.append(elapsed_time)
+
+        # Get learning rate from optimizer
+        current_lr = float(tf.keras.backend.get_value(self.model.optimizer.lr))
+
+        # Store metrics in history
+        self.history['loss'].append(logs.get('loss'))
+        self.history['accuracy'].append(logs.get('accuracy'))
+        self.history['precision'].append(logs.get('precision'))
+        self.history['recall'].append(logs.get('recall'))
+        self.history['macro_f1'].append(logs.get('macro_f1'))
+        self.history['val_loss'].append(logs.get('val_loss'))
+        self.history['val_accuracy'].append(logs.get('val_accuracy'))
+        self.history['val_precision'].append(logs.get('val_precision'))
+        self.history['val_recall'].append(logs.get('val_recall'))
+        self.history['val_macro_f1'].append(logs.get('val_macro_f1'))
+        self.history['lr'].append(current_lr)
+
+        # Write to CSV
+        row = [
+            epoch + 1, # epoch starts from 0 in callback, but 1 in CSV
+            elapsed_time,
+            logs.get('loss', 0.0), logs.get('accuracy', 0.0), logs.get('precision', 0.0), logs.get('recall', 0.0), logs.get('macro_f1', 0.0),
+            logs.get('val_loss', 0.0), logs.get('val_accuracy', 0.0), logs.get('val_precision', 0.0), logs.get('val_recall', 0.0), logs.get('val_macro_f1', 0.0),
+            current_lr
+        ]
+        with open(self.csv_file_path, 'a', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(row)
+        
+        print(f"Epoch {epoch+1} completed. Elapsed time: {elapsed_time:.2f}s")
+
+    def on_train_end(self, logs=None):
+        print("Training finished. Generating plots...")
+        self.plot_metrics()
+
+    def plot_metrics(self):
+        epochs = range(1, len(self.history['loss']) + 1)
+        
+        # Plot Loss
+        plt.figure(figsize=(12, 6))
+        plt.plot(epochs, self.history['loss'], label='Training Loss')
+        plt.plot(epochs, self.history['val_loss'], label='Validation Loss')
+        plt.title('Training and Validation Loss')
+        plt.xlabel('Epoch')
+        plt.ylabel('Loss')
+        plt.legend()
+        plt.grid(True)
+        plt.savefig(os.path.join(self.log_dir, 'loss_plot.png'))
+        plt.close()
+
+        # Plot Macro F1
+        plt.figure(figsize=(12, 6))
+        plt.plot(epochs, self.history['macro_f1'], label='Training Macro F1')
+        plt.plot(epochs, self.history['val_macro_f1'], label='Validation Macro F1')
+        plt.title('Training and Validation Macro F1 Score')
+        plt.xlabel('Epoch')
+        plt.ylabel('Macro F1 Score')
+        plt.legend()
+        plt.grid(True)
+        plt.savefig(os.path.join(self.log_dir, 'macro_f1_plot.png'))
+        plt.close()
+
 # --- Main Execution ---
 if __name__ == "__main__":
     # Configuration
     AUDIO_FILES_DIR = '/home/nele_pauline_suffo/ProcessedData/childlens_audio'
-    TRAIN_RTTM_FILE = '/home/nele_pauline_suffo/ProcessedData/vtc_childlens_v2/train_small.rttm'
-    VAL_RTTM_FILE = '/home/nele_pauline_suffo/ProcessedData/vtc_childlens_v2/dev_small.rttm'
-    TEST_RTTM_FILE = '/home/nele_pauline_suffo/ProcessedData/vtc_childlens_v2/test_small.rttm'
+    TRAIN_RTTM_FILE = '/home/nele_pauline_suffo/ProcessedData/vtc_childlens_v2/train.rttm'
+    VAL_RTTM_FILE = '/home/nele_pauline_suffo/ProcessedData/vtc_childlens_v2/dev.rttm'
+    TEST_RTTM_FILE = '/home/nele_pauline_suffo/ProcessedData/vtc_childlens_v2/test.rttm'
     
     SR = 16000
     N_MELS = 128
@@ -351,7 +460,11 @@ if __name__ == "__main__":
     WINDOW_STEP = 0.25
     VALID_RTTM_LABELS = ['OHS', 'CDS', 'KCHI']
 
-    class_weights_for_keras = {}
+    # Create a unique run directory
+    timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    RUN_DIR = os.path.join('/home/nele_pauline_suffo/outputs/audio_classification/runs', timestamp)
+    os.makedirs(RUN_DIR, exist_ok=True)
+    print(f"Training run output directory: {RUN_DIR}")
 
     # Parse RTTM files
     print("--- Processing Training Data ---")
@@ -383,7 +496,7 @@ if __name__ == "__main__":
     # Initialize MultiLabelBinarizer
     all_possible_target_labels_seen = sorted(list(set(train_unique_labels + val_unique_labels + test_unique_labels)))
     mlb = MultiLabelBinarizer(classes=all_possible_target_labels_seen)
-    mlb.fit([[]])
+    mlb.fit([[]]) # Fit with empty list to ensure all classes are known
     num_classes = len(mlb.classes_)
     print(f"\nDetected {num_classes} unique target classes: {mlb.classes_}")
 
@@ -402,9 +515,10 @@ if __name__ == "__main__":
 
     # Calculate class weights
     total_training_windows = len(train_segments)
+    class_weights_for_keras = {}
     
     if total_training_windows == 0:
-        print("Warning: No training segments available.")
+        print("Warning: No training segments available. Class weights set to 1.0.")
         for i in range(num_classes):
             class_weights_for_keras[i] = 1.0
     else:
@@ -419,17 +533,19 @@ if __name__ == "__main__":
             if count > 0:
                 class_weights_for_keras[i] = total_training_windows / (num_classes * count)
             else:
-                class_weights_for_keras[i] = 1.0
+                # If a class has no samples in training, assign a default weight (e.g., 1.0)
+                # This prevents division by zero and ensures it's not completely ignored.
+                class_weights_for_keras[i] = 1.0 
         
-        # Normalize weights
-        if len(class_weights_for_keras) > 0:
-            avg_weight = sum(class_weights_for_keras.values()) / len(class_weights_for_keras)
-            class_weights_for_keras = {k: v / avg_weight for k, v in class_weights_for_keras.items()}
+        # Optional: Normalize weights so their sum is num_classes (or average is 1)
+        # This can sometimes help keep the loss scale consistent.
+        # avg_weight = sum(class_weights_for_keras.values()) / len(class_weights_for_keras)
+        # class_weights_for_keras = {k: v / avg_weight for k, v in class_weights_for_keras.items()}
 
     print(f"\nClass distribution in training data:")
     for i, class_name in enumerate(mlb.classes_):
         count = sum(1 for seg in train_segments if class_name in seg['labels'])
-        percentage = (count / len(train_segments)) * 100
+        percentage = (count / len(train_segments)) * 100 if len(train_segments) > 0 else 0
         print(f"  {class_name}: {count} samples ({percentage:.1f}%)")
     
     print(f"\nCalculated Class Weights: {class_weights_for_keras}")
@@ -458,27 +574,51 @@ if __name__ == "__main__":
         )
 
     # Training callbacks
-    early_stopping = EarlyStopping(monitor='val_macro_f1', patience=15, mode='max', restore_best_weights=True)
-    reduce_lr = ReduceLROnPlateau(monitor='val_macro_f1', factor=0.2, patience=7, min_lr=0.00001, mode='max')
+    # Custom logger for CSV and plotting
+    training_logger_callback = TrainingLogger(log_dir=RUN_DIR, mlb_classes=mlb.classes_)
+
+    # Early stopping based on validation macro F1 score
+    early_stopping = EarlyStopping(
+        monitor='val_macro_f1', patience=15, mode='max', restore_best_weights=True,
+        verbose=1
+    )
+    
+    # Reduce learning rate on plateau based on validation macro F1 score
+    reduce_lr = ReduceLROnPlateau(
+        monitor='val_macro_f1', factor=0.2, patience=7, min_lr=0.00001, mode='max',
+        verbose=1
+    )
+
+    # Model checkpoint to save the best model during training
+    # Saving based on 'val_macro_f1'
+    model_checkpoint_path = os.path.join(RUN_DIR, 'best_model.h5')
+    model_checkpoint = ModelCheckpoint(
+        filepath=model_checkpoint_path,
+        monitor='val_macro_f1',
+        mode='max',
+        save_best_only=True,
+        verbose=1
+    )
 
     print("\nStarting training...")
     if len(train_generator) == 0 or len(val_generator) == 0:
-        print("Error: No batches available for training/validation.")
+        print("Error: No batches available for training/validation. Check your RTTM files and data paths.")
         exit()
 
     # Train the model
+    # Include the new callbacks
     history = model.fit(
         train_generator,
         validation_data=val_generator,
-        epochs=100,
-        callbacks=[early_stopping, reduce_lr],
+        epochs=10,
+        callbacks=[early_stopping, reduce_lr, model_checkpoint, training_logger_callback],
         class_weight=class_weights_for_keras,
         verbose=1
     )
 
     # Final validation evaluation
     print("\n" + "="*60)
-    print("FINAL VALIDATION RESULTS")
+    print("FINAL VALIDATION RESULTS (from best restored weights)")
     print("="*60)
     val_results = model.evaluate(val_generator, verbose=0)
     val_metrics_dict = dict(zip(model.metrics_names, val_results))
@@ -500,22 +640,23 @@ if __name__ == "__main__":
             test_true_labels.extend(labels)
         test_true_labels = np.array(test_true_labels)
 
-        # Handle size mismatch
+        # Handle size mismatch that can happen if the last batch is incomplete
         if test_predictions.shape[0] != test_true_labels.shape[0]:
+            print(f"Warning: Test predictions ({test_predictions.shape[0]}) and true labels ({test_true_labels.shape[0]}) mismatch. Truncating to smaller size.")
             min_samples = min(test_predictions.shape[0], test_true_labels.shape[0])
             test_predictions = test_predictions[:min_samples]
             test_true_labels = test_true_labels[:min_samples]
-            print(f"Adjusted to {min_samples} samples due to size mismatch.")
+            print(f"Adjusted to {min_samples} samples for evaluation.")
 
         # Apply threshold
         prediction_threshold = 0.5
         test_pred_binary = (test_predictions > prediction_threshold).astype(int)
 
         # Calculate metrics
-        if test_true_labels.sum() > 0:
+        if test_true_labels.sum() > 0: # Ensure there's at least one positive true label for metrics
             # Per-class metrics
             precision_per_class, recall_per_class, f1_per_class, support_per_class = precision_recall_fscore_support(
-                test_true_labels, test_pred_binary, average=None, zero_division=0
+                test_true_labels, test_pred_binary, average=None, zero_division=0 # zero_division=0 handles classes with no predictions/true labels
             )
             
             # Macro averages
@@ -543,10 +684,5 @@ if __name__ == "__main__":
             
         else:
             print("Warning: No positive instances in test set for metrics calculation.")
-
-    # Save the model
-    model_save_path = '/home/nele_pauline_suffo/projects/leuphana-IPE/src/models/audio_classification/multi_label_speech_type_classifier.h5'
-    model.save(model_save_path, custom_objects={'FocalLoss': FocalLoss, 'MacroF1Score': MacroF1Score})
-    print(f"\nModel saved to: {model_save_path}")
     
-    print("\nTraining completed successfully!")
+    print("\nTraining completed successfully! Check the run directory for logs and plots.")
