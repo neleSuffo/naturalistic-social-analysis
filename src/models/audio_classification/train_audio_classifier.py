@@ -11,122 +11,168 @@ from tensorflow.keras.layers import Input, Conv2D, MaxPooling2D, GRU, Dense, Dro
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
 from sklearn.preprocessing import MultiLabelBinarizer
-from tensorflow.keras.losses import BinaryCrossentropy
+from tensorflow.keras.losses import Loss
+from tensorflow.keras.metrics import Metric
 from tqdm import tqdm
-from sklearn.metrics import precision_recall_fscore_support, accuracy_score
+from sklearn.metrics import precision_recall_fscore_support, accuracy_score, precision_score, recall_score, f1_score # Added for detailed test evaluation
+from collections import Counter # For calculating class weights
 
 # --- Custom Keras Metrics for Macro-Average F1, Precision, Recall ---
 
 class MacroPrecision(tf.keras.metrics.Metric):
     def __init__(self, name='macro_precision', threshold=0.5, **kwargs):
-        super(MacroPrecision, self).__init__(name=name, **kwargs)
+        super().__init__(name=name, **kwargs)
         self.threshold = threshold
+        # Initialize internal state to indicate if variables are built
+        self._built = False 
 
+    # The build method will be called by Keras.
     def build(self, input_shape):
-        # input_shape is typically (batch_size, num_classes)
-        self.num_classes = input_shape[-1]
-        self.per_class_tp = self.add_weight(name='per_class_tp', shape=(self.num_classes,), initializer='zeros')
-        self.per_class_fp = self.add_weight(name='per_class_fp', shape=(self.num_classes,), initializer='zeros')
-        super().build(input_shape)
+        # Prevent rebuilding if already built
+        if self._built: 
+            return
+        
+        num_classes = input_shape[-1]
+        if num_classes is None:
+            # If num_classes is None here (e.g., from model.summary()), we can't build yet.
+            # We'll build lazily in update_state when concrete shapes are available.
+            return
+
+        self.num_classes = num_classes
+        # Use trainable=False for metric variables as they are not model parameters
+        self.per_class_tp = self.add_weight(name='per_class_tp', shape=(self.num_classes,), initializer='zeros', trainable=False)
+        self.per_class_fp = self.add_weight(name='per_class_fp', shape=(self.num_classes,), initializer='zeros', trainable=False)
+        self._built = True # Mark as built
 
     def update_state(self, y_true, y_pred, sample_weight=None):
+        # Lazily build variables if not already built
+        if not self._built:
+            # y_true.shape will have concrete dimensions during update_state call
+            self.build(y_true.shape)
+            # If build still couldn't determine num_classes (e.g., if y_true.shape[-1] is None),
+            # this would still be problematic. But for sequence data, y_true.shape[-1] should be concrete.
+            if not self._built: # Check again if build was successful
+                raise RuntimeError("MacroPrecision metric could not determine num_classes during build.")
+
         y_pred = tf.cast(y_pred > self.threshold, tf.float32)
-        
-        # Ensure y_true and y_pred are of the same type and compatible shape
         y_true = tf.cast(y_true, tf.float32)
         
-        tp = tf.reduce_sum(y_true * y_pred, axis=0) # Sum True Positives per class
-        fp = tf.reduce_sum((1 - y_true) * y_pred, axis=0) # Sum False Positives per class
+        tp = tf.reduce_sum(y_true * y_pred, axis=0)
+        fp = tf.reduce_sum((1 - y_true) * y_pred, axis=0)
 
         self.per_class_tp.assign_add(tp)
         self.per_class_fp.assign_add(fp)
 
     def result(self):
-        # Handle division by zero for classes with no predictions (tp + fp = 0)
+        # Return a default value if not built yet (e.g., when model.summary() is printed)
+        if not self._built:
+            return tf.constant(0.0, dtype=tf.float32) 
+            
         precision_per_class = tf.where(
             tf.math.equal(self.per_class_tp + self.per_class_fp, 0),
-            0.0, # Assign 0 precision if no predictions for that class
+            0.0,
             self.per_class_tp / (self.per_class_tp + self.per_class_fp)
         )
-        # Macro average: average of precision for each class
         return tf.reduce_mean(precision_per_class)
 
     def reset_state(self):
-        # The .build() method will re-initialize num_classes and shape if needed
-        # But we need to reset the counters for each epoch/evaluation
-        if hasattr(self, 'num_classes'): # Check if build has been called
+        # Reset only if variables have been built
+        if self._built:
             self.per_class_tp.assign(tf.zeros(self.num_classes))
             self.per_class_fp.assign(tf.zeros(self.num_classes))
-        else: # Before build is called, initialize with default empty shape
-             self.per_class_tp.assign(tf.zeros(0))
-             self.per_class_fp.assign(tf.zeros(0))
+        # If not built, there's no state to reset, so do nothing.
 
 
 class MacroRecall(tf.keras.metrics.Metric):
     def __init__(self, name='macro_recall', threshold=0.5, **kwargs):
-        super(MacroRecall, self).__init__(name=name, **kwargs)
+        super().__init__(name=name, **kwargs)
         self.threshold = threshold
+        self._built = False
 
     def build(self, input_shape):
-        self.num_classes = input_shape[-1]
-        self.per_class_tp = self.add_weight(name='per_class_tp', shape=(self.num_classes,), initializer='zeros')
-        self.per_class_fn = self.add_weight(name='per_class_fn', shape=(self.num_classes,), initializer='zeros')
-        super().build(input_shape)
+        if self._built:
+            return
+        
+        num_classes = input_shape[-1]
+        if num_classes is None:
+            return
 
+        self.num_classes = num_classes
+        self.per_class_tp = self.add_weight(name='per_class_tp', shape=(self.num_classes,), initializer='zeros', trainable=False)
+        self.per_class_fn = self.add_weight(name='per_class_fn', shape=(self.num_classes,), initializer='zeros', trainable=False)
+        self._built = True
+        
     def update_state(self, y_true, y_pred, sample_weight=None):
+        if not self._built:
+            self.build(y_true.shape)
+            if not self._built:
+                raise RuntimeError("MacroRecall metric could not determine num_classes during build.")
+
         y_pred = tf.cast(y_pred > self.threshold, tf.float32)
         y_true = tf.cast(y_true, tf.float32)
 
-        tp = tf.reduce_sum(y_true * y_pred, axis=0) # Sum True Positives per class
-        fn = tf.reduce_sum(y_true * (1 - y_pred), axis=0) # Sum False Negatives per class
+        tp = tf.reduce_sum(y_true * y_pred, axis=0)
+        fn = tf.reduce_sum(y_true * (1 - y_pred), axis=0)
 
         self.per_class_tp.assign_add(tp)
         self.per_class_fn.assign_add(fn)
 
     def result(self):
-        # Handle division by zero for classes with no true positives (tp + fn = 0)
+        if not self._built:
+            return tf.constant(0.0, dtype=tf.float32)
+
         recall_per_class = tf.where(
             tf.math.equal(self.per_class_tp + self.per_class_fn, 0),
-            0.0, # Assign 0 recall if no true positives for that class
+            0.0,
             self.per_class_tp / (self.per_class_tp + self.per_class_fn)
         )
-        # Macro average: average of recall for each class
         return tf.reduce_mean(recall_per_class)
 
     def reset_state(self):
-        if hasattr(self, 'num_classes'):
+        if self._built:
             self.per_class_tp.assign(tf.zeros(self.num_classes))
             self.per_class_fn.assign(tf.zeros(self.num_classes))
-        else:
-             self.per_class_tp.assign(tf.zeros(0))
-             self.per_class_fn.assign(tf.zeros(0))
 
 
 class MacroF1Score(tf.keras.metrics.Metric):
     def __init__(self, name='macro_f1', threshold=0.5, **kwargs):
-        super(MacroF1Score, self).__init__(name=name, **kwargs)
+        super().__init__(name=name, **kwargs)
         self.threshold = threshold
+        self._built = False
 
     def build(self, input_shape):
-        self.num_classes = input_shape[-1]
-        self.per_class_tp = self.add_weight(name='per_class_tp', shape=(self.num_classes,), initializer='zeros')
-        self.per_class_fp = self.add_weight(name='per_class_fp', shape=(self.num_classes,), initializer='zeros')
-        self.per_class_fn = self.add_weight(name='per_class_fn', shape=(self.num_classes,), initializer='zeros')
-        super().build(input_shape)
+        if self._built:
+            return
+            
+        num_classes = input_shape[-1]
+        if num_classes is None:
+            return
 
+        self.num_classes = num_classes
+        self.per_class_tp = self.add_weight(name='per_class_tp', shape=(self.num_classes,), initializer='zeros', trainable=False)
+        self.per_class_fp = self.add_weight(name='per_class_fp', shape=(self.num_classes,), initializer='zeros', trainable=False)
+        self.per_class_fn = self.add_weight(name='per_class_fn', shape=(self.num_classes,), initializer='zeros', trainable=False)
+        self._built = True
+    
     def update_state(self, y_true, y_pred, sample_weight=None):
+        if not self._built:
+            self.build(y_true.shape)
+            if not self._built:
+                raise RuntimeError("MacroF1Score metric could not determine num_classes during build.")
+
         y_pred = tf.cast(y_pred > self.threshold, tf.float32)
         y_true = tf.cast(y_true, tf.float32)
-
         tp = tf.reduce_sum(y_true * y_pred, axis=0)
         fp = tf.reduce_sum((1 - y_true) * y_pred, axis=0)
         fn = tf.reduce_sum(y_true * (1 - y_pred), axis=0)
-
         self.per_class_tp.assign_add(tp)
         self.per_class_fp.assign_add(fp)
         self.per_class_fn.assign_add(fn)
 
     def result(self):
+        if not self._built:
+            return tf.constant(0.0, dtype=tf.float32)
+
         precision_per_class = tf.where(
             tf.math.equal(self.per_class_tp + self.per_class_fp, 0),
             0.0,
@@ -137,27 +183,19 @@ class MacroF1Score(tf.keras.metrics.Metric):
             0.0,
             self.per_class_tp / (self.per_class_tp + self.per_class_fn)
         )
-
-        # Handle division by zero for F1-score if both precision and recall are 0 for a class
         f1_per_class = tf.where(
             tf.math.equal(precision_per_class + recall_per_class, 0),
             0.0,
             2 * (precision_per_class * recall_per_class) / (precision_per_class + recall_per_class)
         )
-        
-        # Macro average F1-score
         return tf.reduce_mean(f1_per_class)
 
     def reset_state(self):
-        if hasattr(self, 'num_classes'):
+        if self._built:
             self.per_class_tp.assign(tf.zeros(self.num_classes))
             self.per_class_fp.assign(tf.zeros(self.num_classes))
             self.per_class_fn.assign(tf.zeros(self.num_classes))
-        else:
-            self.per_class_tp.assign(tf.zeros(0))
-            self.per_class_fp.assign(tf.zeros(0))
-            self.per_class_fn.assign(tf.zeros(0))
-
+        
 # --- Custom Focal Loss ---
 class FocalLoss(tf.keras.losses.Loss):
     def __init__(self, gamma=2.0, alpha=0.25, name='focal_loss', **kwargs):
@@ -205,60 +243,71 @@ class FocalLoss(tf.keras.losses.Loss):
         return config
     
 # --- 1. Feature Extraction (Mel-spectrograms from fixed-duration windows) ---
-def extract_mel_spectrogram_fixed_window(audio_path, start_time, duration, sr=16000, n_mels=128, hop_length=512):
+def extract_mel_spectrogram_fixed_window(audio_path, start_time, duration, sr=16000, n_mels=128, hop_length=512, fixed_time_steps=None):
     """
     Extracts a Mel-spectrogram from a fixed-duration segment of an audio file.
     Pads with zeros if the segment is shorter than the requested duration.
+    
+    Args:
+        audio_path (str): Path to the audio file.
+        start_time (float): Start time of the segment in seconds.
+        duration (float): Duration of the segment in seconds.
+        sr (int): Sampling rate.
+        n_mels (int): Number of Mel bands.
+        hop_length (int): Hop length for Mel spectrogram calculation.
+        fixed_time_steps (int, optional): The exact number of time frames the spectrogram should have.
+                                          If None, it's calculated from duration.
+    Returns:
+        np.ndarray: Mel-spectrogram (n_mels, fixed_time_steps) or a zero array on error.
     """
+    if fixed_time_steps is None:
+        fixed_time_steps = int(np.ceil(duration * sr / hop_length))
+
     try:
-        # Load the segment. librosa.load can handle offset and duration.
-        # It will zero-pad if the duration extends beyond the file, which is useful.
         y, sr_loaded = librosa.load(audio_path, sr=sr, offset=start_time, duration=duration)
         
-        # Ensure correct sampling rate
         if sr_loaded != sr:
             y = librosa.resample(y, orig_sr=sr_loaded, target_sr=sr)
 
-        # Pad if the loaded audio is shorter than expected (e.g., end of file)
         expected_samples = int(duration * sr)
         if len(y) < expected_samples:
             y = np.pad(y, (0, expected_samples - len(y)), 'constant')
         elif len(y) > expected_samples:
-            y = y[:expected_samples] # Truncate if somehow longer (shouldn't happen with exact duration)
+            y = y[:expected_samples]
 
         if len(y) == 0:
-            # This can happen if start_time is beyond file end, or duration is 0
-            print(f"Warning: Empty audio segment from {audio_path} [{start_time}s, duration {duration}s]. Skipping.")
-            return None
+            print(f"Warning: Empty audio segment from {audio_path} [{start_time}s, duration {duration}s]. Returning zeros.")
+            return np.zeros((n_mels, fixed_time_steps), dtype=np.float32)
 
         mel_spectrogram = librosa.feature.melspectrogram(y=y, sr=sr, n_mels=n_mels, hop_length=hop_length)
         mel_spectrogram_db = librosa.power_to_db(mel_spectrogram, ref=np.max)
         
-        # Ensure consistent number of time frames for the fixed window duration
-        # Calculate expected frames based on the fixed window duration
-        expected_frames = int(np.ceil(duration * sr / hop_length))
-        
-        if mel_spectrogram_db.shape[1] < expected_frames:
-            pad_width = expected_frames - mel_spectrogram_db.shape[1]
+        if mel_spectrogram_db.shape[1] < fixed_time_steps:
+            pad_width = fixed_time_steps - mel_spectrogram_db.shape[1]
             mel_spectrogram_db = np.pad(mel_spectrogram_db, ((0, 0), (0, pad_width)), 'constant')
-        elif mel_spectrogram_db.shape[1] > expected_frames:
-            mel_spectrogram_db = mel_spectrogram_db[:, :expected_frames]
+        elif mel_spectrogram_db.shape[1] > fixed_time_steps:
+            mel_spectrogram_db = mel_spectrogram_db[:, :fixed_time_steps]
 
         return mel_spectrogram_db
     except Exception as e:
-        print(f"Error processing segment from {audio_path} [{start_time}s, duration {duration}s]: {e}")
-        return None
+        print(f"Error processing segment from {audio_path} [{start_time}s, duration {duration}s]: {e}. Returning zeros.")
+        return np.zeros((n_mels, fixed_time_steps), dtype=np.float32)
 
 # --- 2. RTTM Parsing and Multi-Label Data Preparation (Slightly adjusted) ---
-def parse_rttm_for_multi_label(rttm_path, audio_files_dir, window_duration, window_step):
+def parse_rttm_for_multi_label(rttm_path, audio_files_dir, valid_rttm_labels, window_duration, window_step, sr, n_mels, hop_length):
     """
     Parses a single RTTM file and generates fixed-duration windows with multi-hot labels.
+    Only includes labels specified in valid_rttm_labels.
     
     Args:
         rttm_path (str): Path to the RTTM file.
         audio_files_dir (str): Directory where all audio files are located.
+        valid_rttm_labels (list): List of RTTM speaker_id strings to include (e.g., ['OHS', 'CDS', 'KCHI']).
         window_duration (float): The fixed duration of each analysis window in seconds.
         window_step (float): The step size between consecutive windows in seconds.
+        sr (int): Sampling rate (for librosa.get_duration).
+        n_mels (int): Number of Mel bands (for fixed_time_steps calculation).
+        hop_length (int): Hop length (for fixed_time_steps calculation).
                                                  
     Returns:
         tuple: (list of window data, list of unique class labels found).
@@ -275,12 +324,11 @@ def parse_rttm_for_multi_label(rttm_path, audio_files_dir, window_duration, wind
     all_window_data = []
     all_unique_labels = set()
 
-    # Get unique audio files present in the RTTM
     unique_file_ids = rttm_df['file_id'].unique()
 
     print(f"Processing {len(unique_file_ids)} audio files from RTTM: {os.path.basename(rttm_path)}...")
     for file_id in tqdm(unique_file_ids):
-        audio_path = os.path.join(audio_files_dir, f"{file_id}.wav") # Adjust extension if needed (e.g., .flac, .mp3)
+        audio_path = os.path.join(audio_files_dir, f"{file_id}.wav") # Adjust extension if needed
 
         if not os.path.exists(audio_path):
             print(f"Warning: Audio file not found for RTTM entry: {audio_path}. Skipping.")
@@ -301,34 +349,27 @@ def parse_rttm_for_multi_label(rttm_path, audio_files_dir, window_duration, wind
         current_time = 0.0
         while current_time < analysis_end_time:
             window_start = current_time
-            # Ensure window does not exceed audio_duration or analysis_end_time
             window_end = min(current_time + window_duration, audio_duration, analysis_end_time) 
 
             active_speaker_ids = set()
-            for idx, row in file_segments.iterrows():
+            for _, row in file_segments.iterrows():
                 segment_start = row['start']
                 segment_end = row['end']
                 
-                # Check for overlap between window and RTTM segment
                 if max(window_start, segment_start) < min(window_end, segment_end):
                     active_speaker_ids.add(row['speaker_id'])
 
-            # Map active speaker IDs to your target class labels
-            active_labels = set()
-            for speaker_id in active_speaker_ids:
-                # Directly check if the speaker_id is one of your desired labels
-                if speaker_id in ["OHS", "CDS", "KCHI"]:
-                    active_labels.add(speaker_id)
-                    all_unique_labels.add(speaker_id)
+            # Filter active speaker_ids to only include valid RTTM labels
+            active_labels = {sid for sid in active_speaker_ids if sid in valid_rttm_labels}
+            all_unique_labels.update(active_labels) # Update overall unique labels seen
 
-            
-            # Only add segments that have at least one valid mapped label AND actual duration AND are not 'SPEECH'
+            # Only add segments that have at least one valid mapped label AND actual duration
             if active_labels and (window_end - window_start) > 0:
                 all_window_data.append({
                     'audio_path': audio_path,
                     'start': window_start,
-                    'duration': window_duration, # Use the fixed window_duration for extraction
-                    'labels': sorted(list(active_labels)) # Store as sorted list for consistency
+                    'duration': window_duration, 
+                    'labels': sorted(list(active_labels)) 
                 })
 
             current_time += window_step
@@ -338,8 +379,10 @@ def parse_rttm_for_multi_label(rttm_path, audio_files_dir, window_duration, wind
 
 # --- 3. Deep Learning Model Architecture (CNN-GRU with Attention) ---
 def build_model_multi_label(n_mels, fixed_time_steps, num_classes):
-    input_mel = Input(shape=(n_mels, fixed_time_steps), name='mel_spectrogram_input')
-    x = tf.expand_dims(input_mel, -1)
+    # **** CRITICAL CHANGE HERE ****
+    # Define the Input layer with the channel dimension (1) directly
+    input_mel = Input(shape=(n_mels, fixed_time_steps, 1), name='mel_spectrogram_input') 
+    x = input_mel
 
     x = Conv2D(32, (3, 3), activation='relu', padding='same')(x)
     x = BatchNormalization()(x)
@@ -366,8 +409,8 @@ def build_model_multi_label(n_mels, fixed_time_steps, num_classes):
     attention = Dense(1, activation='tanh')(x)
     attention = Flatten()(attention) 
     attention = Activation('softmax')(attention) 
-    attention = RepeatVector(128)(attention)
-    attention = Permute((2, 1))(attention)
+    attention = RepeatVector(128)(attention) # Corrected: Uses fixed GRU units as repetition factor
+    attention = Permute((2, 1))(attention) 
 
     sent_representation = multiply([x, attention])
     sent_representation = Lambda(lambda xin: tf.reduce_sum(xin, axis=1))(sent_representation) 
@@ -382,10 +425,9 @@ def build_model_multi_label(n_mels, fixed_time_steps, num_classes):
     model.compile(optimizer=Adam(learning_rate=0.001),
                   loss=FocalLoss(gamma=2.0, alpha=0.25),
                   metrics=[
-                      'accuracy', 
-                      MacroPrecision(), 
-                      MacroRecall(),    
-                      MacroF1Score()    
+                    'accuracy',
+                    'precision',
+                    'recall',
                   ])
     return model
 
@@ -393,17 +435,20 @@ def build_model_multi_label(n_mels, fixed_time_steps, num_classes):
 class AudioSegmentDataGenerator(tf.keras.utils.Sequence):
     def __init__(self, segments_data, mlb, n_mels, hop_length, sr, window_duration, fixed_time_steps, batch_size=32, shuffle=True):
         self.segments_data = segments_data
-        self.mlb = mlb # MultiLabelBinarizer instance
+        self.mlb = mlb 
         self.n_mels = n_mels
         self.hop_length = hop_length
         self.sr = sr
-        self.window_duration = window_duration # The duration of each window
-        self.fixed_time_steps = fixed_time_steps # The exact number of mel frames for the model input
+        self.window_duration = window_duration 
+        self.fixed_time_steps = fixed_time_steps 
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.on_epoch_end()
 
     def __len__(self):
+        # Calculate number of batches, ensuring it's an integer
+        if len(self.segments_data) == 0:
+            return 0
         return int(np.floor(len(self.segments_data) / self.batch_size))
 
     def __getitem__(self, index):
@@ -415,34 +460,37 @@ class AudioSegmentDataGenerator(tf.keras.utils.Sequence):
 
         for segment in batch_segments:
             mel = extract_mel_spectrogram_fixed_window(
-                segment['audio_path'], segment['start'], segment['duration'], # use segment's fixed duration
-                sr=self.sr, n_mels=self.n_mels, hop_length=self.hop_length
+                segment['audio_path'], segment['start'], segment['duration'], 
+                sr=self.sr, n_mels=self.n_mels, hop_length=self.hop_length, fixed_time_steps=self.fixed_time_steps
             )
-            if mel is not None:
-                # Ensure the extracted Mel-spectrogram has the exact `fixed_time_steps`
-                # (extract_mel_spectrogram_fixed_window already handles this, but a safety check)
-                if mel.shape[1] != self.fixed_time_steps:
-                    print(f"Warning: Mel shape mismatch for {segment['audio_path']} [{segment['start']}s]. Expected {self.fixed_time_steps}, got {mel.shape[1]}. Resizing.")
-                    if mel.shape[1] < self.fixed_time_steps:
-                        pad_width = self.fixed_time_steps - mel.shape[1]
-                        mel = np.pad(mel, ((0, 0), (0, pad_width)), 'constant')
-                    else:
-                        mel = mel[:, :self.fixed_time_steps]
-
-                X_batch.append(mel)
-                
-                # Multi-hot encode the labels using MultiLabelBinarizer
-                multi_hot_labels = self.mlb.transform([segment['labels']])[0]
-                y_batch.append(multi_hot_labels)
-            else:
-                pass 
+            # Ensure each individual mel is 2D (n_mels, fixed_time_steps)
+            if mel.ndim != 2:
+                # If it's something unexpected, try to reshape or handle it.
+                # For example, if it's (n_mels, fixed_time_steps, 1) already, squeeze it.
+                if mel.ndim == 3 and mel.shape[-1] == 1:
+                    mel = mel.squeeze(axis=-1)
+                else:
+                    print(f"Warning: Individual mel spectrogram has unexpected dimensions {mel.shape}. Expected 2D. Skipping this sample.")
+                    continue # Skip this problematic sample
+            X_batch.append(mel)
+            
+            multi_hot_labels = self.mlb.transform([segment['labels']])[0]
+            y_batch.append(multi_hot_labels)
                 
         if not X_batch:
-            # If all segments in a batch failed to extract, return empty arrays.
-            # This can happen if the last batch is too small and fails, or if many files are corrupt.
             return np.array([]), np.array([])
             
-        return np.array(X_batch), np.array(y_batch)
+        X_batch_np = np.array(X_batch) # This will create (batch_size, n_mels, fixed_time_steps)
+
+        # Now explicitly expand for the channel dimension
+        # This assumes X_batch_np is (batch_size, n_mels, fixed_time_steps) after np.array(X_batch)
+        X_batch_final = np.expand_dims(X_batch_np, -1) 
+
+        # --- DEBUG PRINT ---
+        # print(f"DEBUG: Final batch shape from generator: {X_batch_final.shape}") # Commenting out to reduce spam
+        # --- END DEBUG PRINT ---
+
+        return X_batch_final, np.array(y_batch)
 
     def on_epoch_end(self):
         self.indexes = np.arange(len(self.segments_data))
@@ -519,7 +567,8 @@ if __name__ == "__main__":
     # --- 3. Determine Fixed Time Steps for Model Input ---
     FIXED_TIME_STEPS = int(np.ceil(WINDOW_DURATION * SR / HOP_LENGTH))
     print(f"Fixed Time Steps for Mel-spectrogram input (for {WINDOW_DURATION}s windows): {FIXED_TIME_STEPS}")
-    print(f"Model input shape: ({N_MELS}, {FIXED_TIME_STEPS})")
+    # Update this print statement to reflect the new input shape expectation
+    print(f"Model input shape: ({N_MELS}, {FIXED_TIME_STEPS}, 1)") # Expected by model
 
     # --- 4. Build Multi-Label Model ---
     model = build_model_multi_label(n_mels=N_MELS, fixed_time_steps=FIXED_TIME_STEPS, num_classes=num_classes)
@@ -601,7 +650,7 @@ if __name__ == "__main__":
         validation_data=val_generator,
         epochs=100, 
         callbacks=[early_stopping, reduce_lr],
-        class_weight=class_weights_for_keras # <-- This line should now work
+        class_weight=class_weights_for_keras
     )
 
     # Evaluate the model on the validation set (final validation metrics)
@@ -671,5 +720,4 @@ if __name__ == "__main__":
     # You can save the model
     # To ensure it saves with custom objects, pass custom_objects dict
     model.save('/home/nele_pauline_suffo/projects/leuphana-IPE/src/models/audio_classification/multi_label_speech_type_classifier.h5',
-               custom_objects={'FocalLoss': FocalLoss, 'MacroPrecision': MacroPrecision,
-                               'MacroRecall': MacroRecall, 'MacroF1Score': MacroF1Score})
+               custom_objects={'FocalLoss': FocalLoss})
