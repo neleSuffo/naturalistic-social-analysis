@@ -1,22 +1,19 @@
 
 train: /home/nele_pauline_suffo/ProcessedData/all_det_input/images/train
-val: /home/nele_pauline_suffo/ProcessedData/all_det_input/images/val
+val: /home/nele_pauline_suffo/ProcessedData/all_det_input/images/test
 test: /home/nele_pauline_suffo/ProcessedData/all_det_input/images/test
 
 
 # Number of classes
 #nc: 10
-nc: 7
+nc: 4
 
 # Class names
 names:
   0: "person"
   1: "face"
   2: "child body parts"
-  3: "book"
-  4: "toy"
-  5: "kitchenware"
-  6: "other_object"
+  3: "object"
 
 # names:
 #   0: "person"
@@ -26,6 +23,6 @@ names:
 #   4: "toy"
 #   5: "kitchenware"
 #   6: "screen"
-#   7: "animal"
+#   7: "other_object"
 #   8: "food"
-#   9: "other_object"
+#   9: "animal"
