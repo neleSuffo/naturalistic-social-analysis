@@ -3,12 +3,16 @@ import datetime
 import csv
 import librosa
 import time
+import shutil
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Suppress INFO and WARNING messages
 import tensorflow as tf
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+
+from sklearn.utils.class_weight import compute_class_weight
+from tensorflow.keras.callbacks import LearningRateScheduler
 from tensorflow.keras.layers import *
 from tensorflow.keras.models import Model
 from tensorflow.keras.optimizers import Adam
@@ -20,33 +24,32 @@ from sklearn.metrics import precision_recall_fscore_support, precision_score, re
 
 # --- Custom Focal Loss ---
 class FocalLoss(tf.keras.losses.Loss):
-    def __init__(self, gamma=2.0, alpha=0.25, name='focal_loss', **kwargs):
+    def __init__(self, gamma=3.0, alpha=0.5, name='improved_focal_loss', **kwargs):
         super().__init__(name=name, **kwargs)
-        self.gamma = gamma
-        self.alpha = alpha
+        self.gamma = gamma  # Higher gamma for harder examples
+        self.alpha = alpha  # More balanced alpha
 
     def call(self, y_true, y_pred):
         y_true = tf.cast(y_true, tf.float32)
         y_pred = tf.cast(y_pred, tf.float32)
 
-        # Clip predictions to prevent NaN's in log
         epsilon = tf.keras.backend.epsilon()
         y_pred = tf.clip_by_value(y_pred, epsilon, 1. - epsilon)
 
-        # Calculate p_t (probability of the true class)
-        p_t = (y_true * y_pred) + ((1 - y_true) * (1 - y_pred))
-
-        # Calculate alpha_t (weighting factor for imbalance)
-        alpha_t = (y_true * self.alpha) + ((1 - y_true) * (1 - self.alpha))
-
-        # Calculate the focusing term (1 - p_t)^gamma
+        # Calculate cross entropy
+        ce = -y_true * tf.math.log(y_pred) - (1 - y_true) * tf.math.log(1 - y_pred)
+        
+        # Calculate p_t
+        p_t = y_true * y_pred + (1 - y_true) * (1 - y_pred)
+        
+        # Calculate alpha_t
+        alpha_t = y_true * self.alpha + (1 - y_true) * (1 - self.alpha)
+        
+        # Calculate focal weight
         focal_weight = tf.pow(1. - p_t, self.gamma)
-
-        # Calculate the base cross-entropy term
-        bce = -tf.math.log(p_t)
-
-        # Combine all terms
-        loss = alpha_t * focal_weight * bce
+        
+        # Final loss
+        loss = alpha_t * focal_weight * ce
         
         return tf.reduce_mean(loss)
 
@@ -114,11 +117,53 @@ class MacroF1Score(tf.keras.metrics.Metric):
         num_classes = config.pop('num_classes')
         threshold = config.pop('threshold', 0.5)
         return cls(num_classes=num_classes, threshold=threshold, **config)
-    
+
+class ThresholdOptimizer(tf.keras.callbacks.Callback):
+    def __init__(self, validation_generator, mlb_classes):
+        super().__init__()
+        self.validation_generator = validation_generator
+        self.mlb_classes = mlb_classes
+        self.best_thresholds = [0.5] * len(mlb_classes)
+        self.best_f1 = 0.0
+
+    def on_epoch_end(self, epoch, logs=None):
+        if epoch % 5 == 0:  # Optimize thresholds every 5 epochs
+            self.optimize_thresholds()
+
+    def optimize_thresholds(self):
+        # Get predictions
+        predictions = self.model.predict(self.validation_generator, verbose=0)
+        
+        # Get true labels
+        true_labels = []
+        for i in range(len(self.validation_generator)):
+            _, labels = self.validation_generator[i]
+            true_labels.extend(labels)
+        true_labels = np.array(true_labels)
+        
+        # Optimize threshold for each class
+        best_thresholds = []
+        for class_idx in range(len(self.mlb_classes)):
+            best_threshold = 0.5
+            best_class_f1 = 0.0
+            
+            for threshold in np.arange(0.1, 0.9, 0.05):
+                pred_binary = (predictions[:, class_idx] > threshold).astype(int)
+                f1 = f1_score(true_labels[:, class_idx], pred_binary, zero_division=0)
+                
+                if f1 > best_class_f1:
+                    best_class_f1 = f1
+                    best_threshold = threshold
+            
+            best_thresholds.append(best_threshold)
+        
+        self.best_thresholds = best_thresholds
+        print(f"Optimized thresholds: {dict(zip(self.mlb_classes, best_thresholds))}")
+            
 # --- Feature Extraction ---
-def extract_mel_spectrogram_fixed_window(audio_path, start_time, duration, sr=16000, n_mels=128, hop_length=512, fixed_time_steps=None):
+def extract_enhanced_features(audio_path, start_time, duration, sr=16000, n_mels=128, hop_length=512, fixed_time_steps=None):
     """
-    Extracts a Mel-spectrogram from a fixed-duration segment of an audio file.
+    Enhanced feature extraction with multiple representations
     """
     if fixed_time_steps is None:
         fixed_time_steps = int(np.ceil(duration * sr / hop_length))
@@ -136,20 +181,37 @@ def extract_mel_spectrogram_fixed_window(audio_path, start_time, duration, sr=16
             y = y[:expected_samples]
 
         if len(y) == 0:
-            # If audio segment is empty even after padding attempts, return zeros
-            print(f"Warning: Empty audio segment from {audio_path} [{start_time}s, duration {duration}s]. Returning zeros.")
             return np.zeros((n_mels, fixed_time_steps), dtype=np.float32)
 
-        mel_spectrogram = librosa.feature.melspectrogram(y=y, sr=sr, n_mels=n_mels, hop_length=hop_length)
-        mel_spectrogram_db = librosa.power_to_db(mel_spectrogram, ref=np.max)
+        # Preprocessing - normalize audio
+        y = y / (np.max(np.abs(y)) + 1e-6)  # Avoid division by zero
         
+        # Apply pre-emphasis filter (helps with high-frequency components)
+        y = np.append(y[0], y[1:] - 0.97 * y[:-1])
+
+        # Extract mel spectrogram with better parameters
+        mel_spectrogram = librosa.feature.melspectrogram(
+            y=y, sr=sr, n_mels=n_mels, hop_length=hop_length,
+            n_fft=2048,  # Larger FFT window for better frequency resolution
+            fmin=50,     # Remove very low frequencies (reduce noise)
+            fmax=8000    # Focus on speech-relevant frequencies
+        )
+        
+        # Convert to dB with better dynamic range
+        mel_spectrogram_db = librosa.power_to_db(mel_spectrogram, ref=np.max, top_db=80)
+        
+        # Normalize to [-1, 1] range
+        mel_spectrogram_db = 2 * (mel_spectrogram_db - mel_spectrogram_db.min()) / (mel_spectrogram_db.max() - mel_spectrogram_db.min() + 1e-6) - 1
+        
+        # Handle time dimension
         if mel_spectrogram_db.shape[1] < fixed_time_steps:
             pad_width = fixed_time_steps - mel_spectrogram_db.shape[1]
-            mel_spectrogram_db = np.pad(mel_spectrogram_db, ((0, 0), (0, pad_width)), 'constant')
+            mel_spectrogram_db = np.pad(mel_spectrogram_db, ((0, 0), (0, pad_width)), 'constant', constant_values=-1)
         elif mel_spectrogram_db.shape[1] > fixed_time_steps:
             mel_spectrogram_db = mel_spectrogram_db[:, :fixed_time_steps]
 
         return mel_spectrogram_db
+        
     except Exception as e:
         print(f"Error processing segment from {audio_path} [{start_time}s, duration {duration}s]: {e}. Returning zeros.")
         return np.zeros((n_mels, fixed_time_steps), dtype=np.float32)
@@ -225,62 +287,111 @@ def parse_rttm_for_multi_label(rttm_path, audio_files_dir, valid_rttm_labels, wi
 
 # --- Deep Learning Model Architecture ---
 def build_model_multi_label(n_mels, fixed_time_steps, num_classes):
-    input_mel = Input(shape=(n_mels, fixed_time_steps, 1), name='mel_spectrogram_input') 
+    """Enhanced model architecture with better feature extraction"""
+    
+    input_mel = Input(shape=(n_mels, fixed_time_steps, 1), name='mel_spectrogram_input')
     x = input_mel
 
-    # CNN layers
-    x = Conv2D(32, (3, 3), activation='relu', padding='same')(x)
-    x = BatchNormalization()(x)
+    # More sophisticated CNN layers with residual connections
+    def conv_block(x, filters, kernel_size=(3, 3), strides=(1, 1)):
+        shortcut = x
+        
+        x = Conv2D(filters, kernel_size, strides=strides, padding='same')(x)
+        x = BatchNormalization()(x)
+        x = Activation('relu')(x)
+        x = Conv2D(filters, kernel_size, padding='same')(x)
+        x = BatchNormalization()(x)
+        
+        # Adjust shortcut if needed
+        if shortcut.shape[-1] != filters or strides != (1, 1):
+            shortcut = Conv2D(filters, (1, 1), strides=strides, padding='same')(shortcut)
+            shortcut = BatchNormalization()(shortcut)
+        
+        x = Add()([x, shortcut])
+        x = Activation('relu')(x)
+        return x
+
+    # Progressive feature extraction
+    x = conv_block(x, 32)
     x = MaxPooling2D((2, 2))(x)
     x = Dropout(0.25)(x)
 
-    x = Conv2D(64, (3, 3), activation='relu', padding='same')(x)
-    x = BatchNormalization()(x)
+    x = conv_block(x, 64)
     x = MaxPooling2D((2, 2))(x)
     x = Dropout(0.25)(x)
+
+    x = conv_block(x, 128)
+    x = MaxPooling2D((2, 2))(x)
+    x = Dropout(0.3)(x)
 
     # Calculate dimensions after CNN
-    reduced_n_mels = n_mels // 4
-    reduced_time_steps = fixed_time_steps // 4
-    channels_after_cnn = 64
+    reduced_n_mels = n_mels // 8
+    reduced_time_steps = fixed_time_steps // 8
+    channels_after_cnn = 128
 
-    # Reshape for RNN
-    # Permute to (batch, time_steps, n_mels, channels)
-    x = Permute((2, 1, 3))(x) 
-    # Reshape to (batch, time_steps, n_mels * channels)
+    # Prepare for RNN
+    x = Permute((2, 1, 3))(x)
     x = Reshape((reduced_time_steps, reduced_n_mels * channels_after_cnn))(x)
     
-    # RNN layers
-    x = GRU(128, return_sequences=True)(x)
-    x = Dropout(0.3)(x)
-    x = GRU(128, return_sequences=True)(x)
-    x = Dropout(0.3)(x)
+    # Bidirectional RNN for better temporal modeling
+    x = Bidirectional(GRU(128, return_sequences=True, dropout=0.3))(x)
+    x = Bidirectional(GRU(64, return_sequences=True, dropout=0.3))(x)
 
-    # Attention mechanism
-    attention = Dense(1, activation='tanh')(x)
-    attention = Flatten()(attention) 
-    attention = Activation('softmax')(attention) 
-    attention = RepeatVector(128)(attention)
-    attention = Permute((2, 1))(attention) 
+    # Multi-head attention mechanism
+    def multi_head_attention(x, num_heads=4):
+        head_size = x.shape[-1] // num_heads
+        heads = []
+        
+        for i in range(num_heads):
+            # Simple attention head
+            attention = Dense(1, activation='tanh')(x)
+            attention = Flatten()(attention)
+            attention = Activation('softmax')(attention)
+            attention = RepeatVector(x.shape[-1])(attention)
+            attention = Permute((2, 1))(attention)
+            
+            head = multiply([x, attention])
+            head = Lambda(lambda xin: tf.reduce_sum(xin, axis=1))(head)
+            heads.append(head)
+        
+        return Concatenate()(heads) if len(heads) > 1 else heads[0]
 
-    sent_representation = multiply([x, attention])
-    sent_representation = Lambda(lambda xin: tf.reduce_sum(xin, axis=1))(sent_representation) 
+    x = multi_head_attention(x)
 
-    # Final dense layers
-    x = Dense(128, activation='relu')(sent_representation)
+    # Enhanced dense layers with skip connections
+    dense_input = x
+    x = Dense(256, activation='relu')(x)
     x = BatchNormalization()(x)
     x = Dropout(0.5)(x)
-
-    output = Dense(num_classes, activation='sigmoid')(x)
+    
+    x = Dense(128, activation='relu')(x)
+    x = BatchNormalization()(x)
+    x = Dropout(0.4)(x)
+    
+    # Skip connection
+    if dense_input.shape[-1] == 128:
+        x = Add()([x, dense_input])
+    
+    # Class-specific branches (helpful for imbalanced classes)
+    class_outputs = []
+    for i in range(num_classes):
+        class_branch = Dense(64, activation='relu', name=f'class_{i}_dense')(x)
+        class_branch = Dropout(0.3)(class_branch)
+        class_output = Dense(1, activation='sigmoid', name=f'class_{i}_output')(class_branch)
+        class_outputs.append(class_output)
+    
+    # Combine class outputs
+    output = Concatenate(name='combined_output')(class_outputs)
 
     model = Model(inputs=input_mel, outputs=output)
     
-    # Create custom metrics
+    # Custom metrics
     macro_f1 = MacroF1Score(num_classes=num_classes, name='macro_f1')
     
+    # Use a more balanced loss function
     model.compile(
-        optimizer=Adam(learning_rate=0.001),
-        loss=FocalLoss(gamma=2.0, alpha=0.25),
+        optimizer=Adam(learning_rate=0.0005),  # Lower learning rate for stability
+        loss=FocalLoss(gamma=2.0, alpha=0.25),  # Keep focal loss but tune parameters
         metrics=[
             'accuracy',
             Precision(name='precision'),
@@ -290,9 +401,72 @@ def build_model_multi_label(n_mels, fixed_time_steps, num_classes):
     )
     return model
 
+def calculate_balanced_class_weights(train_segments, mlb):
+    """Calculate more aggressive class weights for imbalanced dataset"""
+    total_training_windows = len(train_segments)
+    class_counts = {label: 0 for label in mlb.classes_}
+    
+    # Count occurrences of each class
+    for seg in train_segments:
+        for label in seg['labels']:
+            if label in class_counts:
+                class_counts[label] += 1
+        
+    # Method 1: More aggressive inverse frequency weighting
+    class_weights_for_keras = {}
+    max_count = max(class_counts.values())
+    
+    for i, class_name in enumerate(mlb.classes_):
+        count = class_counts.get(class_name, 1)  # Avoid division by zero
+        # More aggressive weighting - square the inverse ratio
+        weight = (max_count / count) ** 1.5  # Adjust exponent as needed
+        class_weights_for_keras[i] = weight
+    
+    # Method 2: Alternative - Use sklearn's compute_class_weight
+    # This requires flattening your multi-label data
+    
+    return class_weights_for_keras
+
+def train_model():    
+    def cyclic_lr(epoch):
+        max_lr = 0.001
+        min_lr = 0.00001
+        cycle_length = 20
+        cycle = np.floor(epoch / cycle_length)
+        x = np.abs(epoch / cycle_length - cycle)
+        lr = min_lr + (max_lr - min_lr) * max(0, (1 - x))
+        return lr
+
+    callbacks = [
+        EarlyStopping(
+            monitor='val_macro_f1', 
+            patience=25,
+            mode='max', 
+            restore_best_weights=True,
+            verbose=1
+        ),
+        
+        # Cyclic learning rate
+        LearningRateScheduler(cyclic_lr, verbose=1),
+        ModelCheckpoint(
+            filepath=os.path.join(RUN_DIR, 'best_model.h5'),
+            monitor='val_macro_f1',
+            mode='max',
+            save_best_only=True,
+            verbose=1
+        ),
+        
+        # Threshold optimizer
+        ThresholdOptimizer(val_generator, mlb.classes_),
+        TrainingLogger(RUN_DIR, mlb.classes_)
+    ]
+    
+    return callbacks
+
 # --- Data Generator ---
-class AudioSegmentDataGenerator(tf.keras.utils.Sequence):
-    def __init__(self, segments_data, mlb, n_mels, hop_length, sr, window_duration, fixed_time_steps, batch_size=32, shuffle=True):
+class EnhancedAudioSegmentDataGenerator(tf.keras.utils.Sequence):
+    def __init__(self, segments_data, mlb, n_mels, hop_length, sr, window_duration, fixed_time_steps, 
+                 batch_size=32, shuffle=True, augment=False):
         self.segments_data = segments_data
         self.mlb = mlb 
         self.n_mels = n_mels
@@ -302,12 +476,39 @@ class AudioSegmentDataGenerator(tf.keras.utils.Sequence):
         self.fixed_time_steps = fixed_time_steps 
         self.batch_size = batch_size
         self.shuffle = shuffle
+        self.augment = augment
         self.on_epoch_end()
 
     def __len__(self):
         if len(self.segments_data) == 0:
             return 0
         return int(np.floor(len(self.segments_data) / self.batch_size))
+
+    def augment_spectrogram(self, mel_spec):
+        """Apply random augmentations to mel spectrogram"""
+        if not self.augment:
+            return mel_spec
+        
+        augmented = mel_spec.copy()
+        
+        # Time masking (SpecAugment)
+        if np.random.random() < 0.5:
+            time_mask_width = np.random.randint(1, min(20, mel_spec.shape[1] // 4))
+            time_mask_start = np.random.randint(0, mel_spec.shape[1] - time_mask_width)
+            augmented[:, time_mask_start:time_mask_start + time_mask_width] = -1
+        
+        # Frequency masking
+        if np.random.random() < 0.5:
+            freq_mask_width = np.random.randint(1, min(15, mel_spec.shape[0] // 4))
+            freq_mask_start = np.random.randint(0, mel_spec.shape[0] - freq_mask_width)
+            augmented[freq_mask_start:freq_mask_start + freq_mask_width, :] = -1
+        
+        # Gaussian noise
+        if np.random.random() < 0.3:
+            noise = np.random.normal(0, 0.05, mel_spec.shape)
+            augmented = np.clip(augmented + noise, -1, 1)
+        
+        return augmented
 
     def __getitem__(self, index):
         indexes = self.indexes[index * self.batch_size:(index + 1) * self.batch_size]
@@ -317,18 +518,19 @@ class AudioSegmentDataGenerator(tf.keras.utils.Sequence):
         y_batch = []
 
         for segment in batch_segments:
-            mel = extract_mel_spectrogram_fixed_window(
+            mel = extract_enhanced_features(
                 segment['audio_path'], segment['start'], segment['duration'], 
                 sr=self.sr, n_mels=self.n_mels, hop_length=self.hop_length, 
                 fixed_time_steps=self.fixed_time_steps
             )
             
-            # Ensure each mel is 2D
+            # Apply augmentation
+            mel = self.augment_spectrogram(mel)
+            
             if mel.ndim != 2:
                 if mel.ndim == 3 and mel.shape[-1] == 1:
                     mel = mel.squeeze(axis=-1)
                 else:
-                    print(f"Warning: Unexpected mel dimensions {mel.shape}. Skipping sample.")
                     continue
                     
             X_batch.append(mel)
@@ -339,7 +541,6 @@ class AudioSegmentDataGenerator(tf.keras.utils.Sequence):
             return np.array([]), np.array([])
             
         X_batch_np = np.array(X_batch)
-        # Add channel dimension for CNN input (batch, n_mels, fixed_time_steps, 1)
         X_batch_final = np.expand_dims(X_batch_np, -1)
 
         return X_batch_final, np.array(y_batch)
@@ -348,6 +549,38 @@ class AudioSegmentDataGenerator(tf.keras.utils.Sequence):
         self.indexes = np.arange(len(self.segments_data))
         if self.shuffle:
             np.random.shuffle(self.indexes)
+            
+def optimize_final_thresholds(model, validation_generator, mlb_classes):
+    predictions = model.predict(validation_generator, verbose=1)
+    
+    true_labels = []
+    for i in range(len(validation_generator)):
+        _, labels = validation_generator[i]
+        true_labels.extend(labels)
+    true_labels = np.array(true_labels)
+    
+    optimal_thresholds = {}
+    
+    for class_idx, class_name in enumerate(mlb_classes):
+        best_threshold = 0.5
+        best_f1 = 0.0
+        
+        # Try different thresholds
+        thresholds = np.arange(0.1, 0.9, 0.02)
+        for threshold in thresholds:
+            pred_binary = (predictions[:, class_idx] > threshold).astype(int)
+            f1 = f1_score(true_labels[:, class_idx], pred_binary, zero_division=0)
+            
+            if f1 > best_f1:
+                best_f1 = f1
+                best_threshold = threshold
+        
+        optimal_thresholds[class_name] = {
+            'threshold': best_threshold,
+            'f1_score': best_f1
+        }
+    
+    return optimal_thresholds
 
 # --- Custom History and Plotting Callback ---
 class TrainingLogger(tf.keras.callbacks.Callback):
@@ -456,8 +689,8 @@ if __name__ == "__main__":
     SR = 16000
     N_MELS = 128
     HOP_LENGTH = 512
-    WINDOW_DURATION = 0.5
-    WINDOW_STEP = 0.25
+    WINDOW_DURATION = 1.0
+    WINDOW_STEP = 0.5
     VALID_RTTM_LABELS = ['OHS', 'CDS', 'KCHI']
 
     # Create a unique run directory
@@ -466,6 +699,10 @@ if __name__ == "__main__":
     os.makedirs(RUN_DIR, exist_ok=True)
     print(f"Training run output directory: {RUN_DIR}")
 
+    # Save a copy of the current train script to the output directory
+    current_script_path = os.path.abspath(__file__)
+    shutil.copy(current_script_path, os.path.join(RUN_DIR, 'train_audio_classifier_snapshot.py'))
+    
     # Parse RTTM files
     print("--- Processing Training Data ---")
     train_segments, train_unique_labels = parse_rttm_for_multi_label(
@@ -513,34 +750,7 @@ if __name__ == "__main__":
     model = build_model_multi_label(n_mels=N_MELS, fixed_time_steps=FIXED_TIME_STEPS, num_classes=num_classes)
     model.summary()
 
-    # Calculate class weights
-    total_training_windows = len(train_segments)
-    class_weights_for_keras = {}
-    
-    if total_training_windows == 0:
-        print("Warning: No training segments available. Class weights set to 1.0.")
-        for i in range(num_classes):
-            class_weights_for_keras[i] = 1.0
-    else:
-        class_counts_for_weights = {label: 0 for label in mlb.classes_}
-        for seg in train_segments:
-            for label in seg['labels']:
-                if label in class_counts_for_weights:
-                    class_counts_for_weights[label] += 1
-        
-        for i, class_name in enumerate(mlb.classes_):
-            count = class_counts_for_weights.get(class_name, 0)
-            if count > 0:
-                class_weights_for_keras[i] = total_training_windows / (num_classes * count)
-            else:
-                # If a class has no samples in training, assign a default weight (e.g., 1.0)
-                # This prevents division by zero and ensures it's not completely ignored.
-                class_weights_for_keras[i] = 1.0 
-        
-        # Optional: Normalize weights so their sum is num_classes (or average is 1)
-        # This can sometimes help keep the loss scale consistent.
-        # avg_weight = sum(class_weights_for_keras.values()) / len(class_weights_for_keras)
-        # class_weights_for_keras = {k: v / avg_weight for k, v in class_weights_for_keras.items()}
+    class_weights_for_keras = calculate_balanced_class_weights(train_segments, mlb)
 
     print(f"\nClass distribution in training data:")
     for i, class_name in enumerate(mlb.classes_):
@@ -557,48 +767,24 @@ if __name__ == "__main__":
     if test_segments:
         print(f"  Test: {len(test_segments)} segments")
 
-    train_generator = AudioSegmentDataGenerator(
-        train_segments, mlb, N_MELS, HOP_LENGTH, SR, WINDOW_DURATION, FIXED_TIME_STEPS, 
-        batch_size=32, shuffle=True
+    train_generator = EnhancedAudioSegmentDataGenerator(
+    train_segments, mlb, N_MELS, HOP_LENGTH, SR, WINDOW_DURATION, FIXED_TIME_STEPS, 
+    batch_size=32, shuffle=True, augment=True  # Enable augmentation
     )
-    val_generator = AudioSegmentDataGenerator(
+    val_generator = EnhancedAudioSegmentDataGenerator(
         val_segments, mlb, N_MELS, HOP_LENGTH, SR, WINDOW_DURATION, FIXED_TIME_STEPS, 
-        batch_size=32, shuffle=False
+        batch_size=32, shuffle=False, augment=False  # No augmentation for validation
     )
     
     test_generator = None
     if test_segments:
-        test_generator = AudioSegmentDataGenerator(
+        test_generator = EnhancedAudioSegmentDataGenerator(
             test_segments, mlb, N_MELS, HOP_LENGTH, SR, WINDOW_DURATION, FIXED_TIME_STEPS, 
-            batch_size=32, shuffle=False
+            batch_size=32, shuffle=False, augment=False  # No augmentation for test
         )
+        print(f"Test generator created with {len(test_generator)} batches.")
 
-    # Training callbacks
-    # Custom logger for CSV and plotting
-    training_logger_callback = TrainingLogger(log_dir=RUN_DIR, mlb_classes=mlb.classes_)
-
-    # Early stopping based on validation macro F1 score
-    early_stopping = EarlyStopping(
-        monitor='val_macro_f1', patience=15, mode='max', restore_best_weights=True,
-        verbose=1
-    )
-    
-    # Reduce learning rate on plateau based on validation macro F1 score
-    reduce_lr = ReduceLROnPlateau(
-        monitor='val_macro_f1', factor=0.2, patience=7, min_lr=0.00001, mode='max',
-        verbose=1
-    )
-
-    # Model checkpoint to save the best model during training
-    # Saving based on 'val_macro_f1'
-    model_checkpoint_path = os.path.join(RUN_DIR, 'best_model.h5')
-    model_checkpoint = ModelCheckpoint(
-        filepath=model_checkpoint_path,
-        monitor='val_macro_f1',
-        mode='max',
-        save_best_only=True,
-        verbose=1
-    )
+    callbacks = train_model()
 
     print("\nStarting training...")
     if len(train_generator) == 0 or len(val_generator) == 0:
@@ -610,8 +796,8 @@ if __name__ == "__main__":
     history = model.fit(
         train_generator,
         validation_data=val_generator,
-        epochs=10,
-        callbacks=[early_stopping, reduce_lr, model_checkpoint, training_logger_callback],
+        epochs=200,
+        callbacks=callbacks,
         class_weight=class_weights_for_keras,
         verbose=1
     )
