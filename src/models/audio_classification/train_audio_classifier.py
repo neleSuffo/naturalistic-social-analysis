@@ -709,7 +709,7 @@ if __name__ == "__main__":
     SR = 16000
     N_MELS = 128
     HOP_LENGTH = 512
-    WINDOW_DURATION = 2.0
+    WINDOW_DURATION = 3.0
     WINDOW_STEP = 1.0
     VALID_RTTM_LABELS = ['OHS', 'CDS', 'KCHI']
 
@@ -721,9 +721,14 @@ if __name__ == "__main__":
     
     # Define segment files one level higher than RUN_DIR
     base_dir = os.path.dirname(RUN_DIR)  # /home/nele_pauline_suffo/outputs/audio_classification/runs
-    train_segments_file = os.path.join(base_dir, 'train_segments.jsonl')
-    val_segments_file = os.path.join(base_dir, 'val_segments.jsonl')
-    test_segments_file = os.path.join(base_dir, 'test_segments.jsonl')
+
+    # Convert window duration and window step to strings for dynamic segment file names
+    window_duration_str = str(WINDOW_DURATION).replace('.', 'p')  # 3.0 -> '3p0'
+    window_step_str = str(WINDOW_STEP).replace('.', 'p')          # 1.0 -> '1p0'
+    
+    train_segments_file = os.path.join(base_dir, f'train_segments_w{window_duration_str}_s{window_step_str}.jsonl')
+    val_segments_file = os.path.join(base_dir, f'val_segments_w{window_duration_str}_s{window_step_str}.jsonl')
+    test_segments_file = os.path.join(base_dir, f'test_segments_w{window_duration_str}_s{window_step_str}.jsonl')
 
     # Save a copy of the current train script to the output directory
     current_script_path = os.path.abspath(__file__)
