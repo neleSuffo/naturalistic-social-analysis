@@ -1,5 +1,10 @@
 import os
+
+os.environ["OMP_NUM_THREADS"] = "12"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+
 import datetime
+import json
 import csv
 import librosa
 import time
@@ -217,9 +222,10 @@ def extract_enhanced_features(audio_path, start_time, duration, sr=16000, n_mels
         return np.zeros((n_mels, fixed_time_steps), dtype=np.float32)
 
 # --- RTTM Parsing ---
-def parse_rttm_for_multi_label(rttm_path, audio_files_dir, valid_rttm_labels, window_duration, window_step, sr, n_mels, hop_length):
+def parse_rttm_for_multi_label_and_save(rttm_path, audio_files_dir, valid_rttm_labels, window_duration, window_step, sr, n_mels, hop_length, output_segments_path):
     """
-    Parses a single RTTM file and generates fixed-duration windows with multi-hot labels.
+    Parses a single RTTM file and generates fixed-duration windows with multi-hot labels,
+    saving segment metadata directly to a file to reduce RAM usage.
     """
     try:
         rttm_df = pd.read_csv(rttm_path, sep=' ', header=None, 
@@ -229,61 +235,63 @@ def parse_rttm_for_multi_label(rttm_path, audio_files_dir, valid_rttm_labels, wi
         print(f"Error reading RTTM file {rttm_path}: {e}")
         return [], []
 
-    all_window_data = []
     all_unique_labels = set()
-
     unique_file_ids = rttm_df['file_id'].unique()
 
     print(f"Processing {len(unique_file_ids)} audio files from RTTM: {os.path.basename(rttm_path)}...")
-    for file_id in tqdm(unique_file_ids):
-        audio_path = os.path.join(audio_files_dir, f"{file_id}.wav")
 
-        if not os.path.exists(audio_path):
-            print(f"Warning: Audio file not found for RTTM entry: {audio_path}. Skipping.")
-            continue
+    segment_counter = 0
+    with open(output_segments_path, 'w', newline='') as f_out:
+        for file_id in tqdm(unique_file_ids):
+            audio_path = os.path.join(audio_files_dir, f"{file_id}.wav")
 
-        file_segments = rttm_df[rttm_df['file_id'] == file_id].copy()
-        file_segments['end'] = file_segments['start'] + file_segments['duration']
+            if not os.path.exists(audio_path):
+                print(f"Warning: Audio file not found for RTTM entry: {audio_path}. Skipping.")
+                continue
 
-        try:
-            audio_duration = librosa.get_duration(path=audio_path)
-        except Exception as e:
-            print(f"Warning: Could not get duration for {audio_path}: {e}. Skipping file.")
-            continue
-            
-        max_time_rttm = file_segments['end'].max() if not file_segments.empty else 0
-        analysis_end_time = min(audio_duration, max_time_rttm)
+            file_segments = rttm_df[rttm_df['file_id'] == file_id].copy()
+            file_segments['end'] = file_segments['start'] + file_segments['duration']
 
-        current_time = 0.0
-        while current_time < analysis_end_time:
-            window_start = current_time
-            window_end = min(current_time + window_duration, audio_duration, analysis_end_time)
-
-            active_speaker_ids = set()
-            for _, row in file_segments.iterrows():
-                segment_start = row['start']
-                segment_end = row['end']
+            try:
+                audio_duration = librosa.get_duration(path=audio_path)
+            except Exception as e:
+                print(f"Warning: Could not get duration for {audio_path}: {e}. Skipping file.")
+                continue
                 
-                # Check for overlap
-                if max(window_start, segment_start) < min(window_end, segment_end):
-                    active_speaker_ids.add(row['speaker_id'])
+            max_time_rttm = file_segments['end'].max() if not file_segments.empty else 0
+            analysis_end_time = min(audio_duration, max_time_rttm)
 
-            # Filter active speaker_ids to only include valid RTTM labels
-            active_labels = {sid for sid in active_speaker_ids if sid in valid_rttm_labels}
-            all_unique_labels.update(active_labels)
+            current_time = 0.0
+            while current_time < analysis_end_time:
+                window_start = current_time
+                window_end = min(current_time + window_duration, audio_duration, analysis_end_time)
 
-            # Only add segments that have at least one valid mapped label AND actual duration
-            if active_labels and (window_end - window_start) > 0:
-                all_window_data.append({
-                    'audio_path': audio_path,
-                    'start': window_start,
-                    'duration': window_duration, 
-                    'labels': sorted(list(active_labels)) 
-                })
+                active_speaker_ids = set()
+                for _, row in file_segments.iterrows():
+                    segment_start = row['start']
+                    segment_end = row['end']
+                    
+                    if max(window_start, segment_start) < min(window_end, segment_end):
+                        active_speaker_ids.add(row['speaker_id'])
 
-            current_time += window_step
-            
-    return all_window_data, sorted(list(all_unique_labels))
+                active_labels = {sid for sid in active_speaker_ids if sid in valid_rttm_labels}
+                all_unique_labels.update(active_labels)
+
+                if active_labels and (window_end - window_start) > 0:
+                    segment_data = {
+                        'audio_path': audio_path,
+                        'start': window_start,
+                        'duration': window_duration, 
+                        'labels': sorted(list(active_labels)) 
+                    }
+                    # Save as JSON line (more flexible for lists)
+                    f_out.write(json.dumps(segment_data) + '\n')
+                    segment_counter += 1
+
+                current_time += window_step
+                
+    return segment_counter, sorted(list(all_unique_labels)) # Return count and labels
+
 
 # --- Deep Learning Model Architecture ---
 def build_model_multi_label(n_mels, fixed_time_steps, num_classes):
@@ -440,7 +448,7 @@ def train_model():
     callbacks = [
         EarlyStopping(
             monitor='val_macro_f1', 
-            patience=25,
+            patience=20,
             mode='max', 
             restore_best_weights=True,
             verbose=1
@@ -465,9 +473,9 @@ def train_model():
 
 # --- Data Generator ---
 class EnhancedAudioSegmentDataGenerator(tf.keras.utils.Sequence):
-    def __init__(self, segments_data, mlb, n_mels, hop_length, sr, window_duration, fixed_time_steps, 
+    def __init__(self, segments_file_path, mlb, n_mels, hop_length, sr, window_duration, fixed_time_steps, 
                  batch_size=32, shuffle=True, augment=False):
-        self.segments_data = segments_data
+        self.segments_file_path = segments_file_path
         self.mlb = mlb 
         self.n_mels = n_mels
         self.hop_length = hop_length
@@ -477,13 +485,19 @@ class EnhancedAudioSegmentDataGenerator(tf.keras.utils.Sequence):
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.augment = augment
+        
+        # Read all segment *metadata* once (should be much smaller than actual data)
+        self.segments_data = self._load_segments_metadata()
         self.on_epoch_end()
 
-    def __len__(self):
-        if len(self.segments_data) == 0:
-            return 0
-        return int(np.floor(len(self.segments_data) / self.batch_size))
-
+    def _load_segments_metadata(self):
+        # Reads lines from JSONL file
+        segments = []
+        with open(self.segments_file_path, 'r') as f:
+            for line in f:
+                segments.append(json.loads(line.strip()))
+        return segments
+    
     def augment_spectrogram(self, mel_spec):
         """Apply random augmentations to mel spectrogram"""
         if not self.augment:
@@ -689,8 +703,8 @@ if __name__ == "__main__":
     SR = 16000
     N_MELS = 128
     HOP_LENGTH = 512
-    WINDOW_DURATION = 1.0
-    WINDOW_STEP = 0.5
+    WINDOW_DURATION = 2.0
+    WINDOW_STEP = 1.0
     VALID_RTTM_LABELS = ['OHS', 'CDS', 'KCHI']
 
     # Create a unique run directory
@@ -698,38 +712,88 @@ if __name__ == "__main__":
     RUN_DIR = os.path.join('/home/nele_pauline_suffo/outputs/audio_classification/runs', timestamp)
     os.makedirs(RUN_DIR, exist_ok=True)
     print(f"Training run output directory: {RUN_DIR}")
+    
+    # Define segment files one level higher than RUN_DIR
+    base_dir = os.path.dirname(RUN_DIR)  # /home/nele_pauline_suffo/outputs/audio_classification/runs
+    train_segments_file = os.path.join(base_dir, 'train_segments.jsonl')
+    val_segments_file = os.path.join(base_dir, 'val_segments.jsonl')
+    test_segments_file = os.path.join(base_dir, 'test_segments.jsonl')
 
     # Save a copy of the current train script to the output directory
     current_script_path = os.path.abspath(__file__)
     shutil.copy(current_script_path, os.path.join(RUN_DIR, 'train_audio_classifier_snapshot.py'))
     
-    # Parse RTTM files
-    print("--- Processing Training Data ---")
-    train_segments, train_unique_labels = parse_rttm_for_multi_label(
-        TRAIN_RTTM_FILE, AUDIO_FILES_DIR, VALID_RTTM_LABELS,
-        WINDOW_DURATION, WINDOW_STEP, SR, N_MELS, HOP_LENGTH 
-    )
-    if not train_segments:
-        print("No training segments found. Exiting.")
-        exit()
-
-    print("\n--- Processing Validation Data ---")
-    val_segments, val_unique_labels = parse_rttm_for_multi_label(
-        VAL_RTTM_FILE, AUDIO_FILES_DIR, VALID_RTTM_LABELS,
-        WINDOW_DURATION, WINDOW_STEP, SR, N_MELS, HOP_LENGTH
-    )
-    if not val_segments:
-        print("No validation segments found. Exiting.")
-        exit()
-
-    print("\n--- Processing Test Data ---")
-    test_segments, test_unique_labels = [], []
-    if os.path.exists(TEST_RTTM_FILE):
-        test_segments, test_unique_labels = parse_rttm_for_multi_label(
-            TEST_RTTM_FILE, AUDIO_FILES_DIR, VALID_RTTM_LABELS,
-            WINDOW_DURATION, WINDOW_STEP, SR, N_MELS, HOP_LENGTH
+    # Check if segment files already exist
+    if (os.path.exists(train_segments_file) and 
+        os.path.exists(val_segments_file) and 
+        os.path.exists(test_segments_file)):
+        
+        print("Existing segment files found. Skipping RTTM extraction...")
+        
+        # Count segments in existing files
+        with open(train_segments_file, 'r') as f:
+            num_train_segments = sum(1 for line in f)
+        with open(val_segments_file, 'r') as f:
+            num_val_segments = sum(1 for line in f)
+        with open(test_segments_file, 'r') as f:
+            num_test_segments = sum(1 for line in f)
+            
+        # Load unique labels from existing files
+        train_unique_labels = set()
+        val_unique_labels = set()
+        test_unique_labels = set()
+        
+        with open(train_segments_file, 'r') as f:
+            for line in f:
+                data = json.loads(line.strip())
+                train_unique_labels.update(data['labels'])
+                
+        with open(val_segments_file, 'r') as f:
+            for line in f:
+                data = json.loads(line.strip())
+                val_unique_labels.update(data['labels'])
+                
+        with open(test_segments_file, 'r') as f:
+            for line in f:
+                data = json.loads(line.strip())
+                test_unique_labels.update(data['labels'])
+        
+        train_unique_labels = sorted(list(train_unique_labels))
+        val_unique_labels = sorted(list(val_unique_labels))
+        test_unique_labels = sorted(list(test_unique_labels))
+        
+        print(f"Loaded existing segment files:")
+        print(f"  Training: {num_train_segments} segments")
+        print(f"  Validation: {num_val_segments} segments")
+        print(f"  Test: {num_test_segments} segments")
+    
+    else:
+        print("Segment files not found. Extracting from RTTM files...")
+         
+        # Parse RTTM files
+        print("--- Processing Training Data ---")
+        num_train_segments, train_unique_labels = parse_rttm_for_multi_label_and_save(
+            TRAIN_RTTM_FILE, AUDIO_FILES_DIR, VALID_RTTM_LABELS,
+            WINDOW_DURATION, WINDOW_STEP, SR, N_MELS, HOP_LENGTH, train_segments_file
         )
 
+        print("\n--- Processing Validation Data ---")
+        num_val_segments, val_unique_labels = parse_rttm_for_multi_label_and_save(
+            VAL_RTTM_FILE, AUDIO_FILES_DIR, VALID_RTTM_LABELS,
+            WINDOW_DURATION, WINDOW_STEP, SR, N_MELS, HOP_LENGTH, val_segments_file
+        )
+
+        print("\n--- Processing Test Data ---")
+        num_test_segments, test_unique_labels = parse_rttm_for_multi_label_and_save(
+            TEST_RTTM_FILE, AUDIO_FILES_DIR, VALID_RTTM_LABELS,
+            WINDOW_DURATION, WINDOW_STEP, SR, N_MELS, HOP_LENGTH, test_segments_file
+        )
+
+    # Check if we have valid data
+    if num_train_segments == 0 or num_val_segments == 0 or num_test_segments == 0:
+        print("Error: Missing required segment data. Exiting.")
+        exit()
+        
     # Initialize MultiLabelBinarizer
     all_possible_target_labels_seen = sorted(list(set(train_unique_labels + val_unique_labels + test_unique_labels)))
     mlb = MultiLabelBinarizer(classes=all_possible_target_labels_seen)
