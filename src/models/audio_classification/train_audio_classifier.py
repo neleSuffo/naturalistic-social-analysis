@@ -1,7 +1,11 @@
+# add before running the script:
+# export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/nele_pauline_suffo/projects/leuphana-IPE/.venv/lib/python3.8/site-packages/nvidia/cublas/lib
 import os
 
 os.environ["OMP_NUM_THREADS"] = "12"
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 import datetime
 import json
@@ -9,8 +13,6 @@ import csv
 import librosa
 import time
 import shutil
-os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Suppress INFO and WARNING messages
 import tensorflow as tf
 import matplotlib.pyplot as plt
 import numpy as np
@@ -490,6 +492,10 @@ class EnhancedAudioSegmentDataGenerator(tf.keras.utils.Sequence):
         self.segments_data = self._load_segments_metadata()
         self.on_epoch_end()
 
+    def __len__(self):
+        """Return the number of batches per epoch"""
+        return (len(self.segments_data) + self.batch_size - 1) // self.batch_size
+    
     def _load_segments_metadata(self):
         # Reads lines from JSONL file
         segments = []
@@ -814,6 +820,31 @@ if __name__ == "__main__":
     model = build_model_multi_label(n_mels=N_MELS, fixed_time_steps=FIXED_TIME_STEPS, num_classes=num_classes)
     model.summary()
 
+    # Dictionary mapping split names to their file paths
+    segment_files = {
+        "train": train_segments_file,
+        "val": val_segments_file,
+        "test": test_segments_file
+    }
+
+    # Dictionary to store segments for each split
+    segments = {
+        "train": [],
+        "val": [],
+        "test": []
+    }
+
+    # Load segments from JSONL files
+    for split, file_path in segment_files.items():
+        with open(file_path, 'r') as f:
+            for line in f:
+                segments[split].append(json.loads(line.strip()))
+
+    # Access each split like this:
+    train_segments = segments["train"]
+    val_segments = segments["val"]
+    test_segments = segments["test"]
+    
     class_weights_for_keras = calculate_balanced_class_weights(train_segments, mlb)
 
     print(f"\nClass distribution in training data:")
@@ -832,21 +863,21 @@ if __name__ == "__main__":
         print(f"  Test: {len(test_segments)} segments")
 
     train_generator = EnhancedAudioSegmentDataGenerator(
-    train_segments, mlb, N_MELS, HOP_LENGTH, SR, WINDOW_DURATION, FIXED_TIME_STEPS, 
-    batch_size=32, shuffle=True, augment=True  # Enable augmentation
+        train_segments_file, mlb, N_MELS, HOP_LENGTH, SR, WINDOW_DURATION, FIXED_TIME_STEPS, 
+        batch_size=32, shuffle=True, augment=True  # Enable augmentation
     )
     val_generator = EnhancedAudioSegmentDataGenerator(
-        val_segments, mlb, N_MELS, HOP_LENGTH, SR, WINDOW_DURATION, FIXED_TIME_STEPS, 
+        val_segments_file, mlb, N_MELS, HOP_LENGTH, SR, WINDOW_DURATION, FIXED_TIME_STEPS, 
         batch_size=32, shuffle=False, augment=False  # No augmentation for validation
     )
     
     test_generator = None
     if test_segments:
         test_generator = EnhancedAudioSegmentDataGenerator(
-            test_segments, mlb, N_MELS, HOP_LENGTH, SR, WINDOW_DURATION, FIXED_TIME_STEPS, 
+            test_segments_file, mlb, N_MELS, HOP_LENGTH, SR, WINDOW_DURATION, FIXED_TIME_STEPS, 
             batch_size=32, shuffle=False, augment=False  # No augmentation for test
         )
-        print(f"Test generator created with {len(test_generator)} batches.")
+        print(f"Test generator created successfully.")
 
     callbacks = train_model()
 
