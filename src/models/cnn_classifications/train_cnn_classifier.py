@@ -92,8 +92,8 @@ class Config:
     NUM_LABELS = len(LABELS)
 
     DATA_ROOT = "/home/nele_pauline_suffo/ProcessedData/quantex_videos_processed"
-    TRAIN_ANNOTATIONS_FILE = "/home/nele_pauline_suffo/ProcessedData/cnn_input/train_annotations.csv"
-    VAL_ANNOTATIONS_FILE = "/home/nele_pauline_suffo/ProcessedData/cnn_input/val_annotations.csv"
+    TRAIN_ANNOTATIONS_FILE = "/home/nele_pauline_suffo/ProcessedData/cnn_input/train_annotations_balanced.csv"
+    VAL_ANNOTATIONS_FILE = "/home/nele_pauline_suffo/ProcessedData/cnn_input/val_annotations_balanced.csv"
     TEST_ANNOTATIONS_FILE = "/home/nele_pauline_suffo/ProcessedData/cnn_input/test_annotations.csv"
     
     # Early Stopping Parameters
