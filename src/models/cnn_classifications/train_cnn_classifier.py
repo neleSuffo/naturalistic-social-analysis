@@ -39,21 +39,26 @@ if torch.cuda.is_available():
 # --- 1. Configuration and Hyperparameters ---
 class Config:
     IMAGE_SIZE = 224
-    BATCH_SIZE = 4  # Further reduced from 8 to 4 for extreme memory savings
+    BATCH_SIZE = 8  # Increased from 4 to 8 for higher GPU utilization
     NUM_EPOCHS = 20
     LEARNING_RATE = 0.001
     DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
     # Memory optimization settings
-    NUM_WORKERS = 0  # Set to 0 to avoid multiprocessing memory overhead
-    PIN_MEMORY = False  # Disable to save memory
-    GRADIENT_ACCUMULATION_STEPS = 8  # Increased to simulate larger effective batch size
+    NUM_WORKERS = 2  # Increased from 0 to use some CPU threads for data loading
+    PIN_MEMORY = True  # Enable for faster GPU transfers
+    GRADIENT_ACCUMULATION_STEPS = 4  # Reduced from 8 to 4 since we increased batch size
     
     # Enable mixed precision training
     USE_MIXED_PRECISION = True
     
+    # GPU utilization settings
+    USE_GRADIENT_CHECKPOINTING = True  # Save memory to allow larger batches
+    PREFETCH_FACTOR = 2  # Number of batches to prefetch
+    PERSISTENT_WORKERS = True  # Keep data loading workers alive between epochs
+    
     # Memory clearing frequency
-    MEMORY_CLEAR_FREQUENCY = 10  # Clear cache every N batches
+    MEMORY_CLEAR_FREQUENCY = 20  # Reduced frequency to allow more GPU utilization
     
     # Dataset validation
     VALIDATE_IMAGES = True  # Whether to check if all images exist during dataset creation
@@ -239,11 +244,14 @@ class MultiLabelClassifier(nn.Module):
         # Global Average Pooling to flatten spatial features for the dense layers
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
 
-        # Smaller shared feature extractor to reduce memory
+        # Shared feature extractor with slightly more capacity
         self.shared_features = nn.Sequential(
-            nn.Linear(self.num_features, 256),  # Reduced from 512 to 256
+            nn.Linear(self.num_features, 512),  # Increased from 256 to 512 for more GPU utilization
             nn.ReLU(),
-            nn.Dropout(0.5)
+            nn.Dropout(0.5),
+            nn.Linear(512, 256),  # Added an extra layer
+            nn.ReLU(),
+            nn.Dropout(0.3)
         )
 
         # Simpler multi-head classifier with shared features
@@ -252,8 +260,13 @@ class MultiLabelClassifier(nn.Module):
             self.classification_heads[label_name] = nn.Linear(256, 1)  # Remove sigmoid - will use BCEWithLogitsLoss
 
     def forward(self, x):
-        # Enable gradient checkpointing to save memory during training
-        features = self.feature_extractor(x)
+        # Use gradient checkpointing to save memory while allowing larger batches
+        if self.training:
+            # Enable gradient checkpointing for the feature extractor during training
+            features = torch.utils.checkpoint.checkpoint(self.feature_extractor, x)
+        else:
+            features = self.feature_extractor(x)
+            
         features = self.avgpool(features)
         features = torch.flatten(features, 1)
         
@@ -432,8 +445,8 @@ def evaluate_model(model, dataloader, criterion):
 
             total_loss += loss.item()
             
-            # More frequent memory clearing during evaluation
-            if batch_idx % cfg.MEMORY_CLEAR_FREQUENCY == 0:
+            # Less frequent memory clearing during evaluation to improve GPU utilization
+            if batch_idx % (cfg.MEMORY_CLEAR_FREQUENCY * 2) == 0:
                 torch.cuda.empty_cache()
                 gc.collect()
                 
@@ -546,13 +559,19 @@ if __name__ == "__main__":
 
     train_loader = DataLoader(train_dataset, batch_size=cfg.BATCH_SIZE, shuffle=True, 
                              num_workers=cfg.NUM_WORKERS, pin_memory=cfg.PIN_MEMORY, 
-                             drop_last=True, collate_fn=safe_collate_fn)  # Drop last incomplete batch to maintain consistent memory usage
+                             drop_last=True, collate_fn=safe_collate_fn,
+                             prefetch_factor=cfg.PREFETCH_FACTOR if cfg.NUM_WORKERS > 0 else None,
+                             persistent_workers=cfg.PERSISTENT_WORKERS if cfg.NUM_WORKERS > 0 else False)
     val_loader = DataLoader(val_dataset, batch_size=cfg.BATCH_SIZE, shuffle=False, 
                            num_workers=cfg.NUM_WORKERS, pin_memory=cfg.PIN_MEMORY,
-                           drop_last=False, collate_fn=safe_collate_fn)
+                           drop_last=False, collate_fn=safe_collate_fn,
+                           prefetch_factor=cfg.PREFETCH_FACTOR if cfg.NUM_WORKERS > 0 else None,
+                           persistent_workers=cfg.PERSISTENT_WORKERS if cfg.NUM_WORKERS > 0 else False)
     test_loader = DataLoader(test_dataset, batch_size=cfg.BATCH_SIZE, shuffle=False, 
                             num_workers=cfg.NUM_WORKERS, pin_memory=cfg.PIN_MEMORY,
-                            drop_last=False, collate_fn=safe_collate_fn)
+                            drop_last=False, collate_fn=safe_collate_fn,
+                            prefetch_factor=cfg.PREFETCH_FACTOR if cfg.NUM_WORKERS > 0 else None,
+                            persistent_workers=cfg.PERSISTENT_WORKERS if cfg.NUM_WORKERS > 0 else False)
 
     print(f"Number of training samples: {len(train_dataset)}")
     print(f"Number of validation samples: {len(val_dataset)}")
