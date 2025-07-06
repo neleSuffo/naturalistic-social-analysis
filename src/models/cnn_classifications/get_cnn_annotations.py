@@ -1,4 +1,5 @@
 import sqlite3
+import os
 import pandas as pd
 import re
 import random
@@ -301,8 +302,8 @@ def augment_with_random_frames(csv_path, output_path):
             n_annotated = len(annotated_frame_numbers)
             logging.debug(f"Number of annotated frames: {n_annotated}")
 
-            # Sample the same number of random frames (if enough available)
-            n_sample = min(n_annotated, len(valid_frames))
+            # Sample half of the annotated frames, or all if less than 10
+            n_sample = int((min(n_annotated, len(valid_frames))) / 2)
             if n_sample == 0:
                 logging.warning(f"No unannotated frames to sample for video '{video_filename}'")
                 continue
@@ -726,6 +727,44 @@ def create_stratified_splits_by_child(csv_path, output_dir, test_size=0.1, val_s
         
         logging.info("✓ Final validation passed: All frames in all splits are multiples of 30")
         
+        # Calculate class distribution statistics for each split
+        def calculate_split_class_stats(split_df, split_name):
+            """Calculate class distribution statistics for a split."""
+            stats = {}
+            total_samples = len(split_df)
+            
+            for col in label_columns:
+                positive_count = split_df[col].sum()
+                negative_count = total_samples - positive_count
+                positive_ratio = positive_count / total_samples if total_samples > 0 else 0
+                negative_ratio = negative_count / total_samples if total_samples > 0 else 0
+                
+                stats[col] = {
+                    'positive_count': int(positive_count),
+                    'negative_count': int(negative_count),
+                    'total_count': int(total_samples),
+                    'positive_ratio': float(positive_ratio),
+                    'negative_ratio': float(negative_ratio),
+                    'positive_percentage': float(positive_ratio * 100),
+                    'negative_percentage': float(negative_ratio * 100)
+                }
+            
+            return stats
+        
+        # Calculate statistics for each split
+        train_class_stats = calculate_split_class_stats(train_df, "Train")
+        val_class_stats = calculate_split_class_stats(val_df, "Val")
+        test_class_stats = calculate_split_class_stats(test_df, "Test")
+        
+        # Log the class distribution statistics
+        logging.info("\n=== Detailed Class Distribution Statistics ===")
+        for split_name, split_stats in [('Train', train_class_stats), ('Val', val_class_stats), ('Test', test_class_stats)]:
+            logging.info(f"\n{split_name} split class distribution:")
+            for col, stats in split_stats.items():
+                logging.info(f"  {col}:")
+                logging.info(f"    Positive: {stats['positive_count']}/{stats['total_count']} ({stats['positive_percentage']:.1f}%)")
+                logging.info(f"    Negative: {stats['negative_count']}/{stats['total_count']} ({stats['negative_percentage']:.1f}%)")
+        
         # Save child assignment info for reference
         child_assignment = {
             'train': train_children,
@@ -736,7 +775,21 @@ def create_stratified_splits_by_child(csv_path, output_dir, test_size=0.1, val_s
             'test_frames': int(len(test_df)),
             'train_percentage': float(train_pct),
             'val_percentage': float(val_pct),
-            'test_percentage': float(test_pct)
+            'test_percentage': float(test_pct),
+            'class_distribution': {
+                'train': train_class_stats,
+                'val': val_class_stats,
+                'test': test_class_stats
+            },
+            'labels': label_columns,
+            'split_creation_info': {
+                'test_size': test_size,
+                'val_size': val_size,
+                'random_state': random_state,
+                'total_children': len(unique_children),
+                'total_frames_processed': total_frames,
+                'frames_filtered_for_multiple_30': removed_count
+            }
         }
         
         import json
@@ -750,6 +803,164 @@ def create_stratified_splits_by_child(csv_path, output_dir, test_size=0.1, val_s
     except Exception as e:
         logging.error(f"Error creating stratified splits: {str(e)}")
         raise
+
+def balance_dataset_classes(df, split_name, target_ratio_range=(0.2, 0.8), random_state=42):
+    """
+    Balance classes in a dataset by removing samples to achieve target positive/negative ratios.
+    Ensures minimum representation of 20% for minority class (80/20 split).
+    
+    Parameters
+    ----------
+    df : pd.DataFrame
+        The dataset to balance
+    split_name : str
+        Name of the split (for logging)
+    target_ratio_range : tuple
+        Target range for positive class ratio (min, max) - default (0.2, 0.8)
+    random_state : int
+        Random seed for reproducibility
+        
+    Returns
+    -------
+    pd.DataFrame
+        Balanced dataset
+    """
+    logging.info(f"Balancing {split_name} dataset classes to ensure 20/80 to 80/20 ratios...")
+    
+    np.random.seed(random_state)
+    
+    label_columns = ['adult_person_present', 'child_person_present', 'adult_face_present', 
+                    'child_face_present', 'object_interaction']
+    
+    # Start with a copy of the original dataframe
+    balanced_df = df.copy()
+    
+    # Log original class distribution
+    logging.info(f"Original {split_name} class distribution:")
+    for col in label_columns:
+        positive = balanced_df[col].sum()
+        total = len(balanced_df)
+        ratio = positive / total if total > 0 else 0
+        logging.info(f"  {col}: {positive}/{total} ({ratio:.3f})")
+    
+    # Track indices to remove across all classes to avoid conflicts
+    indices_to_remove = set()
+    
+    # Process each class
+    for col in label_columns:
+        positive_count = balanced_df[col].sum()
+        total_count = len(balanced_df)
+        negative_count = total_count - positive_count
+        current_positive_ratio = positive_count / total_count if total_count > 0 else 0
+        
+        logging.info(f"\nProcessing {col}:")
+        logging.info(f"  Current: {positive_count} positive, {negative_count} negative (ratio: {current_positive_ratio:.3f})")
+        
+        # Check if we need to balance this class
+        if target_ratio_range[0] <= current_positive_ratio <= target_ratio_range[1]:
+            logging.info(f"  {col} already balanced, skipping")
+            continue
+            
+        # For very extreme ratios, be more aggressive and aim for the middle of the range
+        if current_positive_ratio < 0.1 or current_positive_ratio > 0.9:
+            # Use more aggressive target (closer to 50/50) for very extreme cases
+            if current_positive_ratio < target_ratio_range[0]:
+                target_positive_ratio = (target_ratio_range[0] + target_ratio_range[1]) / 2  # Use middle of range
+            else:
+                target_positive_ratio = (target_ratio_range[0] + target_ratio_range[1]) / 2  # Use middle of range
+            logging.info(f"  Very extreme ratio detected, using aggressive target: {target_positive_ratio:.3f}")
+        else:
+            # Use boundary values for less extreme cases
+            if current_positive_ratio > target_ratio_range[1]:
+                target_positive_ratio = target_ratio_range[1]
+            else:
+                target_positive_ratio = target_ratio_range[0]
+        
+        # Calculate how many samples we need to remove to achieve the target ratio
+        if current_positive_ratio > target_positive_ratio:
+            # Too many positives, remove positive samples
+            target_positive_count = int(negative_count * target_positive_ratio / (1 - target_positive_ratio))
+            samples_to_remove = positive_count - target_positive_count
+            
+            if samples_to_remove > 0:
+                # Get indices of positive samples that haven't been marked for removal
+                positive_indices = [idx for idx in balanced_df[balanced_df[col] == 1].index.tolist() 
+                                  if idx not in indices_to_remove]
+                
+                # Randomly select samples to remove
+                remove_count = min(samples_to_remove, len(positive_indices))
+                if remove_count > 0:
+                    remove_indices = np.random.choice(positive_indices, size=remove_count, replace=False)
+                    indices_to_remove.update(remove_indices)
+                    logging.info(f"  Marked {len(remove_indices)} positive samples for removal")
+                    
+                    # Calculate new ratio after removal
+                    new_positive_count = positive_count - len(remove_indices)
+                    new_total_count = total_count - len(indices_to_remove & set(balanced_df.index))
+                    new_ratio = new_positive_count / new_total_count if new_total_count > 0 else 0
+                    logging.info(f"  Expected new ratio: {new_ratio:.3f}")
+        
+        elif current_positive_ratio < target_positive_ratio:
+            # Too many negatives, remove negative samples
+            target_negative_count = int(positive_count * (1 - target_positive_ratio) / target_positive_ratio)
+            samples_to_remove = negative_count - target_negative_count
+            
+            if samples_to_remove > 0:
+                # Get indices of negative samples that haven't been marked for removal
+                negative_indices = [idx for idx in balanced_df[balanced_df[col] == 0].index.tolist() 
+                                  if idx not in indices_to_remove]
+                
+                # Randomly select samples to remove
+                remove_count = min(samples_to_remove, len(negative_indices))
+                if remove_count > 0:
+                    remove_indices = np.random.choice(negative_indices, size=remove_count, replace=False)
+                    indices_to_remove.update(remove_indices)
+                    logging.info(f"  Marked {len(remove_indices)} negative samples for removal")
+                    
+                    # Calculate new ratio after removal
+                    new_negative_count = negative_count - len(remove_indices)
+                    new_total_count = total_count - len(indices_to_remove & set(balanced_df.index))
+                    new_positive_ratio = positive_count / new_total_count if new_total_count > 0 else 0
+                    logging.info(f"  Expected new ratio: {new_positive_ratio:.3f}")
+    
+    # Remove all marked indices at once
+    if indices_to_remove:
+        balanced_df = balanced_df.drop(index=list(indices_to_remove))
+        balanced_df = balanced_df.reset_index(drop=True)
+        logging.info(f"\nRemoved {len(indices_to_remove)} total samples across all classes")
+    
+    # Log final class distribution and verify ratios
+    logging.info(f"\nFinal {split_name} class distribution after balancing:")
+    all_balanced = True
+    for col in label_columns:
+        positive = balanced_df[col].sum()
+        total = len(balanced_df)
+        ratio = positive / total if total > 0 else 0
+        
+        # Check if ratio is within acceptable range
+        is_balanced = target_ratio_range[0] <= ratio <= target_ratio_range[1]
+        status = "✓" if is_balanced else "✗"
+        
+        if not is_balanced:
+            all_balanced = False
+            
+        logging.info(f"  {col}: {positive}/{total} ({ratio:.3f}) {status}")
+        
+        # Warning for extreme ratios
+        if ratio < 0.15 or ratio > 0.85:
+            logging.warning(f"  {col} still has very extreme ratio ({ratio:.3f}) - might need more data")
+        elif ratio < 0.2 or ratio > 0.8:
+            logging.warning(f"  {col} has somewhat extreme ratio ({ratio:.3f}) but within acceptable range")
+    
+    if all_balanced:
+        logging.info(f"✓ All classes in {split_name} are now balanced within target range")
+    else:
+        logging.warning(f"✗ Some classes in {split_name} could not be balanced to target range")
+    
+    reduction_percentage = ((len(df) - len(balanced_df)) / len(df)) * 100
+    logging.info(f"{split_name} dataset size: {len(df)} -> {len(balanced_df)} (removed {len(df) - len(balanced_df)} samples, {reduction_percentage:.1f}% reduction)")
+    
+    return balanced_df
         
 if __name__ == "__main__":
     logging.info("=== Starting CNN annotations extraction ===")
@@ -789,9 +1000,9 @@ if __name__ == "__main__":
         # for cat_id, count in category_dist.items():
         #     logging.info(f"  Category {cat_id}: {count} annotations")
             
-        # randomly sample frames without detections
-        # logging.info("Step 5: Augmenting with random frames")
-        # augment_with_random_frames(MULTILABEL_OUTPUT_PATH, AUGMENTED_OUTPUT_PATH)
+        # Randomly sample frames without detections
+        logging.info("Step 5: Augmenting with random frames")
+        augment_with_random_frames(MULTILABEL_OUTPUT_PATH, AUGMENTED_OUTPUT_PATH)
         
         # Create stratified splits
         logging.info("Step 6: Creating stratified splits by child")
@@ -802,6 +1013,150 @@ if __name__ == "__main__":
             val_size=0.1,     # 10% val  
             random_state=42   # This should give ~80% train
         )
+        
+        # Balance train and validation sets
+        logging.info("Step 7: Balancing class distributions in train and validation sets")
+        
+        # Balance training set (target ratio: 20-80% to ensure at least 80/20 representation)
+        train_df_balanced = balance_dataset_classes(
+            train_df, 
+            "Train", 
+            target_ratio_range=(0.2, 0.8),  # Changed from (0.3, 0.7) to (0.2, 0.8)
+            random_state=42
+        )
+        
+        # Balance validation set (target ratio: 20-80% to ensure at least 80/20 representation)
+        val_df_balanced = balance_dataset_classes(
+            val_df, 
+            "Validation", 
+            target_ratio_range=(0.2, 0.8),  # Changed from (0.3, 0.7) to (0.2, 0.8)
+            random_state=43  # Different seed to avoid same pattern
+        )
+        
+        # Keep test set unbalanced for realistic evaluation
+        logging.info("Keeping test set unbalanced for realistic evaluation")
+        
+        # Save the balanced datasets
+        train_path_balanced = os.path.join(SPLITS_OUTPUT_DIR, 'train_annotations_balanced.csv')
+        val_path_balanced = os.path.join(SPLITS_OUTPUT_DIR, 'val_annotations_balanced.csv')
+        test_path_original = os.path.join(SPLITS_OUTPUT_DIR, 'test_annotations.csv')  # Keep original test set
+        
+        train_df_balanced.to_csv(train_path_balanced, index=False)
+        val_df_balanced.to_csv(val_path_balanced, index=False)
+        # test_df is already saved in the original location
+        
+        logging.info(f"Saved balanced datasets:")
+        logging.info(f"  Balanced Train: {train_path_balanced}")
+        logging.info(f"  Balanced Val: {val_path_balanced}")
+        logging.info(f"  Original Test: {test_path_original}")
+        
+        # Update child assignment with balanced statistics
+        def calculate_balanced_split_stats(split_df, split_name):
+            """Calculate updated statistics for balanced split."""
+            label_columns = ['adult_person_present', 'child_person_present', 'adult_face_present', 
+                            'child_face_present', 'object_interaction']
+            stats = {}
+            total_samples = len(split_df)
+            
+            for col in label_columns:
+                positive_count = split_df[col].sum()
+                negative_count = total_samples - positive_count
+                positive_ratio = positive_count / total_samples if total_samples > 0 else 0
+                negative_ratio = negative_count / total_samples if total_samples > 0 else 0
+                
+                stats[col] = {
+                    'positive_count': int(positive_count),
+                    'negative_count': int(negative_count),
+                    'total_count': int(total_samples),
+                    'positive_ratio': float(positive_ratio),
+                    'negative_ratio': float(negative_ratio),
+                    'positive_percentage': float(positive_ratio * 100),
+                    'negative_percentage': float(negative_ratio * 100)
+                }
+            
+            return stats
+        
+        # Calculate balanced statistics
+        train_balanced_stats = calculate_balanced_split_stats(train_df_balanced, "Train_Balanced")
+        val_balanced_stats = calculate_balanced_split_stats(val_df_balanced, "Val_Balanced")
+        
+        # Add balanced statistics to child assignment
+        child_assignment['balanced_datasets'] = {
+            'train_balanced_frames': len(train_df_balanced),
+            'val_balanced_frames': len(val_df_balanced),
+            'train_original_frames': len(train_df),
+            'val_original_frames': len(val_df),
+            'train_removed_frames': len(train_df) - len(train_df_balanced),
+            'val_removed_frames': len(val_df) - len(val_df_balanced),
+            'class_distribution_balanced': {
+                'train': train_balanced_stats,
+                'val': val_balanced_stats,
+                'test': child_assignment['class_distribution']['test']  # Keep original test stats
+            },
+            'balancing_info': {
+                'target_ratio_range': [0.2, 0.8],  # Updated to reflect new range
+                'train_random_state': 42,
+                'val_random_state': 43,
+                'test_kept_original': True,
+                'minimum_minority_class_ratio': 0.2,  # Updated to 20%
+                'note': 'Balanced to ensure at least 20% representation for minority class (80/20 split)'
+            }
+        }
+        
+        # Save updated child assignment
+        assignment_path = os.path.join(SPLITS_OUTPUT_DIR, 'child_split_assignment.json')
+        import json
+        with open(assignment_path, 'w') as f:
+            json.dump(child_assignment, f, indent=2)
+        logging.info(f"Updated child assignment saved to: {assignment_path}")
+        
+        # Log final summary
+        logging.info("\n=== Final Dataset Summary ===")
+        logging.info("Original datasets:")
+        logging.info(f"  Train: {len(train_df)} samples")
+        logging.info(f"  Val: {len(val_df)} samples")
+        logging.info(f"  Test: {len(test_df)} samples")
+        
+        logging.info("Balanced datasets:")
+        logging.info(f"  Train: {len(train_df_balanced)} samples (removed {len(train_df) - len(train_df_balanced)})")
+        logging.info(f"  Val: {len(val_df_balanced)} samples (removed {len(val_df) - len(val_df_balanced)})")
+        logging.info(f"  Test: {len(test_df)} samples (kept original)")
+        
+        total_original = len(train_df) + len(val_df) + len(test_df)
+        total_balanced = len(train_df_balanced) + len(val_df_balanced) + len(test_df)
+        
+        logging.info(f"Total samples: {total_original} -> {total_balanced} (removed {total_original - total_balanced})")
+        
+        # Log class balance comparison
+        label_columns = ['adult_person_present', 'child_person_present', 'adult_face_present', 
+                        'child_face_present', 'object_interaction']
+        
+        logging.info("\n=== Class Balance Comparison ===")
+        for col in label_columns:
+            logging.info(f"\n{col}:")
+            
+            # Original train
+            orig_train_pos = train_df[col].sum()
+            orig_train_total = len(train_df)
+            orig_train_ratio = orig_train_pos / orig_train_total if orig_train_total > 0 else 0
+            
+            # Balanced train
+            bal_train_pos = train_df_balanced[col].sum()
+            bal_train_total = len(train_df_balanced)
+            bal_train_ratio = bal_train_pos / bal_train_total if bal_train_total > 0 else 0
+            
+            # Original val
+            orig_val_pos = val_df[col].sum()
+            orig_val_total = len(val_df)
+            orig_val_ratio = orig_val_pos / orig_val_total if orig_val_total > 0 else 0
+            
+            # Balanced val
+            bal_val_pos = val_df_balanced[col].sum()
+            bal_val_total = len(val_df_balanced)
+            bal_val_ratio = bal_val_pos / bal_val_total if bal_val_total > 0 else 0
+            
+            logging.info(f"  Train: {orig_train_ratio:.3f} -> {bal_train_ratio:.3f}")
+            logging.info(f"  Val:   {orig_val_ratio:.3f} -> {bal_val_ratio:.3f}")
             
         logging.info("=== CNN annotations extraction completed successfully ===")
         
