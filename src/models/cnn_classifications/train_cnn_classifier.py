@@ -42,7 +42,7 @@ class Config:
     IMAGE_SIZE = 288  # Further increased from 256 to 288 for higher GPU memory usage
     BATCH_SIZE = 12  # Reduced from 16 to 12 to ensure stability
     NUM_EPOCHS = 20
-    LEARNING_RATE = 0.001
+    LEARNING_RATE = 0.0005  # Reduced from 0.001 to 0.0005 for more stable training
     DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
     # Memory optimization settings
@@ -278,10 +278,40 @@ class MultiLabelClassifier(nn.Module):
             nn.Dropout(0.2)
         )
 
-        # Simpler multi-head classifier with shared features
-        self.classification_heads = nn.ModuleDict()
+        # Initialize classification heads with better weights
         for i, label_name in enumerate(cfg.LABELS):
-            self.classification_heads[label_name] = nn.Linear(256, 1)  # Remove sigmoid - will use BCEWithLogitsLoss
+            head = nn.Linear(256, 1)
+            # Initialize bias to encourage more balanced predictions
+            # Start with a slight positive bias to avoid all-zero predictions
+            nn.init.constant_(head.bias, 0.1)  # Small positive bias
+            nn.init.xavier_uniform_(head.weight)  # Better weight initialization
+            self.classification_heads[label_name] = head
+            
+        # Apply custom weight initialization
+        self._initialize_weights()
+
+        # Initialize weights
+        self._initialize_weights()
+
+    def _initialize_weights(self):
+        """Initialize model weights to prevent dead neurons and all-zero predictions."""
+        for module in self.modules():
+            if isinstance(module, nn.Linear):
+                # Use Xavier initialization for linear layers
+                nn.init.xavier_uniform_(module.weight)
+                if module.bias is not None:
+                    # Small positive bias for classification heads to encourage initial predictions
+                    if hasattr(self, 'classification_heads') and module in self.classification_heads.values():
+                        nn.init.constant_(module.bias, 0.1)  # Small positive bias
+                    else:
+                        nn.init.constant_(module.bias, 0.0)
+            elif isinstance(module, nn.Conv2d):
+                nn.init.kaiming_normal_(module.weight, mode='fan_out', nonlinearity='relu')
+                if module.bias is not None:
+                    nn.init.constant_(module.bias, 0)
+            elif isinstance(module, (nn.BatchNorm2d, nn.GroupNorm)):
+                nn.init.constant_(module.weight, 1)
+                nn.init.constant_(module.bias, 0)
 
     def forward(self, x):
         # Use gradient checkpointing to save memory while allowing larger batches
@@ -305,7 +335,7 @@ class MultiLabelClassifier(nn.Module):
         return outputs
 
 # --- 4. Training Function ---
-def train_model(model, dataloader, optimizer, criterion, epoch, scaler=None, scheduler=None):
+def train_model(model, dataloader, optimizer, criteria, epoch, scaler=None, scheduler=None):
     model.train()
     total_loss = 0
     correct_predictions = {label: 0 for label in cfg.LABELS}
@@ -354,7 +384,7 @@ def train_model(model, dataloader, optimizer, criterion, epoch, scaler=None, sch
                 for i, label_name in enumerate(cfg.LABELS):
                     target_labels = labels_tensor[:, i]
                     prediction_output = outputs[label_name]
-                    label_loss = criterion(prediction_output, target_labels)
+                    label_loss = criteria[label_name](prediction_output, target_labels)
                     loss += label_loss
                     
                     # Debug: Print loss details for first batch of first epoch
@@ -375,7 +405,7 @@ def train_model(model, dataloader, optimizer, criterion, epoch, scaler=None, sch
             for i, label_name in enumerate(cfg.LABELS):
                 target_labels = labels_tensor[:, i]
                 prediction_output = outputs[label_name]
-                label_loss = criterion(prediction_output, target_labels)
+                label_loss = criteria[label_name](prediction_output, target_labels)
                 loss += label_loss
                 
                 # Debug: Print loss details for first batch of first epoch (non-mixed precision)
@@ -504,7 +534,7 @@ def train_model(model, dataloader, optimizer, criterion, epoch, scaler=None, sch
     return avg_loss
 
 # --- 5. Evaluation Function ---
-def evaluate_model(model, dataloader, criterion):
+def evaluate_model(model, dataloader, criteria, use_optimal_thresholds=False, optimal_thresholds=None):
     model.eval()
     total_loss = 0
     all_preds = {label: [] for label in cfg.LABELS}
@@ -537,7 +567,7 @@ def evaluate_model(model, dataloader, criterion):
                     for i, label_name in enumerate(cfg.LABELS):
                         target_labels = labels_tensor[:, i]
                         prediction_output = outputs[label_name]
-                        loss += criterion(prediction_output, target_labels)
+                        loss += criteria[label_name](prediction_output, target_labels)
             else:
                 outputs = model(images)
                 
@@ -545,7 +575,7 @@ def evaluate_model(model, dataloader, criterion):
                 for i, label_name in enumerate(cfg.LABELS):
                     target_labels = labels_tensor[:, i]
                     prediction_output = outputs[label_name]
-                    loss += criterion(prediction_output, target_labels)
+                    loss += criteria[label_name](prediction_output, target_labels)
             
             # Collect predictions and targets
             for i, label_name in enumerate(cfg.LABELS):
@@ -554,7 +584,14 @@ def evaluate_model(model, dataloader, criterion):
                 
                 # Apply sigmoid for evaluation since we removed it from the model
                 sigmoid_probs = torch.sigmoid(prediction_output)
-                preds = (sigmoid_probs > 0.5).float().cpu().numpy()
+                
+                # Use dynamic thresholds if provided, otherwise use 0.5
+                if use_optimal_thresholds and optimal_thresholds and label_name in optimal_thresholds:
+                    threshold = optimal_thresholds[label_name]
+                else:
+                    threshold = 0.5
+                
+                preds = (sigmoid_probs > threshold).float().cpu().numpy()
                 targets = target_labels.cpu().numpy()
                 probs = sigmoid_probs.cpu().numpy()
                 
@@ -665,7 +702,7 @@ def evaluate_model(model, dataloader, criterion):
     return avg_loss, micro_f1, macro_f1, per_label_metrics
 
 # --- Overfitting Test Function ---
-def test_overfitting_capability(model, train_loader, criterion, optimizer, scaler=None):
+def test_overfitting_capability(model, train_loader, criteria, optimizer, scaler=None):
     """
     Test if the model can overfit on a small batch to verify the training pipeline.
     This is a debugging function to ensure gradients are flowing properly.
@@ -703,7 +740,7 @@ def test_overfitting_capability(model, train_loader, criterion, optimizer, scale
                 for i, label_name in enumerate(cfg.LABELS):
                     target_labels = labels_tensor[:, i]
                     prediction_output = outputs[label_name]
-                    label_loss = criterion(prediction_output, target_labels)
+                    label_loss = criteria[label_name](prediction_output, target_labels)
                     loss += label_loss
             
             scaler.scale(loss).backward()
@@ -716,7 +753,7 @@ def test_overfitting_capability(model, train_loader, criterion, optimizer, scale
             for i, label_name in enumerate(cfg.LABELS):
                 target_labels = labels_tensor[:, i]
                 prediction_output = outputs[label_name]
-                label_loss = criterion(prediction_output, target_labels)
+                label_loss = criteria[label_name](prediction_output, target_labels)
                 loss += label_loss
             
             loss.backward()
@@ -971,6 +1008,15 @@ if __name__ == "__main__":
         print(f"GPU memory reserved before model creation: {torch.cuda.memory_reserved() / 1024**3:.2f} GB")
 
 
+    # --- Calculate Class Weights ---
+    print("\n--- Calculating Class Weights ---")
+    class_weights = calculate_class_weights(train_dataset.annotations, cfg.LABELS)
+    
+    # Convert class weights to tensors for loss function
+    class_weight_tensors = {}
+    for label in cfg.LABELS:
+        class_weight_tensors[label] = torch.tensor([class_weights[label]], dtype=torch.float32).to(cfg.DEVICE)
+
     # --- Model, Loss, Optimizer ---
     model = MultiLabelClassifier(
         num_labels=cfg.NUM_LABELS, 
@@ -993,7 +1039,12 @@ if __name__ == "__main__":
         print(f"GPU memory allocated after model creation: {torch.cuda.memory_allocated() / 1024**3:.2f} GB")
         print(f"GPU memory reserved after model creation: {torch.cuda.memory_reserved() / 1024**3:.2f} GB")
 
-    criterion = nn.BCEWithLogitsLoss()  # Changed from BCELoss to BCEWithLogitsLoss 
+    # Use class-weighted loss functions
+    criteria = {}
+    for label in cfg.LABELS:
+        criteria[label] = nn.BCEWithLogitsLoss(pos_weight=class_weight_tensors[label])
+    
+    print("Created class-weighted BCEWithLogitsLoss for each label") 
     optimizer = optim.AdamW(model.parameters(), lr=cfg.LEARNING_RATE, weight_decay=0.01)  # Changed to AdamW with weight decay
     
     # Calculate the number of training steps per epoch
@@ -1041,14 +1092,14 @@ if __name__ == "__main__":
         
         # Create a copy of the model for testing
         test_model = MultiLabelClassifier(
-            num_labels=len(cfg.LABELS), 
+            num_labels=cfg.LABELS, 
             backbone_name=cfg.BACKBONE_NAME, 
             pretrained=cfg.USE_PRETRAINED_BACKBONE
         )
         test_model.to(cfg.DEVICE)
         test_optimizer = optim.AdamW(test_model.parameters(), lr=cfg.LEARNING_RATE, weight_decay=0.01)
         
-        overfit_success = test_overfitting_capability(test_model, train_loader, criterion, test_optimizer, scaler)
+        overfit_success = test_overfitting_capability(test_model, train_loader, criteria, test_optimizer, scaler)
         
         if not overfit_success:
             print("WARNING: Model cannot overfit on small sample. Check the training pipeline!")
@@ -1086,9 +1137,9 @@ if __name__ == "__main__":
             initial_weights[name] = param.data.clone()
 
     for epoch in range(1, cfg.NUM_EPOCHS + 1):            
-        train_loss = train_model(model, train_loader, optimizer, criterion, epoch, scaler, scheduler)
+        train_loss = train_model(model, train_loader, optimizer, criteria, epoch, scaler, scheduler)
         # Unpack the new return value: per_label_metrics
-        val_loss, micro_f1, macro_f1, per_label_metrics = evaluate_model(model, val_loader, criterion)
+        val_loss, micro_f1, macro_f1, per_label_metrics = evaluate_model(model, val_loader, criteria)
         
         # Record training history
         training_history['train_loss'].append(train_loss)
@@ -1142,6 +1193,37 @@ if __name__ == "__main__":
            (cfg.MONITOR_MODE == 'min' and current_monitor_score < best_val_score):
             best_val_score = current_monitor_score
             best_epoch = epoch
+
+        # Calculate optimal thresholds after epoch 3 to allow model to start learning
+        optimal_thresholds = None
+        if epoch == 3:
+            print("\n--- Calculating Optimal Thresholds ---")
+            try:
+                optimal_thresholds = calculate_optimal_thresholds(model, val_loader, cfg.DEVICE, cfg.LABELS)
+                print("Optimal thresholds calculated successfully")
+            except Exception as e:
+                print(f"Error calculating optimal thresholds: {e}")
+                print("Continuing with default threshold 0.5")
+                optimal_thresholds = None
+        
+        # Use optimal thresholds for evaluation after epoch 3
+        use_optimal_thresholds = (epoch > 3 and optimal_thresholds is not None)
+        
+        # Re-evaluate with optimal thresholds if available
+        if use_optimal_thresholds:
+            print("Re-evaluating with optimal thresholds...")
+            val_loss_opt, micro_f1_opt, macro_f1_opt, per_label_metrics_opt = evaluate_model(
+                model, val_loader, criteria, use_optimal_thresholds=True, optimal_thresholds=optimal_thresholds)
+            print(f"  With optimal thresholds: Micro F1={micro_f1_opt:.4f}, Macro F1={macro_f1_opt:.4f}")
+            
+            # Use the better metrics for early stopping
+            if macro_f1_opt > macro_f1:
+                print("  Using optimal thresholds for this epoch's metrics")
+                val_loss, micro_f1, macro_f1, per_label_metrics = val_loss_opt, micro_f1_opt, macro_f1_opt, per_label_metrics_opt
+
+        # Monitor model health every few epochs
+        if epoch <= 5 or epoch % 5 == 0:  # First 5 epochs, then every 5 epochs
+            monitor_model_health(model, epoch, train_loader, cfg.DEVICE)
 
     # --- Final Model Restoration and Test Set Evaluation ---
     if early_stopping.best_model_state:
@@ -1213,7 +1295,7 @@ if __name__ == "__main__":
 
     print("\n--- Evaluating Model Performance on Test Set ---")
     # Unpack the new return value: test_per_label_metrics
-    test_loss, test_micro_f1, test_macro_f1, test_per_label_metrics = evaluate_model(model, test_loader, criterion)
+    test_loss, test_micro_f1, test_macro_f1, test_per_label_metrics = evaluate_model(model, test_loader, criteria)
 
     print(f"\n--- Final Test Set Results ---")
     print(f"Test Loss: {test_loss:.4f}")
@@ -1334,3 +1416,168 @@ if __name__ == "__main__":
     # Close the logger
     if 'logger' in locals():
         logger.close()
+
+# --- Class Weight Calculation Function ---
+def calculate_class_weights(annotations_df, labels):
+    """
+    Calculate class weights to handle class imbalance.
+    Returns a dictionary with weights for each label.
+    """
+    class_weights = {}
+    
+    for label in labels:
+        positive_count = annotations_df[label].sum()
+        negative_count = len(annotations_df) - positive_count
+        
+        if positive_count == 0:
+            # If no positive examples, set weight to 1
+            weight = 1.0
+            print(f"Warning: No positive examples for {label}, setting weight to 1.0")
+        else:
+            # Calculate weight as ratio of negative to positive examples
+            weight = negative_count / positive_count
+            # Cap the weight to prevent extreme values
+            weight = min(weight, 10.0)  # Max weight of 10
+        
+        class_weights[label] = weight
+        print(f"Class weight for {label}: {weight:.2f} (pos: {positive_count}, neg: {negative_count})")
+    
+    return class_weights
+
+# --- Optimal Threshold Calculation Function ---
+def calculate_optimal_thresholds(model, val_loader, device, labels):
+    """
+    Calculate optimal thresholds for each class based on validation data.
+    Uses F1-score optimization to find the best threshold for each class.
+    """
+    model.eval()
+    
+    # Collect all predictions and targets
+    all_probs = {label: [] for label in labels}
+    all_targets = {label: [] for label in labels}
+    
+    with torch.no_grad():
+        for batch in val_loader:
+            if batch is None:
+                continue
+                
+            images, labels_tensor = batch
+            images = images.to(device)
+            labels_tensor = labels_tensor.to(device)
+            
+            outputs = model(images)
+            
+            for i, label_name in enumerate(labels):
+                target_labels = labels_tensor[:, i]
+                prediction_output = outputs[label_name]
+                
+                # Apply sigmoid to get probabilities
+                sigmoid_probs = torch.sigmoid(prediction_output)
+                
+                all_probs[label_name].extend(sigmoid_probs.cpu().numpy().flatten())
+                all_targets[label_name].extend(target_labels.cpu().numpy().flatten())
+    
+    # Calculate optimal thresholds
+    optimal_thresholds = {}
+    
+    for label_name in labels:
+        probs = np.array(all_probs[label_name])
+        targets = np.array(all_targets[label_name])
+        
+        if len(np.unique(targets)) < 2:
+            # If only one class present, use default threshold
+            optimal_thresholds[label_name] = 0.5
+            print(f"Warning: Only one class present for {label_name}, using default threshold 0.5")
+            continue
+        
+        # Try different thresholds and find the one with best F1
+        thresholds = np.arange(0.1, 0.9, 0.05)
+        best_f1 = 0
+        best_threshold = 0.5
+        
+        for threshold in thresholds:
+            preds = (probs > threshold).astype(int)
+            f1 = f1_score(targets, preds, zero_division=0)
+            
+            if f1 > best_f1:
+                best_f1 = f1
+                best_threshold = threshold
+        
+        optimal_thresholds[label_name] = best_threshold
+        print(f"Optimal threshold for {label_name}: {best_threshold:.2f} (F1: {best_f1:.3f})")
+    
+    return optimal_thresholds
+
+# --- Model Health Monitoring Function ---
+def monitor_model_health(model, epoch, train_loader, device):
+    """
+    Monitor model health by checking for dead neurons, gradient flow, and prediction diversity.
+    """
+    print(f"\n--- Model Health Check (Epoch {epoch}) ---")
+    model.eval()
+    
+    # Check for dead neurons in shared features
+    with torch.no_grad():
+        # Get a small batch for testing
+        for batch in train_loader:
+            if batch is not None:
+                images, _ = batch
+                images = images[:4].to(device)  # Use only 4 samples
+                break
+        else:
+            print("No valid batch found for model health check")
+            return
+        
+        # Forward pass to check activations
+        features = model.feature_extractor(images)
+        features = model.avgpool(features)
+        features = torch.flatten(features, 1)
+        
+        # Check shared features layer by layer
+        x = features
+        layer_names = ['Linear_1536', 'Linear_1024', 'Linear_512', 'Linear_256']
+        
+        for i, layer in enumerate(model.shared_features[::2]):  # Skip ReLU and Dropout
+            if isinstance(layer, nn.Linear):
+                x = layer(x)
+                # Check for dead neurons (always zero output)
+                zero_outputs = (x == 0).all(dim=0).sum().item()
+                total_neurons = x.shape[1]
+                zero_percentage = (zero_outputs / total_neurons) * 100
+                
+                # Check activation statistics
+                mean_activation = x.mean().item()
+                std_activation = x.std().item()
+                max_activation = x.max().item()
+                min_activation = x.min().item()
+                
+                print(f"  {layer_names[i//2]} ({total_neurons} neurons):")
+                print(f"    Dead neurons: {zero_outputs}/{total_neurons} ({zero_percentage:.1f}%)")
+                print(f"    Activation stats: mean={mean_activation:.3f}, std={std_activation:.3f}, range=[{min_activation:.3f}, {max_activation:.3f}]")
+                
+                if zero_percentage > 50:
+                    print(f"    WARNING: High percentage of dead neurons in {layer_names[i//2]}!")
+                
+                # Apply ReLU for next iteration
+                x = torch.relu(x)
+        
+        # Check classification heads
+        shared_feat = model.shared_features(features)
+        print("  Classification Heads:")
+        for label_name in cfg.LABELS:
+            head_output = model.classification_heads[label_name](shared_feat).squeeze(1)
+            sigmoid_probs = torch.sigmoid(head_output)
+            
+            mean_prob = sigmoid_probs.mean().item()
+            std_prob = sigmoid_probs.std().item()
+            min_prob = sigmoid_probs.min().item()
+            max_prob = sigmoid_probs.max().item()
+            
+            print(f"    {label_name}: mean_prob={mean_prob:.3f}, std={std_prob:.3f}, range=[{min_prob:.3f}, {max_prob:.3f}]")
+            
+            if max_prob - min_prob < 0.01:
+                print(f"      WARNING: Very small probability range for {label_name}!")
+            if mean_prob < 0.05 or mean_prob > 0.95:
+                print(f"      WARNING: Extreme mean probability for {label_name}!")
+    
+    print("=" * 50)
