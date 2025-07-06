@@ -3,6 +3,9 @@ import pandas as pd
 import re
 import random
 import logging
+import numpy as np
+from sklearn.model_selection import train_test_split
+from collections import defaultdict, Counter
 from constants import DetectionPaths
 from typing import List
 
@@ -353,14 +356,408 @@ def augment_with_random_frames(csv_path, output_path):
         if 'conn' in locals():
             conn.close()
         raise
+
+def extract_child_id(frame_name):
+    """Extract child ID from frame filename."""
+    try:
+        # Assuming format: quantex_at_home_idXXXXXX_YYYY_MM_DD_HH_XXXXXX.jpg
+        match = re.search(r'id(\d+)_', frame_name)
+        if match:
+            return match.group(1)
+        else:
+            logging.warning(f"Could not extract child ID from {frame_name}")
+            return None
+    except Exception as e:
+        logging.error(f"Error extracting child ID from {frame_name}: {e}")
+        return None
+
+def create_stratified_splits_by_child(csv_path, output_dir, test_size=0.1, val_size=0.1, random_state=42):
+    """
+    Create stratified train/val/test splits ensuring all videos from same child stay together.
+    Uses a frame-aware approach to better balance the splits.
     
+    Parameters
+    ----------
+    csv_path : str
+        Path to the multi-label annotations CSV
+    output_dir : str
+        Directory to save the split CSV files
+    test_size : float
+        Proportion of data for test set
+    val_size : float
+        Proportion of data for validation set
+    random_state : int
+        Random seed for reproducibility
+    """
+    logging.info(f"Creating stratified splits by child from {csv_path}")
+    logging.info(f"Target split: {(1-test_size-val_size)*100:.1f}% train, {val_size*100:.1f}% val, {test_size*100:.1f}% test")
+    
+    try:
+        # Load the data
+        df = pd.read_csv(csv_path)
+        logging.info(f"Loaded {len(df)} annotations")
+        
+        # Extract child IDs
+        df['child_id'] = df['file_name'].apply(extract_child_id)
+        df = df.dropna(subset=['child_id'])  # Remove rows where child_id couldn't be extracted
+        logging.info(f"Retained {len(df)} annotations after child ID extraction")
+        
+        # Filter to keep only frames that are multiples of 30
+        def is_frame_multiple_of_30(file_name):
+            """Check if frame number is multiple of 30."""
+            try:
+                # Extract frame number from format: video_name_XXXXXX.jpg
+                frame_match = re.search(r'_(\d{6})\.jpg$', file_name)
+                if frame_match:
+                    frame_number = int(frame_match.group(1))
+                    return frame_number % 30 == 0
+                return False
+            except Exception:
+                return False
+        
+        # Apply filter
+        initial_count = len(df)
+        df['is_multiple_30'] = df['file_name'].apply(is_frame_multiple_of_30)
+        df = df[df['is_multiple_30']].drop(columns=['is_multiple_30'])
+        filtered_count = len(df)
+        removed_count = initial_count - filtered_count
+        
+        logging.info(f"Frame filtering results:")
+        logging.info(f"  Initial frames: {initial_count}")
+        logging.info(f"  Frames multiple of 30: {filtered_count}")
+        logging.info(f"  Removed frames: {removed_count}")
+        
+        if filtered_count == 0:
+            raise ValueError("No frames remain after filtering for multiples of 30")
+        
+        # Log some examples of kept frames
+        sample_frames = df['file_name'].head(5).tolist()
+        logging.info(f"Sample kept frames: {sample_frames}")
+        
+        # Get unique child IDs and their frame counts
+        unique_children = df['child_id'].unique()
+        logging.info(f"Found {len(unique_children)} unique children: {sorted(unique_children)}")
+        
+        # Calculate frame counts per child
+        child_frame_counts = df['child_id'].value_counts().to_dict()
+        total_frames = len(df)
+        
+        logging.info("=== Child Frame Distribution ===")
+        for child_id in sorted(unique_children):
+            count = child_frame_counts[child_id]
+            percentage = (count / total_frames) * 100
+            logging.info(f"Child {child_id}: {count} frames ({percentage:.1f}%)")
+        
+        # Calculate class distribution per child
+        label_columns = ['adult_person_present', 'child_person_present', 'adult_face_present', 
+                        'child_face_present', 'object_interaction']
+        
+        child_stats = {}
+        for child_id in unique_children:
+            child_data = df[df['child_id'] == child_id]
+            stats = {
+                'n_frames': len(child_data),
+                'class_counts': {}
+            }
+            for col in label_columns:
+                positive_count = child_data[col].sum()
+                stats['class_counts'][col] = {
+                    'positive': positive_count,
+                    'negative': len(child_data) - positive_count,
+                    'positive_ratio': positive_count / len(child_data)
+                }
+            child_stats[child_id] = stats
+        
+        # Create stratification key for each child based on their dominant class patterns
+        def create_stratification_key(child_id):
+            stats = child_stats[child_id]
+            key = []
+            for col in label_columns:
+                ratio = stats['class_counts'][col]['positive_ratio']
+                key.append(1 if ratio > 0.1 else 0)
+            return tuple(key)
+        
+        child_strat_keys = {child_id: create_stratification_key(child_id) for child_id in unique_children}
+        
+        # Group children by stratification key
+        strat_groups = defaultdict(list)
+        for child_id, key in child_strat_keys.items():
+            strat_groups[key].append(child_id)
+        
+        logging.info(f"Created {len(strat_groups)} stratification groups:")
+        for key, children in strat_groups.items():
+            total_frames_in_group = sum(child_frame_counts[child] for child in children)
+            logging.info(f"  Group {key}: {len(children)} children, {total_frames_in_group} frames")
+        
+        # Initialize splits
+        train_children = []
+        val_children = []
+        test_children = []
+        
+        train_frames = 0
+        val_frames = 0
+        test_frames = 0
+        
+        target_train_frames = total_frames * (1 - test_size - val_size)
+        target_val_frames = total_frames * val_size
+        target_test_frames = total_frames * test_size
+        
+        np.random.seed(random_state)
+        
+        # Sort all children by frame count (ascending) to handle smaller children first
+        # This helps with better distribution across splits
+        children_by_frames = sorted(unique_children, key=lambda x: child_frame_counts[x])
+        
+        # First pass: assign children to splits using a round-robin approach 
+        # weighted by current deficit
+        for i, child_id in enumerate(children_by_frames):
+            child_frames = child_frame_counts[child_id]
+            
+            # Calculate current percentages
+            current_train_pct = train_frames / total_frames if total_frames > 0 else 0
+            current_val_pct = val_frames / total_frames if total_frames > 0 else 0
+            current_test_pct = test_frames / total_frames if total_frames > 0 else 0
+            
+            # Calculate deficits (how far we are from target)
+            train_deficit = (1 - test_size - val_size) - current_train_pct
+            val_deficit = val_size - current_val_pct
+            test_deficit = test_size - current_test_pct
+            
+            # Calculate what percentage each split would have after adding this child
+            train_pct_after = (train_frames + child_frames) / total_frames
+            val_pct_after = (val_frames + child_frames) / total_frames
+            test_pct_after = (test_frames + child_frames) / total_frames
+            
+            # Decide assignment based on largest deficit and avoiding overshooting
+            max_acceptable_overshoot = 0.05  # Allow 5% overshoot
+            
+            # Create list of viable options (split_name, deficit, pct_after)
+            options = []
+            if train_pct_after <= (1 - test_size - val_size) + max_acceptable_overshoot:
+                options.append(('train', train_deficit, train_pct_after))
+            if val_pct_after <= val_size + max_acceptable_overshoot:
+                options.append(('val', val_deficit, val_pct_after))
+            if test_pct_after <= test_size + max_acceptable_overshoot:
+                options.append(('test', test_deficit, test_pct_after))
+            
+            # If no options are viable (all would overshoot), allow assignment to train
+            if not options:
+                options = [('train', train_deficit, train_pct_after)]
+            
+            # Sort by deficit (descending) - assign to split with largest deficit
+            options.sort(key=lambda x: x[1], reverse=True)
+            assignment = options[0][0]
+            
+            if assignment == 'train':
+                train_children.append(child_id)
+                train_frames += child_frames
+            elif assignment == 'val':
+                val_children.append(child_id)
+                val_frames += child_frames
+            else:  # test
+                test_children.append(child_id)
+                test_frames += child_frames
+            
+            logging.debug(f"Assigned child {child_id} ({child_frames} frames) to {assignment}")
+            logging.debug(f"  Current percentages: train={current_train_pct:.3f}, val={current_val_pct:.3f}, test={current_test_pct:.3f}")
+            logging.debug(f"  Deficits: train={train_deficit:.3f}, val={val_deficit:.3f}, test={test_deficit:.3f}")
+        
+        # Second pass: rebalance if any split is significantly under-represented
+        # Move children from over-represented splits to under-represented ones
+        max_iterations = 3
+        for iteration in range(max_iterations):
+            current_train_pct = train_frames / total_frames
+            current_val_pct = val_frames / total_frames  
+            current_test_pct = test_frames / total_frames
+            
+            target_train_pct = 1 - test_size - val_size
+            target_val_pct = val_size
+            target_test_pct = test_size
+            
+            # Check if validation set is significantly under target
+            if current_val_pct < target_val_pct - 0.03 and len(train_children) > 1:  # 3% threshold
+                # Find smallest child in train that could be moved to val
+                candidate = min(train_children, key=lambda x: child_frame_counts[x])
+                candidate_frames = child_frame_counts[candidate]
+                new_val_pct = (val_frames + candidate_frames) / total_frames
+                
+                if new_val_pct <= target_val_pct + 0.05:  # Don't overshoot by more than 5%
+                    train_children.remove(candidate)
+                    val_children.append(candidate)
+                    train_frames -= candidate_frames
+                    val_frames += candidate_frames
+                    logging.info(f"Rebalancing: moved child {candidate} from train to val")
+                    continue
+            
+            # Check if test set is significantly under target
+            if current_test_pct < target_test_pct - 0.03 and len(train_children) > 1:
+                candidate = min(train_children, key=lambda x: child_frame_counts[x])
+                candidate_frames = child_frame_counts[candidate]
+                new_test_pct = (test_frames + candidate_frames) / total_frames
+                
+                if new_test_pct <= target_test_pct + 0.05:
+                    train_children.remove(candidate)
+                    test_children.append(candidate)
+                    train_frames -= candidate_frames
+                    test_frames += candidate_frames
+                    logging.info(f"Rebalancing: moved child {candidate} from train to test")
+                    continue
+            
+            # If no rebalancing was needed, break
+            break
+        
+        # Final safety check: ensure each split has at least one child
+        if len(val_children) == 0 and len(train_children) > 2:
+            smallest_train_child = min(train_children, key=lambda x: child_frame_counts[x])
+            train_children.remove(smallest_train_child)
+            val_children.append(smallest_train_child)
+            train_frames -= child_frame_counts[smallest_train_child]
+            val_frames += child_frame_counts[smallest_train_child]
+            logging.info(f"Safety: moved child {smallest_train_child} from train to val to ensure non-empty validation set")
+        
+        if len(test_children) == 0 and len(train_children) > 2:
+            smallest_train_child = min(train_children, key=lambda x: child_frame_counts[x])
+            train_children.remove(smallest_train_child)
+            test_children.append(smallest_train_child)
+            train_frames -= child_frame_counts[smallest_train_child]
+            test_frames += child_frame_counts[smallest_train_child]
+            logging.info(f"Safety: moved child {smallest_train_child} from train to test to ensure non-empty test set")
+        
+        logging.info(f"Final child split: {len(train_children)} train, {len(val_children)} val, {len(test_children)} test children")
+        
+        # Create dataframes for each split
+        train_df = df[df['child_id'].isin(train_children)].copy()
+        val_df = df[df['child_id'].isin(val_children)].copy()
+        test_df = df[df['child_id'].isin(test_children)].copy()
+        
+        # Remove child_id column from final datasets
+        train_df = train_df.drop(columns=['child_id'])
+        val_df = val_df.drop(columns=['child_id'])
+        test_df = test_df.drop(columns=['child_id'])
+        
+        # Log split statistics
+        train_pct = len(train_df) / total_frames * 100
+        val_pct = len(val_df) / total_frames * 100
+        test_pct = len(test_df) / total_frames * 100
+        
+        logging.info("=== Split Statistics ===")
+        logging.info(f"Train: {len(train_df)} frames from {len(train_children)} children ({train_pct:.1f}%)")
+        logging.info(f"Val: {len(val_df)} frames from {len(val_children)} children ({val_pct:.1f}%)")
+        logging.info(f"Test: {len(test_df)} frames from {len(test_children)} children ({test_pct:.1f}%)")
+        
+        # Log which children went where
+        logging.info("=== Child Assignment Details ===")
+        for split_name, children in [('Train', train_children), ('Val', val_children), ('Test', test_children)]:
+            total_split_frames = sum(child_frame_counts[child] for child in children)
+            logging.info(f"{split_name} children:")
+            for child in children:
+                frames = child_frame_counts[child]
+                logging.info(f"  Child {child}: {frames} frames")
+        
+        # Verify proportions are reasonable
+        if abs(train_pct - (1-test_size-val_size)*100) > 15:
+            logging.warning(f"Train set percentage ({train_pct:.1f}%) is significantly off target ({(1-test_size-val_size)*100:.1f}%)")
+        if abs(val_pct - val_size*100) > 10:
+            logging.warning(f"Val set percentage ({val_pct:.1f}%) is significantly off target ({val_size*100:.1f}%)")
+        if abs(test_pct - test_size*100) > 10:
+            logging.warning(f"Test set percentage ({test_pct:.1f}%) is significantly off target ({test_size*100:.1f}%)")
+        
+        # Log class distributions per split
+        for split_name, split_df in [('Train', train_df), ('Val', val_df), ('Test', test_df)]:
+            logging.info(f"\n{split_name} class distribution:")
+            for col in label_columns:
+                positive = split_df[col].sum()
+                total = len(split_df)
+                ratio = positive / total if total > 0 else 0
+                logging.info(f"  {col}: {positive}/{total} ({ratio:.3f})")
+        
+        # Save splits
+        import os
+        os.makedirs(output_dir, exist_ok=True)
+        
+        train_path = os.path.join(output_dir, 'train_annotations.csv')
+        val_path = os.path.join(output_dir, 'val_annotations.csv')
+        test_path = os.path.join(output_dir, 'test_annotations.csv')
+        
+        train_df.to_csv(train_path, index=False)
+        val_df.to_csv(val_path, index=False)
+        test_df.to_csv(test_path, index=False)
+        
+        logging.info(f"Saved splits to:")
+        logging.info(f"  Train: {train_path}")
+        logging.info(f"  Val: {val_path}")
+        logging.info(f"  Test: {test_path}")
+        
+        # Final validation: verify all frames are multiples of 30
+        def validate_frame_multiples_30(df, split_name):
+            """Validate that all frames in the dataframe are multiples of 30."""
+            invalid_frames = []
+            for _, row in df.iterrows():
+                file_name = row['file_name']
+                try:
+                    frame_match = re.search(r'_(\d{6})\.jpg$', file_name)
+                    if frame_match:
+                        frame_number = int(frame_match.group(1))
+                        if frame_number % 30 != 0:
+                            invalid_frames.append((file_name, frame_number))
+                    else:
+                        invalid_frames.append((file_name, "could_not_extract"))
+                except Exception as e:
+                    invalid_frames.append((file_name, f"error: {e}"))
+            
+            if invalid_frames:
+                logging.error(f"{split_name} split contains {len(invalid_frames)} frames that are NOT multiples of 30:")
+                for file_name, frame_info in invalid_frames[:5]:  # Show first 5
+                    logging.error(f"  {file_name} -> {frame_info}")
+                if len(invalid_frames) > 5:
+                    logging.error(f"  ... and {len(invalid_frames) - 5} more")
+                return False
+            else:
+                logging.info(f"{split_name} split validation: All {len(df)} frames are multiples of 30 ✓")
+                return True
+        
+        # Validate all splits
+        train_valid = validate_frame_multiples_30(train_df, "Train")
+        val_valid = validate_frame_multiples_30(val_df, "Val") 
+        test_valid = validate_frame_multiples_30(test_df, "Test")
+        
+        if not all([train_valid, val_valid, test_valid]):
+            raise ValueError("Some splits contain frames that are not multiples of 30!")
+        
+        logging.info("✓ Final validation passed: All frames in all splits are multiples of 30")
+        
+        # Save child assignment info for reference
+        child_assignment = {
+            'train': train_children,
+            'val': val_children,
+            'test': test_children,
+            'train_frames': int(len(train_df)),
+            'val_frames': int(len(val_df)),
+            'test_frames': int(len(test_df)),
+            'train_percentage': float(train_pct),
+            'val_percentage': float(val_pct),
+            'test_percentage': float(test_pct)
+        }
+        
+        import json
+        assignment_path = os.path.join(output_dir, 'child_split_assignment.json')
+        with open(assignment_path, 'w') as f:
+            json.dump(child_assignment, f, indent=2)
+        logging.info(f"Saved child assignment to: {assignment_path}")
+        
+        return train_df, val_df, test_df, child_assignment
+        
+    except Exception as e:
+        logging.error(f"Error creating stratified splits: {str(e)}")
+        raise
+        
 if __name__ == "__main__":
     logging.info("=== Starting CNN annotations extraction ===")
     
-    RAW_OUTPUT_PATH = "/home/nele_pauline_suffo/ProcessedData/quantex_annotations/cnn_annotations_raw.csv"
-    MULTILABEL_OUTPUT_PATH = "/home/nele_pauline_suffo/ProcessedData/quantex_annotations/cnn_annotations_multilabel.csv"
-    AUGMENTED_OUTPUT_PATH = "/home/nele_pauline_suffo/ProcessedData/quantex_annotations/cnn_annotations_augmented.csv"
-    
+    RAW_OUTPUT_PATH = "/home/nele_pauline_suffo/ProcessedData/cnn_labels/cnn_annotations_raw.csv"
+    MULTILABEL_OUTPUT_PATH = "/home/nele_pauline_suffo/ProcessedData/cnn_labels/cnn_annotations_multilabel.csv"
+    AUGMENTED_OUTPUT_PATH = "/home/nele_pauline_suffo/ProcessedData/cnn_labels/cnn_annotations_augmented.csv"   
+    SPLITS_OUTPUT_DIR = "/home/nele_pauline_suffo/ProcessedData/cnn_input"
     try:
         # # Fetch annotations for person and object categories
         # logging.info("Step 1: Fetching annotations from database")
@@ -396,6 +793,16 @@ if __name__ == "__main__":
         # logging.info("Step 5: Augmenting with random frames")
         # augment_with_random_frames(MULTILABEL_OUTPUT_PATH, AUGMENTED_OUTPUT_PATH)
         
+        # Create stratified splits
+        logging.info("Step 6: Creating stratified splits by child")
+        train_df, val_df, test_df, child_assignment = create_stratified_splits_by_child(
+            AUGMENTED_OUTPUT_PATH, 
+            SPLITS_OUTPUT_DIR,
+            test_size=0.1,    # 10% test
+            val_size=0.1,     # 10% val  
+            random_state=42   # This should give ~80% train
+        )
+            
         logging.info("=== CNN annotations extraction completed successfully ===")
         
     except Exception as e:
