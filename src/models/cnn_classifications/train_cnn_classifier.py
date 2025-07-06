@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader, random_split
+from torch.utils.data.dataloader import default_collate
 from torchvision import transforms, models
 from PIL import Image
 import os
@@ -477,6 +478,21 @@ def evaluate_model(model, dataloader, criterion):
     # Return all calculated metrics
     return avg_loss, micro_f1, macro_f1, per_label_metrics
 
+# --- Custom Collate Function ---
+def safe_collate_fn(batch):
+    """
+    Custom collate function that filters out None values and handles batch errors gracefully.
+    """
+    # Filter out None values (corrupted/missing images)
+    batch = [item for item in batch if item is not None]
+    
+    if len(batch) == 0:
+        # If entire batch is corrupted, return None - this will be handled in training loop
+        return None
+    
+    # Use default collate function for valid items
+    return default_collate(batch)
+
 # --- 6. Main Execution Block ---
 if __name__ == "__main__":
     # --- Data Transforms ---
@@ -648,18 +664,3 @@ if __name__ == "__main__":
     for label, metrics in test_per_label_metrics.items():
         print(f"  {label}: Precision={metrics['precision']:.4f}, Recall={metrics['recall']:.4f}, F1={metrics['f1']:.4f}, Accuracy={metrics['accuracy']:.4f}")
     print("----------------------------")
-
-# --- Custom Collate Function ---
-def safe_collate_fn(batch):
-    """
-    Custom collate function that filters out None values and handles batch errors gracefully.
-    """
-    # Filter out None values (corrupted/missing images)
-    batch = [item for item in batch if item is not None]
-    
-    if len(batch) == 0:
-        # If entire batch is corrupted, return None - this will be handled in training loop
-        return None
-    
-    # Use default collate function for valid items
-    return torch.utils.data.dataloader.default_collate(batch)
