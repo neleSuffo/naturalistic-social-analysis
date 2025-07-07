@@ -303,7 +303,7 @@ def augment_with_random_frames(csv_path, output_path):
             logging.debug(f"Number of annotated frames: {n_annotated}")
 
             # Sample half of the annotated frames, or all if less than 10
-            n_sample = int((min(n_annotated, len(valid_frames))) / 2)
+            n_sample = int((min(n_annotated, len(valid_frames))) / 4)
             if n_sample == 0:
                 logging.warning(f"No unannotated frames to sample for video '{video_filename}'")
                 continue
@@ -803,11 +803,12 @@ def create_stratified_splits_by_child(csv_path, output_dir, test_size=0.1, val_s
     except Exception as e:
         logging.error(f"Error creating stratified splits: {str(e)}")
         raise
-
-def balance_dataset_classes(df, split_name, target_ratio_range=(0.2, 0.8), random_state=42):
+ 
+def balance_dataset_classes(df, split_name, target_min_ratio=0.15, random_state=42):
     """
-    Balance classes in a dataset by removing samples to achieve target positive/negative ratios.
-    Ensures minimum representation of 20% for minority class (80/20 split).
+    Balance classes in a multi-label dataset using a more sophisticated approach.
+    Instead of trying to achieve specific ratios, focuses on ensuring minimum representation
+    for all classes while being aware of multi-label dependencies.
     
     Parameters
     ----------
@@ -815,8 +816,8 @@ def balance_dataset_classes(df, split_name, target_ratio_range=(0.2, 0.8), rando
         The dataset to balance
     split_name : str
         Name of the split (for logging)
-    target_ratio_range : tuple
-        Target range for positive class ratio (min, max) - default (0.2, 0.8)
+    target_min_ratio : float
+        Minimum ratio for the minority class (default 0.15 = 15%)
     random_state : int
         Random seed for reproducibility
         
@@ -825,7 +826,8 @@ def balance_dataset_classes(df, split_name, target_ratio_range=(0.2, 0.8), rando
     pd.DataFrame
         Balanced dataset
     """
-    logging.info(f"Balancing {split_name} dataset classes to ensure 20/80 to 80/20 ratios...")
+    logging.info(f"Balancing {split_name} dataset using multi-label aware approach...")
+    logging.info(f"Target: Ensure at least {target_min_ratio*100:.1f}% representation for minority class in each label")
     
     np.random.seed(random_state)
     
@@ -835,133 +837,200 @@ def balance_dataset_classes(df, split_name, target_ratio_range=(0.2, 0.8), rando
     # Start with a copy of the original dataframe
     balanced_df = df.copy()
     
-    # Log original class distribution
+    # Log original class distribution and identify severely imbalanced classes
     logging.info(f"Original {split_name} class distribution:")
+    severely_imbalanced_classes = []
+    
     for col in label_columns:
         positive = balanced_df[col].sum()
         total = len(balanced_df)
-        ratio = positive / total if total > 0 else 0
-        logging.info(f"  {col}: {positive}/{total} ({ratio:.3f})")
-    
-    # Track indices to remove across all classes to avoid conflicts
-    indices_to_remove = set()
-    
-    # Process each class
-    for col in label_columns:
-        positive_count = balanced_df[col].sum()
-        total_count = len(balanced_df)
-        negative_count = total_count - positive_count
-        current_positive_ratio = positive_count / total_count if total_count > 0 else 0
+        negative = total - positive
+        positive_ratio = positive / total if total > 0 else 0
+        negative_ratio = negative / total if total > 0 else 0
         
-        logging.info(f"\nProcessing {col}:")
-        logging.info(f"  Current: {positive_count} positive, {negative_count} negative (ratio: {current_positive_ratio:.3f})")
+        # Identify which class is minority
+        minority_ratio = min(positive_ratio, negative_ratio)
+        minority_class = "positive" if positive_ratio < negative_ratio else "negative"
         
-        # Check if we need to balance this class
-        if target_ratio_range[0] <= current_positive_ratio <= target_ratio_range[1]:
-            logging.info(f"  {col} already balanced, skipping")
+        logging.info(f"  {col}: {positive} pos ({positive_ratio:.3f}), {negative} neg ({negative_ratio:.3f})")
+        logging.info(f"    Minority class: {minority_class} ({minority_ratio:.3f})")
+        
+        # Mark severely imbalanced classes (minority < target_min_ratio)
+        if minority_ratio < target_min_ratio:
+            severely_imbalanced_classes.append({
+                'column': col,
+                'minority_class': minority_class,
+                'minority_ratio': minority_ratio,
+                'minority_count': positive if minority_class == "positive" else negative,
+                'majority_count': negative if minority_class == "positive" else positive
+            })
+            logging.warning(f"    {col} is severely imbalanced: {minority_class} class only {minority_ratio:.3f}")
+    
+    if not severely_imbalanced_classes:
+        logging.info(f"✓ No severely imbalanced classes found. Dataset is adequately balanced.")
+        return balanced_df
+    
+    logging.info(f"\nFound {len(severely_imbalanced_classes)} severely imbalanced classes:")
+    for class_info in severely_imbalanced_classes:
+        logging.info(f"  {class_info['column']}: {class_info['minority_class']} class ({class_info['minority_ratio']:.3f})")
+    
+    # Strategy: Focus on the most imbalanced class first
+    # Sort by minority ratio (most imbalanced first)
+    severely_imbalanced_classes.sort(key=lambda x: x['minority_ratio'])
+    
+    total_removed = 0
+    
+    for class_info in severely_imbalanced_classes:
+        col = class_info['column']
+        minority_class = class_info['minority_class']
+        minority_count = class_info['minority_count']
+        majority_count = class_info['majority_count']
+        current_total = len(balanced_df)
+        
+        logging.info(f"\nBalancing {col} (minority: {minority_class})...")
+        
+        # Calculate how many majority samples to remove to reach target ratio
+        # target_min_ratio = minority_count / new_total
+        # new_total = minority_count / target_min_ratio
+        target_total = int(minority_count / target_min_ratio)
+        samples_to_remove = current_total - target_total
+        
+        logging.info(f"  Current: {minority_count} minority, {majority_count} majority, {current_total} total")
+        logging.info(f"  Target total: {target_total} (to achieve {target_min_ratio:.3f} minority ratio)")
+        logging.info(f"  Need to remove: {samples_to_remove} samples")
+        
+        if samples_to_remove <= 0:
+            logging.info(f"  No samples need to be removed for {col}")
             continue
-            
-        # For very extreme ratios, be more aggressive and aim for the middle of the range
-        if current_positive_ratio < 0.1 or current_positive_ratio > 0.9:
-            # Use more aggressive target (closer to 50/50) for very extreme cases
-            if current_positive_ratio < target_ratio_range[0]:
-                target_positive_ratio = (target_ratio_range[0] + target_ratio_range[1]) / 2  # Use middle of range
-            else:
-                target_positive_ratio = (target_ratio_range[0] + target_ratio_range[1]) / 2  # Use middle of range
-            logging.info(f"  Very extreme ratio detected, using aggressive target: {target_positive_ratio:.3f}")
+        
+        # Remove samples from the majority class
+        if minority_class == "positive":
+            # Remove negative samples
+            majority_indices = balanced_df[balanced_df[col] == 0].index.tolist()
         else:
-            # Use boundary values for less extreme cases
-            if current_positive_ratio > target_ratio_range[1]:
-                target_positive_ratio = target_ratio_range[1]
-            else:
-                target_positive_ratio = target_ratio_range[0]
+            # Remove positive samples  
+            majority_indices = balanced_df[balanced_df[col] == 1].index.tolist()
         
-        # Calculate how many samples we need to remove to achieve the target ratio
-        if current_positive_ratio > target_positive_ratio:
-            # Too many positives, remove positive samples
-            target_positive_count = int(negative_count * target_positive_ratio / (1 - target_positive_ratio))
-            samples_to_remove = positive_count - target_positive_count
-            
-            if samples_to_remove > 0:
-                # Get indices of positive samples that haven't been marked for removal
-                positive_indices = [idx for idx in balanced_df[balanced_df[col] == 1].index.tolist() 
-                                  if idx not in indices_to_remove]
-                
-                # Randomly select samples to remove
-                remove_count = min(samples_to_remove, len(positive_indices))
-                if remove_count > 0:
-                    remove_indices = np.random.choice(positive_indices, size=remove_count, replace=False)
-                    indices_to_remove.update(remove_indices)
-                    logging.info(f"  Marked {len(remove_indices)} positive samples for removal")
-                    
-                    # Calculate new ratio after removal
-                    new_positive_count = positive_count - len(remove_indices)
-                    new_total_count = total_count - len(indices_to_remove & set(balanced_df.index))
-                    new_ratio = new_positive_count / new_total_count if new_total_count > 0 else 0
-                    logging.info(f"  Expected new ratio: {new_ratio:.3f}")
+        # Don't remove more than available
+        samples_to_remove = min(samples_to_remove, len(majority_indices))
         
-        elif current_positive_ratio < target_positive_ratio:
-            # Too many negatives, remove negative samples
-            target_negative_count = int(positive_count * (1 - target_positive_ratio) / target_positive_ratio)
-            samples_to_remove = negative_count - target_negative_count
+        if samples_to_remove > 0:
+            # Randomly select samples to remove
+            remove_indices = np.random.choice(majority_indices, size=samples_to_remove, replace=False)
+            balanced_df = balanced_df.drop(index=remove_indices)
+            balanced_df = balanced_df.reset_index(drop=True)
+            total_removed += len(remove_indices)
             
-            if samples_to_remove > 0:
-                # Get indices of negative samples that haven't been marked for removal
-                negative_indices = [idx for idx in balanced_df[balanced_df[col] == 0].index.tolist() 
-                                  if idx not in indices_to_remove]
-                
-                # Randomly select samples to remove
-                remove_count = min(samples_to_remove, len(negative_indices))
-                if remove_count > 0:
-                    remove_indices = np.random.choice(negative_indices, size=remove_count, replace=False)
-                    indices_to_remove.update(remove_indices)
-                    logging.info(f"  Marked {len(remove_indices)} negative samples for removal")
-                    
-                    # Calculate new ratio after removal
-                    new_negative_count = negative_count - len(remove_indices)
-                    new_total_count = total_count - len(indices_to_remove & set(balanced_df.index))
-                    new_positive_ratio = positive_count / new_total_count if new_total_count > 0 else 0
-                    logging.info(f"  Expected new ratio: {new_positive_ratio:.3f}")
+            # Log the effect
+            new_minority_count = balanced_df[col].sum() if minority_class == "positive" else (len(balanced_df) - balanced_df[col].sum())
+            new_total = len(balanced_df)
+            new_minority_ratio = new_minority_count / new_total if new_total > 0 else 0
+            
+            logging.info(f"  Removed {len(remove_indices)} {minority_class} samples")
+            logging.info(f"  New ratio: {new_minority_ratio:.3f} (target: {target_min_ratio:.3f})")
+            
+            # Check impact on other classes
+            logging.info(f"  Impact on other classes:")
+            for other_col in label_columns:
+                if other_col != col:
+                    other_pos = balanced_df[other_col].sum()
+                    other_total = len(balanced_df)
+                    other_ratio = other_pos / other_total if other_total > 0 else 0
+                    logging.info(f"    {other_col}: {other_ratio:.3f}")
     
-    # Remove all marked indices at once
-    if indices_to_remove:
-        balanced_df = balanced_df.drop(index=list(indices_to_remove))
-        balanced_df = balanced_df.reset_index(drop=True)
-        logging.info(f"\nRemoved {len(indices_to_remove)} total samples across all classes")
-    
-    # Log final class distribution and verify ratios
+    # Final statistics
     logging.info(f"\nFinal {split_name} class distribution after balancing:")
-    all_balanced = True
+    all_adequately_balanced = True
+    
     for col in label_columns:
         positive = balanced_df[col].sum()
         total = len(balanced_df)
-        ratio = positive / total if total > 0 else 0
+        negative = total - positive
+        positive_ratio = positive / total if total > 0 else 0
+        negative_ratio = negative / total if total > 0 else 0
         
-        # Check if ratio is within acceptable range
-        is_balanced = target_ratio_range[0] <= ratio <= target_ratio_range[1]
-        status = "✓" if is_balanced else "✗"
+        minority_ratio = min(positive_ratio, negative_ratio)
+        minority_class = "positive" if positive_ratio < negative_ratio else "negative"
         
-        if not is_balanced:
-            all_balanced = False
+        is_adequate = minority_ratio >= target_min_ratio
+        status = "✓" if is_adequate else "✗"
+        
+        if not is_adequate:
+            all_adequately_balanced = False
             
-        logging.info(f"  {col}: {positive}/{total} ({ratio:.3f}) {status}")
+        logging.info(f"  {col}: {positive} pos ({positive_ratio:.3f}), {negative} neg ({negative_ratio:.3f}) {status}")
+        logging.info(f"    Minority: {minority_class} ({minority_ratio:.3f})")
         
-        # Warning for extreme ratios
-        if ratio < 0.15 or ratio > 0.85:
-            logging.warning(f"  {col} still has very extreme ratio ({ratio:.3f}) - might need more data")
-        elif ratio < 0.2 or ratio > 0.8:
-            logging.warning(f"  {col} has somewhat extreme ratio ({ratio:.3f}) but within acceptable range")
+        if minority_ratio < 0.1:
+            logging.warning(f"    {col} still very imbalanced (minority: {minority_ratio:.3f})")
+        elif minority_ratio < target_min_ratio:
+            logging.warning(f"    {col} below target but improved (minority: {minority_ratio:.3f})")
     
-    if all_balanced:
-        logging.info(f"✓ All classes in {split_name} are now balanced within target range")
+    if all_adequately_balanced:
+        logging.info(f"✓ All classes in {split_name} now have adequate representation (>= {target_min_ratio:.3f})")
     else:
-        logging.warning(f"✗ Some classes in {split_name} could not be balanced to target range")
+        logging.warning(f"✗ Some classes in {split_name} still below target, but improved")
     
-    reduction_percentage = ((len(df) - len(balanced_df)) / len(df)) * 100
-    logging.info(f"{split_name} dataset size: {len(df)} -> {len(balanced_df)} (removed {len(df) - len(balanced_df)} samples, {reduction_percentage:.1f}% reduction)")
+    reduction_percentage = (total_removed / len(df)) * 100
+    logging.info(f"{split_name} dataset size: {len(df)} -> {len(balanced_df)} (removed {total_removed} samples, {reduction_percentage:.1f}% reduction)")
     
     return balanced_df
+
+def skip_balancing_and_warn(df, split_name):
+    """
+    Skip balancing but provide detailed analysis of class imbalance.
+    Recommend using class weights instead.
+    """
+    logging.info(f"Skipping dataset balancing for {split_name} - will use class weights instead")
+    
+    label_columns = ['adult_person_present', 'child_person_present', 'adult_face_present', 
+                    'child_face_present', 'object_interaction']
+    
+    logging.info(f"\n{split_name} class distribution analysis:")
+    extremely_imbalanced = []
+    
+    for col in label_columns:
+        positive = df[col].sum()
+        total = len(df)
+        negative = total - positive
+        positive_ratio = positive / total if total > 0 else 0
+        negative_ratio = negative / total if total > 0 else 0
         
+        minority_ratio = min(positive_ratio, negative_ratio)
+        minority_class = "positive" if positive_ratio < negative_ratio else "negative"
+        majority_ratio = max(positive_ratio, negative_ratio)
+        
+        # Calculate imbalance ratio
+        imbalance_ratio = majority_ratio / minority_ratio if minority_ratio > 0 else float('inf')
+        
+        logging.info(f"  {col}:")
+        logging.info(f"    Positive: {positive}/{total} ({positive_ratio:.3f})")
+        logging.info(f"    Negative: {negative}/{total} ({negative_ratio:.3f})")
+        logging.info(f"    Imbalance ratio: {imbalance_ratio:.1f}:1 ({minority_class} is minority)")
+        
+        if minority_ratio < 0.05:  # Less than 5%
+            extremely_imbalanced.append(col)
+            logging.warning(f"    ⚠️  EXTREMELY imbalanced! Minority class < 5%")
+        elif minority_ratio < 0.15:  # Less than 15%
+            logging.warning(f"    ⚠️  Severely imbalanced! Minority class < 15%")
+        elif minority_ratio < 0.3:  # Less than 30%
+            logging.info(f"    ℹ️  Moderately imbalanced")
+        else:
+            logging.info(f"    ✓ Reasonably balanced")
+    
+    if extremely_imbalanced:
+        logging.warning(f"\n⚠️  Classes with extreme imbalance (< 5% minority): {extremely_imbalanced}")
+        logging.warning("   These classes may be difficult to learn. Consider:")
+        logging.warning("   1. Using very high class weights")
+        logging.warning("   2. Focal loss instead of BCE")
+        logging.warning("   3. Collecting more data for minority class")
+        logging.warning("   4. Using specialized sampling techniques")
+    
+    logging.info(f"\nRecommendation: Use class weights in loss function instead of dataset balancing")
+    logging.info("Class weights will be calculated automatically based on these distributions")
+    
+    return df
+       
 if __name__ == "__main__":
     logging.info("=== Starting CNN annotations extraction ===")
     
@@ -1009,27 +1078,27 @@ if __name__ == "__main__":
         train_df, val_df, test_df, child_assignment = create_stratified_splits_by_child(
             AUGMENTED_OUTPUT_PATH, 
             SPLITS_OUTPUT_DIR,
-            test_size=0.1,    # 10% test
-            val_size=0.1,     # 10% val  
+            test_size=0.15,    # 10% test
+            val_size=0.15,     # 10% val  
             random_state=42   # This should give ~80% train
         )
         
         # Balance train and validation sets
         logging.info("Step 7: Balancing class distributions in train and validation sets")
         
-        # Balance training set (target ratio: 20-80% to ensure at least 80/20 representation)
+        # Balance training set (target minimum ratio: 15% to ensure reasonable representation)
         train_df_balanced = balance_dataset_classes(
             train_df, 
             "Train", 
-            target_ratio_range=(0.2, 0.8),  # Changed from (0.3, 0.7) to (0.2, 0.8)
+            target_min_ratio=0.40,  # Ensure at least 15% representation for minority class
             random_state=42
         )
         
-        # Balance validation set (target ratio: 20-80% to ensure at least 80/20 representation)
+        # Balance validation set (target minimum ratio: 15% to ensure reasonable representation)
         val_df_balanced = balance_dataset_classes(
             val_df, 
             "Validation", 
-            target_ratio_range=(0.2, 0.8),  # Changed from (0.3, 0.7) to (0.2, 0.8)
+            target_min_ratio=0.40,  # Ensure at least 15% representation for minority class
             random_state=43  # Different seed to avoid same pattern
         )
         
@@ -1094,7 +1163,7 @@ if __name__ == "__main__":
                 'test': child_assignment['class_distribution']['test']  # Keep original test stats
             },
             'balancing_info': {
-                'target_ratio_range': [0.2, 0.8],  # Updated to reflect new range
+                'target_ratio_range': [0.3, 0.7],  # 30% to 70% for balanced splits
                 'train_random_state': 42,
                 'val_random_state': 43,
                 'test_kept_original': True,
