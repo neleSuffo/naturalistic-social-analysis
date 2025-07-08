@@ -114,7 +114,7 @@ class Config:
     USE_FOCAL_LOSS = False  # Disable focal loss to reduce complexity
     FOCAL_ALPHA = 0.25  # Focal loss alpha parameter
     FOCAL_GAMMA = 2.0  # Focal loss gamma parameter
-    LABEL_SMOOTHING = 0.2  # Increased label smoothing for regularization
+    LABEL_SMOOTHING = 0.1  # Label smoothing for regularization
     
     # Gradient clipping
     MAX_GRAD_NORM = 1.0  # Clip gradients to prevent exploding gradients
@@ -122,23 +122,16 @@ class Config:
     MONITOR_METRIC = 'macro_f1'  # Metric to monitor for early stopping
     MONITOR_MODE = 'max'  # 'max' for F1-score (we want to maximize it)
     
-    # Use focal loss for extreme imbalance
-    USE_FOCAL_LOSS = True
-    FOCAL_ALPHA = 0.25
-    FOCAL_GAMMA = 2.0
-    
-    # Label smoothing for better generalization
-    LABEL_SMOOTHING = 0.1
-    
 cfg = Config()
 
 # --- Early Stopping Class ---
 class EarlyStopping:
-    def __init__(self, patience=7, min_delta=0, mode='min', verbose=False):
+    def __init__(self, patience=7, min_delta=0, mode='min', verbose=False, save_path=None):
         self.patience = patience
         self.min_delta = min_delta
         self.mode = mode
         self.verbose = verbose
+        self.save_path = save_path
         self.best_score = None
         self.epochs_no_improvement = 0
         self.early_stop = False
@@ -153,13 +146,19 @@ class EarlyStopping:
         else:
             raise ValueError("mode must be 'min' or 'max'")
 
-    def __call__(self, current_score, model):
+    def __call__(self, current_score, model, epoch=None):
         # Convert current_score to a comparable value based on mode
         score_to_compare = current_score * self.val_score_sign
 
         if self.best_score is None:
             self.best_score = current_score
             self.best_model_state = copy.deepcopy(model.state_dict())
+            # Save the model immediately
+            if self.save_path:
+                torch.save(model.state_dict(), self.save_path)
+                if self.verbose:
+                    epoch_str = f" (epoch {epoch})" if epoch is not None else ""
+                    print(f"First model saved{epoch_str}: {self.save_path}")
         elif score_to_compare < (self.best_score * self.val_score_sign - self.min_delta):
             # Improvement detected
             if self.verbose:
@@ -167,6 +166,12 @@ class EarlyStopping:
             self.best_score = current_score
             self.epochs_no_improvement = 0
             self.best_model_state = copy.deepcopy(model.state_dict())
+            # Save the model immediately
+            if self.save_path:
+                torch.save(model.state_dict(), self.save_path)
+                if self.verbose:
+                    epoch_str = f" (epoch {epoch})" if epoch is not None else ""
+                    print(f"Best model saved{epoch_str}: {self.save_path}")
         else:
             self.epochs_no_improvement += 1
             if self.verbose:
@@ -390,7 +395,7 @@ def train_model(model, dataloader, optimizer, criteria, epoch, scaler=None, sche
                     target_labels = labels_tensor[:, i]
                     prediction_output = outputs[label_name]
                     label_loss = criteria[label_name](prediction_output, target_labels)
-
+                    loss += label_loss
                 
                 # Scale loss for gradient accumulation
                 loss = loss / cfg.GRADIENT_ACCUMULATION_STEPS
@@ -1237,11 +1242,15 @@ if __name__ == "__main__":
         print("Mixed precision training not available or disabled")
 
     # --- Early Stopping Setup ---
+    # Create the model save path
+    best_model_path = os.path.join(cfg.OUTPUT_DIR, "models", "best_multi_label_classifier.pth")
+    
     early_stopping = EarlyStopping(
         patience=cfg.EARLY_STOPPING_PATIENCE,
         min_delta=cfg.EARLY_STOPPING_MIN_DELTA,
         mode=cfg.MONITOR_MODE,
-        verbose=True
+        verbose=True,
+        save_path=best_model_path
     )
 
     # --- Test Overfitting Capability (Debug) ---
@@ -1341,7 +1350,7 @@ if __name__ == "__main__":
         else:
             raise ValueError("Unsupported MONITOR_METRIC in config.")
 
-        early_stopping(current_monitor_score, model)
+        early_stopping(current_monitor_score, model, epoch)
 
         if early_stopping.early_stop:
             print(f"Early stopping triggered at epoch {epoch}.")
