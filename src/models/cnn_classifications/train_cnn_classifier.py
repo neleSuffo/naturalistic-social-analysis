@@ -936,7 +936,6 @@ def monitor_model_health(model, epoch, train_loader, device):
     """
     Monitor model health by checking for dead neurons, gradient flow, and prediction diversity.
     """
-    print(f"\n--- Model Health Check (Epoch {epoch}) ---")
     model.eval()
     
     # Check for dead neurons in shared features
@@ -976,8 +975,6 @@ def monitor_model_health(model, epoch, train_loader, device):
                 min_activation = x.min().item()
                 
                 print(f"  {layer_names[linear_layer_count]} ({total_neurons} neurons):")
-                print(f"    Dead neurons: {zero_outputs}/{total_neurons} ({zero_percentage:.1f}%)")
-                print(f"    Activation stats: mean={mean_activation:.3f}, std={std_activation:.3f}, range=[{min_activation:.3f}, {max_activation:.3f}]")
                 
                 if zero_percentage > 50:
                     print(f"    WARNING: High percentage of dead neurons in {layer_names[linear_layer_count]}!")
