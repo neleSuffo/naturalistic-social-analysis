@@ -131,7 +131,6 @@ class Config:
     LABEL_SMOOTHING = 0.1
     
 cfg = Config()
-print(f"Using device: {cfg.DEVICE}")
 
 # --- Early Stopping Class ---
 class EarlyStopping:
@@ -211,10 +210,8 @@ class EgocentricFrameDataset(Dataset):
                             img.verify()
                         valid_indices.append(idx)
                     except (OSError, IOError):
-                        print(f"Warning: Corrupted image {img_path}")
                         missing_count += 1
                 else:
-                    print(f"Warning: Missing image {img_path}")
                     missing_count += 1
             
             # Filter to only valid images
@@ -365,7 +362,6 @@ def train_model(model, dataloader, optimizer, criteria, epoch, scaler=None, sche
 
     total_batches = len(dataloader)
     print(f"Starting epoch {epoch} with {total_batches} batches...")
-    print(f"Batch size: {cfg.BATCH_SIZE}")
         
     # Use tqdm for progress bar
     pbar = tqdm(dataloader, desc=f"Epoch {epoch} Training", unit="batch")
@@ -374,9 +370,6 @@ def train_model(model, dataloader, optimizer, criteria, epoch, scaler=None, sche
     optimizer_step_count = 0
     
     for batch_idx, batch in enumerate(pbar):
-        if batch_idx == 0:
-            print(f"Successfully started iteration! Processing first batch...")
-            
         # Skip corrupted batches
         if batch is None:
             print(f"Warning: Skipping corrupted batch {batch_idx}")
@@ -397,8 +390,8 @@ def train_model(model, dataloader, optimizer, criteria, epoch, scaler=None, sche
                     target_labels = labels_tensor[:, i]
                     prediction_output = outputs[label_name]
                     label_loss = criteria[label_name](prediction_output, target_labels)
-                    loss += label_loss
-                                    
+
+                
                 # Scale loss for gradient accumulation
                 loss = loss / cfg.GRADIENT_ACCUMULATION_STEPS
             
@@ -415,7 +408,7 @@ def train_model(model, dataloader, optimizer, criteria, epoch, scaler=None, sche
                 prediction_output = outputs[label_name]
                 label_loss = criteria[label_name](prediction_output, target_labels)
                 loss += label_loss
-                            
+    
             # Scale loss for gradient accumulation
             loss = loss / cfg.GRADIENT_ACCUMULATION_STEPS
             loss.backward()
@@ -432,14 +425,6 @@ def train_model(model, dataloader, optimizer, criteria, epoch, scaler=None, sche
             correct_predictions[label_name] += (preds == target_labels).sum().item()
             total_samples[label_name] += target_labels.size(0)
             
-            # Debug: Print prediction statistics for first batch of first epoch
-            if epoch == 1 and batch_idx == 0:
-                pos_preds = preds.sum().item()
-                pos_targets = target_labels.sum().item()
-                avg_prob = sigmoid_probs.mean().item()
-                max_prob = sigmoid_probs.max().item()
-                min_prob = sigmoid_probs.min().item()
-
         # Perform gradient accumulation step
         if (batch_idx + 1) % cfg.GRADIENT_ACCUMULATION_STEPS == 0:
             # Gradient clipping to prevent exploding gradients
@@ -522,9 +507,6 @@ def train_model(model, dataloader, optimizer, criteria, epoch, scaler=None, sche
     accuracies = {label: (correct_predictions[label] / total_samples[label] if total_samples[label] > 0 else 0) * 100 for label in correct_predictions}
     
     print(f"Epoch {epoch} Average Training Loss: {avg_loss:.4f}")
-    print(f"  Total optimizer steps: {optimizer_step_count}")
-    for label, acc in accuracies.items():
-        print(f"  {label} Training Accuracy: {acc:.2f}%")
         
     # Note: OneCycleLR scheduler is stepped during training, not here
     
@@ -599,7 +581,7 @@ def evaluate_model(model, dataloader, criteria, use_optimal_thresholds=False, op
                 all_preds[label_name].extend(preds)
                 all_targets[label_name].extend(targets)
                 all_probs[label_name].extend(probs)
-                
+
             total_loss += loss.item()
             
             # Update progress bar with current loss
@@ -621,30 +603,6 @@ def evaluate_model(model, dataloader, criteria, use_optimal_thresholds=False, op
 
     avg_loss = total_loss / len(dataloader)
 
-    # Debug: Print detailed prediction statistics before calculating metrics
-    print("\n=== Evaluation Prediction Statistics ===")
-    for label_name in cfg.LABELS:
-        if len(all_targets[label_name]) > 0:
-            total_samples = len(all_targets[label_name])
-            positive_targets = np.sum(all_targets[label_name])
-            positive_predictions = np.sum(all_preds[label_name])
-            avg_prob = np.mean(all_probs[label_name])
-            max_prob = np.max(all_probs[label_name])
-            min_prob = np.min(all_probs[label_name])
-            
-            print(f"{label_name}:")
-            print(f"  Total samples: {total_samples}")
-            print(f"  Positive targets: {positive_targets} ({positive_targets/total_samples*100:.1f}%)")
-            print(f"  Positive predictions: {positive_predictions} ({positive_predictions/total_samples*100:.1f}%)")
-            print(f"  Avg probability: {avg_prob:.3f}, Max: {max_prob:.3f}, Min: {min_prob:.3f}")
-            
-            # Check for pathological cases
-            if avg_prob < 0.01:
-                print(f"  WARNING: Very low average probability for {label_name}! Model might be predicting all zeros.")
-            elif avg_prob > 0.99:
-                print(f"  WARNING: Very high average probability for {label_name}! Model might be predicting all ones.")
-            elif max_prob - min_prob < 0.01:
-                print(f"  WARNING: Very small probability range for {label_name}! Model might not be learning.")
     print("=" * 40)
 
     # Calculate metrics for each label
@@ -752,6 +710,7 @@ def test_overfitting_capability(model, train_loader, criteria, optimizer, scaler
                 if param.grad is not None:
                     grad_norm += param.grad.data.norm(2).item() ** 2
             grad_norm = grad_norm ** 0.5
+            print(f"  Gradient norm at iteration 0: {grad_norm:.6f}")
             
             if grad_norm < 1e-6:
                 print("  WARNING: Very small gradients detected!")
@@ -763,9 +722,13 @@ def test_overfitting_capability(model, train_loader, criteria, optimizer, scaler
         
         if iteration == 0:
             initial_loss = total_loss.item()
-        
+    
     final_loss = total_loss.item()
     loss_reduction = (initial_loss - final_loss) / initial_loss * 100
+    
+    print(f"Initial loss: {initial_loss:.4f}")
+    print(f"Final loss: {final_loss:.4f}")
+    print(f"Loss reduction: {loss_reduction:.1f}%")
     
     # Check if model can overfit (loss should decrease significantly)
     if loss_reduction > 5:  # Lowered threshold to 5%
@@ -1007,6 +970,10 @@ def monitor_model_health(model, epoch, train_loader, device):
                 max_activation = x.max().item()
                 min_activation = x.min().item()
                 
+                print(f"  {layer_names[linear_layer_count]} ({total_neurons} neurons):")
+                print(f"    Dead neurons: {zero_outputs}/{total_neurons} ({zero_percentage:.1f}%)")
+                print(f"    Activation stats: mean={mean_activation:.3f}, std={std_activation:.3f}, range=[{min_activation:.3f}, {max_activation:.3f}]")
+                
                 if zero_percentage > 50:
                     print(f"    WARNING: High percentage of dead neurons in {layer_names[linear_layer_count]}!")
                 
@@ -1020,14 +987,6 @@ def monitor_model_health(model, epoch, train_loader, device):
         
         # Check classification heads
         shared_feat = model.shared_features(features)
-        for label_name in cfg.LABELS:
-            head_output = model.classification_heads[label_name](shared_feat).squeeze(1)
-            sigmoid_probs = torch.sigmoid(head_output)
-
-            if max_prob - min_prob < 0.01:
-                print(f"      WARNING: Very small probability range for {label_name}!")
-            if mean_prob < 0.05 or mean_prob > 0.95:
-                print(f"      WARNING: Extreme mean probability for {label_name}!")
     
     print("=" * 50)
     
@@ -1194,7 +1153,6 @@ if __name__ == "__main__":
     print(f"Number of training samples: {len(train_dataset)}")
     print(f"Number of validation samples: {len(val_dataset)}")
     print(f"Number of test samples: {len(test_dataset)}")
-    print(f"Effective batch size (with gradient accumulation): {cfg.BATCH_SIZE * cfg.GRADIENT_ACCUMULATION_STEPS}")
     print(f"Training batches per epoch: {len(train_loader)}")
     print(f"Validation batches per epoch: {len(val_loader)}")
     print(f"Test batches per epoch: {len(test_loader)}")
@@ -1202,7 +1160,6 @@ if __name__ == "__main__":
     # Test if we can load a single batch
     print("Testing data loading...")
     try:
-        print("  Creating iterator...")
         train_iterator = iter(train_loader)
         print("  Loading first batch...")
         test_batch = next(train_iterator)
@@ -1364,21 +1321,6 @@ if __name__ == "__main__":
         training_history['val_macro_f1'].append(macro_f1)
         training_history['epochs'].append(epoch)
 
-        # Check if model weights are changing (debugging)
-        if epoch <= 3:  # Only check for first few epochs to avoid spam
-            weights_changed = False
-            total_weight_change = 0
-            for name, param in model.named_parameters():
-                if param.requires_grad and name in initial_weights:
-                    weight_diff = (param.data - initial_weights[name]).abs().sum().item()
-                    total_weight_change += weight_diff
-                    if weight_diff > 1e-6:
-                        weights_changed = True
-            
-            print(f"Epoch {epoch}: Model weights changed: {weights_changed}, Total change: {total_weight_change:.6f}")
-            
-            if not weights_changed:
-                print("WARNING: Model weights are not changing! There might be an issue with the optimizer or gradients.")
 
         # Print per-class metrics for validation
         print("  --- Per-Class Validation Metrics ---")
