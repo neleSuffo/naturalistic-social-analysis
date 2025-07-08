@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F  # Add this import
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader, random_split
 from torch.utils.data.dataloader import default_collate
@@ -30,47 +31,57 @@ except ImportError:
         print("Mixed precision training not available in this PyTorch version")
 
 # Set memory management environment variables
-os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
+os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True,max_split_size_mb:128'  # Limit memory allocation
+os.environ['CUDA_LAUNCH_BLOCKING'] = '1'  # For debugging memory issues
 
 # Clear GPU cache at the start
 if torch.cuda.is_available():
     torch.cuda.empty_cache()
     torch.cuda.synchronize()
+    # Set memory fraction to prevent out of memory
+    torch.cuda.set_per_process_memory_fraction(0.8)  # Use only 80% of GPU memory
 
 # --- 1. Configuration and Hyperparameters ---
 class Config:
-    IMAGE_SIZE = 288  # Further increased from 256 to 288 for higher GPU memory usage
-    BATCH_SIZE = 12  # Reduced from 16 to 12 to ensure stability
-    NUM_EPOCHS = 20
-    LEARNING_RATE = 0.0005  # Reduced from 0.001 to 0.0005 for more stable training
+    IMAGE_SIZE = 160  # Further reduced from 192 to 160 for memory efficiency
+    BATCH_SIZE = 8  # Reduced from 8 to 4 to save significant memory
+    NUM_EPOCHS = 50  # Reduced epochs since we'll add better regularization
+    LEARNING_RATE = 0.0005  # Slightly increased for smaller batches
     DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
     # Memory optimization settings
-    NUM_WORKERS = 6  # Increased from 4 to 6 for better data loading throughput
-    PIN_MEMORY = True  # Enable for faster GPU transfers
-    GRADIENT_ACCUMULATION_STEPS = 2  # Reduced from 3 to 2 since we increased batch size significantly
+    NUM_WORKERS = 1  # Reduced to 1 to minimize memory usage
+    PIN_MEMORY = False  # Disable to save memory
+    GRADIENT_ACCUMULATION_STEPS = 4  # Increased to maintain effective batch size of 16
     
     # Enable mixed precision training
     USE_MIXED_PRECISION = True
     
     # GPU utilization settings
-    USE_GRADIENT_CHECKPOINTING = True  # Save memory to allow larger batches
-    PREFETCH_FACTOR = 6  # Increased from 4 to 6 - number of batches to prefetch
-    PERSISTENT_WORKERS = True  # Keep data loading workers alive between epochs
-    USE_TORCH_COMPILE = True  # Use torch.compile for better performance (PyTorch 2.0+)
+    USE_GRADIENT_CHECKPOINTING = False  # Disable for debugging
+    PREFETCH_FACTOR = 1  # Minimal prefetching
+    PERSISTENT_WORKERS = False  # Disable to save memory
+    USE_TORCH_COMPILE = False  # Disable for debugging
     
     # Memory clearing frequency
-    MEMORY_CLEAR_FREQUENCY = 50  # Further increased from 30 to 50 to allow maximum GPU utilization
+    MEMORY_CLEAR_FREQUENCY = 10  # Very frequent memory clearing
     
     # Debugging settings
-    DEBUG_MODE = True  # Enable debugging features like overfitting test
+    DEBUG_MODE = False  # Disable to save memory (no overfitting test)
     
     # Dataset validation
     VALIDATE_IMAGES = True  # Whether to check if all images exist during dataset creation
     
     # Model configuration
-    BACKBONE_NAME = 'resnet50'  # Backbone architecture
+    BACKBONE_NAME = 'efficientnet_b0'  # Backbone architecture
     USE_PRETRAINED_BACKBONE = True  # Whether to use pretrained weights
+    DROPOUT_RATE = 0.5  # Increased dropout for regularization (was 0.3)
+    
+    # Additional regularization to prevent overfitting
+    WEIGHT_DECAY = 0.001  # L2 regularization
+    EARLY_STOPPING_PATIENCE = 8  # Reduced patience for overfitting
+    USE_LABEL_SMOOTHING = True  # Enable label smoothing
+    AUGMENTATION_PROBABILITY = 0.7  # Reduce augmentation intensity
     
     # Output settings
     SAVE_PLOTS = True  # Whether to save training plots
@@ -97,10 +108,27 @@ class Config:
     TEST_ANNOTATIONS_FILE = "/home/nele_pauline_suffo/ProcessedData/cnn_input/test_annotations.csv"
     
     # Early Stopping Parameters
-    EARLY_STOPPING_PATIENCE = 10 # Number of epochs to wait for improvement
-    EARLY_STOPPING_MIN_DELTA = 0.001 # Minimum change to qualify as an improvement
-    MONITOR_METRIC = 'macro_f1' # Metric to monitor for early stopping
-    MONITOR_MODE = 'max' # 'max' for F1-score (we want to maximize it)
+    EARLY_STOPPING_PATIENCE = 8  # Reduced from 20 for overfitting prevention
+    
+    # Loss function configuration
+    USE_FOCAL_LOSS = False  # Disable focal loss to reduce complexity
+    FOCAL_ALPHA = 0.25  # Focal loss alpha parameter
+    FOCAL_GAMMA = 2.0  # Focal loss gamma parameter
+    LABEL_SMOOTHING = 0.2  # Increased label smoothing for regularization
+    
+    # Gradient clipping
+    MAX_GRAD_NORM = 1.0  # Clip gradients to prevent exploding gradients
+    EARLY_STOPPING_MIN_DELTA = 0.0005  # Reduced from 0.001 to be more sensitive
+    MONITOR_METRIC = 'macro_f1'  # Metric to monitor for early stopping
+    MONITOR_MODE = 'max'  # 'max' for F1-score (we want to maximize it)
+    
+    # Use focal loss for extreme imbalance
+    USE_FOCAL_LOSS = True
+    FOCAL_ALPHA = 0.25
+    FOCAL_GAMMA = 2.0
+    
+    # Label smoothing for better generalization
+    LABEL_SMOOTHING = 0.1
     
 cfg = Config()
 print(f"Using device: {cfg.DEVICE}")
@@ -242,7 +270,7 @@ class EgocentricFrameDataset(Dataset):
 
 # --- 3. Model Architecture ---
 class MultiLabelClassifier(nn.Module):
-    def __init__(self, num_labels, backbone_name='resnet50', pretrained=True, use_checkpointing=True):
+    def __init__(self, num_labels, backbone_name='resnet50', pretrained=True, use_checkpointing=False):
         super(MultiLabelClassifier, self).__init__()
         
         self.use_checkpointing = use_checkpointing
@@ -264,49 +292,39 @@ class MultiLabelClassifier(nn.Module):
         # Global Average Pooling to flatten spatial features for the dense layers
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
 
-        # Shared feature extractor with maximum capacity for high GPU utilization
+        # Much simpler shared feature extractor to prevent overfitting
         self.shared_features = nn.Sequential(
-            nn.Linear(self.num_features, 1536),  # Increased from 1024 to 1536
-            nn.ReLU(),
-            nn.Dropout(0.5),
-            nn.Linear(1536, 1024),  # Increased from 512 to 1024
-            nn.ReLU(),
-            nn.Dropout(0.4),
-            nn.Linear(1024, 512),  # Keep this layer
-            nn.ReLU(),
-            nn.Dropout(0.3),
-            nn.Linear(512, 256),  # Keep this layer
-            nn.ReLU(),
-            nn.Dropout(0.2)
+            nn.Linear(self.num_features, 256),  # Significantly reduced from 512
+            nn.ReLU(inplace=True),
+            nn.Dropout(cfg.DROPOUT_RATE),
+            nn.Linear(256, 64),  # Much smaller intermediate layer
+            nn.ReLU(inplace=True),
+            nn.Dropout(cfg.DROPOUT_RATE)
         )
 
         # Initialize classification heads ModuleDict first
         self.classification_heads = nn.ModuleDict()
         
-        # Initialize classification heads with better weights
+        # Initialize classification heads with proper weights
         for i, label_name in enumerate(cfg.LABELS):
-            head = nn.Linear(256, 1)
-            # Initialize bias to encourage more balanced predictions
-            # Start with a slight positive bias to avoid all-zero predictions
-            nn.init.constant_(head.bias, 0.1)  # Small positive bias
-            nn.init.xavier_uniform_(head.weight)  # Better weight initialization
+            head = nn.Linear(64, 1)  # Reduced from 128 to 64
+            # Initialize with proper weights for sigmoid activation
+            nn.init.xavier_uniform_(head.weight, gain=1.0)
+            # Initialize bias to log(pos_prior/(1-pos_prior)) for balanced starting point
+            nn.init.constant_(head.bias, 0.0)  # Start neutral
             self.classification_heads[label_name] = head
             
         # Apply custom weight initialization
         self._initialize_weights()
 
     def _initialize_weights(self):
-        """Initialize model weights to prevent dead neurons and all-zero predictions."""
+        """Initialize model weights for stable training."""
         for module in self.modules():
             if isinstance(module, nn.Linear):
                 # Use Xavier initialization for linear layers
-                nn.init.xavier_uniform_(module.weight)
+                nn.init.xavier_uniform_(module.weight, gain=1.0)
                 if module.bias is not None:
-                    # Small positive bias for classification heads to encourage initial predictions
-                    if hasattr(self, 'classification_heads') and module in self.classification_heads.values():
-                        nn.init.constant_(module.bias, 0.1)  # Small positive bias
-                    else:
-                        nn.init.constant_(module.bias, 0.0)
+                    nn.init.constant_(module.bias, 0.0)
             elif isinstance(module, nn.Conv2d):
                 nn.init.kaiming_normal_(module.weight, mode='fan_out', nonlinearity='relu')
                 if module.bias is not None:
@@ -316,12 +334,8 @@ class MultiLabelClassifier(nn.Module):
                 nn.init.constant_(module.bias, 0)
 
     def forward(self, x):
-        # Use gradient checkpointing to save memory while allowing larger batches
-        if self.training and self.use_checkpointing:
-            # Enable gradient checkpointing for the feature extractor during training
-            features = torch.utils.checkpoint.checkpoint(self.feature_extractor, x, use_reentrant=False)
-        else:
-            features = self.feature_extractor(x)
+        # Extract features without gradient checkpointing for debugging
+        features = self.feature_extractor(x)
             
         features = self.avgpool(features)
         features = torch.flatten(features, 1)
@@ -351,12 +365,8 @@ def train_model(model, dataloader, optimizer, criteria, epoch, scaler=None, sche
 
     total_batches = len(dataloader)
     print(f"Starting epoch {epoch} with {total_batches} batches...")
-    print(f"DataLoader length: {total_batches}")
     print(f"Batch size: {cfg.BATCH_SIZE}")
-    print(f"Dataset size: {len(dataloader.dataset)}")
-    
-    print("About to start iterating through DataLoader...")
-    
+        
     # Use tqdm for progress bar
     pbar = tqdm(dataloader, desc=f"Epoch {epoch} Training", unit="batch")
     
@@ -388,11 +398,7 @@ def train_model(model, dataloader, optimizer, criteria, epoch, scaler=None, sche
                     prediction_output = outputs[label_name]
                     label_loss = criteria[label_name](prediction_output, target_labels)
                     loss += label_loss
-                    
-                    # Debug: Print loss details for first batch of first epoch
-                    if epoch == 1 and batch_idx == 0:
-                        print(f"      {label_name} loss: {label_loss.item():.4f}, target mean: {target_labels.mean().item():.3f}, pred mean: {torch.sigmoid(prediction_output).mean().item():.3f}")
-                
+                                    
                 # Scale loss for gradient accumulation
                 loss = loss / cfg.GRADIENT_ACCUMULATION_STEPS
             
@@ -409,11 +415,7 @@ def train_model(model, dataloader, optimizer, criteria, epoch, scaler=None, sche
                 prediction_output = outputs[label_name]
                 label_loss = criteria[label_name](prediction_output, target_labels)
                 loss += label_loss
-                
-                # Debug: Print loss details for first batch of first epoch (non-mixed precision)
-                if epoch == 1 and batch_idx == 0:
-                    print(f"      {label_name} loss (no AMP): {label_loss.item():.4f}, target mean: {target_labels.mean().item():.3f}, pred mean: {torch.sigmoid(prediction_output).mean().item():.3f}")
-            
+                            
             # Scale loss for gradient accumulation
             loss = loss / cfg.GRADIENT_ACCUMULATION_STEPS
             loss.backward()
@@ -437,18 +439,17 @@ def train_model(model, dataloader, optimizer, criteria, epoch, scaler=None, sche
                 avg_prob = sigmoid_probs.mean().item()
                 max_prob = sigmoid_probs.max().item()
                 min_prob = sigmoid_probs.min().item()
-                print(f"    First batch {label_name}: pos_preds={pos_preds}/{len(preds)}, pos_targets={pos_targets}/{len(target_labels)}, avg_prob={avg_prob:.3f}, max_prob={max_prob:.3f}, min_prob={min_prob:.3f}")
 
         # Perform gradient accumulation step
         if (batch_idx + 1) % cfg.GRADIENT_ACCUMULATION_STEPS == 0:
             # Gradient clipping to prevent exploding gradients
             if cfg.USE_MIXED_PRECISION and scaler is not None:
                 scaler.unscale_(optimizer)
-                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=cfg.MAX_GRAD_NORM)
                 scaler.step(optimizer)
                 scaler.update()
             else:
-                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=cfg.MAX_GRAD_NORM)
                 optimizer.step()
             
             # Step the OneCycleLR scheduler after each optimizer step
@@ -475,23 +476,21 @@ def train_model(model, dataloader, optimizer, criteria, epoch, scaler=None, sche
         
         pbar.set_postfix(postfix_dict)
         
-        # Aggressive memory management
+        # More aggressive memory management
         if batch_idx % cfg.MEMORY_CLEAR_FREQUENCY == 0:
             torch.cuda.empty_cache()
             gc.collect()
             
-        # Print detailed progress every 200 batches (less frequent to avoid spam)
-        if batch_idx % 200 == 0 and batch_idx > 0:
+        # Print detailed progress every 50 batches (more frequent for smaller batches)
+        if batch_idx % 50 == 0 and batch_idx > 0:
             progress_pct = (batch_idx / total_batches) * 100
             if torch.cuda.is_available():
-                print(f"\nEpoch {epoch} - Progress: {progress_pct:.1f}% ({batch_idx}/{total_batches})")
                 # Print gradient statistics
                 total_grad_norm = 0
                 for param in model.parameters():
                     if param.grad is not None:
                         total_grad_norm += param.grad.data.norm(2).item() ** 2
                 total_grad_norm = total_grad_norm ** 0.5
-                print(f"  Gradient norm: {total_grad_norm:.4f}")
             
         # Delete variables to free memory immediately
         del images, labels_tensor, outputs, loss
@@ -502,11 +501,11 @@ def train_model(model, dataloader, optimizer, criteria, epoch, scaler=None, sche
     if accumulated_loss > 0:
         if cfg.USE_MIXED_PRECISION and scaler is not None:
             scaler.unscale_(optimizer)
-            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=cfg.MAX_GRAD_NORM)
             scaler.step(optimizer)
             scaler.update()
         else:
-            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=cfg.MAX_GRAD_NORM)
             optimizer.step()
         
         # Step the scheduler for remaining gradients
@@ -601,22 +600,13 @@ def evaluate_model(model, dataloader, criteria, use_optimal_thresholds=False, op
                 all_targets[label_name].extend(targets)
                 all_probs[label_name].extend(probs)
                 
-                # Debug: Print some prediction statistics for the first few batches
-                if batch_idx < 3:  # Only first 3 batches to avoid spam
-                    pos_preds = np.sum(preds)
-                    pos_targets = np.sum(targets)
-                    avg_prob = float(sigmoid_probs.mean())
-                    max_prob = float(sigmoid_probs.max())
-                    min_prob = float(sigmoid_probs.min())
-                    print(f"    Eval batch {batch_idx} {label_name}: pos_preds={pos_preds}/{len(preds)}, pos_targets={pos_targets}/{len(targets)}, avg_prob={avg_prob:.3f}, max_prob={max_prob:.3f}, min_prob={min_prob:.3f}")
-
             total_loss += loss.item()
             
             # Update progress bar with current loss
             pbar.set_postfix({'val_loss': f'{loss.item():.4f}'})
             
-            # Extremely infrequent memory clearing during evaluation to maximize GPU utilization
-            if batch_idx % (cfg.MEMORY_CLEAR_FREQUENCY * 5) == 0:  # Increased multiplier from 3 to 5
+            # More frequent memory clearing during evaluation
+            if batch_idx % (cfg.MEMORY_CLEAR_FREQUENCY // 2) == 0:  # Even more frequent for evaluation
                 torch.cuda.empty_cache()
                 gc.collect()
                 
@@ -762,36 +752,20 @@ def test_overfitting_capability(model, train_loader, criteria, optimizer, scaler
                 if param.grad is not None:
                     grad_norm += param.grad.data.norm(2).item() ** 2
             grad_norm = grad_norm ** 0.5
-            print(f"  Gradient norm at iteration 0: {grad_norm:.6f}")
             
             if grad_norm < 1e-6:
                 print("  WARNING: Very small gradients detected!")
         
         # Gradient clipping to prevent explosion
-        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=cfg.MAX_GRAD_NORM)
         
         test_optimizer.step()
         
         if iteration == 0:
             initial_loss = total_loss.item()
         
-        if (iteration + 1) % 3 == 0:
-            print(f"  Iteration {iteration + 1}: Loss = {total_loss.item():.4f}")
-            
-            # Print some prediction statistics
-            with torch.no_grad():
-                for i, label_name in enumerate(cfg.LABELS):
-                    pred_output = outputs[label_name]
-                    sigmoid_probs = torch.sigmoid(pred_output)
-                    target_labels = labels_tensor[:, i]
-                    print(f"    {label_name}: pred_mean={sigmoid_probs.mean().item():.3f}, target_mean={target_labels.mean().item():.3f}")
-    
     final_loss = total_loss.item()
     loss_reduction = (initial_loss - final_loss) / initial_loss * 100
-    
-    print(f"Initial loss: {initial_loss:.4f}")
-    print(f"Final loss: {final_loss:.4f}")
-    print(f"Loss reduction: {loss_reduction:.1f}%")
     
     # Check if model can overfit (loss should decrease significantly)
     if loss_reduction > 5:  # Lowered threshold to 5%
@@ -1033,10 +1007,6 @@ def monitor_model_health(model, epoch, train_loader, device):
                 max_activation = x.max().item()
                 min_activation = x.min().item()
                 
-                print(f"  {layer_names[linear_layer_count]} ({total_neurons} neurons):")
-                print(f"    Dead neurons: {zero_outputs}/{total_neurons} ({zero_percentage:.1f}%)")
-                print(f"    Activation stats: mean={mean_activation:.3f}, std={std_activation:.3f}, range=[{min_activation:.3f}, {max_activation:.3f}]")
-                
                 if zero_percentage > 50:
                     print(f"    WARNING: High percentage of dead neurons in {layer_names[linear_layer_count]}!")
                 
@@ -1050,18 +1020,10 @@ def monitor_model_health(model, epoch, train_loader, device):
         
         # Check classification heads
         shared_feat = model.shared_features(features)
-        print("  Classification Heads:")
         for label_name in cfg.LABELS:
             head_output = model.classification_heads[label_name](shared_feat).squeeze(1)
             sigmoid_probs = torch.sigmoid(head_output)
-            
-            mean_prob = sigmoid_probs.mean().item()
-            std_prob = sigmoid_probs.std().item()
-            min_prob = sigmoid_probs.min().item()
-            max_prob = sigmoid_probs.max().item()
-            
-            print(f"    {label_name}: mean_prob={mean_prob:.3f}, std={std_prob:.3f}, range=[{min_prob:.3f}, {max_prob:.3f}]")
-            
+
             if max_prob - min_prob < 0.01:
                 print(f"      WARNING: Very small probability range for {label_name}!")
             if mean_prob < 0.05 or mean_prob > 0.95:
@@ -1092,9 +1054,66 @@ def calculate_class_weights(annotations_df, labels):
             weight = min(weight, 10.0)  # Max weight of 10
         
         class_weights[label] = weight
-        print(f"Class weight for {label}: {weight:.2f} (pos: {positive_count}, neg: {negative_count})")
     
     return class_weights
+
+# --- Focal Loss for Imbalanced Classification ---
+class FocalLoss(nn.Module):
+    """
+    Focal Loss for addressing class imbalance.
+    
+    Reference: Lin, T. Y., Goyal, P., Girshick, R., He, K., & Dollár, P. (2017).
+    Focal loss for dense object detection. ICCV, 2017.
+    """
+    def __init__(self, alpha=0.25, gamma=2.0, pos_weight=None, reduction='mean'):
+        super(FocalLoss, self).__init__()
+        self.alpha = alpha
+        self.gamma = gamma
+        self.pos_weight = pos_weight
+        self.reduction = reduction
+        
+    def forward(self, inputs, targets):
+        # Apply sigmoid to get probabilities
+        p = torch.sigmoid(inputs)
+        
+        # Calculate cross entropy
+        ce_loss = F.binary_cross_entropy_with_logits(inputs, targets, pos_weight=self.pos_weight, reduction='none')
+        
+        # Calculate p_t
+        p_t = p * targets + (1 - p) * (1 - targets)
+        
+        # Calculate focal weight
+        focal_weight = (1 - p_t) ** self.gamma
+        
+        # Apply alpha weighting
+        if self.alpha is not None:
+            alpha_t = self.alpha * targets + (1 - self.alpha) * (1 - targets)
+            focal_loss = alpha_t * focal_weight * ce_loss
+        else:
+            focal_loss = focal_weight * ce_loss
+            
+        if self.reduction == 'mean':
+            return focal_loss.mean()
+        elif self.reduction == 'sum':
+            return focal_loss.sum()
+        else:
+            return focal_loss
+
+# --- Label Smoothing Loss ---
+class LabelSmoothingBCELoss(nn.Module):
+    """
+    Binary Cross Entropy with Label Smoothing for better generalization
+    """
+    def __init__(self, smoothing=0.1, pos_weight=None):
+        super(LabelSmoothingBCELoss, self).__init__()
+        self.smoothing = smoothing
+        self.pos_weight = pos_weight
+        
+    def forward(self, inputs, targets):
+        # Apply label smoothing
+        smoothed_targets = targets * (1 - self.smoothing) + 0.5 * self.smoothing
+        
+        return F.binary_cross_entropy_with_logits(inputs, smoothed_targets, pos_weight=self.pos_weight)
 
 # --- 6. Main Execution Block ---
 if __name__ == "__main__":
@@ -1111,16 +1130,13 @@ if __name__ == "__main__":
 
     train_transform = transforms.Compose([
         transforms.Resize((cfg.IMAGE_SIZE, cfg.IMAGE_SIZE)),
-        transforms.RandomHorizontalFlip(p=0.5),
-        transforms.RandomVerticalFlip(p=0.2),  # Added vertical flip
-        transforms.RandomRotation(15),  # Increased from 10 to 15 degrees
-        transforms.RandomAffine(degrees=0, translate=(0.1, 0.1), scale=(0.9, 1.1)),  # Added affine transforms
-        transforms.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3, hue=0.15),  # Increased intensity
-        transforms.RandomGrayscale(p=0.1),  # Added grayscale conversion
-        transforms.GaussianBlur(kernel_size=3, sigma=(0.1, 2.0)),  # Added Gaussian blur
+        # Reduced augmentation to prevent overfitting
+        transforms.RandomHorizontalFlip(p=0.3),  # Reduced from 0.5
+        transforms.RandomRotation(5),  # Reduced from 15 degrees
+        transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1),  # Much reduced
         transforms.ToTensor(),
         transforms.Normalize(mean, std),
-        transforms.RandomErasing(p=0.1, scale=(0.02, 0.15))  # Added random erasing
+        transforms.RandomErasing(p=0.05, scale=(0.02, 0.1))  # Reduced intensity
     ])
 
     val_test_transform = transforms.Compose([
@@ -1201,14 +1217,7 @@ if __name__ == "__main__":
         print(f"  Error loading test batch: {e}")
         print("  This might indicate a problem with the DataLoader configuration.")
 
-    # Print GPU memory status
-    if torch.cuda.is_available():
-        print(f"GPU memory allocated before model creation: {torch.cuda.memory_allocated() / 1024**3:.2f} GB")
-        print(f"GPU memory reserved before model creation: {torch.cuda.memory_reserved() / 1024**3:.2f} GB")
-
-
     # --- Calculate Class Weights ---
-    print("\n--- Calculating Class Weights ---")
     class_weights = calculate_class_weights(train_dataset.annotations, cfg.LABELS)
     
     # Convert class weights to tensors for loss function
@@ -1233,18 +1242,15 @@ if __name__ == "__main__":
             print(f"Could not compile model (PyTorch 2.0+ required): {e}")
             print("Continuing with regular model...")
 
-    # Print GPU memory status after model creation
-    if torch.cuda.is_available():
-        print(f"GPU memory allocated after model creation: {torch.cuda.memory_allocated() / 1024**3:.2f} GB")
-        print(f"GPU memory reserved after model creation: {torch.cuda.memory_reserved() / 1024**3:.2f} GB")
-
-    # Use class-weighted loss functions
+    # Use label smoothing loss functions to prevent overfitting
     criteria = {}
     for label in cfg.LABELS:
-        criteria[label] = nn.BCEWithLogitsLoss(pos_weight=class_weight_tensors[label])
+        if cfg.USE_LABEL_SMOOTHING:
+            criteria[label] = LabelSmoothingBCELoss(smoothing=cfg.LABEL_SMOOTHING, pos_weight=class_weight_tensors[label])
+        else:
+            criteria[label] = nn.BCEWithLogitsLoss(pos_weight=class_weight_tensors[label])
     
-    print("Created class-weighted BCEWithLogitsLoss for each label") 
-    optimizer = optim.AdamW(model.parameters(), lr=cfg.LEARNING_RATE, weight_decay=0.01)  # Changed to AdamW with weight decay
+    optimizer = optim.AdamW(model.parameters(), lr=cfg.LEARNING_RATE, weight_decay=cfg.WEIGHT_DECAY)  # Added weight decay for regularization
     
     # Calculate the number of training steps per epoch
     effective_steps_per_epoch = len(train_loader) // cfg.GRADIENT_ACCUMULATION_STEPS
@@ -1260,8 +1266,6 @@ if __name__ == "__main__":
         anneal_strategy='cos'
     )
     
-    print(f"OneCycleLR scheduler created: max_lr={cfg.LEARNING_RATE * 3}, steps_per_epoch={effective_steps_per_epoch}, epochs={cfg.NUM_EPOCHS}")
-
     # Initialize mixed precision scaler if available
     scaler = None
     if cfg.USE_MIXED_PRECISION and MIXED_PRECISION_AVAILABLE:
@@ -1433,8 +1437,8 @@ if __name__ == "__main__":
                 print("  Using optimal thresholds for this epoch's metrics")
                 val_loss, micro_f1, macro_f1, per_label_metrics = val_loss_opt, micro_f1_opt, macro_f1_opt, per_label_metrics_opt
 
-        # Monitor model health every few epochs
-        if epoch <= 5 or epoch % 5 == 0:  # First 5 epochs, then every 5 epochs
+        # Monitor model health less frequently to save memory
+        if epoch <= 3 or epoch % 10 == 0:  # First 3 epochs, then every 10 epochs
             monitor_model_health(model, epoch, train_loader, cfg.DEVICE)
 
     # --- Final Model Restoration and Test Set Evaluation ---
