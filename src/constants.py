@@ -59,11 +59,11 @@ class DetectionPaths:
     all_data_input_dir = Path(BasePaths.data_dir/"all_det_input")
     all_output_dir = Path(BasePaths.output_dir/"all_detections/")
     
-    face_trained_weights_path = Path(BasePaths.models_dir/'yolo11_all_detection.pt')
-    face_data_config_path = yolo_detections_dir/"all_dataset.yaml"
-    face_labels_input_dir = Path(BasePaths.data_dir/"all_det_labels")
-    face_data_input_dir = Path(BasePaths.data_dir/"all_det_input")
-    face_output_dir = Path(BasePaths.output_dir/"all_detections/")
+    face_trained_weights_path = Path(BasePaths.models_dir/'yolo11_face_detection.pt')
+    face_data_config_path = yolo_detections_dir/"face_det_dataset.yaml"
+    face_labels_input_dir = Path(BasePaths.data_dir/"face_det_labels")
+    face_data_input_dir = Path(BasePaths.data_dir/"face_det_input")
+    face_output_dir = Path(BasePaths.output_dir/"face_detections/")
     
     person_face_cls_classes = ['child_person_face', 'adult_person_face']
 
@@ -102,7 +102,9 @@ class DetectionPaths:
             'all': (cls.all_data_input_dir / "images" / split_type,
                                 cls.all_data_input_dir / "labels" / split_type),
             'person_face': (cls.person_face_data_input_dir / "images" / split_type,
-                        cls.person_face_data_input_dir / "labels" / split_type)
+                        cls.person_face_data_input_dir / "labels" / split_type),
+            'face_det': (cls.face_data_input_dir / "images" / split_type,
+                     cls.face_data_input_dir / "labels" / split_type),
         }
 
         # Return paths if target exists
