@@ -374,8 +374,9 @@ def extract_child_id(frame_name):
 
 def create_stratified_splits_by_child(csv_path, output_dir, test_size=0.1, val_size=0.1, random_state=42):
     """
-    Create stratified train/val/test splits ensuring all videos from same child stay together.
-    Uses a frame-aware approach to better balance the splits.
+    Create stratified train/val/test splits using up to three videos per child.
+    This balances having sufficient data with preventing overfitting to specific 
+    children's characteristics. Videos are selected based on frame count (highest first).
     
     Parameters
     ----------
@@ -390,7 +391,7 @@ def create_stratified_splits_by_child(csv_path, output_dir, test_size=0.1, val_s
     random_state : int
         Random seed for reproducibility
     """
-    logging.info(f"Creating stratified splits by child from {csv_path}")
+    logging.info(f"Creating stratified splits by child (up to 3 videos per child) from {csv_path}")
     logging.info(f"Target split: {(1-test_size-val_size)*100:.1f}% train, {val_size*100:.1f}% val, {test_size*100:.1f}% test")
     
     try:
@@ -398,10 +399,98 @@ def create_stratified_splits_by_child(csv_path, output_dir, test_size=0.1, val_s
         df = pd.read_csv(csv_path)
         logging.info(f"Loaded {len(df)} annotations")
         
-        # Extract child IDs
+        # Extract child IDs and video names
         df['child_id'] = df['file_name'].apply(extract_child_id)
+        df['video_name'] = df['file_name'].apply(lambda x: extract_video_filename(x))
         df = df.dropna(subset=['child_id'])  # Remove rows where child_id couldn't be extracted
         logging.info(f"Retained {len(df)} annotations after child ID extraction")
+        
+        # Analyze videos per child
+        child_video_counts = df.groupby('child_id')['video_name'].nunique().to_dict()
+        video_frame_counts = df.groupby(['child_id', 'video_name']).size().to_dict()
+        
+        logging.info("=== Child-Video Analysis ===")
+        total_children = len(child_video_counts)
+        children_with_multiple_videos = sum(1 for count in child_video_counts.values() if count > 1)
+        
+        logging.info(f"Total children: {total_children}")
+        logging.info(f"Children with multiple videos: {children_with_multiple_videos}")
+        logging.info(f"Children with single video: {total_children - children_with_multiple_videos}")
+        
+        # Log detailed video distribution
+        for child_id in sorted(child_video_counts.keys()):
+            video_count = child_video_counts[child_id]
+            child_videos = df[df['child_id'] == child_id]['video_name'].unique()
+            logging.info(f"Child {child_id}: {video_count} videos")
+            for video in child_videos:
+                frame_count = video_frame_counts.get((child_id, video), 0)
+                logging.info(f"  {video}: {frame_count} frames")
+        
+        # Select up to three videos per child (ordered by frame count)
+        np.random.seed(random_state)
+        selected_child_videos = {}
+        
+        for child_id in child_video_counts.keys():
+            child_videos = df[df['child_id'] == child_id]['video_name'].unique()
+            
+            # Calculate frame counts for all videos of this child
+            video_frame_counts_for_child = {}
+            for video in child_videos:
+                frame_count = len(df[(df['child_id'] == child_id) & (df['video_name'] == video)])
+                video_frame_counts_for_child[video] = frame_count
+            
+            # Sort videos by frame count (descending) and select up to 3
+            sorted_videos = sorted(video_frame_counts_for_child.items(), key=lambda x: x[1], reverse=True)
+            selected_videos = [video for video, _ in sorted_videos[:3]]  # Take up to 3 best videos
+            
+            selected_child_videos[child_id] = selected_videos
+            
+            if len(child_videos) == 1:
+                logging.info(f"Child {child_id}: Only 1 video available - {selected_videos[0]} ({video_frame_counts_for_child[selected_videos[0]]} frames)")
+            else:
+                total_selected_frames = sum(video_frame_counts_for_child[v] for v in selected_videos)
+                logging.info(f"Child {child_id}: Selected {len(selected_videos)} videos (total: {total_selected_frames} frames)")
+                for i, video in enumerate(selected_videos):
+                    logging.info(f"  {i+1}. {video}: {video_frame_counts_for_child[video]} frames")
+                
+                # Log excluded videos if any
+                excluded_videos = [(v, c) for v, c in video_frame_counts_for_child.items() if v not in selected_videos]
+                if excluded_videos:
+                    excluded_frames = sum(c for _, c in excluded_videos)
+                    logging.info(f"  (Excluded {len(excluded_videos)} videos with {excluded_frames} frames: {excluded_videos})")
+        
+        # Filter dataset to only include selected videos
+        def keep_frame(row):
+            child_id = row['child_id']
+            video_name = row['video_name']
+            return child_id in selected_child_videos and video_name in selected_child_videos[child_id]
+        
+        original_size = len(df)
+        df = df[df.apply(keep_frame, axis=1)].copy()
+        filtered_size = len(df)
+        
+        logging.info(f"Filtered dataset to one video per child:")
+        logging.info(f"  Original size: {original_size} frames")
+        logging.info(f"  Filtered size: {filtered_size} frames")
+        logging.info(f"  Removed: {original_size - filtered_size} frames ({((original_size - filtered_size)/original_size)*100:.1f}%)")
+        
+        # Verify we have at most three videos per child
+        remaining_child_video_counts = df.groupby('child_id')['video_name'].nunique().to_dict()
+        for child_id, video_count in remaining_child_video_counts.items():
+            if video_count > 3:
+                logging.error(f"Child {child_id} still has {video_count} videos after filtering (expected max 3)!")
+                raise ValueError(f"Filtering failed: Child {child_id} has {video_count} videos (expected max 3)")
+        
+        # Log the distribution of video counts per child
+        video_count_distribution = {}
+        for child_id, video_count in remaining_child_video_counts.items():
+            video_count_distribution[video_count] = video_count_distribution.get(video_count, 0) + 1
+        
+        logging.info("Video count distribution per child after filtering:")
+        for num_videos, num_children in sorted(video_count_distribution.items()):
+            logging.info(f"  {num_children} children with {num_videos} video(s)")
+        
+        logging.info(f"✓ Verification passed: All {len(remaining_child_video_counts)} children have ≤3 videos")
         
         # Filter to keep only frames that are multiples of 30
         def is_frame_multiple_of_30(file_name):
@@ -416,38 +505,49 @@ def create_stratified_splits_by_child(csv_path, output_dir, test_size=0.1, val_s
             except Exception:
                 return False
         
-        # Apply filter
-        initial_count = len(df)
+        # Apply frame filtering
+        pre_frame_filter_count = len(df)
         df['is_multiple_30'] = df['file_name'].apply(is_frame_multiple_of_30)
         df = df[df['is_multiple_30']].drop(columns=['is_multiple_30'])
-        filtered_count = len(df)
-        removed_count = initial_count - filtered_count
+        post_frame_filter_count = len(df)
+        removed_by_frame_filter = pre_frame_filter_count - post_frame_filter_count
         
-        logging.info(f"Frame filtering results:")
-        logging.info(f"  Initial frames: {initial_count}")
-        logging.info(f"  Frames multiple of 30: {filtered_count}")
-        logging.info(f"  Removed frames: {removed_count}")
+        logging.info(f"Frame filtering results (after video selection):")
+        logging.info(f"  Before frame filtering: {pre_frame_filter_count} frames")
+        logging.info(f"  After frame filtering: {post_frame_filter_count} frames")
+        logging.info(f"  Removed by frame filter: {removed_by_frame_filter} frames ({(removed_by_frame_filter/pre_frame_filter_count)*100:.1f}%)")
         
-        if filtered_count == 0:
+        if post_frame_filter_count == 0:
             raise ValueError("No frames remain after filtering for multiples of 30")
         
         # Log some examples of kept frames
         sample_frames = df['file_name'].head(5).tolist()
         logging.info(f"Sample kept frames: {sample_frames}")
         
-        # Get unique child IDs and their frame counts
+        # Get unique child IDs and their frame counts (after all filtering)
         unique_children = df['child_id'].unique()
-        logging.info(f"Found {len(unique_children)} unique children: {sorted(unique_children)}")
+        logging.info(f"Final children count: {len(unique_children)} children: {sorted(unique_children)}")
         
-        # Calculate frame counts per child
+        # Calculate frame counts per child (after filtering)
         child_frame_counts = df['child_id'].value_counts().to_dict()
         total_frames = len(df)
         
-        logging.info("=== Child Frame Distribution ===")
+        logging.info("=== Final Child Frame Distribution (after all filtering) ===")
         for child_id in sorted(unique_children):
             count = child_frame_counts[child_id]
             percentage = (count / total_frames) * 100
-            logging.info(f"Child {child_id}: {count} frames ({percentage:.1f}%)")
+            selected_videos = selected_child_videos[child_id]
+            video_str = ", ".join(selected_videos) if len(selected_videos) > 1 else selected_videos[0]
+            logging.info(f"Child {child_id} ({video_str}): {count} frames ({percentage:.1f}%)")
+        
+        # Verify minimum frame requirements
+        min_frames_per_child = min(child_frame_counts.values())
+        if min_frames_per_child < 10:
+            logging.warning(f"Some children have very few frames (minimum: {min_frames_per_child})")
+            # Log children with few frames
+            few_frames_children = [child_id for child_id, count in child_frame_counts.items() if count < 20]
+            if few_frames_children:
+                logging.warning(f"Children with < 20 frames: {few_frames_children}")
         
         # Calculate class distribution per child
         label_columns = ['adult_person_present', 'child_person_present', 'adult_face_present', 
@@ -607,22 +707,34 @@ def create_stratified_splits_by_child(csv_path, output_dir, test_size=0.1, val_s
             # If no rebalancing was needed, break
             break
         
-        # Final safety check: ensure each split has at least one child
-        if len(val_children) == 0 and len(train_children) > 2:
+        # Final safety check: ensure each split has at least two children
+        min_children_per_split = 2
+        
+        # Ensure validation set has at least 2 children
+        while len(val_children) < min_children_per_split and len(train_children) > min_children_per_split:
             smallest_train_child = min(train_children, key=lambda x: child_frame_counts[x])
             train_children.remove(smallest_train_child)
             val_children.append(smallest_train_child)
             train_frames -= child_frame_counts[smallest_train_child]
             val_frames += child_frame_counts[smallest_train_child]
-            logging.info(f"Safety: moved child {smallest_train_child} from train to val to ensure non-empty validation set")
+            logging.info(f"Safety: moved child {smallest_train_child} from train to val (val now has {len(val_children)} children)")
         
-        if len(test_children) == 0 and len(train_children) > 2:
+        # Ensure test set has at least 2 children
+        while len(test_children) < min_children_per_split and len(train_children) > min_children_per_split:
             smallest_train_child = min(train_children, key=lambda x: child_frame_counts[x])
             train_children.remove(smallest_train_child)
             test_children.append(smallest_train_child)
             train_frames -= child_frame_counts[smallest_train_child]
             test_frames += child_frame_counts[smallest_train_child]
-            logging.info(f"Safety: moved child {smallest_train_child} from train to test to ensure non-empty test set")
+            logging.info(f"Safety: moved child {smallest_train_child} from train to test (test now has {len(test_children)} children)")
+        
+        # Final verification
+        if len(val_children) < min_children_per_split:
+            logging.warning(f"Validation set only has {len(val_children)} children (target: {min_children_per_split})")
+        if len(test_children) < min_children_per_split:
+            logging.warning(f"Test set only has {len(test_children)} children (target: {min_children_per_split})")
+        if len(train_children) < min_children_per_split:
+            logging.warning(f"Train set only has {len(train_children)} children (target: {min_children_per_split})")
         
         logging.info(f"Final child split: {len(train_children)} train, {len(val_children)} val, {len(test_children)} test children")
         
@@ -631,10 +743,10 @@ def create_stratified_splits_by_child(csv_path, output_dir, test_size=0.1, val_s
         val_df = df[df['child_id'].isin(val_children)].copy()
         test_df = df[df['child_id'].isin(test_children)].copy()
         
-        # Remove child_id column from final datasets
-        train_df = train_df.drop(columns=['child_id'])
-        val_df = val_df.drop(columns=['child_id'])
-        test_df = test_df.drop(columns=['child_id'])
+        # Remove temporary columns from final datasets
+        train_df = train_df.drop(columns=['child_id', 'video_name'])
+        val_df = val_df.drop(columns=['child_id', 'video_name'])
+        test_df = test_df.drop(columns=['child_id', 'video_name'])
         
         # Log split statistics
         train_pct = len(train_df) / total_frames * 100
@@ -646,14 +758,16 @@ def create_stratified_splits_by_child(csv_path, output_dir, test_size=0.1, val_s
         logging.info(f"Val: {len(val_df)} frames from {len(val_children)} children ({val_pct:.1f}%)")
         logging.info(f"Test: {len(test_df)} frames from {len(test_children)} children ({test_pct:.1f}%)")
         
-        # Log which children went where
-        logging.info("=== Child Assignment Details ===")
+        # Log which children went where (including selected video info)
+        logging.info("=== Child Assignment Details (with selected videos) ===")
         for split_name, children in [('Train', train_children), ('Val', val_children), ('Test', test_children)]:
             total_split_frames = sum(child_frame_counts[child] for child in children)
             logging.info(f"{split_name} children:")
             for child in children:
                 frames = child_frame_counts[child]
-                logging.info(f"  Child {child}: {frames} frames")
+                selected_videos = selected_child_videos[child]
+                video_str = ", ".join(selected_videos) if len(selected_videos) > 1 else selected_videos[0]
+                logging.info(f"  Child {child} ({video_str}): {frames} frames")
         
         # Verify proportions are reasonable
         if abs(train_pct - (1-test_size-val_size)*100) > 15:
@@ -782,13 +896,28 @@ def create_stratified_splits_by_child(csv_path, output_dir, test_size=0.1, val_s
                 'test': test_class_stats
             },
             'labels': label_columns,
+            'video_selection_info': {
+                'strategy': 'up_to_three_videos_per_child',
+                'selection_method': 'most_frames_first',
+                'max_videos_per_child': 3,
+                'selected_child_videos': selected_child_videos,
+                'original_total_frames': original_size,
+                'after_video_selection_frames': filtered_size,
+                'frames_removed_by_video_selection': original_size - filtered_size,
+                'video_selection_reduction_percentage': ((original_size - filtered_size) / original_size) * 100,
+                'children_with_multiple_videos_original': children_with_multiple_videos,
+                'total_children': total_children
+            },
             'split_creation_info': {
                 'test_size': test_size,
                 'val_size': val_size,
                 'random_state': random_state,
-                'total_children': len(unique_children),
-                'total_frames_processed': total_frames,
-                'frames_filtered_for_multiple_30': removed_count
+                'total_children_final': len(unique_children),
+                'total_frames_after_all_filtering': total_frames,
+                'frames_removed_by_frame_filter': removed_by_frame_filter,
+                'frame_filter_reduction_percentage': (removed_by_frame_filter / pre_frame_filter_count) * 100 if pre_frame_filter_count > 0 else 0,
+                'minimum_frames_per_child': min_frames_per_child,
+                'approach': 'up_to_three_videos_per_child_then_stratified_split'
             }
         }
         
@@ -804,7 +933,7 @@ def create_stratified_splits_by_child(csv_path, output_dir, test_size=0.1, val_s
         logging.error(f"Error creating stratified splits: {str(e)}")
         raise
  
-def balance_dataset_classes(df, split_name, target_min_ratio=0.15, random_state=42):
+def balance_dataset_classes(df, split_name, target_min_ratio=0.15, max_reduction=0.5, random_state=42):
     """
     Balance classes in a multi-label dataset using a more sophisticated approach.
     Instead of trying to achieve specific ratios, focuses on ensuring minimum representation
@@ -818,6 +947,8 @@ def balance_dataset_classes(df, split_name, target_min_ratio=0.15, random_state=
         Name of the split (for logging)
     target_min_ratio : float
         Minimum ratio for the minority class (default 0.15 = 15%)
+    max_reduction : float
+        Maximum allowed reduction in dataset size (default 0.5 = 50%)
     random_state : int
         Random seed for reproducibility
         
@@ -828,6 +959,7 @@ def balance_dataset_classes(df, split_name, target_min_ratio=0.15, random_state=
     """
     logging.info(f"Balancing {split_name} dataset using multi-label aware approach...")
     logging.info(f"Target: Ensure at least {target_min_ratio*100:.1f}% representation for minority class in each label")
+    logging.info(f"Maximum allowed reduction: {max_reduction*100:.1f}%")
     
     np.random.seed(random_state)
     
@@ -836,6 +968,12 @@ def balance_dataset_classes(df, split_name, target_min_ratio=0.15, random_state=
     
     # Start with a copy of the original dataframe
     balanced_df = df.copy()
+    original_size = len(df)
+    
+    # Safety check: if dataset is too small, skip balancing
+    if original_size < 20:
+        logging.warning(f"{split_name} dataset is too small ({original_size} samples) - skipping balancing")
+        return balanced_df
     
     # Log original class distribution and identify severely imbalanced classes
     logging.info(f"Original {split_name} class distribution:")
@@ -856,18 +994,22 @@ def balance_dataset_classes(df, split_name, target_min_ratio=0.15, random_state=
         logging.info(f"    Minority class: {minority_class} ({minority_ratio:.3f})")
         
         # Mark severely imbalanced classes (minority < target_min_ratio)
-        if minority_ratio < target_min_ratio:
+        # But only if we have enough minority samples to work with
+        minority_count = positive if minority_class == "positive" else negative
+        if minority_ratio < target_min_ratio and minority_count >= 3:  # Need at least 3 minority samples
             severely_imbalanced_classes.append({
                 'column': col,
                 'minority_class': minority_class,
                 'minority_ratio': minority_ratio,
-                'minority_count': positive if minority_class == "positive" else negative,
+                'minority_count': minority_count,
                 'majority_count': negative if minority_class == "positive" else positive
             })
             logging.warning(f"    {col} is severely imbalanced: {minority_class} class only {minority_ratio:.3f}")
+        elif minority_count < 3:
+            logging.warning(f"    {col} has too few minority samples ({minority_count}) - skipping balancing")
     
     if not severely_imbalanced_classes:
-        logging.info(f"✓ No severely imbalanced classes found. Dataset is adequately balanced.")
+        logging.info(f"✓ No severely imbalanced classes found that can be balanced. Dataset is adequately balanced.")
         return balanced_df
     
     logging.info(f"\nFound {len(severely_imbalanced_classes)} severely imbalanced classes:")
@@ -879,6 +1021,7 @@ def balance_dataset_classes(df, split_name, target_min_ratio=0.15, random_state=
     severely_imbalanced_classes.sort(key=lambda x: x['minority_ratio'])
     
     total_removed = 0
+    max_allowed_removal = int(original_size * max_reduction)
     
     for class_info in severely_imbalanced_classes:
         col = class_info['column']
@@ -895,12 +1038,21 @@ def balance_dataset_classes(df, split_name, target_min_ratio=0.15, random_state=
         target_total = int(minority_count / target_min_ratio)
         samples_to_remove = current_total - target_total
         
+        # Limit removal to respect max_reduction constraint
+        remaining_removal_budget = max_allowed_removal - total_removed
+        samples_to_remove = min(samples_to_remove, remaining_removal_budget)
+        
+        # Don't remove more than 80% of majority class to avoid extreme skew
+        max_majority_removal = int(majority_count * 0.8)
+        samples_to_remove = min(samples_to_remove, max_majority_removal)
+        
         logging.info(f"  Current: {minority_count} minority, {majority_count} majority, {current_total} total")
         logging.info(f"  Target total: {target_total} (to achieve {target_min_ratio:.3f} minority ratio)")
-        logging.info(f"  Need to remove: {samples_to_remove} samples")
+        logging.info(f"  Need to remove: {current_total - target_total} samples")
+        logging.info(f"  Will remove: {samples_to_remove} samples (limited by constraints)")
         
         if samples_to_remove <= 0:
-            logging.info(f"  No samples need to be removed for {col}")
+            logging.info(f"  No samples will be removed for {col}")
             continue
         
         # Remove samples from the majority class
@@ -926,17 +1078,13 @@ def balance_dataset_classes(df, split_name, target_min_ratio=0.15, random_state=
             new_total = len(balanced_df)
             new_minority_ratio = new_minority_count / new_total if new_total > 0 else 0
             
-            logging.info(f"  Removed {len(remove_indices)} {minority_class} samples")
+            logging.info(f"  Removed {len(remove_indices)} majority samples")
             logging.info(f"  New ratio: {new_minority_ratio:.3f} (target: {target_min_ratio:.3f})")
             
-            # Check impact on other classes
-            logging.info(f"  Impact on other classes:")
-            for other_col in label_columns:
-                if other_col != col:
-                    other_pos = balanced_df[other_col].sum()
-                    other_total = len(balanced_df)
-                    other_ratio = other_pos / other_total if other_total > 0 else 0
-                    logging.info(f"    {other_col}: {other_ratio:.3f}")
+            # Check if we've reached our removal budget
+            if total_removed >= max_allowed_removal:
+                logging.info(f"  Reached maximum removal budget ({max_allowed_removal} samples) - stopping balancing")
+                break
     
     # Final statistics
     logging.info(f"\nFinal {split_name} class distribution after balancing:")
@@ -971,8 +1119,13 @@ def balance_dataset_classes(df, split_name, target_min_ratio=0.15, random_state=
     else:
         logging.warning(f"✗ Some classes in {split_name} still below target, but improved")
     
-    reduction_percentage = (total_removed / len(df)) * 100
-    logging.info(f"{split_name} dataset size: {len(df)} -> {len(balanced_df)} (removed {total_removed} samples, {reduction_percentage:.1f}% reduction)")
+    reduction_percentage = (total_removed / original_size) * 100
+    logging.info(f"{split_name} dataset size: {original_size} -> {len(balanced_df)} (removed {total_removed} samples, {reduction_percentage:.1f}% reduction)")
+    
+    # Final safety check
+    if len(balanced_df) == 0:
+        logging.error(f"ERROR: {split_name} dataset was completely removed during balancing! Returning original dataset.")
+        return df
     
     return balanced_df
 
@@ -1070,8 +1223,8 @@ if __name__ == "__main__":
         #     logging.info(f"  Category {cat_id}: {count} annotations")
             
         # Randomly sample frames without detections
-        logging.info("Step 5: Augmenting with random frames")
-        augment_with_random_frames(MULTILABEL_OUTPUT_PATH, AUGMENTED_OUTPUT_PATH)
+        #logging.info("Step 5: Augmenting with random frames")
+        #augment_with_random_frames(MULTILABEL_OUTPUT_PATH, AUGMENTED_OUTPUT_PATH)
         
         # Create stratified splits
         logging.info("Step 6: Creating stratified splits by child")
@@ -1086,21 +1239,22 @@ if __name__ == "__main__":
         # Balance train and validation sets
         logging.info("Step 7: Balancing class distributions in train and validation sets")
         
-        # Balance training set (target minimum ratio: 15% to ensure reasonable representation)
+        # Balance training set with more conservative parameters
         train_df_balanced = balance_dataset_classes(
             train_df, 
             "Train", 
-            target_min_ratio=0.40,  # Ensure at least 15% representation for minority class
+            target_min_ratio=0.25,  # 25% minimum representation (more conservative)
+            max_reduction=0.4,      # Allow max 40% reduction
             random_state=42
         )
         
-        # Balance validation set (target minimum ratio: 15% to ensure reasonable representation)
+        # Balance validation set with even more conservative parameters
         val_df_balanced = balance_dataset_classes(
             val_df, 
             "Validation", 
-            target_min_ratio=0.40,  # Ensure at least 15% representation for minority class
-            random_state=43  # Different seed to avoid same pattern
-        )
+            target_min_ratio=0.20,  # 20% minimum representation (more conservative for smaller val set)
+            max_reduction=0.3,      # Allow max 30% reduction
+            random_state=43        )
         
         # Keep test set unbalanced for realistic evaluation
         logging.info("Keeping test set unbalanced for realistic evaluation")
