@@ -16,27 +16,29 @@ def parse_args():
                       help='Batch size for training')
     parser.add_argument('--img_size', type=int, default=640,
                       help='Image size for training')
+    parser.add_argument('--target', type=str, default='all',
+                      choices=['all', 'face'],
+                      help='Target detection task to train on')
     parser.add_argument('--device', type=str, default='0,1',
                       help='Device to use (e.g., "0" for GPU, "cpu" for CPU)')
     return parser.parse_args()
 
 def main():
-    target = "all"
     args = parse_args()
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
     # Set thread limits
-    os.environ['OMP_NUM_THREADS'] = '24'  # OpenMP threads
-    torch.set_num_threads(24)  # PyTorch threads
+    os.environ['OMP_NUM_THREADS'] = '6'  # OpenMP threads
+    torch.set_num_threads(6)  # PyTorch threads
 
-    data_config_path = getattr(DetectionPaths, f"{target}_data_config_path")
-    base_output_dir = getattr(DetectionPaths, f"{target}_output_dir")
+    data_config_path = getattr(DetectionPaths, f"{args.target}_data_config_path")
+    base_output_dir = getattr(DetectionPaths, f"{args.target}_output_dir")
     
     # Load the YOLO model
     model = YOLO("yolo11x.pt")
 
     # Define experiment name and output directory
-    experiment_name = f"{timestamp}_yolo_{target}"
+    experiment_name = f"{timestamp}_yolo_{args.target}"
     output_dir = base_output_dir / experiment_name
 
     # Train the model with a cosine annealing learning rate scheduler
@@ -58,7 +60,7 @@ def main():
     )
 
     # Copy the script to the output directory after training starts
-    script_copy = output_dir / f"train_yolo_{target}.py"
+    script_copy = output_dir / f"train_yolo_{args.target}.py"
     if os.path.exists(__file__):
         shutil.copy(__file__, script_copy)
 
