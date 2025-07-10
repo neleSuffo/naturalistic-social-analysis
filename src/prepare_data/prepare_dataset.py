@@ -355,7 +355,7 @@ def move_images(target: str,
     def process_single_image(image_name: str) -> bool:
         """Process a single image and its label."""
         try:
-            if target in ["person_face", "all"]:
+            if target in ["person_face", "all", "face_det"]:
                 # Handle detection cases
                 image_parts = image_name.split("_")[:8]
                 image_folder = "_".join(image_parts)

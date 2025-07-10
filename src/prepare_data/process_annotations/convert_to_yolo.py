@@ -101,7 +101,7 @@ def map_category_id(target: str, category_id: int, person_age: None, gaze_direct
         "face_cls": CategoryMappings.face_cls.get(person_age, 99),
         "person_face": CategoryMappings.person_face_det.get(category_id, 99),
         "all": CategoryMappings.all_det.get(category_id, 99),
-        "face_det": CategoryMappings.face_cls.get(category_id, 99),
+        "face_det": CategoryMappings.face_cls.get(person_age, 99),
     }
     return mappings.get(target, 99)
 
