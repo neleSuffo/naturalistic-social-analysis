@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Optional, Tuple
 
-VALID_TARGETS = {"person_face", "all", "person_cls", "face_cls", "gaze_cls"}
+VALID_TARGETS = {"person_face", "all", "person_cls", "face_cls", "gaze_cls", "face_det"}
 
 class BasePaths:
     home_dir = Path("/home/nele_pauline_suffo")
@@ -58,6 +58,12 @@ class DetectionPaths:
     all_labels_input_dir = Path(BasePaths.data_dir/"all_det_labels")
     all_data_input_dir = Path(BasePaths.data_dir/"all_det_input")
     all_output_dir = Path(BasePaths.output_dir/"all_detections/")
+    
+    face_trained_weights_path = Path(BasePaths.models_dir/'yolo11_all_detection.pt')
+    face_data_config_path = yolo_detections_dir/"all_dataset.yaml"
+    face_labels_input_dir = Path(BasePaths.data_dir/"all_det_labels")
+    face_data_input_dir = Path(BasePaths.data_dir/"all_det_input")
+    face_output_dir = Path(BasePaths.output_dir/"all_detections/")
     
     person_face_cls_classes = ['child_person_face', 'adult_person_face']
 

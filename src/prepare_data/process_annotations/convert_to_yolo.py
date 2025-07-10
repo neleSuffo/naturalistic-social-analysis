@@ -101,6 +101,7 @@ def map_category_id(target: str, category_id: int, person_age: None, gaze_direct
         "face_cls": CategoryMappings.face_cls.get(person_age, 99),
         "person_face": CategoryMappings.person_face_det.get(category_id, 99),
         "all": CategoryMappings.all_det.get(category_id, 99),
+        "face_det": CategoryMappings.face_cls.get(category_id, 99),
     }
     return mappings.get(target, 99)
 
@@ -127,6 +128,7 @@ def save_annotations(annotations, target):
         "person_cls": ClassificationPaths.person_labels_input_dir,
         "face_cls": ClassificationPaths.face_labels_input_dir,
         "gaze_cls": ClassificationPaths.gaze_labels_input_dir,
+        "face_det": DetectionPaths.face_labels_input_dir,
     }
 
     if target not in output_dirs:
@@ -191,6 +193,7 @@ def main(target: str):
             "person_cls": YoloConfig.person_cls_target_class_ids,
             "face_cls": YoloConfig.face_cls_target_class_ids,
             "gaze_cls": YoloConfig.face_cls_target_class_ids,
+            "face_det": YoloConfig.face_cls_target_class_ids,
         }.get(target)
 
         if category_ids is None:

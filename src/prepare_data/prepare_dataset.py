@@ -91,7 +91,10 @@ def get_class_distribution(total_images: list, annotation_folder: Path, target_t
         },
         "all": {
             0: "person", 1: "face", 2: "child_body_parts", 3: "object",
-        }
+        },
+        "face_det": {
+            0: "child_face", 1: "adult_face"
+        },
         # "all": {
         #     0: "person", 1: "face", 2: "child_body_parts", 3: "book",
         #     4: "toy", 5: "kitchenware", 6: "screen", 7: "other_object", # map screen for now to other_object
@@ -860,7 +863,8 @@ def main(target: str):
         "all": DetectionPaths.all_labels_input_dir,
         "person_cls": ClassificationPaths.person_labels_input_dir,
         "face_cls": ClassificationPaths.face_labels_input_dir,
-        "gaze_cls": ClassificationPaths.gaze_labels_input_dir
+        "gaze_cls": ClassificationPaths.gaze_labels_input_dir,
+        "face_det": DetectionPaths.face_labels_input_dir,
     }
     label_path = path_mapping[target]
     split_yolo_data(label_path, target)
