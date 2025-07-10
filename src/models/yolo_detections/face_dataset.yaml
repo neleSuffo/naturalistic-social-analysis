@@ -1,0 +1,13 @@
+
+train: /home/nele_pauline_suffo/ProcessedData/face_det_input/images/train
+val: /home/nele_pauline_suffo/ProcessedData/face_det_input/images/val
+test: /home/nele_pauline_suffo/ProcessedData/face_det_input/images/test
+
+
+# Number of classes
+nc: 2
+
+# Class names
+names:
+  0: "child face"
+  1: "adult face"
