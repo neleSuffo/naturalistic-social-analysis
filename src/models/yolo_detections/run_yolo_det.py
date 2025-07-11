@@ -106,7 +106,7 @@ def main():
     parser = argparse.ArgumentParser(description='YOLO Image Detection Inference')
     parser.add_argument('--image_path', type=str, required=True,
                         help='Path to input image (e.g., .../quantex_at_home_id261609_2022_04_01_01_000000.jpg)')
-    parser.add_argument('--target', type=str, required=True, choices=["all", "person_face", "person_face_object"],
+    parser.add_argument('--target', type=str, required=True, choices=["all", "face"],
                         help="Target classification type (gaze, person, or face) to locate correct label files.")
     args = parser.parse_args()  
     
@@ -117,7 +117,10 @@ def main():
         datefmt='%Y-%m-%d %H:%M:%S'
     )
     # Initialize paths
-    output_dir = YoloPaths.person_output_dir
+    if target == "all":
+        output_dir = YoloPaths.all_output_dir
+    elif target == "face":
+        output_dir = YoloPaths.face_output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
     
     try:
@@ -130,11 +133,9 @@ def main():
         label_path = Path("/home/nele_pauline_suffo/ProcessedData/yolo_person_input/labels/test") / Path(args.image).with_suffix('.txt')
         
         if target == "all":
-            model_path = YoloPaths.yolo11_model_path
-        elif target == "person_face":
-            model_path = YoloPaths.yolo11_person_face_model_path
-        elif target == "person_face_object":
-            model_path = YoloPaths.yolo11_person_face_object_model_path
+            model_path = DetectionPaths.all_trained_weights_path
+        elif target == "face":
+            model_path = DetectionPaths.face_trained_weights_path
         else:
             logging.error(f"Unknown target '{args.target}' for determining model path.")
             return 1
