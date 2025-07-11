@@ -794,16 +794,18 @@ def split_dataset(input_folder: str,
     
     # Balance the training set
     train_balanced = balance_train_set(train_input_images, annotation_folder)
+    val_balanced = balance_train_set(val_input_images, annotation_folder)
     
     # Log detailed split information
     split_info.append("Split Distribution:")
     split_info.append("-" * 50)
     
     for split_name, split_images in [
-        ("Validation", val_input_images), 
         ("Test", test_input_images), 
         ("Train (Original)", train_input_images),
-        ("Train (Balanced)", train_balanced)
+        ("Train (Balanced)", train_balanced),
+        ("Validation", val_input_images), 
+        ("Validation (Balanced)", val_balanced)
     ]:
         n0 = sum(1 for f in split_images if get_class(f, annotation_folder) == 0)
         n1 = len(split_images) - n0
@@ -862,7 +864,7 @@ def split_dataset(input_folder: str,
     
     logging.info(f"\nSplit distribution saved to: {output_file}")
     
-    return train_balanced, val_input_images, test_input_images
+    return train_balanced, val_balanced, test_input_images
            
 def split_yolo_data(annotation_folder: Path, target: str):
     """
@@ -898,11 +900,12 @@ def split_yolo_data(annotation_folder: Path, target: str):
         
         if target in target_mappings:
             # Get source directories based on target type
-            input_folder = target_mappings[target][0][1]  # Use first mapping's input dir
-            class_mapping = target_mappings[target]
+            original_target = target  # Preserve original target name
+            input_folder = target_mappings[original_target][0][1]  # Use first mapping's input dir
+            class_mapping = target_mappings[original_target]
             # Get custom splits
             train_images, val_images, test_images = split_dataset(
-                input_folder, annotation_folder, target, class_mapping)
+                input_folder, annotation_folder, original_target, class_mapping)
                 
             # Process each split
             for split_name, split_images in [("train", train_images), 
@@ -913,18 +916,18 @@ def split_yolo_data(annotation_folder: Path, target: str):
                     class_images = [img for img in split_images 
                                   if get_class(img, annotation_folder) == class_id]
                     if class_images:
-                        target = target_mappings[target][class_id][0]
+                        target_name = target_mappings[original_target][class_id][0]
                         successful, failed = move_images(
-                            target=target,
+                            target=target_name,
                             image_names=class_images,
                             split_type=split_name,
                             label_path=annotation_folder,
                             n_workers=4
                         )   
-                        logging.info(f"{split_name} {target}: Moved {successful}, Failed {failed}")
+                        logging.info(f"{split_name} {target_name}: Moved {successful}, Failed {failed}")
                     else:
-                        target = target_mappings[target][class_id][0]
-                        logging.warning(f"No {target} images for {split_name}")
+                        target_name = target_mappings[original_target][class_id][0]
+                        logging.warning(f"No {target_name} images for {split_name}")
         else:         
             # Multi-class detection case
             df = get_class_distribution(total_images, annotation_folder, target)
