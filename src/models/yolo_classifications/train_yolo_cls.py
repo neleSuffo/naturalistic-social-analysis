@@ -24,8 +24,8 @@ def main():
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
     # Set thread limits
-    os.environ['OMP_NUM_THREADS'] = '4'  # OpenMP threads
-    torch.set_num_threads(4)  # PyTorch threads
+    os.environ['OMP_NUM_THREADS'] = '6'  # OpenMP threads
+    torch.set_num_threads(6)  # PyTorch threads
 
     # Load the YOLO model
     model = YOLO("yolo11x-cls.pt")
