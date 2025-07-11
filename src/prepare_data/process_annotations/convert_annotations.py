@@ -117,7 +117,48 @@ def write_annotations(txt_file: Path, lines: list) -> None:
     """
     with open(txt_file, "w") as f:
         f.writelines(lines)
-            
+
+def save_annotations_json(annotations, target):
+    """Saves annotations in a single JSON file (bounding boxes and labels)."""
+    logging.info("Saving annotations in JSON format.")
+
+    if target == "gaze_cls_vit":
+        target = "gaze_cls"
+        output_json = ClassificationPaths.gaze_labels_input_dir / "gaze_cls_annotations.json"
+    output_json.parent.mkdir(parents=True, exist_ok=True)
+
+    image_paths = {DetectionPaths.images_input_dir / ann[3][:-11] / ann[3] for ann in annotations}
+    image_dims = get_image_dimensions(image_paths)
+
+    json_data = []
+    skipped_count = 0
+
+    for category_id, bbox_json, object_interaction, image_file_name, gaze_directed_at_child, person_age in annotations:
+        image_file_path = DetectionPaths.images_input_dir / image_file_name[:-11] / image_file_name
+
+        if image_file_path not in image_dims:
+            skipped_count += 1
+            continue
+
+        try:
+            bbox = json.loads(bbox_json)
+            category_id = map_category_id(target, category_id, person_age, gaze_directed_at_child, object_interaction)
+            ann_entry = {
+                "image_path": str(image_file_path),
+                "bbox": bbox,  # [xtl, ytl, xbr, ybr] in pixel format
+                "label": category_id
+            }
+            json_data.append(ann_entry)
+        except Exception as e:
+            logging.error(f"Error processing annotation for {image_file_path}: {e}")
+            skipped_count += 1
+            continue
+
+    with open(output_json, "w") as f:
+        json.dump(json_data, f, indent=2)
+
+    logging.info(f"Saved {len(json_data)} annotations to {output_json}. Skipped {skipped_count}.")
+                
 def save_annotations(annotations, target):
     """Saves annotations in YOLO format using optimized batch writing and multiprocessing."""
     logging.info("Saving annotations in YOLO format.")
@@ -194,6 +235,7 @@ def main(target: str):
             "face_cls": YoloConfig.face_cls_target_class_ids,
             "gaze_cls": YoloConfig.face_cls_target_class_ids,
             "face_det": YoloConfig.face_cls_target_class_ids,
+            "gaze_cls_vit": YoloConfig.face_cls_target_class_ids
         }.get(target)
 
         if category_ids is None:
@@ -203,6 +245,11 @@ def main(target: str):
         annotations = fetch_all_annotations(category_ids=category_ids)
 
         logging.info(f"Fetched {len(annotations)} {target} annotations.")
+        
+        if target == "gaze_cls_vit":
+            save_annotations_json(annotations, target)
+            logging.info(f"Successfully saved {target} annotations in JSON format.")
+            return
         save_annotations(annotations, target)
         logging.info(f"Successfully saved all {target} annotations.")
 
