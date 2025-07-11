@@ -133,7 +133,6 @@ def convert_to_multilabel_format(input_csv_path, output_csv_path):
         # Define category mappings
         # Based on your category IDs: [1,2,3,4,5,6,7,8,10,11,12]
         person_categories = [1, 2]
-        face_categories = [10] 
         object_categories = [3, 4, 5, 6, 7, 8, 12]  # Objects
         
         # Initialize the result DataFrame
@@ -151,8 +150,6 @@ def convert_to_multilabel_format(input_csv_path, output_csv_path):
                 'file_name': frame_name,
                 'adult_person_present': 0,
                 'child_person_present': 0,
-                'adult_face_present': 0,
-                'child_face_present': 0,
                 'object_interaction': 0
             }
             
@@ -171,15 +168,6 @@ def convert_to_multilabel_format(input_csv_path, output_csv_path):
                     else:
                         continue  # Skip if person_age is not specified or unclear
                 
-                # Check for faces
-                elif category_id in face_categories:
-                    if person_age and person_age.lower() == "adult":
-                        labels['adult_face_present'] = 1
-                    elif person_age and person_age.lower() == "child":
-                        labels['child_face_present'] = 1
-                    else:
-                        continue
-                
                 # Check for object interaction
                 elif category_id in object_categories:
                     if object_interaction and object_interaction.lower() == 'yes':
@@ -195,14 +183,12 @@ def convert_to_multilabel_format(input_csv_path, output_csv_path):
         logging.info(f"Total frames processed: {len(result_df)}")
         logging.info(f"Adult person present: {result_df['adult_person_present'].sum()}")
         logging.info(f"Child person present: {result_df['child_person_present'].sum()}")
-        logging.info(f"Adult face present: {result_df['adult_face_present'].sum()}")
-        logging.info(f"Child face present: {result_df['child_face_present'].sum()}")
         logging.info(f"Object interaction: {result_df['object_interaction'].sum()}")
         
         # Log label distribution
         total_frames = len(result_df)
         logging.info("Label distribution (percentage):")
-        for col in ['adult_person_present', 'child_person_present', 'adult_face_present', 'child_face_present', 'object_interaction']:
+        for col in ['adult_person_present', 'child_person_present', 'object_interaction']:
             percentage = (result_df[col].sum() / total_frames) * 100
             logging.info(f"  {col}: {percentage:.1f}%")
         
@@ -318,8 +304,6 @@ def augment_with_random_frames(csv_path, output_path):
                     'file_name': file_name,
                     'adult_person_present': 0,
                     'child_person_present': 0,
-                    'adult_face_present': 0,
-                    'child_face_present': 0,
                     'object_interaction': 0
                 })
             
@@ -550,8 +534,7 @@ def create_stratified_splits_by_child(csv_path, output_dir, test_size=0.1, val_s
                 logging.warning(f"Children with < 20 frames: {few_frames_children}")
         
         # Calculate class distribution per child
-        label_columns = ['adult_person_present', 'child_person_present', 'adult_face_present', 
-                        'child_face_present', 'object_interaction']
+        label_columns = ['adult_person_present', 'child_person_present', 'object_interaction']
         
         child_stats = {}
         for child_id in unique_children:
@@ -609,8 +592,9 @@ def create_stratified_splits_by_child(csv_path, output_dir, test_size=0.1, val_s
         # This helps with better distribution across splits
         children_by_frames = sorted(unique_children, key=lambda x: child_frame_counts[x])
         
-        # First pass: assign children to splits using a round-robin approach 
-        # weighted by current deficit
+        # Phase 1: Assign children to splits based on proportions (prioritize train set)
+        logging.info(f"Phase 1: Assigning {len(children_by_frames)} children to splits based on target proportions")
+        
         for i, child_id in enumerate(children_by_frames):
             child_frames = child_frame_counts[child_id]
             
@@ -619,35 +603,63 @@ def create_stratified_splits_by_child(csv_path, output_dir, test_size=0.1, val_s
             current_val_pct = val_frames / total_frames if total_frames > 0 else 0
             current_test_pct = test_frames / total_frames if total_frames > 0 else 0
             
-            # Calculate deficits (how far we are from target)
-            train_deficit = (1 - test_size - val_size) - current_train_pct
-            val_deficit = val_size - current_val_pct
-            test_deficit = test_size - current_test_pct
+            # Calculate target percentages
+            target_train_pct = 1 - test_size - val_size  # Should be ~0.8
+            target_val_pct = val_size  # Should be ~0.1
+            target_test_pct = test_size  # Should be ~0.1
             
             # Calculate what percentage each split would have after adding this child
             train_pct_after = (train_frames + child_frames) / total_frames
             val_pct_after = (val_frames + child_frames) / total_frames
             test_pct_after = (test_frames + child_frames) / total_frames
             
-            # Decide assignment based on largest deficit and avoiding overshooting
-            max_acceptable_overshoot = 0.05  # Allow 5% overshoot
+            # Stricter overshoot limits for val and test to prevent them from becoming too large
+            train_max = target_train_pct + 0.15  # Allow 15% overshoot for train (main bucket)
+            val_max = target_val_pct + 0.05     # Allow only 5% overshoot for val
+            test_max = target_test_pct + 0.05   # Allow only 5% overshoot for test
             
-            # Create list of viable options (split_name, deficit, pct_after)
-            options = []
-            if train_pct_after <= (1 - test_size - val_size) + max_acceptable_overshoot:
-                options.append(('train', train_deficit, train_pct_after))
-            if val_pct_after <= val_size + max_acceptable_overshoot:
-                options.append(('val', val_deficit, val_pct_after))
-            if test_pct_after <= test_size + max_acceptable_overshoot:
-                options.append(('test', test_deficit, test_pct_after))
+            # Create scoring system that heavily favors train when it's under target
+            scores = {}
             
-            # If no options are viable (all would overshoot), allow assignment to train
-            if not options:
-                options = [('train', train_deficit, train_pct_after)]
+            # Train scoring - heavily favor train when it's significantly under target
+            if train_pct_after <= train_max:
+                if current_train_pct < target_train_pct - 0.1:  # Train is significantly under target
+                    scores['train'] = 100  # Very high score
+                elif current_train_pct < target_train_pct:  # Train is somewhat under target
+                    scores['train'] = 50
+                else:  # Train is at or above target
+                    scores['train'] = 10
+            else:
+                scores['train'] = -10  # Penalty for overshooting
             
-            # Sort by deficit (descending) - assign to split with largest deficit
-            options.sort(key=lambda x: x[1], reverse=True)
-            assignment = options[0][0]
+            # Val scoring - only assign if really needed
+            if val_pct_after <= val_max:
+                if current_val_pct < target_val_pct - 0.02:  # Val is significantly under target
+                    scores['val'] = 30
+                elif current_val_pct < target_val_pct:  # Val is somewhat under target
+                    scores['val'] = 15
+                else:  # Val is at or above target
+                    scores['val'] = 5
+            else:
+                scores['val'] = -20  # Strong penalty for overshooting val
+            
+            # Test scoring - only assign if really needed
+            if test_pct_after <= test_max:
+                if current_test_pct < target_test_pct - 0.02:  # Test is significantly under target
+                    scores['test'] = 30
+                elif current_test_pct < target_test_pct:  # Test is somewhat under target
+                    scores['test'] = 15
+                else:  # Test is at or above target
+                    scores['test'] = 5
+            else:
+                scores['test'] = -20  # Strong penalty for overshooting test
+            
+            # Choose split with highest score
+            assignment = max(scores, key=scores.get)
+            
+            # Fallback: if all scores are negative, assign to train
+            if scores[assignment] < 0:
+                assignment = 'train'
             
             if assignment == 'train':
                 train_children.append(child_id)
@@ -661,11 +673,89 @@ def create_stratified_splits_by_child(csv_path, output_dir, test_size=0.1, val_s
             
             logging.debug(f"Assigned child {child_id} ({child_frames} frames) to {assignment}")
             logging.debug(f"  Current percentages: train={current_train_pct:.3f}, val={current_val_pct:.3f}, test={current_test_pct:.3f}")
-            logging.debug(f"  Deficits: train={train_deficit:.3f}, val={val_deficit:.3f}, test={test_deficit:.3f}")
+            logging.debug(f"  Target percentages: train={target_train_pct:.3f}, val={target_val_pct:.3f}, test={target_test_pct:.3f}")
+            logging.debug(f"  Scores: train={scores.get('train', 'N/A')}, val={scores.get('val', 'N/A')}, test={scores.get('test', 'N/A')}")
         
-        # Second pass: rebalance if any split is significantly under-represented
-        # Move children from over-represented splits to under-represented ones
-        max_iterations = 3
+        # Phase 2: Check for class representation issues and make minimal adjustments
+        logging.info(f"Phase 2: Checking class representation and making minimal adjustments")
+        
+        # Create temporary dataframes to check class distribution
+        temp_train_df = df[df['child_id'].isin(train_children)].copy()
+        temp_val_df = df[df['child_id'].isin(val_children)].copy()
+        temp_test_df = df[df['child_id'].isin(test_children)].copy()
+        
+        # Check which classes have issues
+        classes_needing_fixes = []
+        
+        for col in label_columns:
+            val_positive = temp_val_df[col].sum()
+            val_total = len(temp_val_df)
+            test_positive = temp_test_df[col].sum()
+            test_total = len(temp_test_df)
+            
+            if val_positive == 0 or val_positive == val_total:
+                classes_needing_fixes.append(('val', col, val_positive == 0))
+            if test_positive == 0 or test_positive == test_total:
+                classes_needing_fixes.append(('test', col, test_positive == 0))
+        
+        # Make minimal adjustments to fix class representation
+        if classes_needing_fixes:
+            logging.warning(f"Found {len(classes_needing_fixes)} class representation issues - making minimal fixes")
+            
+            for split_name, col, needs_positive in classes_needing_fixes:
+                # Find the best child to move from train to fix this issue
+                best_candidate = None
+                best_score = float('inf')
+                
+                # Only consider moving children if train set is sufficiently large
+                if len(train_children) <= 3:
+                    logging.warning(f"  Train set too small ({len(train_children)} children) - skipping fix for {col} in {split_name}")
+                    continue
+                
+                for child_id in train_children:
+                    child_data = df[df['child_id'] == child_id]
+                    child_positive = child_data[col].sum()
+                    child_total = len(child_data)
+                    child_frames = child_frame_counts[child_id]
+                    
+                    # Check if this child can help fix the issue
+                    if needs_positive and child_positive > 0:
+                        # We need positive examples and this child has them
+                        # Score: prefer children with more positive examples but fewer total frames
+                        score = child_frames / (child_positive + 1)  # Lower is better
+                        if score < best_score:
+                            best_score = score
+                            best_candidate = child_id
+                    elif not needs_positive and (child_total - child_positive) > 0:
+                        # We need negative examples and this child has them
+                        negative_count = child_total - child_positive
+                        score = child_frames / (negative_count + 1)  # Lower is better
+                        if score < best_score:
+                            best_score = score
+                            best_candidate = child_id
+                
+                # Move the best candidate if found AND it won't make train too small
+                if best_candidate and len(train_children) > 4:  # Keep at least 4 children in train
+                    train_children.remove(best_candidate)
+                    train_frames -= child_frame_counts[best_candidate]
+                    
+                    if split_name == 'val':
+                        val_children.append(best_candidate)
+                        val_frames += child_frame_counts[best_candidate]
+                    else:  # test
+                        test_children.append(best_candidate)
+                        test_frames += child_frame_counts[best_candidate]
+                    
+                    logging.info(f"  Moved child {best_candidate} from train to {split_name} to fix {col} ({'positive' if needs_positive else 'negative'} examples)")
+                else:
+                    logging.warning(f"  Could not find suitable child to fix {col} in {split_name} without making train too small")
+        else:
+            logging.info("✓ No class representation issues found")
+        
+        # Phase 3: Fine-tune proportions if needed (but preserve class representation)
+        logging.info(f"Phase 3: Fine-tuning proportions while preserving class representation")
+        
+        max_iterations = 2  # Reduced iterations to prevent excessive changes
         for iteration in range(max_iterations):
             current_train_pct = train_frames / total_frames
             current_val_pct = val_frames / total_frames  
@@ -675,40 +765,138 @@ def create_stratified_splits_by_child(csv_path, output_dir, test_size=0.1, val_s
             target_val_pct = val_size
             target_test_pct = test_size
             
-            # Check if validation set is significantly under target
-            if current_val_pct < target_val_pct - 0.03 and len(train_children) > 1:  # 3% threshold
-                # Find smallest child in train that could be moved to val
-                candidate = min(train_children, key=lambda x: child_frame_counts[x])
-                candidate_frames = child_frame_counts[candidate]
-                new_val_pct = (val_frames + candidate_frames) / total_frames
+            # Only make adjustments if splits are significantly off target (>15%) and train isn't the largest
+            rebalance_threshold = 0.15
+            
+            # First priority: ensure train is the largest split
+            if current_val_pct > current_train_pct or current_test_pct > current_train_pct:
+                logging.warning(f"Train is not the largest split (train: {current_train_pct:.3f}, val: {current_val_pct:.3f}, test: {current_test_pct:.3f})")
                 
-                if new_val_pct <= target_val_pct + 0.05:  # Don't overshoot by more than 5%
-                    train_children.remove(candidate)
-                    val_children.append(candidate)
-                    train_frames -= candidate_frames
-                    val_frames += candidate_frames
-                    logging.info(f"Rebalancing: moved child {candidate} from train to val")
+                # Move children from val or test back to train
+                if current_val_pct > current_train_pct and len(val_children) > 1:
+                    # Move smallest child from val to train
+                    smallest_val_child = min(val_children, key=lambda x: child_frame_counts[x])
+                    val_children.remove(smallest_val_child)
+                    train_children.append(smallest_val_child)
+                    val_frames -= child_frame_counts[smallest_val_child]
+                    train_frames += child_frame_counts[smallest_val_child]
+                    logging.info(f"Moved child {smallest_val_child} from val to train to make train largest")
+                    continue
+                
+                if current_test_pct > current_train_pct and len(test_children) > 1:
+                    # Move smallest child from test to train
+                    smallest_test_child = min(test_children, key=lambda x: child_frame_counts[x])
+                    test_children.remove(smallest_test_child)
+                    train_children.append(smallest_test_child)
+                    test_frames -= child_frame_counts[smallest_test_child]
+                    train_frames += child_frame_counts[smallest_test_child]
+                    logging.info(f"Moved child {smallest_test_child} from test to train to make train largest")
                     continue
             
-            # Check if test set is significantly under target
-            if current_test_pct < target_test_pct - 0.03 and len(train_children) > 1:
-                candidate = min(train_children, key=lambda x: child_frame_counts[x])
-                candidate_frames = child_frame_counts[candidate]
-                new_test_pct = (test_frames + candidate_frames) / total_frames
+            # Second priority: check if validation set is significantly under target
+            if current_val_pct < target_val_pct - rebalance_threshold and len(train_children) > 3:
+                # Find smallest child in train that wouldn't break class representation
+                candidate = None
+                for child_id in sorted(train_children, key=lambda x: child_frame_counts[x]):
+                    # Check if removing this child would break class representation in train
+                    temp_train = [c for c in train_children if c != child_id]
+                    if len(temp_train) >= 3:  # Keep at least 3 children in train
+                        candidate = child_id
+                        break
                 
-                if new_test_pct <= target_test_pct + 0.05:
-                    train_children.remove(candidate)
-                    test_children.append(candidate)
-                    train_frames -= candidate_frames
-                    test_frames += candidate_frames
-                    logging.info(f"Rebalancing: moved child {candidate} from train to test")
-                    continue
+                if candidate:
+                    candidate_frames = child_frame_counts[candidate]
+                    new_val_pct = (val_frames + candidate_frames) / total_frames
+                    
+                    if new_val_pct <= target_val_pct + 0.05:  # Don't overshoot by more than 5%
+                        train_children.remove(candidate)
+                        val_children.append(candidate)
+                        train_frames -= candidate_frames
+                        val_frames += candidate_frames
+                        logging.info(f"Fine-tuning: moved child {candidate} from train to val")
+                        continue
             
-            # If no rebalancing was needed, break
+            # Third priority: check if test set is significantly under target
+            if current_test_pct < target_test_pct - rebalance_threshold and len(train_children) > 3:
+                candidate = None
+                for child_id in sorted(train_children, key=lambda x: child_frame_counts[x]):
+                    temp_train = [c for c in train_children if c != child_id]
+                    if len(temp_train) >= 3:
+                        candidate = child_id
+                        break
+                
+                if candidate:
+                    candidate_frames = child_frame_counts[candidate]
+                    new_test_pct = (test_frames + candidate_frames) / total_frames
+                    
+                    if new_test_pct <= target_test_pct + 0.05:
+                        train_children.remove(candidate)
+                        test_children.append(candidate)
+                        train_frames -= candidate_frames
+                        test_frames += candidate_frames
+                        logging.info(f"Fine-tuning: moved child {candidate} from train to test")
+                        continue
+            
+            # If no fine-tuning was needed, break
             break
         
-        # Final safety check: ensure each split has at least two children
+        # Additional safety check: ensure train percentage is reasonable
+        current_train_pct = train_frames / total_frames
+        current_val_pct = val_frames / total_frames
+        current_test_pct = test_frames / total_frames
+        
+        target_train_pct = 1 - test_size - val_size
+        
+        # If train is still too small, move children from val and test
+        logging.info(f"Pre-safety check: train={current_train_pct:.3f}, val={current_val_pct:.3f}, test={current_test_pct:.3f}")
+        
+        while current_train_pct < target_train_pct - 0.1 and (len(val_children) > 1 or len(test_children) > 1):
+            # Move from the larger of val or test
+            if len(val_children) >= len(test_children) and len(val_children) > 1:
+                largest_val_child = max(val_children, key=lambda x: child_frame_counts[x])
+                val_children.remove(largest_val_child)
+                train_children.append(largest_val_child)
+                val_frames -= child_frame_counts[largest_val_child]
+                train_frames += child_frame_counts[largest_val_child]
+                logging.info(f"Pre-safety: moved child {largest_val_child} from val to train")
+            elif len(test_children) > 1:
+                largest_test_child = max(test_children, key=lambda x: child_frame_counts[x])
+                test_children.remove(largest_test_child)
+                train_children.append(largest_test_child)
+                test_frames -= child_frame_counts[largest_test_child]
+                train_frames += child_frame_counts[largest_test_child]
+                logging.info(f"Pre-safety: moved child {largest_test_child} from test to train")
+            else:
+                break
+            
+            # Recalculate percentages
+            current_train_pct = train_frames / total_frames
+            current_val_pct = val_frames / total_frames
+            current_test_pct = test_frames / total_frames
+        
+        logging.info(f"Post-safety check: train={current_train_pct:.3f}, val={current_val_pct:.3f}, test={current_test_pct:.3f}")
+        
+        # Final safety check: ensure each split has at least two children and train is largest
         min_children_per_split = 2
+        
+        # First ensure train is the largest split by moving children back if needed
+        while (len(val_children) > len(train_children) or len(test_children) > len(train_children)) and (len(val_children) > 1 or len(test_children) > 1):
+            if len(val_children) > len(train_children) and len(val_children) > 1:
+                # Move smallest child from val to train
+                smallest_val_child = min(val_children, key=lambda x: child_frame_counts[x])
+                val_children.remove(smallest_val_child)
+                train_children.append(smallest_val_child)
+                val_frames -= child_frame_counts[smallest_val_child]
+                train_frames += child_frame_counts[smallest_val_child]
+                logging.info(f"Safety: moved child {smallest_val_child} from val to train to make train largest")
+            elif len(test_children) > len(train_children) and len(test_children) > 1:
+                # Move smallest child from test to train
+                smallest_test_child = min(test_children, key=lambda x: child_frame_counts[x])
+                test_children.remove(smallest_test_child)
+                train_children.append(smallest_test_child)
+                test_frames -= child_frame_counts[smallest_test_child]
+                train_frames += child_frame_counts[smallest_test_child]
+                logging.info(f"Safety: moved child {smallest_test_child} from test to train to make train largest")
         
         # Ensure validation set has at least 2 children
         while len(val_children) < min_children_per_split and len(train_children) > min_children_per_split:
@@ -777,14 +965,142 @@ def create_stratified_splits_by_child(csv_path, output_dir, test_size=0.1, val_s
         if abs(test_pct - test_size*100) > 10:
             logging.warning(f"Test set percentage ({test_pct:.1f}%) is significantly off target ({test_size*100:.1f}%)")
         
-        # Log class distributions per split
-        for split_name, split_df in [('Train', train_df), ('Val', val_df), ('Test', test_df)]:
+        # Validate class representation in val and test sets
+        logging.info("=== Validating Class Representation ===")
+        validation_issues = []
+        
+        for split_name, split_df in [('Val', val_df), ('Test', test_df)]:
             logging.info(f"\n{split_name} class distribution:")
             for col in label_columns:
                 positive = split_df[col].sum()
                 total = len(split_df)
-                ratio = positive / total if total > 0 else 0
-                logging.info(f"  {col}: {positive}/{total} ({ratio:.3f})")
+                negative = total - positive
+                positive_ratio = positive / total if total > 0 else 0
+                negative_ratio = negative / total if total > 0 else 0
+                
+                logging.info(f"  {col}: {positive} pos ({positive_ratio:.3f}), {negative} neg ({negative_ratio:.3f})")
+                
+                # Check for 100% positive or negative
+                if positive == 0:
+                    issue = f"{split_name} set has NO positive examples for {col}"
+                    validation_issues.append(issue)
+                    logging.error(f"  ⚠️  {issue}")
+                elif negative == 0:
+                    issue = f"{split_name} set has NO negative examples for {col}"
+                    validation_issues.append(issue)
+                    logging.error(f"  ⚠️  {issue}")
+                elif positive_ratio < 0.05:
+                    logging.warning(f"  ⚠️  Very few positive examples in {split_name} for {col} ({positive_ratio:.3f})")
+                elif negative_ratio < 0.05:
+                    logging.warning(f"  ⚠️  Very few negative examples in {split_name} for {col} ({negative_ratio:.3f})")
+                else:
+                    logging.info(f"  ✓ Adequate representation for {col}")
+        
+        # Also log train distribution for reference
+        logging.info(f"\nTrain class distribution:")
+        for col in label_columns:
+            positive = train_df[col].sum()
+            total = len(train_df)
+            ratio = positive / total if total > 0 else 0
+            logging.info(f"  {col}: {positive}/{total} ({ratio:.3f})")
+        
+        # If there are validation issues, try to fix them
+        if validation_issues:
+            logging.warning(f"\n⚠️  Found {len(validation_issues)} class representation issues:")
+            for issue in validation_issues:
+                logging.warning(f"  - {issue}")
+            
+            logging.info("\n🔄 Attempting to fix class representation issues...")
+            
+            # Try to move children between splits to improve class balance
+            fixed_issues = []
+            
+            for col in label_columns:
+                val_positive = val_df[col].sum()
+                val_total = len(val_df)
+                test_positive = test_df[col].sum()
+                test_total = len(test_df)
+                
+                # If val has no positive examples, try to move a child with positive examples from train or test
+                if val_positive == 0:
+                    # Find train children with positive examples for this class
+                    candidates = []
+                    for child_id in train_children:
+                        child_data = df[df['child_id'] == child_id]
+                        if child_data[col].sum() > 0:
+                            candidates.append((child_id, child_data[col].sum(), len(child_data)))
+                    
+                    if candidates:
+                        # Sort by number of positive examples (descending) and frame count (ascending)
+                        candidates.sort(key=lambda x: (-x[1], x[2]))
+                        best_candidate = candidates[0][0]
+                        
+                        # Move from train to val
+                        train_children.remove(best_candidate)
+                        val_children.append(best_candidate)
+                        
+                        logging.info(f"  ✓ Moved child {best_candidate} from train to val to fix {col} representation")
+                        fixed_issues.append(f"Fixed val {col} by moving child {best_candidate}")
+                
+                # If test has no positive examples, try similar approach
+                if test_positive == 0:
+                    candidates = []
+                    for child_id in train_children:
+                        child_data = df[df['child_id'] == child_id]
+                        if child_data[col].sum() > 0:
+                            candidates.append((child_id, child_data[col].sum(), len(child_data)))
+                    
+                    if candidates:
+                        candidates.sort(key=lambda x: (-x[1], x[2]))
+                        best_candidate = candidates[0][0]
+                        
+                        # Move from train to test
+                        train_children.remove(best_candidate)
+                        test_children.append(best_candidate)
+                        
+                        logging.info(f"  ✓ Moved child {best_candidate} from train to test to fix {col} representation")
+                        fixed_issues.append(f"Fixed test {col} by moving child {best_candidate}")
+            
+            if fixed_issues:
+                logging.info(f"\n✅ Fixed {len(fixed_issues)} issues:")
+                for fix in fixed_issues:
+                    logging.info(f"  - {fix}")
+                
+                # Recreate dataframes with the updated assignments
+                train_df = df[df['child_id'].isin(train_children)].copy()
+                val_df = df[df['child_id'].isin(val_children)].copy()
+                test_df = df[df['child_id'].isin(test_children)].copy()
+                
+                # Remove temporary columns from final datasets
+                train_df = train_df.drop(columns=['child_id', 'video_name'])
+                val_df = val_df.drop(columns=['child_id', 'video_name'])
+                test_df = test_df.drop(columns=['child_id', 'video_name'])
+                
+                logging.info("\n🔄 Re-validating class representation after fixes...")
+                
+                # Re-validate
+                remaining_issues = []
+                for split_name, split_df in [('Val', val_df), ('Test', test_df)]:
+                    for col in label_columns:
+                        positive = split_df[col].sum()
+                        total = len(split_df)
+                        negative = total - positive
+                        
+                        if positive == 0:
+                            remaining_issues.append(f"{split_name} set still has NO positive examples for {col}")
+                        elif negative == 0:
+                            remaining_issues.append(f"{split_name} set still has NO negative examples for {col}")
+                
+                if remaining_issues:
+                    logging.warning(f"⚠️  {len(remaining_issues)} issues remain after fixes:")
+                    for issue in remaining_issues:
+                        logging.warning(f"  - {issue}")
+                else:
+                    logging.info("✅ All class representation issues have been resolved!")
+            else:
+                logging.warning("⚠️  Could not automatically fix class representation issues")
+        else:
+            logging.info("✅ All classes have adequate representation in val and test sets")
         
         # Save splits
         import os
@@ -963,8 +1279,7 @@ def balance_dataset_classes(df, split_name, target_min_ratio=0.15, max_reduction
     
     np.random.seed(random_state)
     
-    label_columns = ['adult_person_present', 'child_person_present', 'adult_face_present', 
-                    'child_face_present', 'object_interaction']
+    label_columns = ['adult_person_present', 'child_person_present', 'object_interaction']
     
     # Start with a copy of the original dataframe
     balanced_df = df.copy()
@@ -1136,8 +1451,7 @@ def skip_balancing_and_warn(df, split_name):
     """
     logging.info(f"Skipping dataset balancing for {split_name} - will use class weights instead")
     
-    label_columns = ['adult_person_present', 'child_person_present', 'adult_face_present', 
-                    'child_face_present', 'object_interaction']
+    label_columns = ['adult_person_present', 'child_person_present', 'object_interaction']
     
     logging.info(f"\n{split_name} class distribution analysis:")
     extremely_imbalanced = []
@@ -1226,13 +1540,14 @@ if __name__ == "__main__":
         #logging.info("Step 5: Augmenting with random frames")
         #augment_with_random_frames(MULTILABEL_OUTPUT_PATH, AUGMENTED_OUTPUT_PATH)
         
+        
         # Create stratified splits
         logging.info("Step 6: Creating stratified splits by child")
         train_df, val_df, test_df, child_assignment = create_stratified_splits_by_child(
-            AUGMENTED_OUTPUT_PATH, 
+            MULTILABEL_OUTPUT_PATH, 
             SPLITS_OUTPUT_DIR,
-            test_size=0.15,    # 10% test
-            val_size=0.15,     # 10% val  
+            test_size=0.1,    # 10% test
+            val_size=0.1,     # 10% val  
             random_state=42   # This should give ~80% train
         )
         
@@ -1276,8 +1591,7 @@ if __name__ == "__main__":
         # Update child assignment with balanced statistics
         def calculate_balanced_split_stats(split_df, split_name):
             """Calculate updated statistics for balanced split."""
-            label_columns = ['adult_person_present', 'child_person_present', 'adult_face_present', 
-                            'child_face_present', 'object_interaction']
+            label_columns = ['adult_person_present', 'child_person_present', 'object_interaction']
             stats = {}
             total_samples = len(split_df)
             
@@ -1351,8 +1665,7 @@ if __name__ == "__main__":
         logging.info(f"Total samples: {total_original} -> {total_balanced} (removed {total_original - total_balanced})")
         
         # Log class balance comparison
-        label_columns = ['adult_person_present', 'child_person_present', 'adult_face_present', 
-                        'child_face_present', 'object_interaction']
+        label_columns = ['adult_person_present', 'child_person_present', 'object_interaction']
         
         logging.info("\n=== Class Balance Comparison ===")
         for col in label_columns:
