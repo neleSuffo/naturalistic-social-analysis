@@ -142,7 +142,7 @@ class ClassificationPaths:
     gaze_data_config_path = Path(BasePaths.leuphana_ipe_dir/"src/models/yolo_gaze_classification/gaze_dataset.yaml")
     gaze_labels_input_dir = Path(BasePaths.data_dir/"gaze_cls_labels")
     gaze_data_input_dir = Path(BasePaths.data_dir/"gaze_cls_input")
-    gaze_output_dir = Path(BasePaths.output_dir/"resnet_gaze_classification/")
+    gaze_output_dir = Path(BasePaths.output_dir/"gaze_classification/")
     
     @classmethod
     def get_target_paths(cls, target: str, split_type: str) -> Optional[Tuple[Path, Path]]:
