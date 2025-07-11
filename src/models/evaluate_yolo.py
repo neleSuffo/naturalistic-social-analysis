@@ -38,6 +38,13 @@ def main():
         data_config = str(DetectionPaths.all_data_config_path)
         project_folder = str(DetectionPaths.all_output_dir)
         output_path = DetectionPaths.all_output_dir / folder_name
+    elif args.target == "face":
+        model = YOLO(DetectionPaths.face_trained_weights_path)
+        folder_name = "yolo_face_det_validation_" + datetime.now().strftime("%Y%m%d_%H%M%S")
+        data_config = str(DetectionPaths.face_data_config_path)
+        project_folder = str(DetectionPaths.face_output_dir)
+        output_path = DetectionPaths.face_output_dir / folder_name
+        
     # Validate the model
     metrics = model.val(
         data=data_config,
@@ -49,7 +56,7 @@ def main():
     )
 
     # Extract precision and recall
-    if args.target == "all":
+    if args.target in ["all", "face"]:
         precision = metrics.results_dict['metrics/precision(B)']
         recall = metrics.results_dict['metrics/recall(B)']
         f1_score = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
