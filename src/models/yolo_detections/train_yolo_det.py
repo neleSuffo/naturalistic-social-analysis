@@ -112,7 +112,6 @@ def main():
         # Training settings
         device=args.device, # GPU device
         plots=True, # Plot training results
-        save_period=10, # Save checkpoint every 10 epochs
         
         # Validation settings
         val=True, # Enable validation
