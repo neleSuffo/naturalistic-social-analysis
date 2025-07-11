@@ -75,13 +75,13 @@ class Config:
     # Model configuration
     BACKBONE_NAME = 'efficientnet_b0'  # Backbone architecture
     USE_PRETRAINED_BACKBONE = True  # Whether to use pretrained weights
-    DROPOUT_RATE = 0.5  # Increased dropout for regularization (was 0.3)
+    DROPOUT_RATE = 0.65  # Increased dropout for stronger regularization
     
     # Additional regularization to prevent overfitting
-    WEIGHT_DECAY = 0.001  # L2 regularization
-    EARLY_STOPPING_PATIENCE = 8  # Reduced patience for overfitting
+    WEIGHT_DECAY = 0.01  # L2 regularization
+    EARLY_STOPPING_PATIENCE = 15  # Reduced patience for overfitting
     USE_LABEL_SMOOTHING = True  # Enable label smoothing
-    AUGMENTATION_PROBABILITY = 0.7  # Reduce augmentation intensity
+    AUGMENTATION_PROBABILITY = 0.85  # Increase augmentation intensity
     
     # Output settings
     SAVE_PLOTS = True  # Whether to save training plots
@@ -287,19 +287,19 @@ class MultiLabelClassifier(nn.Module):
             self.backbone = models.efficientnet_b0(weights=models.EfficientNet_B0_Weights.IMAGENET1K_V1 if pretrained else None)
             # EfficientNet features are in backbone.features
             self.feature_extractor = self.backbone.features
-            self.num_features = self.backbone.classifier[1].in_features # This is the input feature size for the classifier
+            self.num_features = self.backbone.classifier[1].in_features
         else:
             raise ValueError(f"Unsupported backbone: {backbone_name}")
 
         # Global Average Pooling to flatten spatial features for the dense layers
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
 
-        # Much simpler shared feature extractor to prevent overfitting
+        # Reduced model complexity: smaller shared feature extractor
         self.shared_features = nn.Sequential(
-            nn.Linear(self.num_features, 256),  # Significantly reduced from 512
+            nn.Linear(self.num_features, 128),  # Reduced from 256
             nn.ReLU(inplace=True),
             nn.Dropout(cfg.DROPOUT_RATE),
-            nn.Linear(256, 64),  # Much smaller intermediate layer
+            nn.Linear(128, 32),  # Reduced from 64
             nn.ReLU(inplace=True),
             nn.Dropout(cfg.DROPOUT_RATE)
         )
@@ -309,7 +309,7 @@ class MultiLabelClassifier(nn.Module):
         
         # Initialize classification heads with proper weights
         for i, label_name in enumerate(cfg.LABELS):
-            head = nn.Linear(64, 1)  # Reduced from 128 to 64
+            head = nn.Linear(32, 1)  # Reduced from 64
             # Initialize with proper weights for sigmoid activation
             nn.init.xavier_uniform_(head.weight, gain=1.0)
             # Initialize bias to log(pos_prior/(1-pos_prior)) for balanced starting point
@@ -1091,13 +1091,13 @@ if __name__ == "__main__":
 
     train_transform = transforms.Compose([
         transforms.Resize((cfg.IMAGE_SIZE, cfg.IMAGE_SIZE)),
-        # Reduced augmentation to prevent overfitting
-        transforms.RandomHorizontalFlip(p=0.3),  # Reduced from 0.5
-        transforms.RandomRotation(5),  # Reduced from 15 degrees
-        transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1),  # Much reduced
+        transforms.RandomHorizontalFlip(p=cfg.AUGMENTATION_PROBABILITY),  # Increased probability
+        transforms.RandomRotation(10),  # Increased from 5 to 10 degrees
+        transforms.ColorJitter(brightness=0.15, contrast=0.15, saturation=0.15),  # Slightly stronger
+        transforms.RandomAffine(degrees=0, translate=(0.08, 0.08), scale=(0.92, 1.08)),  # Add translation/scale
         transforms.ToTensor(),
         transforms.Normalize(mean, std),
-        transforms.RandomErasing(p=0.05, scale=(0.02, 0.1))  # Reduced intensity
+        transforms.RandomErasing(p=0.10, scale=(0.02, 0.15))  # Increased erasing
     ])
 
     val_test_transform = transforms.Compose([
