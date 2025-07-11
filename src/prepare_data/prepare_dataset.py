@@ -134,12 +134,14 @@ def get_class_distribution(total_images: list, annotation_folder: Path, target_t
 def multilabel_stratified_split(df: pd.DataFrame,
                               train_ratio: float = TrainingConfig.train_test_split_ratio,
                               random_seed: int = TrainingConfig.random_seed,
-                              target: str = None):
+                              target: str = None,
+                              min_ids_per_split: int = 2):
     """
     Performs a group-based stratified split balancing three factors:
     1. Group Integrity: Keeps all frames from an ID in one split.
     2. Class Representation: Prioritizes ensuring all classes are present in val/test.
     3. True Frame Distribution: Bases the split ratio on the number of frames.
+    4. Minimum ID Requirements: Ensures at least min_ids_per_split IDs in val/test sets.
     
     Parameters:
     ----------
@@ -147,12 +149,12 @@ def multilabel_stratified_split(df: pd.DataFrame,
         DataFrame containing image filenames, IDs, and one-hot encoded class labels.
     train_ratio: float
         Target ratio for the training set based on frame count.
-    val_ratio: float
-        Target ratio for the validation set based on frame count.
     random_seed: int
         Random seed for reproducibility.
     target: str
         A name for the dataset, used for the output log file.
+    min_ids_per_split: int
+        Minimum number of IDs required in validation and test sets.
         
     Returns:
     -------
@@ -177,6 +179,14 @@ def multilabel_stratified_split(df: pd.DataFrame,
     # Pre-calculate the 'weight' (frame count) of each ID
     id_frame_count_map = df['id'].value_counts().to_dict()
     total_frame_count = df.shape[0]
+    
+    # Check if we have enough IDs for minimum requirements
+    total_ids = len(id_class_map)
+    if total_ids < (min_ids_per_split * 2 + 1):  # Need at least 2 for val + 2 for test + 1 for train
+        logging.warning(f"Not enough IDs ({total_ids}) to guarantee {min_ids_per_split} IDs in each of val and test sets")
+        # Adjust minimum requirement if necessary
+        min_ids_per_split = max(1, (total_ids - 1) // 2)
+        logging.warning(f"Adjusted min_ids_per_split to {min_ids_per_split}")
 
     # --- 2. Main Hybrid Scoring Algorithm ---
     available_ids = sorted(list(id_class_map.keys()))
@@ -194,6 +204,7 @@ def multilabel_stratified_split(df: pd.DataFrame,
     # Define weights for the scoring model. Coverage bonus must be very high.
     COVERAGE_BONUS_WEIGHT = 1000.0
     RATIO_PENALTY_WEIGHT = 1.0 / total_frame_count # Normalize penalty by total frames
+    ID_REQUIREMENT_WEIGHT = 2000.0  # Very high weight for meeting minimum ID requirements
 
     for id_to_assign in available_ids:
         id_classes = set(id_class_map[id_to_assign])
@@ -206,8 +217,12 @@ def multilabel_stratified_split(df: pd.DataFrame,
         val_coverage_gain = len(id_classes.intersection(uncovered_val_classes))
         scores['val'] += val_coverage_gain * COVERAGE_BONUS_WEIGHT
         
-        # 2. Ratio Score: Penalty for making the split larger than its target frame count
-        if val_frames >= total_frame_count * val_ratio:
+        # 2. ID Requirement Score: High bonus if we still need more IDs
+        if len(val_ids) < min_ids_per_split:
+            scores['val'] += ID_REQUIREMENT_WEIGHT
+        
+        # 3. Ratio Score: Penalty for making the split larger than its target frame count
+        if val_frames >= total_frame_count * val_ratio and len(val_ids) >= min_ids_per_split:
             potential_new_val_frames = val_frames + id_frame_count
             overage_penalty = potential_new_val_frames - (total_frame_count * val_ratio)
             scores['val'] -= overage_penalty * RATIO_PENALTY_WEIGHT
@@ -216,10 +231,14 @@ def multilabel_stratified_split(df: pd.DataFrame,
         # 1. Coverage Score
         test_coverage_gain = len(id_classes.intersection(uncovered_test_classes))
         scores['test'] += test_coverage_gain * COVERAGE_BONUS_WEIGHT
+        
+        # 2. ID Requirement Score: High bonus if we still need more IDs
+        if len(test_ids) < min_ids_per_split:
+            scores['test'] += ID_REQUIREMENT_WEIGHT
 
-        # 2. Ratio Score
+        # 3. Ratio Score
         test_ratio = 1.0 - train_ratio - val_ratio
-        if test_frames >= total_frame_count * test_ratio:
+        if test_frames >= total_frame_count * test_ratio and len(test_ids) >= min_ids_per_split:
             potential_new_test_frames = test_frames + id_frame_count
             overage_penalty = potential_new_test_frames - (total_frame_count * test_ratio)
             scores['test'] -= overage_penalty * RATIO_PENALTY_WEIGHT
@@ -244,6 +263,15 @@ def multilabel_stratified_split(df: pd.DataFrame,
     val_df = df[df['id'].isin(val_ids)].copy()
     test_df = df[df['id'].isin(test_ids)].copy()
 
+    # Verify minimum ID requirements
+    if len(val_ids) < min_ids_per_split:
+        logging.warning(f"⚠️  Validation set has only {len(val_ids)} ID(s), target was {min_ids_per_split}")
+    if len(test_ids) < min_ids_per_split:
+        logging.warning(f"⚠️  Test set has only {len(test_ids)} ID(s), target was {min_ids_per_split}")
+    
+    if len(val_ids) >= min_ids_per_split and len(test_ids) >= min_ids_per_split:
+        logging.info(f"✓ Both validation and test sets have at least {min_ids_per_split} IDs")
+
     # Final check to warn about impossible splits
     for class_col in class_columns:
         if val_df[class_col].sum() == 0:
@@ -263,11 +291,17 @@ def multilabel_stratified_split(df: pd.DataFrame,
     split_info.append(f"{'Test':<12} {test_frames:<10} {test_frames/total_frame_count:<10.1%}")
     
     split_info.append("\n--- Split Distribution by IDs (For Information) ---")
-    split_info.append(f"{'Split':<12} {'IDs':<10} {'Percentage':<10}")
-    split_info.append("-" * 40)
-    split_info.append(f"{'Train':<12} {len(train_ids):<10} {len(train_ids)/len(id_class_map):<10.1%}")
-    split_info.append(f"{'Validation':<12} {len(val_ids):<10} {len(val_ids)/len(id_class_map):<10.1%}")
-    split_info.append(f"{'Test':<12} {len(test_ids):<10} {len(test_ids)/len(id_class_map):<10.1%}")
+    split_info.append(f"{'Split':<12} {'IDs':<10} {'Percentage':<10} {'ID List'}")
+    split_info.append("-" * 60)
+    split_info.append(f"{'Train':<12} {len(train_ids):<10} {len(train_ids)/len(id_class_map):<10.1%} {sorted(list(train_ids))}")
+    split_info.append(f"{'Validation':<12} {len(val_ids):<10} {len(val_ids)/len(id_class_map):<10.1%} {sorted(list(val_ids))}")
+    split_info.append(f"{'Test':<12} {len(test_ids):<10} {len(test_ids)/len(id_class_map):<10.1%} {sorted(list(test_ids))}")
+    
+    # Add minimum ID requirement check to report
+    split_info.append(f"\n--- Minimum ID Requirements Check ---")
+    split_info.append(f"Target minimum IDs per split: {min_ids_per_split}")
+    split_info.append(f"Validation IDs: {len(val_ids)} {'✓' if len(val_ids) >= min_ids_per_split else '✗'}")
+    split_info.append(f"Test IDs: {len(test_ids)} {'✓' if len(test_ids) >= min_ids_per_split else '✗'}")
     
     split_info.append("\n--- Class Distribution (by annotation instances) ---")
     header = f"{'Category':<20} {'Train':<10} {'Val':<10} {'Test':<10} {'Total':<10}"
@@ -511,16 +545,39 @@ def compute_id_counts(input_images: list,
     logging.info(f"Images without annotations: {missing_annotations}")
     return id_counts, missing_annotations
 
-def find_best_split(all_ids, id_counts, total_samples, num_trials=100, min_ratio=0.05):
-    """Find the best split of IDs that maintains class distribution in val and test sets."""
+def find_best_split(all_ids, id_counts, total_samples, num_trials=100, min_ratio=0.05, min_ids_per_split=2):
+    """Find the best split of IDs that maintains class distribution in val and test sets.
+    
+    Parameters
+    ----------
+    all_ids : list
+        List of all available IDs
+    id_counts : dict
+        Dictionary mapping IDs to [class_0_count, class_1_count]
+    total_samples : int
+        Total number of samples
+    num_trials : int
+        Number of random trials to find best split
+    min_ratio : float
+        Minimum ratio of each class needed in val/test sets
+    min_ids_per_split : int
+        Minimum number of IDs required in val and test sets
+    """
     best_score = float('inf')
     best_split = None
     total_class_0 = sum(counts[0] for counts in id_counts.values())
     total_class_1 = sum(counts[1] for counts in id_counts.values())
     min_class_0_needed = total_class_0 * min_ratio
     min_class_1_needed = total_class_1 * min_ratio
+    
+    # Check if we have enough IDs for the minimum requirements
+    if len(all_ids) < (min_ids_per_split * 2 + 1):  # Need at least 2 for val + 2 for test + 1 for train
+        logging.warning(f"Not enough IDs ({len(all_ids)}) to guarantee {min_ids_per_split} IDs in each of val and test sets")
+        # Adjust minimum requirement if necessary
+        min_ids_per_split = max(1, (len(all_ids) - 1) // 2)
+        logging.warning(f"Adjusted min_ids_per_split to {min_ids_per_split}")
 
-    for _ in range(num_trials):
+    for trial in range(num_trials):
         # Sort IDs by ratio of classes to try balancing first
         id_ratios = [(id_, counts[0]/(counts[0] + counts[1]) if (counts[0] + counts[1]) > 0 else 0) 
                      for id_, counts in id_counts.items()]
@@ -533,30 +590,36 @@ def find_best_split(all_ids, id_counts, total_samples, num_trials=100, min_ratio
         test_ids = []
         val_class_0 = val_class_1 = test_class_0 = test_class_1 = 0
 
-        # First fill validation set until minimum requirements met
+        # First ensure minimum IDs in validation set
+        ids_added_to_val = 0
         for id_ in trial_ids[:]:
-            if (val_class_0 >= min_class_0_needed and 
-                val_class_1 >= min_class_1_needed):
+            if ids_added_to_val >= min_ids_per_split and (val_class_0 >= min_class_0_needed and val_class_1 >= min_class_1_needed):
                 break
                 
             val_ids.append(id_)
             trial_ids.remove(id_)
             val_class_0 += id_counts[id_][0]
             val_class_1 += id_counts[id_][1]
+            ids_added_to_val += 1
 
-        # Then fill test set until minimum requirements met
+        # Then ensure minimum IDs in test set
+        ids_added_to_test = 0
         for id_ in trial_ids[:]:
-            if (test_class_0 >= min_class_0_needed and 
-                test_class_1 >= min_class_1_needed):
+            if ids_added_to_test >= min_ids_per_split and (test_class_0 >= min_class_0_needed and test_class_1 >= min_class_1_needed):
                 break
                 
             test_ids.append(id_)
             trial_ids.remove(id_)
             test_class_0 += id_counts[id_][0]
             test_class_1 += id_counts[id_][1]
+            ids_added_to_test += 1
 
         # Remaining IDs go to train
         train_ids = trial_ids
+
+        # Skip this trial if we don't meet minimum ID requirements
+        if len(val_ids) < min_ids_per_split or len(test_ids) < min_ids_per_split:
+            continue
 
         # Calculate how well balanced the splits are
         val_total = val_class_0 + val_class_1
@@ -571,20 +634,43 @@ def find_best_split(all_ids, id_counts, total_samples, num_trials=100, min_ratio
             # 1. How close ratios are to overall ratio
             # 2. Whether minimum requirements are met
             # 3. How close to target split sizes (10% each)
+            # 4. Whether minimum ID requirements are met
             ratio_score = abs(val_ratio - overall_ratio) + abs(test_ratio - overall_ratio)
+            
             min_req_score = 0
             if val_class_0 < min_class_0_needed or val_class_1 < min_class_1_needed:
                 min_req_score += 100
             if test_class_0 < min_class_0_needed or test_class_1 < min_class_1_needed:
                 min_req_score += 100
+            
+            # Penalty for not meeting minimum ID requirements
+            id_req_score = 0
+            if len(val_ids) < min_ids_per_split:
+                id_req_score += 1000
+            if len(test_ids) < min_ids_per_split:
+                id_req_score += 1000
                 
             size_score = abs(val_total - 0.1 * total_samples) + abs(test_total - 0.1 * total_samples)
             
-            total_score = ratio_score + min_req_score + size_score * 0.1
+            total_score = ratio_score + min_req_score + id_req_score + size_score * 0.1
             
             if total_score < best_score:
                 best_score = total_score
                 best_split = (val_ids, test_ids, train_ids)
+
+    # Final check and logging
+    if best_split is None:
+        logging.error("Could not find a valid split meeting all requirements!")
+        # Fallback: simple split ensuring minimum IDs
+        random.shuffle(all_ids)
+        val_ids = all_ids[:min_ids_per_split]
+        test_ids = all_ids[min_ids_per_split:min_ids_per_split*2]
+        train_ids = all_ids[min_ids_per_split*2:]
+        best_split = (val_ids, test_ids, train_ids)
+        logging.warning(f"Using fallback split: val={len(val_ids)} IDs, test={len(test_ids)} IDs, train={len(train_ids)} IDs")
+    else:
+        val_ids, test_ids, train_ids = best_split
+        logging.info(f"Best split found: val={len(val_ids)} IDs, test={len(test_ids)} IDs, train={len(train_ids)} IDs")
 
     return best_split
 
@@ -695,8 +781,11 @@ def split_dataset(input_folder: str,
     split_info.append(f"Missing Annotations: {missing_annotations} images\n")
     split_info.append(f"Overall {class_mapping[0][0]}-to-Total Ratio: {N0 / total_samples:.3f}\n")
 
-    # Find the best split
-    val_ids, test_ids, train_ids = find_best_split(all_ids, id_counts, total_samples)
+    # Find the best split with minimum ID requirements
+    val_ids, test_ids, train_ids = find_best_split(
+        all_ids, id_counts, total_samples, 
+        num_trials=100, min_ratio=0.05, min_ids_per_split=2
+    )
     
     # Assign input images to splits
     val_input_images = [f for f in all_input_images if extract_id(f) in val_ids]
@@ -740,6 +829,21 @@ def split_dataset(input_folder: str,
         f"Validation IDs: {len(val_ids)}, {val_ids}",
         f"Test IDs: {len(test_ids)}, {test_ids}",
     ])
+    
+    # Log ID counts to console as well
+    logging.info(f"\nID Distribution Summary:")
+    logging.info(f"Training set: {len(train_ids)} IDs")
+    logging.info(f"Validation set: {len(val_ids)} IDs")
+    logging.info(f"Test set: {len(test_ids)} IDs")
+    
+    # Verify minimum requirements
+    if len(val_ids) < 2:
+        logging.warning(f"⚠️  Validation set has only {len(val_ids)} ID(s), recommended minimum is 2")
+    if len(test_ids) < 2:
+        logging.warning(f"⚠️  Test set has only {len(test_ids)} ID(s), recommended minimum is 2")
+    
+    if len(val_ids) >= 2 and len(test_ids) >= 2:
+        logging.info("✓ Both validation and test sets have at least 2 IDs")
     
     # Check for ID overlap
     train_id_set = set(train_ids)
@@ -824,8 +928,10 @@ def split_yolo_data(annotation_folder: Path, target: str):
         else:         
             # Multi-class detection case
             df = get_class_distribution(total_images, annotation_folder, target)
-            # split data grouped by id
-            train, val, test, *_ = multilabel_stratified_split(df, target=target)
+            # split data grouped by id with minimum ID requirements
+            train, val, test, *_ = multilabel_stratified_split(
+                df, target=target, min_ids_per_split=2
+            )
 
             # Move images for each split
             for split_name, split_set in [("train", train), 
