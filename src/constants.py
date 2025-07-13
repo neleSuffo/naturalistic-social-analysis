@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Optional, Tuple
 
-VALID_TARGETS = {"person_face", "all", "person_cls", "face_cls", "gaze_cls", "face_det"}
+VALID_TARGETS = {"person_face", "all", "person_cls", "face_cls", "gaze_cls", "face_det", "gaze_cls_vit"}
 
 class BasePaths:
     home_dir = Path("/home/nele_pauline_suffo")
@@ -59,7 +59,7 @@ class DetectionPaths:
     all_data_input_dir = Path(BasePaths.data_dir/"all_det_input")
     all_output_dir = Path(BasePaths.output_dir/"all_detections/")
     
-    face_trained_weights_path = Path(BasePaths.models_dir/'yolo11_face_detection.pt')
+    face_trained_weights_path = "/home/nele_pauline_suffo/outputs/face_detections/20250711_202506_yolo11x_face/weights/best.pt" #Path(BasePaths.models_dir/'yolo11_face_detection.pt')
     face_data_config_path = yolo_detections_dir/"face_dataset.yaml"
     face_labels_input_dir = Path(BasePaths.data_dir/"face_det_labels")
     face_data_input_dir = Path(BasePaths.data_dir/"face_det_input")
@@ -139,7 +139,7 @@ class ClassificationPaths:
     gaze_trained_weights_path = Path(BasePaths.models_dir/'yolo11_gaze_classification.pt')
     gaze_extraction_progress_file_path = Path(BasePaths.data_dir/"gaze_extraction_progress.txt")
     gaze_missing_frames_file_path = Path(BasePaths.data_dir/"gaze_missing_frames.txt")
-    gaze_data_config_path = Path(BasePaths.leuphana_ipe_dir/"src/models/yolo_gaze_classification/gaze_dataset.yaml")
+    gaze_data_config_path = Path(BasePaths.leuphana_ipe_dir/"src/models/yolo_classifications/gaze_dataset.yaml")
     gaze_labels_input_dir = Path(BasePaths.data_dir/"gaze_cls_labels")
     gaze_data_input_dir = Path(BasePaths.data_dir/"gaze_cls_input")
     gaze_output_dir = Path(BasePaths.output_dir/"gaze_classification/")
