@@ -96,8 +96,6 @@ class Config:
     LABELS = [
         "adult_person_present",
         "child_person_present",
-        "adult_face_present",
-        "child_face_present",
         "object_interaction",
     ]
     NUM_LABELS = len(LABELS)
