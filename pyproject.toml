@@ -63,6 +63,7 @@ tensorflow = "2.10.0"
 focal-loss = "^0.0.7"
 iterative-stratification = "^0.1.9"
 librosa = "^0.11.0"
+transformers = {version = ">=4.21.0,<4.30.0", extras = ["torch"]}
 
 
 [tool.poetry.group.dev.dependencies]
