@@ -5,6 +5,7 @@ import argparse
 import os
 import numpy as np
 import pandas as pd
+import json
 from collections import defaultdict
 from pathlib import Path
 from sklearn.model_selection import train_test_split
@@ -898,7 +899,39 @@ def split_yolo_data(annotation_folder: Path, target: str):
         # Get annotated frames
         total_images = get_total_number_of_annotated_frames(annotation_folder)
         
-        if target in target_mappings:
+        if target == "gaze_cls_vit":
+            # Special handling for ViT JSON format using same split_dataset logic
+            logging.info("Creating ViT JSON annotations for gaze classification using split_dataset logic")
+            
+            # Use gaze labels and images
+            class_mapping = {
+                0: ("no gaze", DetectionPaths.gaze_images_input_dir),
+                1: ("gaze", DetectionPaths.gaze_images_input_dir)
+            }
+            
+            # Get custom splits using the same logic as other classification targets
+            train_images, val_images, test_images = split_dataset_for_vit(
+                total_images, annotation_folder, target, class_mapping
+            )
+            
+            # Calculate original class counts before balancing
+            train_original_count = calculate_original_class_counts(train_images, annotation_folder)
+            val_original_count = calculate_original_class_counts(val_images, annotation_folder)
+            
+            # Create JSON annotations from the split image lists
+            train_annotations = create_json_from_image_list(train_images, annotation_folder, total_images)
+            val_annotations = create_json_from_image_list(val_images, annotation_folder, total_images)
+            test_annotations = create_json_from_image_list(test_images, annotation_folder, total_images)
+            
+            # Save JSON files to the appropriate directory
+            output_dir = Path("/home/nele_pauline_suffo/ProcessedData/gaze_cls_input")
+            save_vit_json_files(train_annotations, val_annotations, test_annotations, output_dir, 
+                               train_original_count, val_original_count)
+            
+            logging.info(f"ViT JSON annotations saved to {output_dir}")
+            return
+        
+        elif target in target_mappings:
             # Get source directories based on target type
             original_target = target  # Preserve original target name
             input_folder = target_mappings[original_target][0][1]  # Use first mapping's input dir
@@ -957,6 +990,578 @@ def split_yolo_data(annotation_folder: Path, target: str):
         raise
     
     logging.info(f"\nCompleted dataset preparation for {target}")
+
+def split_dataset_for_vit(total_images: list, annotation_folder: Path, target: str, class_mapping: dict) -> Tuple[list, list, list]:
+    """
+    Split the dataset using the same logic as split_dataset but for ViT JSON creation.
+    This function returns image file lists instead of moving files.
+    
+    Parameters
+    ----------
+    total_images: list
+        List of tuples containing image paths and IDs.
+    annotation_folder: Path
+        Path to the directory containing annotation files.
+    target: str
+        The target type for classification.
+    class_mapping: dict
+        Mapping of class IDs to names.
+        
+    Returns
+    -------
+    Tuple[list, list, list]
+        Lists of image filenames for train, val, and test splits.
+    """
+    logging.info(f"Splitting dataset for ViT using split_dataset logic for target: {target}")
+    
+    # Convert total_images to a list of image filenames for processing
+    all_input_images = []
+    for image_path, image_id in total_images:
+        image_file = Path(image_path)
+        all_input_images.append(image_file.name)
+    
+    # Create output directory for split information
+    output_dir = Path(BasePaths.output_dir/"dataset_statistics")
+    output_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")
+    output_file = output_dir / f"split_distribution_{target}_{timestamp}.txt"
+    
+    split_info = []
+    split_info.append(f"Dataset Split Information - {timestamp}\n")
+    split_info.append(f"Found {len(all_input_images)} {target} images\n")
+    
+    # Compute class counts per ID using gaze labels
+    id_counts, missing_annotations = compute_id_counts_for_vit(all_input_images, annotation_folder)
+    all_ids = list(id_counts.keys())
+    
+    # Get total distribution
+    N0 = sum(counts[0] for counts in id_counts.values())
+    N1 = sum(counts[1] for counts in id_counts.values())
+    total_samples = N0 + N1
+    
+    # Log initial distribution
+    split_info.append("Initial Distribution:")
+    split_info.append(f"Class 0 {class_mapping[0][0]}: {N0} no gaze detections")
+    split_info.append(f"Class 1 {class_mapping[1][0]}: {N1} gaze detections")
+    split_info.append(f"Total: {total_samples} gaze detections")
+    split_info.append(f"Missing Annotations: {missing_annotations} images\n")
+    split_info.append(f"Overall {class_mapping[0][0]}-to-Total Ratio: {N0 / total_samples:.3f}\n")
+
+    # Find the best split with minimum ID requirements
+    val_ids, test_ids, train_ids = find_best_split(
+        all_ids, id_counts, total_samples, 
+        num_trials=100, min_ratio=0.05, min_ids_per_split=2
+    )
+    
+    # Assign input images to splits
+    val_input_images = [f for f in all_input_images if extract_id(f) in val_ids]
+    test_input_images = [f for f in all_input_images if extract_id(f) in test_ids]
+    train_input_images = [f for f in all_input_images if extract_id(f) in train_ids]
+    
+    # Balance the training and validation sets
+    train_balanced = balance_train_set_for_vit(train_input_images, annotation_folder)
+    val_balanced = balance_train_set_for_vit(val_input_images, annotation_folder)
+    
+    # Log detailed split information
+    split_info.append("Split Distribution:")
+    split_info.append("-" * 50)
+    
+    for split_name, split_images in [
+        ("Train (Original)", train_input_images),
+        ("Train (Balanced)", train_balanced),
+        ("Validation (Original)", val_input_images),
+        ("Validation (Balanced)", val_balanced),
+        ("Test", test_input_images)
+    ]:
+        # Count images that have at least one detection of each class
+        images_with_class_0 = 0
+        images_with_class_1 = 0
+        total_detections_class_0 = 0
+        total_detections_class_1 = 0
+        
+        for img in split_images:
+            annotation_file = annotation_folder / Path(img).with_suffix('.txt').name
+            
+            if annotation_file.exists() and annotation_file.stat().st_size > 0:
+                with open(annotation_file, 'r') as f:
+                    lines = f.readlines()
+                
+                # Check what classes are present in this image
+                has_class_0 = False
+                has_class_1 = False
+                
+                for line in lines:
+                    parts = line.strip().split()
+                    if len(parts) >= 5:
+                        class_id = int(parts[0])
+                        if class_id == 0:
+                            has_class_0 = True
+                            total_detections_class_0 += 1
+                        elif class_id == 1:
+                            has_class_1 = True
+                            total_detections_class_1 += 1
+                
+                # Count images with each class (note: an image can have both)
+                if has_class_0:
+                    images_with_class_0 += 1
+                if has_class_1:
+                    images_with_class_1 += 1
+        
+        n_split = len(split_images)
+        ratio = images_with_class_0 / n_split if n_split > 0 else 0
+        
+        split_details = [
+            f"\n{split_name} Set:",
+            f"Total Images: {len(split_images)}",
+            f"Images with {class_mapping[0][0]} (Class 0): {images_with_class_0}",
+            f"Images with {class_mapping[1][0]} (Class 1): {images_with_class_1}",
+            f"Total {class_mapping[0][0]} detections: {total_detections_class_0}",
+            f"Total {class_mapping[1][0]} detections: {total_detections_class_1}",
+            f"Images with {class_mapping[0][0]}-to-Total Images Ratio: {ratio:.3f}"
+        ]
+        split_info.extend(split_details)
+        
+        # Also log to console
+        logging.info("\n".join(split_details))
+    
+    # Add ID distribution information
+    split_info.extend([
+        f"\nID Distribution:",
+        f"Training IDs: {len(train_ids)}, {sorted(train_ids)}",
+        f"Validation IDs: {len(val_ids)}, {sorted(val_ids)}",
+        f"Test IDs: {len(test_ids)}, {sorted(test_ids)}",
+    ])
+    
+    # Log ID counts to console as well
+    logging.info(f"\nID Distribution Summary:")
+    logging.info(f"Training set: {len(train_ids)} IDs")
+    logging.info(f"Validation set: {len(val_ids)} IDs")
+    logging.info(f"Test set: {len(test_ids)} IDs")
+    
+    # Verify minimum requirements
+    if len(val_ids) < 2:
+        logging.warning(f"⚠️  Validation set has only {len(val_ids)} ID(s), recommended minimum is 2")
+    if len(test_ids) < 2:
+        logging.warning(f"⚠️  Test set has only {len(test_ids)} ID(s), recommended minimum is 2")
+    
+    if len(val_ids) >= 2 and len(test_ids) >= 2:
+        logging.info("✓ Both validation and test sets have at least 2 IDs")
+    
+    # Check for ID overlap
+    train_id_set = set(train_ids)
+    val_id_set = set(val_ids)
+    test_id_set = set(test_ids)
+    
+    overlap = train_id_set & val_id_set | train_id_set & test_id_set | val_id_set & test_id_set
+    split_info.append(f"\nID Overlap Check:")
+    split_info.append(f"Overlap found: {'Yes' if overlap else 'No'}")
+    if overlap:
+        split_info.append(f"Overlapping IDs: {overlap}")
+    
+    # Write to file
+    with open(output_file, 'w') as f:
+        f.write('\n'.join(split_info))
+    
+    logging.info(f"\nSplit distribution saved to: {output_file}")
+    
+    return train_balanced, val_balanced, test_input_images
+
+def balance_train_set_for_vit(input_images: list, 
+                            annotation_folder: Path,
+                            min_ratio: float = 0.45) -> list:
+    """
+    Balance the training/validation set for ViT by considering gaze detections.
+    Only balances if class ratio exceeds specified threshold.
+    
+    Parameters
+    ----------
+    input_images: list
+        List of image filenames.
+    annotation_folder: Path
+        Path to the directory containing annotation files.
+    min_ratio: float
+        Minimum ratio of minority class to total detections to trigger balancing.
+        
+    Returns
+    -------
+    list
+        A balanced list of image filenames.
+    """
+    # Separate images by the classes they contain
+    images_with_class_0 = []
+    images_with_class_1 = []
+    
+    for img in input_images:
+        annotation_file = annotation_folder / Path(img).with_suffix('.txt').name
+        
+        if annotation_file.exists() and annotation_file.stat().st_size > 0:
+            with open(annotation_file, 'r') as f:
+                lines = f.readlines()
+            
+            # Check what classes are present in this image
+            has_class_0 = False
+            has_class_1 = False
+            
+            for line in lines:
+                parts = line.strip().split()
+                if len(parts) >= 5:
+                    class_id = int(parts[0])
+                    if class_id == 0:  # no_gaze
+                        has_class_0 = True
+                    elif class_id == 1:  # gaze
+                        has_class_1 = True
+            
+            # Add image to appropriate lists (can be in both if it has both classes)
+            if has_class_0:
+                images_with_class_0.append(img)
+            if has_class_1:
+                images_with_class_1.append(img)
+    
+    # Count total detections for balancing decision
+    total_detections_class_0 = 0
+    total_detections_class_1 = 0
+    
+    for img in input_images:
+        annotation_file = annotation_folder / Path(img).with_suffix('.txt').name
+        
+        if annotation_file.exists() and annotation_file.stat().st_size > 0:
+            with open(annotation_file, 'r') as f:
+                lines = f.readlines()
+            
+            for line in lines:
+                parts = line.strip().split()
+                if len(parts) >= 5:
+                    class_id = int(parts[0])
+                    if class_id == 0:
+                        total_detections_class_0 += 1
+                    elif class_id == 1:
+                        total_detections_class_1 += 1
+    
+    total_detections = total_detections_class_0 + total_detections_class_1
+    
+    # Calculate class ratios based on detections
+    ratio_0 = total_detections_class_0 / total_detections if total_detections > 0 else 0
+    ratio_1 = total_detections_class_1 / total_detections if total_detections > 0 else 0
+    
+    # Only balance if ratio exceeds threshold
+    if min(ratio_0, ratio_1) < min_ratio:
+        logging.info("Class imbalance detected in gaze detections, performing balancing...")
+        
+        # Balance by reducing the images with more detections
+        if total_detections_class_0 > total_detections_class_1:
+            # Reduce images with class 0 (no_gaze)
+            target_ratio = total_detections_class_1 / total_detections_class_0
+            target_size = int(len(images_with_class_0) * target_ratio)
+            images_with_class_0 = random.sample(images_with_class_0, min(target_size, len(images_with_class_0)))
+        else:
+            # Reduce images with class 1 (gaze)
+            target_ratio = total_detections_class_0 / total_detections_class_1
+            target_size = int(len(images_with_class_1) * target_ratio)
+            images_with_class_1 = random.sample(images_with_class_1, min(target_size, len(images_with_class_1)))
+        
+        # Combine the balanced sets (removing duplicates)
+        balanced_images = list(set(images_with_class_0 + images_with_class_1))
+        
+        # Recalculate final ratios for logging
+        final_detections_class_0 = 0
+        final_detections_class_1 = 0
+        
+        for img in balanced_images:
+            annotation_file = annotation_folder / Path(img).with_suffix('.txt').name
+            
+            if annotation_file.exists() and annotation_file.stat().st_size > 0:
+                with open(annotation_file, 'r') as f:
+                    lines = f.readlines()
+                
+                for line in lines:
+                    parts = line.strip().split()
+                    if len(parts) >= 5:
+                        class_id = int(parts[0])
+                        if class_id == 0:
+                            final_detections_class_0 += 1
+                        elif class_id == 1:
+                            final_detections_class_1 += 1
+        
+        final_total = final_detections_class_0 + final_detections_class_1
+        balanced_ratio = final_detections_class_0 / final_total if final_total > 0 else 0
+        logging.info(f"After balancing - Detection ratio (no_gaze/total): {balanced_ratio:.3f}")
+        logging.info(f"Balanced dataset: {len(balanced_images)} images, {final_detections_class_0} no_gaze, {final_detections_class_1} gaze detections")
+        
+        return balanced_images
+    else:
+        logging.info("Class distribution within acceptable range, no balancing needed")
+        return input_images
+
+def calculate_original_class_counts(image_list: list, annotation_folder: Path) -> dict:
+    """
+    Calculate the original class counts for a list of images before balancing.
+    
+    Parameters
+    ----------
+    image_list: list
+        List of image filenames.
+    annotation_folder: Path
+        Path to the directory containing annotation files.
+        
+    Returns
+    -------
+    dict
+        Dictionary containing class counts for no_gaze and gaze.
+    """
+    counts = {"no_gaze": 0, "gaze": 0}
+    
+    for image_filename in image_list:
+        annotation_file = annotation_folder / Path(image_filename).with_suffix('.txt').name
+        
+        if annotation_file.exists() and annotation_file.stat().st_size > 0:
+            with open(annotation_file, 'r') as f:
+                lines = f.readlines()
+            
+            # Count all detections in this image
+            for line in lines:
+                parts = line.strip().split()
+                if len(parts) >= 5:
+                    class_id = int(parts[0])
+                    if class_id == 0:
+                        counts["no_gaze"] += 1
+                    elif class_id == 1:
+                        counts["gaze"] += 1
+    
+    return counts
+
+def compute_id_counts_for_vit(input_images: list, annotation_folder: Path) -> Tuple[defaultdict, int]:
+    """
+    Compute the number of gaze detections per ID for ViT JSON creation.
+    
+    Parameters
+    ----------
+    input_images: list
+        List of image filenames.
+    annotation_folder: Path
+        Path to the directory containing annotation files.
+    
+    Returns
+    -------
+    Tuple[defaultdict, int]
+        A dictionary with IDs as keys and a list of counts [n0, n1] as values,
+        where n0 is the count of class 0 (no_gaze) and n1 is the count of class 1 (gaze).
+        Also returns the number of images without annotations.
+    """
+    id_counts = defaultdict(lambda: [0, 0])  # [no_gaze_count, gaze_count]
+    missing_annotations = 0
+    
+    for input_image in input_images:
+        id_ = extract_id(input_image)
+        annotation_file = annotation_folder / Path(input_image).with_suffix('.txt').name
+        
+        if annotation_file.exists() and annotation_file.stat().st_size > 0:
+            with open(annotation_file, 'r') as f:
+                lines = f.readlines()
+            
+            # Count gaze detections in this image
+            for line in lines:
+                parts = line.strip().split()
+                if len(parts) >= 5:
+                    class_id = int(parts[0])
+                    if class_id == 0:  # class 0 (no gaze)
+                        id_counts[id_][0] += 1
+                    elif class_id == 1:  # class 1 (gaze)
+                        id_counts[id_][1] += 1
+        else:
+            missing_annotations += 1
+    
+    logging.info(f"Images without annotations: {missing_annotations}")
+    return id_counts, missing_annotations
+
+def create_json_from_image_list(image_list: list, annotation_folder: Path, total_images: list) -> list:
+    """
+    Create JSON annotations from a list of image filenames.
+    
+    Parameters
+    ----------
+    image_list: list
+        List of image filenames for this split.
+    annotation_folder: Path
+        Path to the directory containing annotation files.
+    total_images: list
+        List of tuples containing all image paths and IDs.
+        
+    Returns
+    -------
+    list
+        List of annotation dictionaries in ViT format.
+    """
+    # Create a mapping from filename to full path
+    filename_to_path = {}
+    for image_path, image_id in total_images:
+        filename = Path(image_path).name
+        filename_to_path[filename] = image_path
+    
+    annotations = []
+    
+    for image_filename in tqdm(image_list, desc="Creating JSON annotations"):
+        # Get full path from filename
+        image_path = filename_to_path.get(image_filename)
+        if not image_path:
+            logging.warning(f"Could not find full path for {image_filename}")
+            continue
+            
+        annotation_file = annotation_folder / Path(image_filename).with_suffix('.txt').name
+        
+        if annotation_file.exists() and annotation_file.stat().st_size > 0:
+            # Get actual image dimensions
+            img_width, img_height = get_image_dimensions(image_path)
+            
+            with open(annotation_file, 'r') as f:
+                lines = f.readlines()
+            
+            # Process each gaze detection in the image
+            for line in lines:
+                parts = line.strip().split()
+                if len(parts) >= 5:
+                    class_id = int(parts[0])
+                    
+                    # Only process gaze detections (0: no_gaze, 1: gaze)
+                    if class_id in [0, 1]:
+                        # Convert YOLO format to absolute coordinates
+                        x_center, y_center, width, height = map(float, parts[1:5])
+                        
+                        # Convert from YOLO format (normalized) to absolute coordinates
+                        x_center_abs = x_center * img_width
+                        y_center_abs = y_center * img_height
+                        width_abs = width * img_width
+                        height_abs = height * img_height
+                        
+                        # Convert to [x1, y1, x2, y2] format
+                        x1 = max(0, x_center_abs - width_abs / 2)
+                        y1 = max(0, y_center_abs - height_abs / 2)
+                        x2 = min(img_width, x_center_abs + width_abs / 2)
+                        y2 = min(img_height, y_center_abs + height_abs / 2)
+                        
+                        # Ensure bbox is valid
+                        if x2 > x1 and y2 > y1:
+                            annotation = {
+                                "image_path": str(image_path),
+                                "bbox": [round(x1, 1), round(y1, 1), round(x2, 1), round(y2, 1)],
+                                "label": class_id  # 0: no_gaze, 1: gaze
+                            }
+                            annotations.append(annotation)
+    
+    return annotations
+
+def get_image_dimensions(image_path: str) -> Tuple[int, int]:
+    """
+    Get actual image dimensions. This is a helper function that should be 
+    called to get real image dimensions instead of using placeholders.
+    
+    Parameters
+    ----------
+    image_path: str
+        Path to the image file
+        
+    Returns
+    -------
+    Tuple[int, int]
+        Width and height of the image
+    """
+    try:
+        from PIL import Image
+        with Image.open(image_path) as img:
+            return img.size  # Returns (width, height)
+    except Exception as e:
+        logging.warning(f"Could not get dimensions for {image_path}: {e}")
+        return 1920, 1080  # Default fallback
+
+def save_vit_json_files(train_annotations: list, val_annotations: list, test_annotations: list, output_dir: Path, 
+                        train_original_count: dict = None, val_original_count: dict = None):
+    """
+    Save the ViT JSON annotation files.
+    
+    Parameters
+    ----------
+    train_annotations: list
+        Training annotations
+    val_annotations: list
+        Validation annotations
+    test_annotations: list
+        Test annotations
+    output_dir: Path
+        Output directory for JSON files
+    train_original_count: dict
+        Original class counts for training set before balancing
+    val_original_count: dict
+        Original class counts for validation set before balancing
+    """
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Save JSON files
+    files_to_save = [
+        ("gaze_cls_annotations_train.json", train_annotations),
+        ("gaze_cls_annotations_val.json", val_annotations),
+        ("gaze_cls_annotations_test.json", test_annotations)
+    ]
+    
+    for filename, annotations in files_to_save:
+        output_file = output_dir / filename
+        with open(output_file, 'w') as f:
+            json.dump(annotations, f, indent=2)
+        logging.info(f"Saved {len(annotations)} annotations to {output_file}")
+    
+    # Calculate balanced class distribution
+    train_balanced_count = {
+        "no_gaze": sum(1 for ann in train_annotations if ann["label"] == 0),
+        "gaze": sum(1 for ann in train_annotations if ann["label"] == 1)
+    }
+    val_balanced_count = {
+        "no_gaze": sum(1 for ann in val_annotations if ann["label"] == 0),
+        "gaze": sum(1 for ann in val_annotations if ann["label"] == 1)
+    }
+    test_count = {
+        "no_gaze": sum(1 for ann in test_annotations if ann["label"] == 0),
+        "gaze": sum(1 for ann in test_annotations if ann["label"] == 1)
+    }
+    
+    # Save summary statistics
+    summary_file = output_dir / "gaze_cls_dataset_summary.json"
+    summary = {
+        "total_annotations": len(train_annotations) + len(val_annotations) + len(test_annotations),
+        "train_count": len(train_annotations),
+        "val_count": len(val_annotations),
+        "test_count": len(test_annotations),
+        "class_distribution_balanced": {
+            "train": train_balanced_count,
+            "val": val_balanced_count,
+            "test": test_count
+        }
+    }
+    
+    # Add original distribution if provided
+    if train_original_count is not None and val_original_count is not None:
+        summary["class_distribution_original"] = {
+            "train": train_original_count,
+            "val": val_original_count,
+            "test": test_count  # Test set is not balanced, so original = balanced
+        }
+        
+        # Add balancing statistics
+        summary["balancing_statistics"] = {
+            "train": {
+                "original_total": train_original_count["no_gaze"] + train_original_count["gaze"],
+                "balanced_total": train_balanced_count["no_gaze"] + train_balanced_count["gaze"],
+                "original_ratio": train_original_count["no_gaze"] / (train_original_count["no_gaze"] + train_original_count["gaze"]) if (train_original_count["no_gaze"] + train_original_count["gaze"]) > 0 else 0,
+                "balanced_ratio": train_balanced_count["no_gaze"] / (train_balanced_count["no_gaze"] + train_balanced_count["gaze"]) if (train_balanced_count["no_gaze"] + train_balanced_count["gaze"]) > 0 else 0
+            },
+            "val": {
+                "original_total": val_original_count["no_gaze"] + val_original_count["gaze"],
+                "balanced_total": val_balanced_count["no_gaze"] + val_balanced_count["gaze"],
+                "original_ratio": val_original_count["no_gaze"] / (val_original_count["no_gaze"] + val_original_count["gaze"]) if (val_original_count["no_gaze"] + val_original_count["gaze"]) > 0 else 0,
+                "balanced_ratio": val_balanced_count["no_gaze"] / (val_balanced_count["no_gaze"] + val_balanced_count["gaze"]) if (val_balanced_count["no_gaze"] + val_balanced_count["gaze"]) > 0 else 0
+            }
+        }
+    
+    with open(summary_file, 'w') as f:
+        json.dump(summary, f, indent=2)
+    logging.info(f"Saved dataset summary to {summary_file}")
     
 def main(target: str):
     """
@@ -974,12 +1579,13 @@ def main(target: str):
         "face_cls": ClassificationPaths.face_labels_input_dir,
         "gaze_cls": ClassificationPaths.gaze_labels_input_dir,
         "face_det": DetectionPaths.face_labels_input_dir,
+        "gaze_cls_vit": ClassificationPaths.gaze_labels_input_dir,  # Use actual gaze labels for ViT
     }
     label_path = path_mapping[target]
     split_yolo_data(label_path, target)
     logging.info("Dataset preparation for YOLO completed.")
 
-if __name__ == "__main__":
+if __name__ == "__main__":    
     parser = argparse.ArgumentParser(description="Prepare dataset for model training.")
     parser.add_argument("--target", choices=VALID_TARGETS, required=True, help="Specify the YOLO target type")
     
