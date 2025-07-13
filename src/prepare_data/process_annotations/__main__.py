@@ -4,7 +4,7 @@ from prepare_data.process_annotations.create_database import (
     write_xml_to_database,
     create_child_class_in_db,
 )
-from prepare_data.process_annotations.convert_to_yolo import main as convert_to_yolo_format
+from prepare_data.process_annotations.convert_annotations import main as convert_annotations
 from constants import DetectionPaths, VALID_TARGETS
 
 def setup_database() -> None:
@@ -36,7 +36,7 @@ def run_yolo_conversion(target: str) -> None:
     try:
         os.environ['OMP_NUM_THREADS'] = '20'
         print(f"Starting YOLO conversion for target: {target}...")
-        convert_to_yolo_format(target)
+        convert_annotations(target)
         print(f"YOLO conversion for target {target} complete.")
     except Exception as e:
         print(f"Error during YOLO conversion for target {target}: {str(e)}")
