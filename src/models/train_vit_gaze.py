@@ -14,6 +14,11 @@ import logging
 from datetime import datetime
 import csv
 import time
+from torch.nn import CrossEntropyLoss
+import torch.nn.functional as F
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -25,14 +30,16 @@ DATA_DIR = "/home/nele_pauline_suffo/ProcessedData/quantex_videos_processed"
 TRAIN_ANNOTATION_FILE = "/home/nele_pauline_suffo/ProcessedData/gaze_cls_input/gaze_cls_annotations_train.json"
 VAL_ANNOTATION_FILE = "/home/nele_pauline_suffo/ProcessedData/gaze_cls_input/gaze_cls_annotations_val.json"
 TEST_ANNOTATION_FILE = "/home/nele_pauline_suffo/ProcessedData/gaze_cls_input/gaze_cls_annotations_test.json"
-BATCH_SIZE = 16
-EPOCHS = 10
-LR = 2e-5
+BATCH_SIZE = 32  # Increased for more stable gradients
+EPOCHS = 20  # More epochs for better convergence
+LR = 1e-4  # Slightly higher learning rate
+WEIGHT_DECAY = 0.01  # Add weight decay for regularization
+WARMUP_STEPS = 100  # Add warmup steps
 
 # Early stopping parameters
-EARLY_STOPPING_PATIENCE = 3  # Number of epochs to wait for improvement
-EARLY_STOPPING_MIN_DELTA = 0.001  # Minimum change to qualify as improvement
-EARLY_STOPPING_METRIC = "val_loss"  # Metric to monitor: "val_loss" or "val_acc"
+EARLY_STOPPING_PATIENCE = 10  # Increased patience
+EARLY_STOPPING_MIN_DELTA = 0.001  # More sensitive improvement detection
+EARLY_STOPPING_METRIC = "val_f1"  # Monitor F1 score for minority class focus
 
 # Create timestamped output directory
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -112,10 +119,24 @@ logging.info(f"PyTorch threads: {torch.get_num_threads()}")
 # Dataset
 # ----------------------------
 class GazeDataset(Dataset):
-    def __init__(self, annotation_file, feature_extractor):
+    def __init__(self, annotation_file, feature_extractor, is_training=False):
         with open(annotation_file, 'r') as f:
             self.data = json.load(f)
         self.feature_extractor = feature_extractor
+        self.is_training = is_training
+        
+        # Data augmentation for training
+        if is_training:
+            self.augment_transform = transforms.Compose([
+                transforms.RandomHorizontalFlip(p=0.5),
+                transforms.RandomRotation(degrees=15),  # Increased rotation
+                transforms.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3, hue=0.15),  # More aggressive
+                transforms.RandomResizedCrop(224, scale=(0.7, 1.0)),  # More aggressive cropping
+                transforms.RandomGrayscale(p=0.15),  # Increased chance
+                transforms.RandomApply([transforms.GaussianBlur(kernel_size=3)], p=0.1),  # Add blur
+            ])
+        else:
+            self.augment_transform = None
         
         # Filter out annotations with missing images
         valid_data = []
@@ -149,6 +170,10 @@ class GazeDataset(Dataset):
                 # Return a small black image as fallback
                 face = Image.new('RGB', (224, 224), color='black')
 
+            # Apply augmentation during training
+            if self.is_training and self.augment_transform:
+                face = self.augment_transform(face)
+
             # Preprocess using feature extractor
             features = self.feature_extractor(face, return_tensors="pt")
 
@@ -178,9 +203,55 @@ model = ViTForImageClassification.from_pretrained(
 # ----------------------------
 # DataLoader
 # ----------------------------
-# Define datasets
-train_dataset = GazeDataset(TRAIN_ANNOTATION_FILE, feature_extractor)
-val_dataset = GazeDataset(VAL_ANNOTATION_FILE, feature_extractor)
+# Define datasets with data augmentation enabled for training
+train_dataset = GazeDataset(TRAIN_ANNOTATION_FILE, feature_extractor, is_training=True)
+val_dataset = GazeDataset(VAL_ANNOTATION_FILE, feature_extractor, is_training=False)
+
+# Calculate class weights for imbalanced dataset
+def calculate_class_weights(dataset):
+    """Calculate class weights to handle imbalanced dataset"""
+    labels = [item['label'].item() for item in dataset]
+    class_counts = np.bincount(labels)
+    total_samples = len(labels)
+    
+    # Calculate weights inversely proportional to class frequency
+    class_weights = total_samples / (len(class_counts) * class_counts)
+    
+    logging.info(f"Class distribution: {dict(enumerate(class_counts))}")
+    logging.info(f"Class weights: {dict(enumerate(class_weights))}")
+    
+    return torch.FloatTensor(class_weights).to(DEVICE)
+
+# Calculate class weights from training data
+class_weights = calculate_class_weights(train_dataset)
+
+# Focal Loss implementation for hard example mining
+class FocalLoss(torch.nn.Module):
+    def __init__(self, alpha=None, gamma=2.0, reduction='mean'):
+        super(FocalLoss, self).__init__()
+        self.alpha = alpha  # Class weights
+        self.gamma = gamma  # Focusing parameter
+        self.reduction = reduction
+        
+    def forward(self, inputs, targets):
+        # Calculate cross entropy
+        ce_loss = F.cross_entropy(inputs, targets, weight=self.alpha, reduction='none')
+        
+        # Calculate probabilities
+        pt = torch.exp(-ce_loss)
+        
+        # Calculate focal loss
+        focal_loss = (1 - pt) ** self.gamma * ce_loss
+        
+        if self.reduction == 'mean':
+            return focal_loss.mean()
+        elif self.reduction == 'sum':
+            return focal_loss.sum()
+        else:
+            return focal_loss
+
+# Initialize focal loss with class weights
+focal_loss_fn = FocalLoss(alpha=class_weights, gamma=2.0)
 
 train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=NUM_WORKERS, pin_memory=True)
 val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=NUM_WORKERS, pin_memory=True)
@@ -191,8 +262,8 @@ logging.info(f"Validation dataset size: {len(val_dataset)}")
 # ----------------------------
 # Optimizer and Scheduler
 # ----------------------------
-optimizer = AdamW(model.parameters(), lr=LR)
-lr_scheduler = get_scheduler("linear", optimizer=optimizer, num_warmup_steps=0, num_training_steps=len(train_loader)*EPOCHS)
+optimizer = AdamW(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
+lr_scheduler = get_scheduler("linear", optimizer=optimizer, num_warmup_steps=WARMUP_STEPS, num_training_steps=len(train_loader)*EPOCHS)
 
 # ----------------------------
 # Training Loop
@@ -222,9 +293,11 @@ for epoch in range(EPOCHS):
         pixel_values = batch["pixel_values"].to(DEVICE)
         labels = batch["label"].to(DEVICE)
 
-        outputs = model(pixel_values=pixel_values, labels=labels)
-        loss = outputs.loss
+        outputs = model(pixel_values=pixel_values)
         logits = outputs.logits
+        
+        # Use focal loss instead of standard cross entropy
+        loss = focal_loss_fn(logits, labels)
 
         loss.backward()
         optimizer.step()
@@ -266,12 +339,24 @@ for epoch in range(EPOCHS):
     val_acc = accuracy_score(val_labels, val_preds)
     val_avg_loss = sum(val_losses) / len(val_losses)
     
+    # Calculate F1 score for the minority class (gaze = class 1)
+    val_precision, val_recall, val_f1, _ = precision_recall_fscore_support(val_labels, val_preds, average=None)
+    val_f1_macro = precision_recall_fscore_support(val_labels, val_preds, average='macro')[2]
+    val_f1_gaze = val_f1[1] if len(val_f1) > 1 else 0.0  # F1 for gaze class
+    
     # Early stopping logic
-    current_metric = val_avg_loss if EARLY_STOPPING_METRIC == "val_loss" else val_acc
+    if EARLY_STOPPING_METRIC == "val_loss":
+        current_metric = val_avg_loss
+    elif EARLY_STOPPING_METRIC == "val_acc":
+        current_metric = val_acc
+    elif EARLY_STOPPING_METRIC == "val_f1":
+        current_metric = val_f1_gaze  # Focus on gaze class F1
+    else:
+        current_metric = val_f1_macro
     
     if EARLY_STOPPING_METRIC == "val_loss":
         improved = current_metric < (best_metric - EARLY_STOPPING_MIN_DELTA)
-    else:  # val_acc
+    else:  # val_acc or val_f1
         improved = current_metric > (best_metric + EARLY_STOPPING_MIN_DELTA)
     
     if improved:
@@ -451,6 +536,58 @@ print(f"{'':>12} {'Predicted':>20}")
 print(f"{'Actual':>12} {'no_gaze':>10} {'gaze':>10}")
 print(f"{'no_gaze':>12} {cm[0,0]:>10} {cm[0,1]:>10}")
 print(f"{'gaze':>12} {cm[1,0]:>10} {cm[1,1]:>10}")
+
+# Plot and save confusion matrix visualization
+def plot_confusion_matrix(conf_matrix, class_names, output_dir):
+    """
+    Plot and save confusion matrix with counts and percentages.
+    
+    Parameters:
+    - conf_matrix: numpy array of confusion matrix
+    - class_names: list of class names
+    - output_dir: directory to save the plot
+    """
+    # Note: sklearn confusion_matrix format is [True, Predicted]
+    # We want Predicted on x-axis, True on y-axis, so we transpose
+    conf_matrix_plot = conf_matrix.T
+    
+    # Compute percentages
+    row_sums = conf_matrix_plot.sum(axis=1, keepdims=True)
+    percentages = np.round((conf_matrix_plot / row_sums) * 100, 1)
+    
+    # Plot confusion matrix
+    plt.figure(figsize=(8, 6))
+    ax = sns.heatmap(conf_matrix_plot, annot=False, fmt="d", cmap="Blues", cbar=True,
+                     xticklabels=class_names, yticklabels=class_names)
+    
+    # Add text annotations with counts and percentages
+    for i in range(conf_matrix_plot.shape[0]):
+        for j in range(conf_matrix_plot.shape[1]):
+            value = conf_matrix_plot[i, j]
+            percent = percentages[i, j]
+            
+            # Set text color based on background intensity
+            # Use white text for the darkest cell (highest value)
+            max_value = np.max(conf_matrix_plot)
+            text_color = "white" if value == max_value else "black"
+            
+            ax.text(j + 0.5, i + 0.5, f"{value}\n({percent}%)", 
+                   ha="center", va="center", fontsize=12, color=text_color, weight='bold')
+    
+    plt.xlabel("Predicted", fontsize=12, weight='bold')
+    plt.ylabel("True", fontsize=12, weight='bold')
+    plt.title("Confusion Matrix for Gaze Classification", fontsize=14, weight='bold')
+    
+    # Save the figure
+    plot_path = os.path.join(output_dir, "confusion_matrix_plot.png")
+    plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+    plt.close()  # Close to free memory
+    
+    logging.info(f"Confusion matrix plot saved to {plot_path}")
+    return plot_path
+
+# Generate and save confusion matrix plot
+cm_plot_path = plot_confusion_matrix(cm, class_names, OUTPUT_DIR)
 
 # Save detailed test results
 test_results = {
