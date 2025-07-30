@@ -200,8 +200,6 @@ class VTCPaths:
     childlens_df_file_path_20 = Path(vtc_output_dir/"childlens_df_duration_off_20.pkl")
     childlens_gt_df_file_path = Path(DetectionPaths.childlens_annotations_dir/"processed/childlens_annotations_gt.pkl")
 
-
-
 class StrongSortPaths:
     base_dir = Path(BasePaths.data_dir/"strong_sort/")
     python_env_path = Path(BasePaths.home_dir/".conda/envs/strongsort/bin/python")
