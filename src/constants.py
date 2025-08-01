@@ -184,6 +184,14 @@ class ClassificationPaths:
             )
 
         return None  # Return None if target is not found
+   
+class AudioClassification:
+    valid_rttm_classes = ['OHS', 'CDS', 'KCHI', 'SPEECH']
+    audio_files_dir = '/home/nele_pauline_suffo/ProcessedData/childlens_audio'
+    train_rttm_file = '/home/nele_pauline_suffo/ProcessedData/audio_cls_input/train.rttm'
+    val_rrtm_file = '/home/nele_pauline_suffo/ProcessedData/audio_cls_input/val.rttm'
+    test_rttm_file = '/home/nele_pauline_suffo/ProcessedData/audio_cls_input/train.rttm'
+    output_dir = '/home/nele_pauline_suffo/outputs/audio_classification/runs'
     
 class VTCPaths:
     childlens_audio_dir = Path(BasePaths.data_dir/"childlens_audio")

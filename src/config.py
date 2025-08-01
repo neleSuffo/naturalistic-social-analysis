@@ -77,6 +77,12 @@ class YoloConfig:
     }
     best_iou = 0.5
 
+class AudioClsConfig:
+    sr = 16000
+    n_mels = 256
+    hop_length = 512
+    window_duration = 3.0
+    window_step = 1.0
     
 class VTCConfig:
     audio_file_suffix = Path("_16kHz.wav")
