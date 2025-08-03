@@ -1,14 +1,14 @@
 from pathlib import Path
 from typing import Optional, Tuple
 
-VALID_TARGETS = {"person_face", "all", "person_cls", "face_cls", "gaze_cls", "face_det", "gaze_cls_vit"}
+VALID_TARGETS = {"person_face_det", "all", "person_cls", "face_cls", "gaze_cls", "face_det", "gaze_cls_vit"}
 
 class BasePaths:
     home_dir = Path("/home/nele_pauline_suffo")
     models_dir = Path(home_dir/"models")
     data_dir = Path(home_dir/"ProcessedData")
     output_dir = Path(home_dir/"outputs")
-    leuphana_ipe_dir = Path(home_dir/"projects/leuphana-IPE")
+    leuphana_ipe_dir = Path(home_dir/"projects/naturalistic-social-analysis")
     vtc_dir = Path(home_dir/"projects/voice_type_classifier")
     strong_sort_dir = Path(home_dir/"projects/StrongSORT")
     fast_re_id_dir = Path(home_dir/"projects/fast-reid")
