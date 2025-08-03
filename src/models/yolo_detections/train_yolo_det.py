@@ -17,7 +17,7 @@ def parse_args():
     parser.add_argument('--img_size', type=int, default=640,
                       help='Image size for training')
     parser.add_argument('--target', type=str, default='all',
-                      choices=['all', 'face'],
+                      choices=['all', 'face', 'person_face'],
                       help='Target detection task to train on')
     parser.add_argument('--device', type=str, default='0,1',
                       help='Device to use (e.g., "0" for GPU, "cpu" for CPU)')
@@ -58,10 +58,10 @@ def main():
     
     # For overfitting issues, consider using a smaller model
     if args.model_size == 'x':
-        print("WARNING: Using YOLO11x - if overfitting, consider using 'l' or 'm' model size")
+        print("WARNING: Using YOLO12x - if overfitting, consider using 'l' or 'm' model size")
     
     # Define experiment name and output directory
-    experiment_name = f"{timestamp}_yolo11{args.model_size}_{args.target}"
+    experiment_name = f"{timestamp}_yolo12{args.model_size}_{args.target}"
     output_dir = base_output_dir / experiment_name
     
     print(f"Training will be saved to: {output_dir}")
@@ -144,7 +144,7 @@ def main():
     )
 
     # Copy the script to the output directory after training starts
-    script_copy = output_dir / f"train_yolo11{args.model_size}_{args.target}.py"
+    script_copy = output_dir / f"train_yolo12{args.model_size}_{args.target}.py"
     if os.path.exists(__file__):
         shutil.copy(__file__, script_copy)
 
