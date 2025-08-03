@@ -1,5 +1,4 @@
 # Exploring Aspects of Social Interaction in Children's egocentric Video and Audio Data using Machine Learning
-PhD research
 
 This project involves the use of several technologies for different types of detection:
 
@@ -7,6 +6,6 @@ This project involves the use of several technologies for different types of det
 
 2. **Face Detection**: We utilized the `facenet_pytorch` library for face detection, which is a PyTorch adaptation of Google's FaceNet model. FaceNet, a deep learning model for facial recognition, was first presented by Google researchers in a paper named “FaceNet: A Unified Embedding for Face Recognition and Clustering” by Schroff et al. You can find the code for the MTCNN implementation on [GitHub](https://github.com/timesler/facenet-pytorch).
 
-3. **Voice Detection**: For voice detection, we used an existing voice type classifier. You can find the code for this classifier on [GitHub](https://github.com/MarvinLvn/voice-type-classifier/tree/new_model).
+3. **Voice Classification**: For voice detection, we used an existing voice type classifier. You can find the code for this classifier on [GitHub](https://github.com/MarvinLvn/voice-type-classifier/tree/new_model).
 
 By combining these techniques, we aim to capture a holistic view of social interactions, considering not just visual cues, but also auditory signals.
