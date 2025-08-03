@@ -1,4 +1,4 @@
-# leuphana-IPE
+# Exploring Aspects of Social Interaction in Children's egocentric Video and Audio Data using Machine Learning
 PhD research
 
 This project involves the use of several technologies for different types of detection:
