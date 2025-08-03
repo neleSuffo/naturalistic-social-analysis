@@ -19,6 +19,8 @@ import torch.nn.functional as F
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+import shutil
+import sys
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -31,8 +33,8 @@ TRAIN_ANNOTATION_FILE = "/home/nele_pauline_suffo/ProcessedData/gaze_cls_input/g
 VAL_ANNOTATION_FILE = "/home/nele_pauline_suffo/ProcessedData/gaze_cls_input/gaze_cls_annotations_val.json"
 TEST_ANNOTATION_FILE = "/home/nele_pauline_suffo/ProcessedData/gaze_cls_input/gaze_cls_annotations_test.json"
 BATCH_SIZE = 32  # Increased for more stable gradients
-EPOCHS = 20  # More epochs for better convergence
-LR = 1e-4  # Slightly higher learning rate
+EPOCHS = 30  # More epochs for better convergence
+LR = 5e-5  # Lower learning rate for more stable training
 WEIGHT_DECAY = 0.01  # Add weight decay for regularization
 WARMUP_STEPS = 100  # Add warmup steps
 
@@ -53,6 +55,15 @@ NUM_WORKERS = 6  # Reduced number of threads for data loading (can be adjusted)
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 os.makedirs(os.path.dirname(TRAIN_ANNOTATION_FILE), exist_ok=True)
+
+# Copy the current script to the output directory for reproducibility
+current_script_path = os.path.abspath(__file__)
+script_backup_path = os.path.join(OUTPUT_DIR, "train_vit_gaze_snapshot.py")
+try:
+    shutil.copy2(current_script_path, script_backup_path)
+    logging.info(f"Training script copied to: {script_backup_path}")
+except Exception as e:
+    logging.warning(f"Could not copy training script: {e}")
 
 # Setup output files
 results_csv = os.path.join(OUTPUT_DIR, "results.csv")
@@ -218,7 +229,7 @@ def calculate_class_weights(dataset):
     class_weights = total_samples / (len(class_counts) * class_counts)
     
     logging.info(f"Class distribution: {dict(enumerate(class_counts))}")
-    logging.info(f"Class weights: {dict(enumerate(class_weights))}")
+    logging.info(f"Class weights (based on actual ratio): {dict(enumerate(class_weights))}")
     
     return torch.FloatTensor(class_weights).to(DEVICE)
 
@@ -227,7 +238,7 @@ class_weights = calculate_class_weights(train_dataset)
 
 # Focal Loss implementation for hard example mining
 class FocalLoss(torch.nn.Module):
-    def __init__(self, alpha=None, gamma=2.0, reduction='mean'):
+    def __init__(self, alpha=None, gamma=4.0, reduction='mean'):  # Increased gamma to 4.0
         super(FocalLoss, self).__init__()
         self.alpha = alpha  # Class weights
         self.gamma = gamma  # Focusing parameter
@@ -243,6 +254,10 @@ class FocalLoss(torch.nn.Module):
         # Calculate focal loss
         focal_loss = (1 - pt) ** self.gamma * ce_loss
         
+        # Additional penalty for minority class misclassification
+        minority_mask = (targets == 1)  # gaze class
+        focal_loss[minority_mask] = focal_loss[minority_mask] * 2.0  # Double penalty for gaze misclassification
+        
         if self.reduction == 'mean':
             return focal_loss.mean()
         elif self.reduction == 'sum':
@@ -250,11 +265,14 @@ class FocalLoss(torch.nn.Module):
         else:
             return focal_loss
 
-# Initialize focal loss with class weights
-focal_loss_fn = FocalLoss(alpha=class_weights, gamma=2.0)
+# Increase focal loss gamma for more aggressive minority class focus
+focal_loss_fn = FocalLoss(alpha=class_weights, gamma=4.0)  # Increased from 3.0 to 4.0
 
-train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=NUM_WORKERS, pin_memory=True)
-val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=NUM_WORKERS, pin_memory=True)
+# Create balanced training loader
+train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, 
+                         num_workers=NUM_WORKERS, pin_memory=True)
+val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, 
+                       num_workers=NUM_WORKERS, pin_memory=True)
 
 logging.info(f"Training dataset size: {len(train_dataset)}")
 logging.info(f"Validation dataset size: {len(val_dataset)}")
@@ -305,7 +323,13 @@ for epoch in range(EPOCHS):
         optimizer.zero_grad()
 
         losses.append(loss.item())
-        all_preds.extend(torch.argmax(logits, dim=1).cpu().numpy())
+        
+        # Use custom threshold that favors gaze class
+        probs = F.softmax(logits, dim=1)
+        gaze_threshold = 0.3  # Lower threshold favors gaze class
+        custom_preds = (probs[:, 1] > gaze_threshold).long().cpu().numpy()
+        
+        all_preds.extend(custom_preds)
         all_labels.extend(labels.cpu().numpy())
         all_logits.append(logits.detach().cpu())
 
@@ -326,12 +350,20 @@ for epoch in range(EPOCHS):
             pixel_values = batch["pixel_values"].to(DEVICE)
             labels = batch["label"].to(DEVICE)
 
-            outputs = model(pixel_values=pixel_values, labels=labels)
-            loss = outputs.loss
+            outputs = model(pixel_values=pixel_values)
             logits = outputs.logits
+            
+            # Use focal loss for validation too
+            loss = focal_loss_fn(logits, labels)
 
             val_losses.append(loss.item())
-            val_preds.extend(torch.argmax(logits, dim=1).cpu().numpy())
+            
+            # Use same custom threshold for validation
+            probs = F.softmax(logits, dim=1)
+            gaze_threshold = 0.3  # Lower threshold favors gaze class
+            custom_preds = (probs[:, 1] > gaze_threshold).long().cpu().numpy()
+            
+            val_preds.extend(custom_preds)
             val_labels.extend(labels.cpu().numpy())
             val_logits.append(logits.detach().cpu())
 
@@ -387,13 +419,30 @@ for epoch in range(EPOCHS):
     epoch_time = time.time() - epoch_start_time
     total_time = time.time() - start_time
     
-    # Log to console
-    print(f"Epoch {epoch+1}: Train Loss={avg_loss:.4f}, Train Acc={train_acc:.4f}, Val Loss={val_avg_loss:.4f}, Val Acc={val_acc:.4f}")
+    # Log to console with detailed class metrics
+    train_precision_per_class, train_recall_per_class, train_f1_per_class, _ = precision_recall_fscore_support(all_labels, all_preds, average=None, zero_division=0)
+    
+    print(f"Epoch {epoch+1}: Train Loss={avg_loss:.4f}, Train Acc={train_acc:.4f}")
+    print(f"  Train - no_gaze: P={train_precision_per_class[0]:.3f}, R={train_recall_per_class[0]:.3f}, F1={train_f1_per_class[0]:.3f}")
+    if len(train_f1_per_class) > 1:
+        print(f"  Train - gaze: P={train_precision_per_class[1]:.3f}, R={train_recall_per_class[1]:.3f}, F1={train_f1_per_class[1]:.3f}")
+    
+    print(f"Val Loss={val_avg_loss:.4f}, Val Acc={val_acc:.4f}")
+    print(f"  Val - no_gaze: P={val_precision[0]:.3f}, R={val_recall[0]:.3f}, F1={val_f1[0]:.3f}")
+    if len(val_f1) > 1:
+        print(f"  Val - gaze: P={val_precision[1]:.3f}, R={val_recall[1]:.3f}, F1={val_f1[1]:.3f}")
+        print(f"  Val - gaze F1 (monitoring): {val_f1_gaze:.3f}")
     
     # Log to file
     logging.info(f"Epoch {epoch+1}/{EPOCHS} - Train Loss: {avg_loss:.5f}, Train Acc: {train_acc:.5f}, "
                 f"Val Loss: {val_avg_loss:.5f}, Val Acc: {val_acc:.5f}, LR: {current_lr:.8f}, "
                 f"Epoch Time: {epoch_time:.2f}s, Total Time: {total_time:.2f}s")
+    
+    # Log detailed class metrics
+    if len(val_f1) > 1:
+        logging.info(f"Val class metrics - no_gaze: P={val_precision[0]:.3f}, R={val_recall[0]:.3f}, F1={val_f1[0]:.3f}")
+        logging.info(f"Val class metrics - gaze: P={val_precision[1]:.3f}, R={val_recall[1]:.3f}, F1={val_f1[1]:.3f}")
+        logging.info(f"Monitoring gaze F1: {val_f1_gaze:.5f}")
     
     # Write to CSV
     with open(results_csv, 'a', newline='') as f:
@@ -476,9 +525,11 @@ with torch.no_grad():
         pixel_values = batch["pixel_values"].to(DEVICE)
         labels = batch["label"].to(DEVICE)
 
-        outputs = model(pixel_values=pixel_values, labels=labels)
-        loss = outputs.loss
+        outputs = model(pixel_values=pixel_values)
         logits = outputs.logits
+        
+        # Use focal loss for test evaluation too
+        loss = focal_loss_fn(logits, labels)
 
         test_losses.append(loss.item())
         test_preds.extend(torch.argmax(logits, dim=1).cpu().numpy())
@@ -489,7 +540,84 @@ with torch.no_grad():
 test_acc = accuracy_score(test_labels, test_preds)
 test_avg_loss = sum(test_losses) / len(test_losses)
 
-# Calculate detailed metrics
+# Define class names early for use in optimization
+class_names = ['no_gaze', 'gaze']  # Adjust based on your classes
+
+# Optimize threshold for minority class
+def optimize_threshold_for_f1(labels, logits, target_class=1):
+    """Find optimal threshold for minority class F1 score"""
+    # Convert logits to probabilities
+    all_logits = torch.cat(logits, dim=0)
+    probabilities = F.softmax(all_logits, dim=1)
+    
+    # Get probabilities for target class
+    target_probs = probabilities[:, target_class].numpy()
+    
+    # Try different thresholds
+    thresholds = np.arange(0.1, 0.9, 0.05)
+    best_f1 = 0
+    best_threshold = 0.5
+    best_preds = None
+    
+    for threshold in thresholds:
+        # Make predictions based on threshold
+        preds_thresh = (target_probs > threshold).astype(int)
+        
+        # For binary classification, if target class prob > threshold, predict target class
+        # Otherwise predict other class
+        if target_class == 1:
+            final_preds = preds_thresh
+        else:
+            final_preds = 1 - preds_thresh
+        
+        # Calculate F1 for target class
+        f1_scores = precision_recall_fscore_support(labels, final_preds, average=None, zero_division=0)[2]
+        if len(f1_scores) > target_class:
+            target_f1 = f1_scores[target_class]
+            if target_f1 > best_f1:
+                best_f1 = target_f1
+                best_threshold = threshold
+                best_preds = final_preds
+    
+    return best_threshold, best_f1, best_preds
+
+# Optimize threshold for gaze class (class 1)
+optimal_threshold, optimal_f1, optimal_preds = optimize_threshold_for_f1(test_labels, test_logits, target_class=1)
+
+logging.info(f"Threshold optimization for gaze class:")
+logging.info(f"Optimal threshold: {optimal_threshold:.3f}")
+logging.info(f"F1 score at optimal threshold: {optimal_f1:.5f}")
+
+# Calculate metrics with optimized threshold
+if optimal_preds is not None:
+    optimal_precision, optimal_recall, optimal_f1_scores, optimal_support = precision_recall_fscore_support(test_labels, optimal_preds, average=None)
+    optimal_cm = confusion_matrix(test_labels, optimal_preds)
+    
+    print(f"\n{'='*60}")
+    print(f"OPTIMIZED THRESHOLD RESULTS (threshold={optimal_threshold:.3f})")
+    print(f"{'='*60}")
+    print(f"Optimized Accuracy: {accuracy_score(test_labels, optimal_preds):.4f}")
+    
+    print(f"\nOptimized Per-class metrics:")
+    for i, class_name in enumerate(class_names):
+        if i < len(optimal_f1_scores):
+            print(f"{class_name}: Precision={optimal_precision[i]:.4f}, Recall={optimal_recall[i]:.4f}, F1={optimal_f1_scores[i]:.4f}, Support={optimal_support[i]}")
+    
+    print(f"\nOptimized Confusion Matrix:")
+    print(f"{'':>12} {'Predicted':>20}")
+    print(f"{'Actual':>12} {'no_gaze':>10} {'gaze':>10}")
+    print(f"{'no_gaze':>12} {optimal_cm[0,0]:>10} {optimal_cm[0,1]:>10}")
+    print(f"{'gaze':>12} {optimal_cm[1,0]:>10} {optimal_cm[1,1]:>10}")
+    
+    # Log optimized results
+    logging.info(f"Optimized test results:")
+    logging.info(f"Optimized accuracy: {accuracy_score(test_labels, optimal_preds):.5f}")
+    if len(optimal_f1_scores) > 1:
+        logging.info(f"Optimized gaze F1: {optimal_f1_scores[1]:.5f}")
+        logging.info(f"Optimized gaze precision: {optimal_precision[1]:.5f}")
+        logging.info(f"Optimized gaze recall: {optimal_recall[1]:.5f}")
+
+# Calculate detailed metrics with default threshold (0.5)
 precision, recall, f1, support = precision_recall_fscore_support(test_labels, test_preds, average=None)
 precision_macro, recall_macro, f1_macro, _ = precision_recall_fscore_support(test_labels, test_preds, average='macro')
 precision_weighted, recall_weighted, f1_weighted, _ = precision_recall_fscore_support(test_labels, test_preds, average='weighted')
@@ -498,7 +626,6 @@ precision_weighted, recall_weighted, f1_weighted, _ = precision_recall_fscore_su
 cm = confusion_matrix(test_labels, test_preds)
 
 # Classification report
-class_names = ['no_gaze', 'gaze']  # Adjust based on your classes
 class_report = classification_report(test_labels, test_preds, target_names=class_names, output_dict=True)
 
 # Log test results

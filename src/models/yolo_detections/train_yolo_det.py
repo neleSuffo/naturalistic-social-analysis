@@ -42,7 +42,7 @@ def main():
     base_output_dir = getattr(DetectionPaths, f"{args.target}_output_dir")
     
     # Load the YOLO model - try smaller model first if overfitting
-    model_name = f"yolo11{args.model_size}.pt"
+    model_name = f"yolo12{args.model_size}.pt"
     print(f"Loading model: {model_name}")
     
     if args.resume:

@@ -47,7 +47,8 @@ class DetectionPaths:
     object_data_input_dir = Path(BasePaths.data_dir/"object_det_input")
     object_output_dir = Path(BasePaths.output_dir/"object_detections/")
     
-    person_face_trained_weights_path = Path(BasePaths.models_dir/'yolo11_person_face_detection.pt')
+    #person_face_trained_weights_path = Path(BasePaths.models_dir/'yolo11_person_face_detection.pt')
+    person_face_trained_weights_path = Path("/home/nele_pauline_suffo/outputs/face_detections/20250802_031728_yolo_face/weights/best.pt")
     person_face_data_config_path = yolo_detections_dir/"person_face_dataset.yaml"
     person_face_labels_input_dir = Path(BasePaths.data_dir/"person_face_det_labels")
     person_face_data_input_dir = Path(BasePaths.data_dir/"person_face_det_input")

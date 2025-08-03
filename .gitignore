@@ -25,6 +25,7 @@ auto-save-list
 tramp
 .\#*
 yolo11*
+yolo12*
 # Org-mode
 .org-id-locations
 *_archive
