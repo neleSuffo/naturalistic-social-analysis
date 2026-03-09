@@ -554,8 +554,8 @@ def main(output_file_path: Path, frame_data_path: Path, hyperparameter_tuning: F
     segments_df = reclassify_ghost_segments(segments_df, frame_data)
 
     # Step 6: Final Step: Fill all remaining gaps to create a continuous timeline
+    default_fill = "Not Interacting" if mode == "binary" else "Available"
     segments_df = fill_gaps_with_default(segments_df, default_type=default_fill)
-    segments_df = fill_gaps_with_default(segments_df, default_type="Available")
     segments_df = merge_same_segments(segments_df)
 
     # Step 7: Generate and print summary
