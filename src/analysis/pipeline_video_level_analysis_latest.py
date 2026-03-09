@@ -4,6 +4,7 @@ import sys
 import sqlite3
 import pandas as pd
 import shutil
+import ruptures as rpt
 import numpy as np
 from pathlib import Path
 
@@ -42,82 +43,95 @@ def extract_child_id(video_name):
     match = re.search(r'id(\d{6})', video_name)
     return match.group(1) if match else None
 
-def create_segments_for_video(video_id, video_df):
-    """
-    Create segments for a single video. Buffers short state changes and enforces minimum segment durations.
-    
-    Parameters
-    ----------
-    video_id : int
-        Video identifier
-    video_df : pd.DataFrame
-        Frame-level data for this video
+def apply_cpd_smoothing(frame_data: pd.DataFrame):
+    smoothed_results = []
+    for video_id, video_df in frame_data.groupby('video_id'):
+        video_df = video_df.sort_values('frame_number').copy()
+        signal = video_df['presence_score'].values.reshape(-1, 1)
         
-    Returns
-    -------
-    list
-        List of segment dictionaries
-    """
+        # CPD identifies the most likely regime changes
+        algo = rpt.Pelt(model="l2").fit(signal)
+        breakpoints = algo.predict(pen=InferenceConfig.CPD_PENALTY)
+
+        start_idx = 0
+        for end_idx in breakpoints:
+            segment_slice = video_df.iloc[start_idx:end_idx]
+            if not segment_slice.empty:
+                counts = segment_slice['interaction_type'].value_counts(normalize=True)
+                has_eng = (segment_slice['rule1_turn_taking'].any() | 
+                           segment_slice['rule2_close_proximity'].any() | 
+                           segment_slice['rule3_kcds_speaking'].any())
+                if mode == "binary":
+                    if has_eng or counts.get(1, 0) >= InferenceConfig.CPD_INTERACTING_THRESHOLD:
+                        state = 1
+                    else:
+                        state = 2 # Not Interacting
+                else:
+                    # Consensus logic using hierarchical thresholds
+                    if has_eng and counts.get(1, 0) >= InferenceConfig.CPD_INTERACTING_THRESHOLD_LOW:
+                        state = 1
+                    elif counts.get(1, 0) >= InferenceConfig.CPD_INTERACTING_THRESHOLD:
+                        state = 1
+                    elif (counts.get(1, 0) + counts.get(2, 0)) >= InferenceConfig.CPD_TOTAL_PRESENCE_FLOOR:
+                        state = 2
+                    else:
+                        state = 3
+                    video_df.iloc[start_idx:end_idx, video_df.columns.get_loc('interaction_type')] = state
+            start_idx = end_idx
+        smoothed_results.append(video_df)
+    return pd.concat(smoothed_results)
+
+def create_segments_for_video(video_id, video_df):
+    # Enforces type-specific minimum durations
+    # Dropped segments leave gaps that become 'Alone' (State 3) by default
     video_df = video_df.sort_values('frame_number').reset_index(drop=True)
     
     if len(video_df) == 0:
         return []
-                
-    # Get interaction states and frame numbers
+    
+    # --- ADD THIS LINE TO FIX THE ERROR ---
+    video_name = video_df['video_name'].iloc[0] 
+    
     states = video_df['interaction_type'].values
-    frame_numbers = video_df['frame_number'].values
-    video_name = video_df['video_name'].iloc[0]
-    
-    # Buffer short state changes
-    buffered_states = states.copy()  # Disable buffering for now
-    
+    frame_nums = video_df['frame_number'].values
     segments = []
-    current_state = buffered_states[0]
-    segment_start_frame = frame_numbers[0]
     
-    # Process state changes
-    for i in range(1, len(buffered_states)):
-        if buffered_states[i] != current_state:
-            segment_end_frame = frame_numbers[i-1]
+    curr_state = states[0]
+    start_fr = frame_nums[0]
+    
+    for i in range(1, len(states)):
+        if states[i] != curr_state:
+            end_fr = frame_nums[i-1]
+            dur = (end_fr - start_fr) / FPS
+            min_dur = get_min_segment_duration(curr_state)
             
-            required_min_duration = get_min_segment_duration(current_state)
-            
-            segment_duration = (segment_end_frame - segment_start_frame) / FPS
-            if segment_duration >= required_min_duration:
-                
+            if dur >= min_dur:
                 segments.append({
-                    'video_id': video_id,
-                    'video_name': video_name,
-                    'interaction_type': current_state,
-                    'segment_start': segment_start_frame,
-                    'segment_end': segment_end_frame,
-                    'start_time_sec': segment_start_frame / FPS,
-                    'end_time_sec': segment_end_frame / FPS,
-                    'duration_sec': segment_duration
+                    'video_id': video_id, 
+                    'video_name': video_name, # Now video_name is defined
+                    'interaction_type': curr_state, 
+                    'segment_start': start_fr,
+                    'segment_end': end_fr,
+                    'start_time_sec': start_fr / FPS, 
+                    'end_time_sec': end_fr / FPS,
                 })
+            start_fr = frame_nums[i]
+            curr_state = states[i]
             
-            current_state = buffered_states[i]
-            segment_start_frame = frame_numbers[i]
-    
-    # Handle the final segment
-    segment_end_frame = frame_numbers[-1]
-    
-    required_min_duration = get_min_segment_duration(current_state)
-    
-    segment_duration = (segment_end_frame - segment_start_frame) / FPS
-    if segment_duration >= required_min_duration:
-        
+    # Handle the final segment similarly
+    end_fr = frame_nums[-1]
+    dur = (end_fr - start_fr) / FPS
+    if dur >= get_min_segment_duration(curr_state):
         segments.append({
-            'video_id': video_id,
+            'video_id': video_id, 
             'video_name': video_name,
-            'interaction_type': current_state,
-            'segment_start': segment_start_frame,
-            'segment_end': segment_end_frame,
-            'start_time_sec': segment_start_frame / FPS,
-            'end_time_sec': segment_end_frame / FPS,
-            'duration_sec': segment_duration
+            'interaction_type': curr_state, 
+            'segment_start': start_fr,
+            'segment_end': end_fr,
+            'start_time_sec': start_fr / FPS, 
+            'end_time_sec': end_fr / FPS,
         })
-    
+        
     return segments
 
 def merge_same_segments(segments_df):
@@ -177,82 +191,6 @@ def merge_same_segments(segments_df):
         return result_df
     else:
         return segments_df
-
-def reclassify_implicit_turn_taking(segments_df, frame_data):
-    """
-    Reclassify 'Available' or 'Alone' segments to 'Interacting' if they contain 
-    sufficient evidence of implicit, KCHI-based turn-taking.
-
-    Criteria (Implicit Turn-Taking Character):
-    1. Segment type is 'Available' or 'Alone'.
-    2. At least 20% of the segment's sampled frames are KCHI-only (KCHI=1, CDS=0, OHS=0).
-    3. Person/Face (person_present) is detected for at least 5% of the segment's frames.
-    
-    Parameters
-    ----------
-    segments_df : pd.DataFrame
-        DataFrame with segments (after buffering and merging).
-    frame_data : pd.DataFrame
-        Original frame-level data containing multimodal flags.
-        
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame with reclassified segments.
-    """    
-    reclassified_count = 0
-    # Use copy for safe modification
-    updated_segments_df = segments_df.copy()
-
-    # Iterate over the segments to check for reclassification
-    for index, segment in segments_df.iterrows():
-        
-        # --- Condition 1: Target Segments ---
-        target_types = ['Not Interacting'] if mode == "binary" else ['Available', 'Alone']
-        if segment['interaction_type'] not in target_types:
-            continue
-        
-        video_name = segment['video_name']
-        start_frame = segment['segment_start']
-        end_frame = segment['segment_end']
-        
-        # Filter frame data for the current segment's video and frame range
-        current_video_frames = frame_data[frame_data['video_name'] == video_name]
-        segment_frames = current_video_frames[
-            (current_video_frames['frame_number'] >= start_frame) & 
-            (current_video_frames['frame_number'] <= end_frame)
-        ].copy() # Work on a copy of segment frames
-        
-        total_segment_frames = len(segment_frames)
-        if total_segment_frames == 0:
-            continue
-            
-        # --- Condition 2: KCHI-Only Density Check ---
-        # Frames must have KCHI but absolutely no CDS
-        kchi_only_count = segment_frames[
-            (segment_frames['has_kchi'] == 1) & 
-            (segment_frames['has_cds'] == 0)
-        ].shape[0]
-        
-        kchi_only_fraction = kchi_only_count / total_segment_frames
-
-        if kchi_only_fraction < InferenceConfig.KCHI_ONLY_FRACTION_THRESHOLD:
-            continue
-            
-        # --- Condition 3: Person Presence Check ---
-        # The 'person_or_face_present' column fuses face and person detection
-        person_presence_count = (segment_frames['person_or_face_present'] == 1).sum()
-        person_presence_fraction = person_presence_count / total_segment_frames
-        
-        if person_presence_fraction >= InferenceConfig.MIN_PERSON_PRESENCE_FRACTION:
-            # All conditions met: Reclassify to 'Interacting'
-            
-            # Use .loc on the updated_segments_df copy
-            updated_segments_df.loc[index, 'interaction_type'] = 'Interacting'
-            reclassified_count += 1
-            
-    print(f"   Reclassified {reclassified_count} 'Available'/'Alone' segments to 'Interacting' (Implicit Turn-Taking).")
-    return updated_segments_df
 
 def fill_gaps_with_default(segments_df, default_type="Alone"):
     filled_segments = []
@@ -328,162 +266,6 @@ def print_segment_summary(segments_df):
     else:
         print("\n📊 No segments created")
 
-def reclassify_alone_segments(segments_df, frame_data, detection_col='person_or_face_present'):
-    """
-    Reclassify 'Alone' segments to 'Available' if they contain sufficient evidence
-    of partner presence (visual or audio) that exceeds defined thresholds.
-    
-    (EXCLUDES segments where the frame-level classification was ALONE due to MEDIA.)
-    
-    CRITERIA FOR RECLASSIFICATION (Alone -> Available):
-    1. Segment type must be 'Alone'.
-    2. Segment length must be longer than MIN_RECLASSIFY_DURATION_SEC (to avoid short noise).
-    3. Person/Face detection (person_or_face_present) must occur for > 5% of segment frames.
-    4. OR Partner audio (has_cds OR has_ohs) must occur for > 5% of segment frames.
-    
-    Parameters
-    ----------
-    segments_df : pd.DataFrame
-        DataFrame with final interaction segments.
-    frame_data : pd.DataFrame
-        Original frame-level data.
-    detection_col : str
-        The name of the fused detection column.
-        
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame with reclassified segments.
-    """        
-    # Ensure necessary columns exist (including the new media flag for exclusion)
-    required_cols = [detection_col, 'has_cds', 'has_ohs', 'is_media_interaction'] 
-    if not all(col in frame_data.columns for col in required_cols):
-        print(f"⚠️ Warning: Required frame columns {required_cols} not found. Skipping alone reclassification.")
-        return segments_df
-        
-    reclassified_count = 0
-    updated_segments_df = segments_df.copy()
-
-    for video_id, video_segments in updated_segments_df.groupby('video_id'):
-        
-        video_segments = video_segments.sort_values('start_time_sec').reset_index(drop=False)
-        original_indices = video_segments['index'] # Map back to original segments_df index
-        
-        for i in range(len(video_segments)):
-            segment = video_segments.iloc[i]
-            
-            # --- Condition 1: Must be 'Alone' ---
-            if segment['interaction_type'] != 'Alone':
-                continue
-            
-            #--- Condition 2: Duration Check (must be > MIN_RECLASSIFY_DURATION_SEC seconds) ---
-            if segment['duration_sec'] <= InferenceConfig.MIN_RECLASSIFY_DURATION_SEC:
-               continue
-
-            # --- Condition 3: Exclude Media Interaction Segments ---
-            video_name = segment['video_name']
-            start_frame = segment['segment_start']
-            end_frame = segment['segment_end']
-            
-            current_video_frames = frame_data[frame_data['video_name'] == video_name]
-            segment_frames = current_video_frames[
-                (current_video_frames['frame_number'] >= start_frame) & 
-                (current_video_frames['frame_number'] <= end_frame)
-            ]
-            
-            # Check if *any* frame in the segment was flagged as media interaction
-            # If any frame was flagged as media interaction, we assume the whole segment
-            # was derived from that state and should not be reclassified.
-            if segment_frames['is_media_interaction'].any():
-                 print(f"   [Alone->Available] Segment {segment['start_time_sec']:.1f}s skipped due to MEDIA flag.")
-                 continue
-            
-            total_frames = len(segment_frames)
-            if total_frames == 0:
-                continue
-                
-            # --- Condition 4: Visual Presence Check (> 5%) ---
-            person_count = (segment_frames[detection_col] == 1).sum()
-            visual_fraction = person_count / total_frames
-            
-            # --- Condition 5: Partner Audio Check (> 5%) ---
-            partner_audio_count = (
-                (segment_frames['has_cds'] == 1) | 
-                (segment_frames['has_ohs'] == 1)
-            ).sum()
-            audio_fraction = partner_audio_count / total_frames
-            
-            # --- Reclassification Logic (OR condition) ---
-            
-            should_reclassify = False
-            
-            if visual_fraction > InferenceConfig.ALONE_RECLASSIFY_VISUAL_THRESHOLD:
-                # print(f"   [Alone->Available] Segment {segment['start_time_sec']:.1f}s: Visual frac {visual_fraction:.2f} > {InferenceConfig.ALONE_RECLASSIFY_VISUAL_THRESHOLD}")
-                should_reclassify = True
-
-            if audio_fraction > InferenceConfig.ALONE_RECLASSIFY_AUDIO_THRESHOLD:
-                # print(f"   [Alone->Available] Segment {segment['start_time_sec']:.1f}s: Audio frac {audio_fraction:.2f} > {InferenceConfig.ALONE_RECLASSIFY_AUDIO_THRESHOLD}")
-                should_reclassify = True
-
-            if should_reclassify:
-                # Get the original index and apply reclassification
-                original_idx = original_indices.iloc[i]
-                updated_segments_df.loc[original_idx, 'interaction_type'] = 'Available'
-                reclassified_count += 1
-            
-    print(f"   Reclassified {reclassified_count} 'Alone' segments to 'Available' (High Presence Rule).")
-    return updated_segments_df
-
-def reclassify_ghost_segments(segments_df, frame_data):
-    """
-    Reclassifies 'Interacting' or 'Available' segments to 'Alone' if they 
-    lack sufficient visual human presence, using type-specific thresholds.
-    """
-    reclassified_count = 0
-    updated_segments_df = segments_df.copy()
-
-    for index, segment in segments_df.iterrows():
-        # Skip segments already classified as Alone
-        if segment['interaction_type'] == 'Alone':
-            continue
-        
-        # 1. Select type-specific thresholds
-        if segment['interaction_type'] == 'Interacting':
-            min_duration = InferenceConfig.MIN_GHOST_CHECK_DURATION_INTERACTING
-            visual_threshold = InferenceConfig.GHOST_VISUAL_THRESHOLD_INTERACTING
-        else: # Available
-            min_duration = InferenceConfig.MIN_GHOST_CHECK_DURATION_AVAILABLE
-            visual_threshold = InferenceConfig.GHOST_VISUAL_THRESHOLD_AVAILABLE
-
-        # Skip if the segment is shorter than the type-specific minimum
-        if segment['duration_sec'] < min_duration:
-            continue
-        
-        video_name = segment['video_name']
-        start_frame = segment['segment_start']
-        end_frame = segment['segment_end']
-        
-        # 2. Filter frame data and calculate presence
-        current_video_frames = frame_data[frame_data['video_name'] == video_name]
-        segment_frames = current_video_frames[
-            (current_video_frames['frame_number'] >= start_frame) & 
-            (current_video_frames['frame_number'] <= end_frame)
-        ]
-        
-        if segment_frames.empty:
-            continue
-            
-        human_presence_mask = (segment_frames['person_or_face_present'] == 1)        
-        human_presence_frac = human_presence_mask.sum() / len(segment_frames)
-        
-        # 3. Apply Reclassification
-        if human_presence_frac < visual_threshold:
-            updated_segments_df.loc[index, 'interaction_type'] = 'Alone'
-            reclassified_count += 1
-
-    print(f"   Reclassified {reclassified_count} 'Ghost' segments to 'Alone' (Dual-Threshold Gate).")
-    return updated_segments_df
-
 def main(output_file_path: Path, frame_data_path: Path, hyperparameter_tuning: False, mode: str):
     """
     Main entry point for video-level segment analysis.
@@ -506,6 +288,8 @@ def main(output_file_path: Path, frame_data_path: Path, hyperparameter_tuning: F
         Path to the CSV file containing frame-level interaction data.
     hyperparameter_tuning: Bool
         Whether script runs in hyperparmeter mode or not 
+    mode: str
+        Classification mode: "tertiary" for Interacting/Available/Alone, "binary" for Interacting vs Not Interacting.
     """     
     if hyperparameter_tuning:
         run_dir = output_file_path.parent
@@ -518,6 +302,17 @@ def main(output_file_path: Path, frame_data_path: Path, hyperparameter_tuning: F
         
     # Step 1: Load frame-level data
     frame_data = pd.read_csv(frame_data_path)
+
+    # NEW STEP: Apply CPD Smoothing before creating segments
+    print("Smoothing frame-level data with CPD...")
+    frame_data = apply_cpd_smoothing(frame_data)
+    
+    if mode == "binary":
+        int_to_state = {1: 'Interacting', 2: 'Not Interacting'}
+    else:
+        int_to_state = {1: 'Interacting', 2: 'Available', 3: 'Alone'}
+    
+    frame_data['interaction_type'] = frame_data['interaction_type'].map(int_to_state)
 
     # Step 2: Create segments for each video
     all_segments = []
@@ -543,19 +338,12 @@ def main(output_file_path: Path, frame_data_path: Path, hyperparameter_tuning: F
                                         'segment_start', 'segment_end', 
                                         'start_time_sec', 'end_time_sec', 'duration_sec'])
 
-    # Step 4a: Reclassify short, sandwiched 'Alone' segments between Alone segments to 'Available'
-    if mode == "tertiary":
-        segments_df = reclassify_alone_segments(segments_df, frame_data, detection_col='person_or_face_present')
-    segments_df = reclassify_implicit_turn_taking(segments_df, frame_data)
-
     # Rerun merge AFTER all types have been finalized to clean up fragmentation
     print("🧹 Final consolidation: Merging reclassified segments of the same type...")
     segments_df = merge_same_segments(segments_df)
-    segments_df = reclassify_ghost_segments(segments_df, frame_data)
 
     # Step 6: Final Step: Fill all remaining gaps to create a continuous timeline
-    segments_df = fill_gaps_with_default(segments_df, default_type=default_fill)
-    segments_df = fill_gaps_with_default(segments_df, default_type="Available")
+    segments_df = fill_gaps_with_default(segments_df, default_type="Alone")
     segments_df = merge_same_segments(segments_df)
 
     # Step 7: Generate and print summary
@@ -602,7 +390,7 @@ if __name__ == "__main__":
     print(f"Using input frame-level data from: {input_path}")
 
     # Run main analysis
-    main(output_file_path=output_path, frame_data_path=input_path, hyperparameter_tuning=False, mode=args.mode)
+    main(output_file_path=output_path, frame_data_path=input_path, hyperparameter_tuning=False, mode="tertiary")
 
     # Copy current script into folder for reproducibility
     try:

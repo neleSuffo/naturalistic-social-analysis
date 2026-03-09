@@ -67,14 +67,17 @@ def save_second_wise_labels(df: pd.DataFrame, output_folder: Path, filename: str
 def reclassify_to_binary(df: pd.DataFrame) -> pd.DataFrame:
     """Reclassifies three-class labels to binary 'interacting' vs 'not interacting'."""
     df_copy = df.copy()
-    # Define mapping: 'interacting' remains 'interacting', others become 'not interacting'
+    # Ensure labels are lowercase and stripped for robust matching
+    df_copy['interaction_type'] = df_copy['interaction_type'].astype(str).str.lower().str.strip()
+    
     mapping = {
         'interacting': 'interacting',
         'available': 'not interacting',
-        'alone': 'not interacting'
+        'alone': 'not interacting',
+        'not interacting': 'not interacting' # Handle already-binary data
     }
-    # Ensure mapping handles lowercased strings
-    df_copy['interaction_type'] = df_copy['interaction_type'].astype(str).str.lower().str.strip().map(mapping).fillna(df_copy['interaction_type'])
+    
+    df_copy['interaction_type'] = df_copy['interaction_type'].map(mapping).fillna('not interacting')
     return df_copy
 
 def plot_segment_timeline(predictions_df, ground_truth_df, video_name, save_path, binary_mode=False):
@@ -259,7 +262,7 @@ def evaluate_performance_by_seconds(predictions_df, ground_truth_df):
             gt_label = gt_labels[sec]
             pred_label = pred_labels[sec]
 
-            if gt_label is not None:
+            if gt_label is not None and gt_label != 'unclassified':
                 video_total_seconds += 1
                 total_seconds_all += 1
                 
@@ -374,27 +377,21 @@ def calculate_detailed_metrics(results):
     return detailed_metrics
 
 def generate_confusion_matrix_plots(results, output_folder: Path):
-    """Generate and save confusion matrix plots inside the specified output folder."""
-
     confusion_matrix = results['confusion_matrix']
     interaction_types = results['interaction_types']
     
-    # Determine the order based on the number of unique interaction types found
-    if len(interaction_types) == 2:
-        # Binary mode: ['not interacting', 'interacting']
+    # Force specific order for binary vs tertiary
+    if len(interaction_types) <= 2:
         preferred_order = ['not interacting', 'interacting']
         plot_title_suffix = " (Binary)"
     else:
-        # Tertiary mode: ['alone', 'available', 'interacting'] (original three)
         preferred_order = ['alone', 'available', 'interacting']
         plot_title_suffix = ""
 
-
-    # Filter and sort labels based on current interaction_types and preferred order
-    sorted_gt_labels = [label for label in preferred_order if label in interaction_types]
-    
-    # Reverse the order for the predicted labels (X-axis) for standard visual layout
-    sorted_pred_labels = sorted_gt_labels[::-1]
+    # Filter labels present in data
+    sorted_gt_labels = [l for l in preferred_order if l in interaction_types]
+    # Prediction labels on X-axis usually follow the same order
+    sorted_pred_labels = sorted_gt_labels
 
     matrix_array = np.array([
         [confusion_matrix[gt_label].get(pred_label, 0)
@@ -585,8 +582,21 @@ def extract_misclassification_segments(predictions_df, ground_truth_df, results_
     
     return pd.DataFrame()
 
-def run_evaluation(predictions_path: Path, binary_mode: bool, output_folder: Path):
-    """Loads data, runs evaluation, and saves outputs in the same folder."""
+def run_evaluation(predictions_path: Path, binary_mode: bool, output_folder: Path, mode: str):
+    """Loads data, runs evaluation, and saves outputs in the same folder.
+    
+    Parameters
+    ----------
+    predictions_path : Path
+        Path to the predictions CSV file (e.g. 02_interaction_segments.csv).
+    binary_mode : bool
+        If True, reclassify to binary labels before evaluation.
+    output_folder : Path
+        Path to the folder where all outputs (metrics, confusion matrices, misclassified segments) will
+        be saved.
+    mode : str
+        Evaluation mode, either 'binary' or 'tertiary', which determines how labels are processed and evaluated.
+    """
     output_folder.mkdir(parents=True, exist_ok=True)
 
     try:
@@ -616,7 +626,7 @@ def run_evaluation(predictions_path: Path, binary_mode: bool, output_folder: Pat
             ground_truth_df[col] = ground_truth_df[col].str.strip()
             
     # --- Apply Binary Reclassification ---
-    if binary_mode:
+    if mode == 'binary':
         predictions_df = reclassify_to_binary(predictions_df)
         ground_truth_df = reclassify_to_binary(ground_truth_df)
         print("📊 Running evaluation in BINARY mode: 'Available' and 'Alone' are mapped to 'Not Interacting'.")
@@ -692,14 +702,13 @@ if __name__ == "__main__":
     parser.add_argument('--plot', nargs='?', const='all', default=None, help=('If omitted: no plotting.\n' 
                                                                               'If specified without value: plots all videos.\n' 
                                                                               'If a video name is given: plots only that video.'))
-    parser.add_argument('--binary', action='store_true', help='If set, combines "available" and "alone" into "not interacting" for binary classification.')
-
+    parser.add_argument('--mode', type=str, choices=['binary', 'tertiary'], default='tertiary', help="Choose evaluation mode: 'binary' (interacting vs not interacting) or 'tertiary' (interacting, available, alone). Default is 'tertiary'.")
     args = parser.parse_args()
     predictions_path = Path(args.folder_path) / Inference.INTERACTION_SEGMENTS_CSV.name
 
     # 1. Run evaluation (loads data, runs metrics, prints/saves results)
     output_folder = predictions_path.parent
-    predictions_df, ground_truth_df, _ = run_evaluation(predictions_path, args.binary, output_folder)
+    predictions_df, ground_truth_df, _ = run_evaluation(predictions_path, args.binary, output_folder, args.mode)
     
 
     # 2. Plotting logic

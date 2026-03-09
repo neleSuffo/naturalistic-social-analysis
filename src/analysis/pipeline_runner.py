@@ -35,7 +35,7 @@ def run_command(cmd, step_name):
         print(f"❌ ERROR: Python or script not found. Check your PATH and script location.")
         sys.exit(1)
 
-def main(rules=None, plot=False):
+def main(rules=None, plot=False, mode='tertiary'):
     """
     Runs the full pipeline: frame-level analysis, segment creation, and evaluation.
     
@@ -45,9 +45,14 @@ def main(rules=None, plot=False):
         List of rule numbers to override default rules in frame-level analysis.
     plot : bool, optional
         Whether to generate plots during evaluation.
+    mode : str, optional
+        Mode for segment creation: 'binary' (Interacting vs Not Interacting) or 'tertiary' (Interacting, Available, Alone). Default is 'tertiary'.
     """    
     # 1. --- STEP 1: FRAME-LEVEL ANALYSIS (Generates Timestamped Folder) ---
-    frame_cmd = [sys.executable, str(FRAME_ANALYSIS_SCRIPT)]
+    frame_cmd = [
+        sys.executable, 
+        str(FRAME_ANALYSIS_SCRIPT),
+        "--mode", mode]
     if rules:
         frame_cmd.extend(["--rules"] + [str(r) for r in rules])
     
@@ -71,7 +76,8 @@ def main(rules=None, plot=False):
     segment_cmd = [
         sys.executable, 
         str(SEGMENT_CREATION_SCRIPT),
-        "--folder_path", str(run_folder)
+        "--folder_path", str(run_folder),
+        "--mode", mode
     ]
     run_command(segment_cmd, "Segment Creation")
 
@@ -81,6 +87,7 @@ def main(rules=None, plot=False):
         sys.executable, 
         str(EVALUATION_SCRIPT),
         "--folder_path", str(run_folder),
+        "--mode", mode
     ]
     if plot:
         evaluation_cmd.append("--plot")
@@ -92,7 +99,8 @@ def main(rules=None, plot=False):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run the full multimodal analysis pipeline.")
     parser.add_argument("--rules", type=int, nargs='+', help="Override default rule set (e.g., 1 2 3 4 5).")
+    parser.add_argument("--mode", type=str, choices=['binary', 'tertiary'], default='tertiary', help="Mode for segment creation: 'binary' or 'tertiary'.")
     parser.add_argument("--plot", action='store_true', help="Generate plots during evaluation.")
     args = parser.parse_args()
     
-    main(rules=args.rules, plot=args.plot)
+    main(rules=args.rules, plot=args.plot, mode = args.mode)
