@@ -74,7 +74,7 @@ def reclassify_to_binary(df: pd.DataFrame) -> pd.DataFrame:
         'interacting': 'interacting',
         'available': 'not interacting',
         'alone': 'not interacting',
-        'not interacting': 'not interacting' # Handle already-binary data
+        'not interacting': 'not interacting'
     }
     
     df_copy['interaction_type'] = df_copy['interaction_type'].map(mapping).fillna('not interacting')
@@ -383,10 +383,8 @@ def generate_confusion_matrix_plots(results, output_folder: Path):
     # Force specific order for binary vs tertiary
     if len(interaction_types) <= 2:
         preferred_order = ['not interacting', 'interacting']
-        plot_title_suffix = " (Binary)"
     else:
         preferred_order = ['alone', 'available', 'interacting']
-        plot_title_suffix = ""
 
     # Filter labels present in data
     sorted_gt_labels = [l for l in preferred_order if l in interaction_types]
@@ -408,9 +406,8 @@ def generate_confusion_matrix_plots(results, output_folder: Path):
 
     # --- Save plots ---
     output_folder.mkdir(parents=True, exist_ok=True)
-    conf_matrix_counts_path = output_folder / (Evaluation.CONF_MATRIX_COUNTS.stem + plot_title_suffix.replace(" ", "_").lower() + Evaluation.CONF_MATRIX_COUNTS.suffix)
-    conf_matrix_percentages_path = output_folder / (Evaluation.CONF_MATRIX_PERCENTAGES.stem + plot_title_suffix.replace(" ", "_").lower() + Evaluation.CONF_MATRIX_PERCENTAGES.suffix)
-
+    conf_matrix_counts_path = output_folder / Evaluation.CONF_MATRIX_COUNTS
+    conf_matrix_percentages_path = output_folder / Evaluation.CONF_MATRIX_PERCENTAGES
 
     # Absolute counts
     plt.figure(figsize=(10, 8))
@@ -418,7 +415,7 @@ def generate_confusion_matrix_plots(results, output_folder: Path):
                 xticklabels=[label.capitalize() for label in sorted_pred_labels],
                 yticklabels=[label.capitalize() for label in sorted_gt_labels],
                 cbar_kws={'label': 'Number of GT Seconds'})
-    plt.title(f'Confusion Matrix (Counts){plot_title_suffix}')
+    plt.title(f'Confusion Matrix (Counts)')
     
     plt.xlabel('Predicted Label', fontsize=14, labelpad=10)
     plt.ylabel('True Label (Ground Truth)', fontsize=14, labelpad=10)
@@ -433,7 +430,7 @@ def generate_confusion_matrix_plots(results, output_folder: Path):
                 xticklabels=[label.capitalize() for label in sorted_pred_labels],
                 yticklabels=[label.capitalize() for label in sorted_gt_labels],
                 cbar_kws={'label': 'Percentage (%)'})
-    plt.title(f'Confusion Matrix (Percentages){plot_title_suffix}')
+    plt.title(f'Confusion Matrix (Percentages)')
     
     plt.xlabel('Predicted Label', fontsize=14, labelpad=10)
     plt.ylabel('True Label (Ground Truth)', fontsize=14, labelpad=10)
@@ -582,15 +579,13 @@ def extract_misclassification_segments(predictions_df, ground_truth_df, results_
     
     return pd.DataFrame()
 
-def run_evaluation(predictions_path: Path, binary_mode: bool, output_folder: Path, mode: str):
+def run_evaluation(predictions_path: Path, output_folder: Path, mode: str):
     """Loads data, runs evaluation, and saves outputs in the same folder.
     
     Parameters
     ----------
     predictions_path : Path
         Path to the predictions CSV file (e.g. 02_interaction_segments.csv).
-    binary_mode : bool
-        If True, reclassify to binary labels before evaluation.
     output_folder : Path
         Path to the folder where all outputs (metrics, confusion matrices, misclassified segments) will
         be saved.
@@ -641,21 +636,19 @@ def run_evaluation(predictions_path: Path, binary_mode: bool, output_folder: Pat
     if 'start_time_min' in predictions_df.columns and 'end_time_min' in predictions_df.columns:
             predictions_df['start_time_sec'] = predictions_df['start_time_min'].apply(time_to_seconds)
             predictions_df['end_time_sec'] = predictions_df['end_time_min'].apply(time_to_seconds)
-    
-    binary_suffix = "_binary" if binary_mode else ""
-    
+        
     # Sa
     save_second_wise_labels(
         predictions_df.copy(), 
         Evaluation.BASE_OUTPUT_DIR, 
-        f"pred_secondwise{binary_suffix}.csv"
+        f"pred_secondwise.csv"
     )
     
     # 2. Save Ground Truth
     save_second_wise_labels(
         ground_truth_df.copy(), 
         Evaluation.BASE_OUTPUT_DIR, 
-        f"gt_secondwise{binary_suffix}.csv"
+        f"gt_secondwise.csv"
     )
     
     # Evaluate
@@ -666,8 +659,7 @@ def run_evaluation(predictions_path: Path, binary_mode: bool, output_folder: Pat
 
     # --- Misclassification Analysis ---
     df_misclassified = extract_misclassification_segments(predictions_df, ground_truth_df, results)
-    misclassified_path_suffix = "_binary" if binary_mode else ""
-    misclassified_path = output_folder / f"misclassified_segments{misclassified_path_suffix}.csv"
+    misclassified_path = output_folder / f"misclassified_segments.csv"
     
     if not df_misclassified.empty:
         df_misclassified.to_csv(misclassified_path, index=False)
@@ -678,8 +670,7 @@ def run_evaluation(predictions_path: Path, binary_mode: bool, output_folder: Pat
     # Generate outputs
     generate_confusion_matrix_plots(results, output_folder)
 
-    performance_path_suffix = "_binary" if binary_mode else ""
-    performance_path = output_folder / (Evaluation.PERFORMANCE_RESULTS_TXT.stem + performance_path_suffix + Evaluation.PERFORMANCE_RESULTS_TXT.suffix)
+    performance_path = output_folder / (Evaluation.PERFORMANCE_RESULTS_TXT.stem + Evaluation.PERFORMANCE_RESULTS_TXT.suffix)
     
     save_performance_results(results, detailed_metrics, total_seconds, total_hours, filename=performance_path)
     
@@ -708,7 +699,7 @@ if __name__ == "__main__":
 
     # 1. Run evaluation (loads data, runs metrics, prints/saves results)
     output_folder = predictions_path.parent
-    predictions_df, ground_truth_df, _ = run_evaluation(predictions_path, args.binary, output_folder, args.mode)
+    predictions_df, ground_truth_df, _ = run_evaluation(predictions_path, output_folder, args.mode)
     
 
     # 2. Plotting logic
@@ -717,8 +708,8 @@ if __name__ == "__main__":
         print(f"\n📊 Generating plots for all {len(video_names)} videos...")
 
         for video_name in video_names:
-            plot_path = output_folder / f"{video_name}_segment_timeline{'_binary' if args.binary else ''}.png"
-            plot_segment_timeline(predictions_df, ground_truth_df, video_name, plot_path, args.binary)
+            plot_path = output_folder / f"{video_name}_segment_timeline.png"
+            plot_segment_timeline(predictions_df, ground_truth_df, video_name, plot_path, args.mode)
 
         print("✅ All plots generated.")
 
@@ -727,6 +718,6 @@ if __name__ == "__main__":
         if plot_video_name not in ground_truth_df['video_name'].unique():
             print(f"⚠️  Video name '{plot_video_name}' not found in ground truth — skipping plot.")
         else:
-            plot_path = output_folder / f"{plot_video_name}_segment_timeline{'_binary' if args.binary else ''}.png"
-            plot_segment_timeline(predictions_df, ground_truth_df, plot_video_name, plot_path, args.binary)
+            plot_path = output_folder / f"{plot_video_name}_segment_timeline.png"
+            plot_segment_timeline(predictions_df, ground_truth_df, plot_video_name, plot_path, args.mode)
             print(f"✅ Plot generated for video: {plot_video_name}")
