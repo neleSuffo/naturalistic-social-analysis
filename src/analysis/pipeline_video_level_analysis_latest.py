@@ -43,9 +43,19 @@ def extract_child_id(video_name):
     match = re.search(r'id(\d{6})', video_name)
     return match.group(1) if match else None
 
-def apply_cpd_smoothing(frame_data: pd.DataFrame):
+def apply_cpd_smoothing(frame_data: pd.DataFrame, mode: str):
+    """
+    This function applies Change Point Detection (CPD) smoothing to the frame-level data.
+
+    Returns
+    -------
+    frame_data : pd.DataFrame
+        The input DataFrame with an additional 'interaction_type' column that has been smoothed using CPD.
+    mode : str
+        Classification mode: "binary" for Interacting vs Not Interacting. "tertiary" for Interacting, Available, Alone.
+    """
     smoothed_results = []
-    for video_id, video_df in frame_data.groupby('video_id'):
+    for _, video_df in frame_data.groupby('video_id'):
         video_df = video_df.sort_values('frame_number').copy()
         signal = video_df['presence_score'].values.reshape(-1, 1)
         
@@ -303,9 +313,9 @@ def main(output_file_path: Path, frame_data_path: Path, hyperparameter_tuning: F
     # Step 1: Load frame-level data
     frame_data = pd.read_csv(frame_data_path)
 
-    # NEW STEP: Apply CPD Smoothing before creating segments
+    # Apply CPD Smoothing before creating segments
     print("Smoothing frame-level data with CPD...")
-    frame_data = apply_cpd_smoothing(frame_data)
+    frame_data = apply_cpd_smoothing(frame_data, mode)
     
     if mode == "binary":
         int_to_state = {1: 'Interacting', 2: 'Not Interacting'}
@@ -343,7 +353,8 @@ def main(output_file_path: Path, frame_data_path: Path, hyperparameter_tuning: F
     segments_df = merge_same_segments(segments_df)
 
     # Step 6: Final Step: Fill all remaining gaps to create a continuous timeline
-    segments_df = fill_gaps_with_default(segments_df, default_type="Alone")
+    default_fill = "Not Interacting" if mode == "binary" else "Alone"
+    segments_df = fill_gaps_with_default(segments_df, default_type=default_fill)
     segments_df = merge_same_segments(segments_df)
 
     # Step 7: Generate and print summary
@@ -390,7 +401,7 @@ if __name__ == "__main__":
     print(f"Using input frame-level data from: {input_path}")
 
     # Run main analysis
-    main(output_file_path=output_path, frame_data_path=input_path, hyperparameter_tuning=False, mode="tertiary")
+    main(output_file_path=output_path, frame_data_path=input_path, hyperparameter_tuning=False, mode=args.mode)
 
     # Copy current script into folder for reproducibility
     try:
