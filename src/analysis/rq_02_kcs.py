@@ -22,33 +22,32 @@ def main():
     print("🗣️ RESEARCH QUESTION 2: CHILD LANGUAGE PRODUCTION ANALYSIS")
     print("=" * 70)
     
-    # 1. Load segments and log initial count
+    # 1. Load the segments file (The "Master List" of intervals)
     segments_df = pd.read_csv(Inference.INTERACTION_SEGMENTS_CSV)
-    initial_child_ids = set(segments_df['child_id'].unique())
-    print(f"📊 [STAGE 1] Unique children in segments CSV: {len(initial_child_ids)}")
     
-    # 2. Extract ALL speech frames
+    # 2. Extract ALL speech frames from the database
     conn = sqlite3.connect(DataPaths.INFERENCE_DB_PATH)
-    audio_query = "SELECT video_id, frame_number FROM AudioClassifications WHERE has_kchi = 1"
+    audio_query = """
+    SELECT ac.video_id, ac.frame_number
+    FROM AudioClassifications ac
+    WHERE ac.has_kchi = 1
+    """
     kchi_frames = pd.read_sql_query(audio_query, conn)
     conn.close()
     
-    db_video_ids = set(kchi_frames['video_id'].unique())
-    print(f"📊 [STAGE 2] Unique videos with speech in DB: {len(db_video_ids)}")
-
-    # Time conversion
+    # We use DataConfig.AUDIO_STEP to ensure one detection covers the whole window
     kchi_frames['start_time_seconds'] = kchi_frames['frame_number'] / DataConfig.FPS
     kchi_frames['end_time_seconds'] = (kchi_frames['frame_number'] + DataConfig.FRAME_STEP_INTERVAL) / DataConfig.FPS
 
     segment_results = []
-    processed_videos = set()
     
-    # 3. Iterate through segments
+    # 3. Iterate through EVERY segment from the segments CSV
     for video_id, video_segments in segments_df.groupby('video_id'):
-        processed_videos.add(video_id)
         vid_speech = kchi_frames[kchi_frames['video_id'] == video_id]
         
         for _, seg in video_segments.iterrows():
+            # extract child_id from video_id
+            # Find detections that overlap with this segment
             overlap_frames = vid_speech[
                 (vid_speech['start_time_seconds'] < seg['end_time_sec']) &
                 (vid_speech['end_time_seconds'] > seg['start_time_sec'])
@@ -57,50 +56,71 @@ def main():
             if len(overlap_frames) == 0:
                 total_speech_seconds = 0.0
             else:
-                intervals = [(max(f['start_time_seconds'], seg['start_time_sec']), 
-                              min(f['end_time_seconds'], seg['end_time_sec'])) 
-                             for _, f in overlap_frames.iterrows()]
+                # Clip frame intervals to segment boundaries
+                intervals = []
+                for _, frame in overlap_frames.iterrows():
+                    start = max(frame['start_time_seconds'], seg['start_time_sec'])
+                    end = min(frame['end_time_seconds'], seg['end_time_sec'])
+                    intervals.append((start, end))
+                
+                # Merge overlapping/adjacent intervals
                 _, total_speech_seconds = merge_overlapping_intervals(intervals)
             
             segment_results.append({
                 'child_id': seg['child_id'],
-                'video_id': video_id, # Added for debugging
+                'video_name': seg['video_name'],
+                'age_at_recording': seg['age_at_recording'],
+                'interaction_type': seg['interaction_type'],
+                'segment_start_time': seg['start_time_sec'],
+                'segment_end_time': seg['end_time_sec'],
                 'total_speech_seconds': total_speech_seconds,
-                'total_segment_duration': seg['duration_sec'],
-                'age_raw': seg['age_at_recording'] # Keep raw for check
+                'total_segment_duration': seg['duration_sec']
             })
     
+    # 4. Final Aggregation and Derived Columns
     final_output = pd.DataFrame(segment_results)
+    final_output['kchi_speech_minutes'] = final_output['total_speech_seconds'] / 60
+    final_output['segment_duration_minutes'] = final_output['total_segment_duration'] / 60
+    final_output['speech_activity_percent'] = (
+        final_output['total_speech_seconds'] / final_output['total_segment_duration']
+    ).fillna(0)
     
-    # 4. Age Cleaning & Final Checks
-    final_output['age_at_recording'] = pd.to_numeric(
-        final_output['age_raw'].astype(str).str.replace('"', '').str.replace(',', '.'), 
-        errors='coerce'
+    # Age Cleaning
+    final_output['age_at_recording'] = (
+        final_output['age_at_recording']
+        .astype(str).str.replace('"', '').str.replace(',', '.').str.strip()
     )
+    final_output['age_at_recording'] = pd.to_numeric(final_output['age_at_recording'], errors='coerce')
     
-    # Check for children lost during age conversion
-    invalid_age_children = final_output[final_output['age_at_recording'].isna()]['child_id'].unique()
     
-    # Aggregation
-    child_level = final_output.dropna(subset=['age_at_recording']).groupby('child_id').agg({
+    final_output.to_csv(Inference.KCS_SUMMARY_CSV, index=False)
+    print(f"✅ KCS state summary saved to: {Inference.KCS_SUMMARY_CSV}")
+    
+    
+    # ----- PART 2A: Child-Level Aggregation ------
+    child_level_summary = final_output.groupby('child_id').agg({
         'total_speech_seconds': 'sum',
         'total_segment_duration': 'sum',
         'age_at_recording': 'min'
     }).reset_index()
 
-    # --- THE AUDIT REPORT ---
-    print("\n" + "🔍 DATA FLOW AUDIT REPORT" + "\n" + "-"*30)
-    print(f"1. Children started with (CSV):       {len(initial_child_ids)}")
-    print(f"2. Children after segment processing:  {len(final_output['child_id'].unique())}")
-    print(f"3. Children with invalid Age values:   {len(invalid_age_children)}")
-    print(f"4. Children in final summary:          {len(child_level)}")
+    # Calculate child-level percentage
+    child_level_summary['speech_activity_percent'] = (
+        child_level_summary['total_speech_seconds'] / 
+        child_level_summary['total_segment_duration']
+    ).fillna(0)
+
+    # Convert to minutes for easier reading
+    child_level_summary['total_speech_minutes'] = child_level_summary['total_speech_seconds'] / 60
+    child_level_summary['total_recording_minutes'] = child_level_summary['total_segment_duration'] / 60
+
+    # Save child-level results
+    child_level_summary.to_csv(Inference.GLOBAL_KCS_SUMMARY_CSV, index=False)
     
-    if len(initial_child_ids) > len(child_level):
-        lost_ids = initial_child_ids - set(child_level['child_id'])
-        print(f"⚠️ LOST CHILD IDs (first 5): {list(lost_ids)[:5]}")
+    print(f"✅ Child-level summary saved to: {Inference.GLOBAL_KCS_SUMMARY_CSV}")    
     
-    child_level.to_csv(Inference.GLOBAL_KCS_SUMMARY_CSV, index=False)
     return final_output
+
 
 if __name__ == "__main__":
     main()
