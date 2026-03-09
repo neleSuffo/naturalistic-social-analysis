@@ -446,13 +446,27 @@ def check_audio_interaction_turn_taking(df, fps):
     
     return result_df['is_audio_interaction']
 
-def classify_frames(row, included_rules=None):
+def classify_frames(row, included_rules=None, mode="tertiary"):
+    """
+    Hierarchical social interaction classifier.
+    mode="tertiary": 1=Interacting, 2=Available, 3=Alone
+    mode="binary": 1=Interacting, 2=Not Interacting
+    
+    Parameters:
+    ----------
+    row : pd.Series
+        A row from the DataFrame containing frame-level features.
+    included_rules : list, optional
+        List of rule numbers to include in interaction classification (1, 2, 3, 4).
+        If None, uses default rules [1, 2, 3, 4].
+    mode : str, optional
+        Classification mode: "tertiary" (default) or "binary". Determines how non-interacting categories are merged.
+    """
     if included_rules is None:
         included_rules = [1, 2, 3, 4]
     
     # NEW: Define the visual gating floor
     is_visual_anchor = row['presence_score'] >= InferenceConfig.AUDIO_VISUAL_GATING_FLOOR
-    
     is_available = bool(row['person_seen_recently'])
     is_visual_confident = row['instant_presence_conf'] >= InferenceConfig.INSTANT_CONFIDENCE_THRESHOLD
     
@@ -463,28 +477,28 @@ def classify_frames(row, included_rules=None):
     # TIER 1: INTERACTING
     if 1 in included_rules and rule1_tt:
         interaction_category = 1
-            
-    # Gated Rule 3: Only Interacting if visual anchor exists
     elif 3 in included_rules and rule3_kcds and is_visual_anchor:
         interaction_category = 1
-        
     elif 2 in included_rules and is_visual_confident and bool(row['proximity'] >= InferenceConfig.PROXIMITY_THRESHOLD):
         interaction_category = 1
 
-    # TIER 2: AVAILABLE
-    # Gated OHS: Only Available if visual anchor exists
-    elif is_available or (bool(row['is_sustained_ohs']) and is_visual_anchor):
-        interaction_category = 2
-
-    # TIER 3: ALONE
+    # TIER 2 & 3: NON-INTERACTING
     else:
-        interaction_category = 3
+        if mode == "binary":
+            # Merge Available and Alone into a single 'Not Interacting' state (2)
+            interaction_category = 2
+        else:
+            # Original Tertiary Logic
+            if is_available or (bool(row['is_sustained_ohs']) and is_visual_anchor):
+                interaction_category = 2
+            else:
+                interaction_category = 3
 
     return (interaction_category, rule1_tt, 
             bool(row['proximity'] >= InferenceConfig.PROXIMITY_THRESHOLD), 
             rule3_kcds, bool(row['is_sustained_ohs']))
 
-def main(db_path: Path, output_dir: Path, hyperparameter_tuning: False, included_rules: list = None):
+def main(db_path: Path, output_dir: Path, hyperparameter_tuning: False, included_rules: list = None, mode: str = "tertiary") -> dict:
     """
     Main analysis function that orchestrates multimodal social interaction analysis.
     
@@ -579,7 +593,7 @@ def main(db_path: Path, output_dir: Path, hyperparameter_tuning: False, included
         
         # --- PHASE 3: HIERARCHICAL CLASSIFICATION ---
         print("⏱️ PHASE 3: Running Initial Classification...")
-        results = all_data.apply(lambda row: classify_frames(row, included_rules), axis=1)
+        results = all_data.apply(lambda row: classify_frames(row, included_rules, mode=mode), axis=1)
         all_data['interaction_type'] = [r[0] for r in results]
 
         # Update only the classification column
@@ -603,7 +617,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Frame-level social interaction analysis')
     parser.add_argument('--rules', type=int, nargs='+', default=[1, 2, 3, 4],
                     help='List of interaction rules to include (1=turn-taking, 2=proximity, 3=kcds-speaking, 4=rule4_kchi_visual). Default: [1, 2, 3, 4]')
-
+    parser.add_argument('--mode', type=str, choices=['binary', 'tertiary'], default='tertiary',
+                    help='Binary: Interacting vs Not Interacting. Tertiary: Interacting, Available, Alone.')
     args = parser.parse_args()
     
     # Validate rule numbers
@@ -612,4 +627,4 @@ if __name__ == "__main__":
         print(f"❌ Error: Invalid rule numbers. Valid options are: {valid_rules}")
         sys.exit(1)
 
-    main(db_path=Path(DataPaths.INFERENCE_DB_PATH), output_dir=Inference.BASE_OUTPUT_DIR, included_rules=args.rules, hyperparameter_tuning=False)
+    main(db_path=Path(DataPaths.INFERENCE_DB_PATH), output_dir=Inference.BASE_OUTPUT_DIR, included_rules=args.rules, hyperparameter_tuning=False, mode=args.mode)
