@@ -170,7 +170,7 @@ def count_directional_turns(vocalizations, segments_df) -> Tuple[pd.DataFrame, p
     return pd.DataFrame(results), pd.DataFrame(raw_turns_df)
 
 def main():
-    print("🗣️ RESEARCH QUESTION 3: TURN-TAKING ANALYSIS")
+    print("🗣️ RESEARCH QUESTION 4: TURN-TAKING ANALYSIS")
     print("=" * 70)
     
     # 1. Load Segments and Vocalizations

@@ -543,7 +543,7 @@ def classify_frames(row, results_df, included_rules=None, mode="tertiary"):
     """
     Hierarchical social interaction classifier.
     mode="tertiary": Categories are Interacting, Available, Alone.
-    mode="binary": Categories are Interacting, Not Interacting (Available + Alone).
+    mode="binary": Categories are Interacting, Not_Interacting (Available + Alone).
     """
     if included_rules is None:
         included_rules = [1, 2, 3, 4, 5]
@@ -582,9 +582,9 @@ def classify_frames(row, results_df, included_rules=None, mode="tertiary"):
     if active_rules:
         interaction_category = "Interacting"
     else:
-        # BINARY MODE: Merge Alone and Available into "Not Interacting"
+        # BINARY MODE: Merge Alone and Available into "Not_Interacting"
         if mode == "binary":
-            interaction_category = "Not Interacting"
+            interaction_category = "Not_Interacting"
         else:
             # Original Tertiary Logic
             if is_sustained_absence: 
@@ -907,7 +907,7 @@ def main(db_path: Path, output_dir: Path, hyperparameter_tuning: False, included
         List of rule numbers to include in interaction classification (1, 2, 3, 4).
         If None, uses default rules [2, 3, 4].
     mode : str
-        Classification mode: "tertiary" for Interacting/Available/Alone, "binary" for Interacting vs Not Interacting.
+        Classification mode: "tertiary" for Interacting/Available/Alone, "binary" for Interacting vs Not_Interacting.
 
     Returns
     -------
@@ -1018,7 +1018,7 @@ if __name__ == "__main__":
     parser.add_argument('--rules', type=int, nargs='+', default=[1, 2, 3, 4, 5],
                     help='List of interaction rules to include (1=turn-taking, 2=proximity, 3=cds-speaking, 4=adult-face-recent-speech, 5=buffered-kchi-visual). Default: [1, 2, 3, 4, 5]') # UPDATED HELP TEXT
     parser.add_argument('--mode', type=str, choices=['binary', 'tertiary'], default='tertiary',
-                    help='Binary: Interacting vs Not Interacting. Tertiary: Interacting, Available, Alone.')
+                    help='Binary: Interacting vs Not_Interacting. Tertiary: Interacting, Available, Alone.')
     args = parser.parse_args()
     
     # Validate rule numbers

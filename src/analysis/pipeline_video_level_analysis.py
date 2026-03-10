@@ -30,7 +30,7 @@ def get_min_segment_duration(interaction_type: str) -> float:
         'Interacting': InferenceConfig.MIN_INTERACTING_SEGMENT_DURATION_SEC,
         'Alone': InferenceConfig.MIN_ALONE_SEGMENT_DURATION_SEC,
         'Available': InferenceConfig.MIN_AVAILABLE_SEGMENT_DURATION_SEC,
-        'Not Interacting': InferenceConfig.MIN_NOT_INTERACTING_SEGMENT_DURATION_SEC,
+        'Not_Interacting': InferenceConfig.MIN_NOT_INTERACTING_SEGMENT_DURATION_SEC,
     }
     # Use a default minimum (e.g., the largest) if the type is unexpected
     default_min = getattr(InferenceConfig, 'MIN_ALONE_SEGMENT_DURATION_SEC', 15.0) 
@@ -187,7 +187,7 @@ def reclassify_implicit_turn_taking(segments_df, frames_by_video, mode="tertiary
     reclassified_count = 0
 
     for index, segment in segments_df.iterrows():
-        target_types = ['Not Interacting'] if mode == "binary" else ['Available', 'Alone']
+        target_types = ['Not_Interacting'] if mode == "binary" else ['Available', 'Alone']
         if segment['interaction_type'] not in target_types:
             continue
         
@@ -388,7 +388,7 @@ def print_segment_summary(segments_df, mode):
         print(f"   Total segments: {total_segments} ({total_duration} minutes)")
 
         if mode == "binary":
-            for itype in ['Interacting', 'Not Interacting']:
+            for itype in ['Interacting', 'Not_Interacting']:
                 df_sub = segments_df[segments_df['interaction_type'] == itype]
                 count = len(df_sub)
                 minutes = round(df_sub['duration_sec'].sum() / 60, 2)
@@ -448,7 +448,7 @@ def main(output_file_path: Path, frame_data_path: Path, hyperparameter_tuning: b
     if mode == "tertiary":
         segments_df = reclassify_ghost_segments(segments_df, frames_by_video)
 
-    default_fill = "Not Interacting" if mode == "binary" else "Available"
+    default_fill = "Not_Interacting" if mode == "binary" else "Available"
     segments_df = fill_gaps_with_default(segments_df, default_type=default_fill)
     segments_df = merge_same_segments(segments_df)
 
@@ -464,7 +464,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Video-level social interaction segment analysis')
     parser.add_argument('--folder_path', type=str, required=True, help='Folder path containing input CSV and where outputs will be saved')
     parser.add_argument('--mode', type=str, choices=['binary', 'tertiary'], default='tertiary',
-                    help='Binary: Interacting vs Not Interacting. Tertiary: Interacting, Available, Alone.')    
+                    help='Binary: Interacting vs Not_Interacting. Tertiary: Interacting, Available, Alone.')    
     args = parser.parse_args()
     
     folder_path = Path(args.folder_path)

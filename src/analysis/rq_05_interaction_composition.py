@@ -1,86 +1,119 @@
 import pandas as pd
+import argparse
+import numpy as np
+from pathlib import Path
 from constants import Inference, DataPaths
 
-def add_interaction_columns(frames_df, segments_df):
+def add_interaction_columns(frames_df, segments_df, mode="tertiary"):
     """
-    Add 'is_interaction', 'is_alone', and 'is_available' columns to frames_df
-    based on whether the frame falls within the respective segment type.
+    Optimized version using GroupBy and Interval lookups.
+    
+    Parameters:
+    ----------
+    frames_df: pd.DataFrame 
+        DataFrame with columns ['video_name', 'frame_number', 'proximity', ...]
+    segments_df: pd.DataFrame
+        DataFrame with columns ['video_name', 'segment_start', 'segment_end', 'interaction_type']
+    mode: str
+        "binary" for Interacting vs Not Interacting, "tertiary" for Interacting vs Alone vs Available
     """
-    # Initialize all frames as False
-    frames_df['is_interaction'] = False
-    frames_df['is_alone'] = False
-    frames_df['is_available'] = False
+    # 1. Setup column names
+    target_cols = ['is_interaction']
+    type_to_col = {'Interacting': 'is_interaction'}
     
-    # Map interaction_type -> column name
-    type_to_col = {
-        'Interacting': 'is_interaction',
-        'Alone': 'is_alone',
-        'Available': 'is_available'
-    }
-    
-    # For each segment type, mark corresponding frames
-    for _, segment in segments_df.iterrows():
-        col = type_to_col.get(segment['interaction_type'])
-        if col is None:
-            continue  # skip unknown interaction types
+    if mode == "binary":
+        target_cols.append('is_not_interaction') 
+        type_to_col['Not_Interacting'] = 'is_not_interaction'
+    else:
+        target_cols.extend(['is_alone', 'is_available'])
+        type_to_col.update({'Alone': 'is_alone', 'Available': 'is_available'})
+
+    # Initialize columns at once with False (more memory efficient than one-by-one)
+    for col in target_cols:
+        frames_df[col] = False
+
+    # 2. Process by video to reduce search space
+    # Convert frames_df to a dictionary of dataframes for O(1) access
+    video_groups = dict(list(frames_df.groupby('video_name')))
+    processed_fragments = []
+
+    for video_name, segments in segments_df.groupby('video_name'):
+        if video_name not in video_groups:
+            continue
         
-        mask = (
-            (frames_df['video_id'] == segment['video_id']) &
-            (frames_df['frame_number'] >= segment['segment_start']) &
-            (frames_df['frame_number'] <= segment['segment_end'])
-        )
-        frames_df.loc[mask, col] = True
-    
-    return frames_df
+        v_frames = video_groups[video_name].copy()
+        
+        # For each segment in this specific video
+        for _, seg in segments.iterrows():
+            col = type_to_col.get(seg['interaction_type'])
+            if col:
+                # Use boolean indexing to set the column for the relevant frames
+                mask = (v_frames['frame_number'] >= seg['segment_start']) & \
+                       (v_frames['frame_number'] <= seg['segment_end'])
+                v_frames.loc[mask, col] = True
+        
+        processed_fragments.append(v_frames)
+        # Remove from dict to track which videos had segments
+        del video_groups[video_name]
 
-
-def main():
-    """
-    Main function to add interaction columns to frames and save results.
+    # 3. Reconstruct the dataframe
+    # Add back videos that had no segments (they stay all False)
+    remaining_frames = list(video_groups.values())
+    final_df = pd.concat(processed_fragments + remaining_frames).sort_index()
     
-    This script:
-    1. Loads interaction segments and frame-level data
-    2. Adds boolean interaction columns to frames
-    3. Fills missing proximity values
-    4. Saves updated frames DataFrame
-    """
-    print("🔍 INTERACTION FRAMES PROCESSING")
+    return final_df
+
+def main(mode="tertiary"):
+    print(f"🚀 OPTIMIZED INTERACTION PROCESSING (Mode: {mode.upper()})")
     print("=" * 70)
 
-    # Step 1: Load data
-    segments_df = pd.read_csv(Inference.INTERACTION_SEGMENTS_CSV)
-    frames_df = pd.read_csv(Inference.FRAME_LEVEL_INTERACTIONS_CSV)
-    age_df = pd.read_csv(DataPaths.SUBJECTS_CSV_PATH, sep=';')
+    # Step 1: Load data (Keep your existing loading logic)
+    try:
+        segments_df = pd.read_csv(Inference.INTERACTION_SEGMENTS_CSV)
+        frame_df_path = next(Path(Inference.FINAL_OUTPUT_FOLDER).glob("frame_level_social_interactions_*.csv"), None)
+        
+        if frame_df_path is None:
+            raise FileNotFoundError("Frame-level interactions file not found.")
+            
+        frames_df = pd.read_csv(frame_df_path)
+        age_df = pd.read_csv(DataPaths.SUBJECTS_CSV_PATH, sep=';')
+    except (FileNotFoundError, StopIteration) as e:
+        print(f"❌ Error loading data: {e}")
+        return
 
-    # Step 2: Add interaction columns
-    frames_df = add_interaction_columns(frames_df, segments_df)
-    print(f"Interaction frames: {frames_df['is_interaction'].sum()}")
-    print(f"Alone frames: {frames_df['is_alone'].sum()}")
-    print(f"Available frames: {frames_df['is_available'].sum()}")
+    # Step 2: Optimized Processing
+    frames_df = add_interaction_columns(frames_df, segments_df, mode=mode)
+    
+    # Step 3: Fast Metadata Merge
+    # Pre-clean age_df to avoid doing it inside the main dataframe later
+    age_df = age_df[['video_name', 'age_at_recording', 'child_id']].copy()
+    age_df['age_at_recording'] = (
+        age_df['age_at_recording']
+        .astype(str)
+        .str.replace('"', '', regex=False)
+        .str.replace(',', '.', regex=False)
+        .str.strip()
+    )
+    age_df['age_at_recording'] = pd.to_numeric(age_df['age_at_recording'], errors='coerce')
 
-    # Step 3: Fill missing proximity values
+    # Vectorized operations
     frames_df['proximity_filled'] = frames_df['proximity'].fillna(-1)
-    frames_df = frames_df.merge(age_df[['video_name', 'age_at_recording', 'child_id']], on='video_name', how='left')
+    frames_df = frames_df.merge(age_df, on='video_name', how='left')
 
-    frames_df['age_at_recording'] = (
-    frames_df['age_at_recording']
-    .astype(str)
-    .str.replace('"', '', regex=False)
-    .str.replace(',', '.', regex=False)
-    .str.strip()
-    )
-
-    frames_df['age_at_recording'] = pd.to_numeric(
-        frames_df['age_at_recording'],
-        errors='coerce'
-    )
-    # Step 4: Save results
+    # Step 4: Save (Using compression if file is huge can be slower but saves space)
     output_path = Inference.INTERACTION_COMPOSITION_CSV
     frames_df.to_csv(output_path, index=False)
 
-    print(f"\n✅ Processing completed successfully!")
-    print(f"📄 Output saved to: {output_path}")
-    print("=" * 70)
+    # adjust print message based on mode
+    if mode == "binary":
+        print(f"\n✅ Done! Interacting: {frames_df['is_interaction'].sum()} frames, Not Interacting: {frames_df['is_not_interaction'].sum()} frames.")
+    else:         
+        print(f"\n✅ Done! Interacting: {frames_df['is_interaction'].sum()} frames, Alone: {frames_df['is_alone'].sum()} frames, Available: {frames_df['is_available'].sum()} frames.")
+    print(f"📄 Saved to: {output_path}")
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--mode', type=str, choices=['binary', 'tertiary'], default='tertiary')
+    args = parser.parse_args()
+        
+    main(mode=args.mode)
