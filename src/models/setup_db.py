@@ -184,12 +184,11 @@ def add_annotations_to_db(
             frame_id_padded = f'{adjusted_frame:06}'
             bbox_json = json.dumps([float(row["xtl"]), float(row["ytl"]), float(row["xbr"]), float(row["ybr"])])
 
-            # Extract other attributes
             person_visibility = box.find(".//attribute[@name='Visibility']")
-            person_visibility_value = int(person_visibility.text) if person_visibility is not None else None
+            person_visibility_value = int(person_visibility.text) if (person_visibility is not None and person_visibility.text is not None) else None
 
             person_id = box.find(".//attribute[@name='ID']")
-            person_id_value = int(person_id.text) if person_id is not None else None
+            person_id_value = int(person_id.text) if (person_id is not None and person_id.text is not None) else None
 
             person_age = box.find(".//attribute[@name='Age']")
             person_age_value = person_age.text if person_age is not None else None
