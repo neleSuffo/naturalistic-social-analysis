@@ -15,8 +15,6 @@ def parse_args():
                       help='Device to use (e.g., "0" for GPU, "cpu" for CPU)')
     parser.add_argument('--config', type=str, default=str(FaceDetection.DATA_CONFIG_PATH),
                       help=f'Path to YOLO data config file (default: {FaceDetection.DATA_CONFIG_PATH})')
-    parser.add_argument('--retrain', action='store_true', default=False,
-                       help='Activate retrain mode using fixed IDs and hard negative files defined in FaceConfig.')
     return parser.parse_args()
 
 def main():
@@ -33,11 +31,7 @@ def main():
     model_name = FaceConfig.MODEL_NAME
     print(f"Loading model: {model_name}")
 
-    if args.retrain:
-        print("Retrain mode activated.")
-        model = YOLO(FaceDetection.TRAINED_WEIGHTS_PATH)
-    else:
-        model = YOLO("/home/nele_pauline_suffo/models/yolov12l-face.pt")
+    model = YOLO(FaceDetection.FACE_MODEL_PATH)
     
     experiment_name = f"{FaceConfig.MODEL_NAME}_{timestamp}"
     output_dir = base_output_dir / experiment_name
@@ -58,18 +52,10 @@ def main():
         project=str(base_output_dir),
         name=experiment_name,
         augment=True,
-
-        # Early stopping with more patience
         patience=20,
-
-        # Training settings
         device=args.device,
         plots=True,
-
-        # Validation settings
         val=True,
-
-        # Workspace settings
         exist_ok=True,
         pretrained=True,
         verbose=True,
