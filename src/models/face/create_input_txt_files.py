@@ -21,7 +21,57 @@ from config import FaceConfig, DataConfig
 # Logging configuration
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
-def get_data_constants(data_type: str):
+# =======================================================
+# Helper Functions
+# =======================================================
+def get_child_id_from_filename(filename: str) -> str:
+    """
+    Get child ID from filename using regex. Assumes filename contains a pattern like 'id123456'.
+
+    Parameters
+    ----------
+    filename : str
+        The name of the file from which to extract the child ID.
+
+    Returns
+    -------
+    str
+        The extracted child ID or None if not found.
+    """
+    match = re.search(r'id(\d+)_', filename)
+    return 'id' + match.group(1) if match else None
+
+def create_neg_df(sampled_neg_list: List[Tuple[str, str]], child_id_getter: callable, class_cols: List[str]) -> pd.DataFrame:
+    """
+    Creates a DataFrame for negative samples with the specified class columns set to 0.
+
+    Parameters
+    ----------
+    sampled_neg_list : List[Tuple[str, str]]
+        List of tuples containing image paths and IDs.
+    child_id_getter : callable
+        Function to extract child ID from filename.
+    class_cols : List[str]
+        List of class column names.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame containing negative samples.
+    """
+    entries = []
+    for image_path, image_id in sampled_neg_list:
+        filename = Path(image_path).stem
+        entries.append({
+            "filename": filename,
+            "id": image_id,
+            "has_annotation": False,
+            "child_id": child_id_getter(filename),
+            **{col: 0 for col in class_cols}
+        })
+    return pd.DataFrame(entries)
+
+def get_data_constants(data_type: str) -> type:
     """
     Returns the correct constants object based on the data_type flag.
 
@@ -42,57 +92,12 @@ def get_data_constants(data_type: str):
     else:
         raise ValueError(f"Unknown data type: {data_type}. Must be 'detection' or 'classification'.")
     
-def parse_retrain_file(retrain_file: Path) -> Dict[str, List[str]]:
-    """
-    Parses the ID Distribution section from the statistics file.
-    
-    Parameters
-    ----------
-    retrain_file : Path
-        Path to the "Dataset Split Information" text file.
-        
-    Returns
-    -------
-    Dict[str, List[str]]
-        Dictionary containing 'train_ids', 'val_ids', 'test_ids'.
-    """
-    logging.info(f"Parsing existing split IDs from {retrain_file.name}")
-    data = {}
-    try:
-        content = retrain_file.read_text()
-        
-        # Regex to find ID Distribution block
-        train_match = re.search(r"Training IDs: \d+, \[(.*?)\]", content)
-        val_match = re.search(r"Validation IDs: \d+, \[(.*?)\]", content)
-        test_match = re.search(r"Test IDs: \d+, \[(.*?)\]", content)
-        
-        if not train_match or not val_match or not test_match:
-            raise ValueError("Could not find all required ID distribution blocks.")
-            
-        def parse_ids(match):
-            # Strip quotes and split by comma, then strip whitespace
-            ids_str = match.group(1).replace("'", "").replace('"', "")
-            return [i.strip() for i in ids_str.split(',') if i.strip()]
-
-        data['train_ids'] = parse_ids(train_match)
-        data['val_ids'] = parse_ids(val_match)
-        data['test_ids'] = parse_ids(test_match)
-
-        logging.info(f"Loaded {len(data['train_ids'])} Train IDs, {len(data['val_ids'])} Val IDs, {len(data['test_ids'])} Test IDs.")
-        return data
-
-    except FileNotFoundError:
-        logging.error(f"Retrain file not found at {retrain_file}")
-        raise
-    except Exception as e:
-        logging.error(f"Error parsing retrain file: {e}")
-        raise
-    
 # ==============================
 # Database and Query
 # ==============================
 def fetch_all_annotations(category_ids: List[int]) -> List[Tuple]:
-    """Fetch annotations for given category IDs from the SQLite database.
+    """
+    Fetch annotations for given category IDs from the SQLite database.
     
     Parameters
     ----------
@@ -152,7 +157,8 @@ def fetch_all_annotations(category_ids: List[int]) -> List[Tuple]:
 # Image and Bounding Box Utilities
 # ==============================
 def convert_to_yolo_format(width: int, height: int, bbox: List[float]) -> Tuple[float, float, float, float]:
-    """Convert [xtl, ytl, xbr, ybr] to YOLO (x_center, y_center, width, height).
+    """
+    Convert [xtl, ytl, xbr, ybr] to YOLO (x_center, y_center, width, height).
     
     Parameters
     ----------
@@ -195,6 +201,8 @@ def write_annotations(file_path: Path, lines: List[str]) -> None:
 
 def save_annotations(annotations: List[Tuple], output_dir: Path = None, mode: str = "face-only", data_type: str = "detection") -> None:
     """
+    Save annotations to text files in the specified directory.
+    
     Parameters
     ----------
     annotations : List[Tuple]
@@ -582,6 +590,8 @@ def split_by_child_id(df: pd.DataFrame, negative_candidates: Dict[str, List[Tupl
         Path to labels directory (if None, uses default FaceDetection.LABELS_INPUT_DIR)
     mode : str
         Detection mode to use for splitting ('face-only' or 'age-binary')
+    data_type : str
+        Type of data processing ("detection" or "classification")
     """
     # Define minimum number of face images required in the test set as fixed percentage of positive images
     if labels_input_dir is None:
@@ -804,7 +814,6 @@ def split_by_child_id(df: pd.DataFrame, negative_candidates: Dict[str, List[Tupl
 def move_images(image_names: list,
                 split_type: str,
                 label_path: Path,
-                input_dir: Path = None,
                 n_workers: int = 4,
                 data_type: str = "detection",
                 mode: str = "face-only",
@@ -821,8 +830,6 @@ def move_images(image_names: list,
         Split type (train, val, or test)
     label_path: Path
         Path to label directory
-    input_dir: Path
-        Custom input directory (if None, uses default FaceDetection.INPUT_DIR)
     n_workers: int
         Number of worker threads for parallel processing
     data_type: str
@@ -842,11 +849,7 @@ def move_images(image_names: list,
     if not image_names:
         logging.info(f"No images to move for face detection {split_type}")
         return (0, 0)
-
-    # Use custom input_dir if provided, otherwise use default
-    if input_dir is None:
-        input_dir = CONSTANTS.INPUT_DIR
-
+    
     image_src_root = CONSTANTS.IMAGES_INPUT_DIR
 
     # --- Classification Mode Setup ---
@@ -868,21 +871,21 @@ def move_images(image_names: list,
             class_map[class_name] = class_name
                     
         file_to_class_folder = {}
-        for index, row in df_split.iterrows():
+        for _, row in df_split.iterrows():
             # Positive case (should only be one class flag true for classification)
             if row[target_labels[0]] == 1:
-                file_to_class_folder[filename] = class_map[target_labels[0]]
+                file_to_class_folder[row['filename']] = target_labels[0]
             elif row[target_labels[1]] == 1:
-                file_to_class_folder[filename] = class_map[target_labels[1]]
+                file_to_class_folder[row['filename']] = class_map[target_labels[1]]
             else:
-                logging.warning(f"Positive image {filename} has no class label set. Skipping.")
+                logging.warning(f"Positive image {row['filename']} has no class label set. Skipping.")
                 continue
                 
     # --- Setup Destination Directories ---
-    image_dst_base_dir = input_dir / "images" / split_type
+    image_dst_base_dir = CONSTANTS.INPUT_DIR / "images" / split_type
     
     if data_type == "detection":
-        label_dst_dir = input_dir / "labels" / split_type
+        label_dst_dir = CONSTANTS.INPUT_DIR / "labels" / split_type
         label_dst_dir.mkdir(parents=True, exist_ok=True)
     else:
         # For classification, the final destination is within a class folder inside 'images/split_type'
@@ -895,7 +898,7 @@ def move_images(image_names: list,
             if len(image_parts) < 9:
                 return False
 
-            image_folder = "_".join(image_parts[:8])
+            image_folder = image_name.rsplit('_', 1)[0]
             image_src = None
 
             for ext in DataConfig.VALID_EXTENSIONS:
@@ -1113,7 +1116,6 @@ def split_data(annotation_folder: Path, mode: str = "face-only", data_type: str 
                     image_names=split_set,
                     split_type=split_name,
                     label_path=annotation_folder,
-                    input_dir=input_dir,
                     n_workers=4,
                     data_type=data_type,
                     mode=mode,
