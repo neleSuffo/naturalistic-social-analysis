@@ -15,9 +15,6 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 
-from pandera import parser
-
-from app.src.boost.libs.python.test import args
 from constants import DataPaths, BasePaths, FaceDetection, FaceClassification
 from config import FaceConfig, DataConfig
 
@@ -112,22 +109,44 @@ def fetch_all_annotations(category_ids: List[int]) -> List[Tuple]:
 
     query = f"""
     SELECT DISTINCT 
-        a.category_id, a.bbox, i.file_name, a.person_age
+        a.category_id, a.bbox, v.file_name as video_file, a.image_id as raw_frame, a.person_age, v.id as video_id
     FROM annotations a
-    JOIN images i ON a.image_id = i.frame_id AND a.video_id = i.video_id
     JOIN videos v ON a.video_id = v.id
     WHERE a.category_id IN ({placeholders})
       AND a.outside = 0
     ORDER BY a.video_id, a.image_id
     """
 
+    # set up correct mapping for shifted videos
+    corrected_results = []
+    exception_map = DataConfig.SHIFTED_VIDEOS_OFFSETS
+    
     with sqlite3.connect(DataPaths.ANNO_DB_PATH) as conn:
         cursor = conn.cursor()
         cursor.execute(query, category_ids)
-        results = cursor.fetchall()
-     
-    logging.info(f"Found {len(results)} annotations.")   
-    return results
+        rows = cursor.fetchall()
+        
+    for cat_id, bbox, video_file, raw_frame, age, v_id in rows:
+        video_name = video_file.replace('.mp4', '')
+        
+        # 2. Apply logical correction
+        adjusted_frame = raw_frame
+        if video_name in exception_map:
+            start_frame, shift = exception_map[video_name]
+            # If annotation is at or after the shift point, reverse the shift
+            if raw_frame >= start_frame:
+                # subtract shift because DB has "wrong" frame 
+                # and we need "real" frame on disk.
+                # Example: raw_frame 28, shift -2 -> 28 - (-2) = 30.
+                adjusted_frame = raw_frame - shift 
+        
+        # 3. Reconstruct the image filename to match the disk
+        corrected_img_name = f"{video_name}_{adjusted_frame:06d}"
+        
+        corrected_results.append((cat_id, bbox, corrected_img_name, age))
+
+    logging.info(f"Found and corrected {len(corrected_results)} annotations.")   
+    return corrected_results
 
 # ==============================
 # Image and Bounding Box Utilities
