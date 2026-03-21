@@ -601,215 +601,91 @@ def split_by_child_id(df: pd.DataFrame, negative_candidates: Dict[str, List[Tupl
         logging.error(f"'filename' column not found in DataFrame. Available columns: {df.columns.tolist()}")
         return [], [], [], pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
     
-    # --- Infer Detection Mode and Get Correct Mapping ---
-    if mode == "face-only":
-        id_to_label_map = FaceConfig.MODEL_CLASS_ID_TO_LABEL_FACE_ONLY
-    elif mode == "age-binary":
-        id_to_label_map = FaceConfig.MODEL_CLASS_ID_TO_LABEL_AGE_BINARY
-    else:
-        id_to_label_map = {} 
-        logging.error("Unknown detection mode specified.")
-
-    def get_child_id_from_filename(filename: str) -> str:
-        match = re.search(r'id(\d+)_', filename)
-        if match:
-            return 'id' + match.group(1)
-        return None
-    
+    # Prepare IDS and Columns
     df['child_id'] = df['filename'].apply(get_child_id_from_filename)
     df.dropna(subset=['child_id'], inplace=True)
-
-    # --- Calculate Counts per Child ---
     class_columns = [col for col in df.columns if col not in ['filename', 'id', 'has_annotation', 'child_id']]
-    if not class_columns:
-        logging.error("No class columns found in DataFrame")
-        return [], [], [], pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+    sorted_child_ids = df['child_id'].unique().tolist()
+
+    # --- 1. ID SELECTION ---
+    train_ids, val_ids, test_ids = [], [], []    
+    image_dir = FaceDetection.IMAGES_INPUT_DIR if data_type == "detection" else FaceClassification.IMAGES_INPUT_DIR
     
-    child_group_counts = df.groupby('child_id')[class_columns].sum()
-    child_face_coverage = df.groupby('child_id').agg({'has_annotation': ['sum', 'count']})
-    child_face_coverage.columns = ['faces_count', 'total_count']
-    
-    sorted_child_ids = child_group_counts.index.tolist()
-    n_total = len(sorted_child_ids)
+    # Group children by video count
+    child_video_map = defaultdict(list)
+    for folder in image_dir.iterdir():
+        if folder.is_dir():
+            cid = get_child_id_from_filename(folder.name)
+            if cid in sorted_child_ids:
+                child_video_map[cid].append(folder.name)
 
-    if n_total < 3 * FaceConfig.MIN_IDS_PER_SPLIT:
-        logging.error(f"Not enough unique children to create splits. Found {n_total}, need at least {3 * FaceConfig.MIN_IDS_PER_SPLIT}.")
-        return [], [], [], pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+    # Buckets: Single vs Multi video children
+    single_video_pool = [cid for cid, vids in child_video_map.items() if len(vids) == 1]
+    multi_video_pool = [cid for cid, vids in child_video_map.items() if len(vids) > 1]
 
-    # --- Prepare Child Face Counts Sorted ---
-    child_face_counts_sorted = [(child_id, child_face_coverage.loc[child_id, 'faces_count']) 
-                                for child_id in sorted_child_ids]
-    child_face_counts_sorted.sort(key=lambda x: x[1], reverse=True) 
-    
-    global_counts = child_group_counts[class_columns].sum()
-    target_class_0_ratio = global_counts[class_columns[0]] / global_counts.sum() if global_counts.sum() > 0 else 0
-
-    # --- Utility Functions for Balancing ---
-    def deviation_from_target(current_counts, child_counts):
-        new_counts = current_counts + child_counts
-        if new_counts.sum() == 0: return 0
-        new_ratio = new_counts[class_columns[0]] / new_counts.sum()
-        return abs(new_ratio - target_class_0_ratio)
-    
-    def face_coverage_deviation(current_face_count, current_total_count, child_face_count, child_total_count):
-        new_face_count = current_face_count + child_face_count
-        new_total_count = current_total_count + child_total_count
-        if new_total_count == 0: return 0
-        new_face_ratio = new_face_count / new_total_count
-        return abs(new_face_ratio - 0.5) 
-
-    # --- 1. ID SELECTION (Weighted Balancing for ALL three splits) ---
-    train_ids = []
-    val_ids = []
-    test_ids = []
-    
-    # Calculate target split sizes based on the total children
-    n_train_target = max(int(n_total * train_ratio), FaceConfig.MIN_IDS_PER_SPLIT)
-    remaining_ids = n_total - n_train_target
-    n_val_target = max(int(remaining_ids / 2), FaceConfig.MIN_IDS_PER_SPLIT)
-    n_test_target = max(n_total - n_train_target - n_val_target, FaceConfig.MIN_IDS_PER_SPLIT)
-    
-    # Adjust targets if necessary to ensure sum is n_total
-    n_sum = n_train_target + n_val_target + n_test_target
-    if n_sum > n_total:
-        n_test_target = max(n_total - n_train_target - n_val_target, FaceConfig.MIN_IDS_PER_SPLIT)
-        n_train_target = max(n_total - n_val_target - n_test_target, FaceConfig.MIN_IDS_PER_SPLIT)
-        n_val_target = max(n_total - n_train_target - n_test_target, FaceConfig.MIN_IDS_PER_SPLIT)
-
-    split_targets = {'train': n_train_target, 'val': n_val_target, 'test': n_test_target}
-    
-    split_info_all = {
-        s: {'ids': [], 'current_counts': pd.Series([0] * len(class_columns), index=class_columns), 'face_count': 0, 'total_count': 0, 'target': split_targets[s]}
-        for s in ['train', 'val', 'test']
-    }
-    
-    # Iterate over all children, assigning the highest face-count children first to the split 
-    for child_id, child_face_count in child_face_counts_sorted:
-        child_counts = child_group_counts.loc[child_id, class_columns]
-        child_total_count = child_face_coverage.loc[child_id, 'total_count']
-
-        eligible_splits = []
-        for s in ['train', 'val', 'test']:
-            if len(split_info_all[s]['ids']) < split_info_all[s]['target']:
-                eligible_splits.append(s)
-
-        if not eligible_splits:
-            logging.warning(f"No space left for child {child_id}. Skipping.")
-            continue
-
-        # Pick split that minimizes the weighted deviation (0.3 class + 0.7 coverage)
-        best_split = min(
-            eligible_splits,
-            key=lambda s: (
-                deviation_from_target(split_info_all[s]['current_counts'], child_counts) * 0.3 +
-                face_coverage_deviation(split_info_all[s]['face_count'], split_info_all[s]['total_count'], 
-                                       child_face_count, child_total_count) * 0.7
-            )
-        )
-
-        # Assign child
-        split_info_all[best_split]['ids'].append(child_id)
-        split_info_all[best_split]['current_counts'] += child_counts
-        split_info_all[best_split]['face_count'] += child_face_count
-        split_info_all[best_split]['total_count'] += child_total_count
-
-    train_ids = split_info_all['train']['ids']
-    val_ids = split_info_all['val']['ids']
-    test_ids = split_info_all['test']['ids']
-
-    current_test_faces = split_info_all['test']['face_count']
-
-    logging.info(f"Test split face coverage: {current_test_faces} faces from {len(test_ids)} children.")
-    logging.info(f"Train/Val split: {len(train_ids)} train IDs, {len(val_ids)} val IDs.")
-
-    # --- 2. Build Final DataFrames and Apply Negative Sampling ---
-
-    # 2a. Initial split of POSITIVE/ANNOTATED images based on IDs
-    train_df_pos = df[df["child_id"].isin(train_ids) & (df["has_annotation"] == True)].copy()
-    val_df_pos = df[df["child_id"].isin(val_ids) & (df["has_annotation"] == True)].copy()
-    
-    # Test DF will be built later to include ALL frames from test children
-    test_df = df[df["child_id"].isin(test_ids)].copy() 
-
-    # 2b. Compile negative pools for Train and Val (Uses negative_candidates passed to the function)
-    train_negative_candidates = []
-    val_negative_candidates = []
-    test_negative_candidates = []
-    
-    def get_child_id_from_video_name(video_name):
-        match = re.search(r'id(\d+)', video_name)
-        return 'id' + match.group(1) if match else None
-
-    for video_name, candidates in negative_candidates.items():
-        child_id = get_child_id_from_video_name(video_name)
-        if child_id in train_ids:
-            train_negative_candidates.extend(candidates)
-        elif child_id in val_ids:
-            val_negative_candidates.extend(candidates)
-        elif child_id in test_ids:
-            test_negative_candidates.extend(candidates)
-                
-    # 2c. Apply 75% negative sampling to Train and Val sets
+    # Shuffle to ensure randomness within the categories
     random.seed(DataConfig.RANDOM_SEED)
+    random.shuffle(single_video_pool)
+    random.shuffle(multi_video_pool)
     
-    # TRAIN NEGATIVE SAMPLING
-    # 75% of positive samples
-    num_train_pos = len(train_df_pos)
-    target_train_neg = int(num_train_pos * FaceConfig.NEGATIVE_SAMPLING_RATIO)
+    # Target: 3 children for Val, 3 for Test (using single-video children first)
+    for _ in range(3):
+        if single_video_pool:
+            val_ids.append(single_video_pool.pop())
+        else:
+            val_ids.append(multi_video_pool.pop())
+            
+        if single_video_pool:
+            test_ids.append(single_video_pool.pop())
+        else:
+            test_ids.append(multi_video_pool.pop())
 
-    if len(train_negative_candidates) >= target_train_neg:
-        sampled_train_neg = random.sample(train_negative_candidates, target_train_neg)
-    else:
-        sampled_train_neg = train_negative_candidates
-        logging.warning(f"Train: Only {len(sampled_train_neg)} negative frames available, target was {target_train_neg}.")
+    # Everyone else goes to Train
+    train_ids = single_video_pool + multi_video_pool
+    logging.info(f"Split Summary: Train={len(train_ids)}, Val={len(val_ids)}, Test={len(test_ids)}")
+
+    # --- 2. COMPILE POOLS ---
+    # Positives (from the annotated dataframe)
+    train_df_pos = df[df["child_id"].isin(train_ids)].copy()
+    val_df_pos = df[df["child_id"].isin(val_ids)].copy()
+    test_df_pos = df[df["child_id"].isin(test_ids)].copy()
+
+    # Negatives (from candidate lists)
+    train_neg_candidates, val_neg_candidates, test_neg_candidates = [], [], []
+    for video_name, candidates in negative_candidates.items():
+        cid = get_child_id_from_filename(video_name)
+        if cid in train_ids:
+            train_neg_candidates.extend(candidates)
+        elif cid in val_ids:
+            val_neg_candidates.extend(candidates)
+        elif cid in test_ids:
+            test_neg_candidates.extend(candidates)
+            
+    # --- 3. APPLY SAMPLING (Balance Train, Keep Val/Test Natural) ---
     
-    # VAL NEGATIVE SAMPLING
-    # 75% of positive samples
-    num_val_pos = len(val_df_pos)
-    target_val_neg = int(num_val_pos * FaceConfig.NEGATIVE_SAMPLING_RATIO)
-
-    if len(val_negative_candidates) >= target_val_neg:
-        sampled_val_neg = random.sample(val_negative_candidates, target_val_neg)
+    # 3a. TRAIN: Balanced
+    target_train_neg = int(len(train_df_pos) * FaceConfig.NEGATIVE_SAMPLING_RATIO)
+    if len(train_neg_candidates) >= target_train_neg:
+        sampled_train_neg = random.sample(train_neg_candidates, target_train_neg)
     else:
-        sampled_val_neg = val_negative_candidates
-        logging.warning(f"Val: Only {len(sampled_val_neg)} negative frames available, target was {target_val_neg}.")
-
-    # TEST NEGATIVE SAMPLING
-    # For test set, we include ALL negative candidates to reflect real-world distribution
-    # No sampling needed, we take all test_negative_candidates
-
-    # 2d. Convert sampled negative list to DataFrame rows
-    def create_neg_df(sampled_neg_list, child_id_getter, class_cols):
-        entries = []
-        for image_path, image_id in sampled_neg_list:
-            filename = Path(image_path).stem
-            entries.append({
-                "filename": filename,
-                "id": image_id,
-                "has_annotation": False,
-                "child_id": child_id_getter(filename),
-                **{col: 0 for col in class_cols}
-            })
-        return pd.DataFrame(entries)
-
+        sampled_train_neg = train_neg_candidates
+        logging.warning(f"Train set under-sampled: {len(sampled_train_neg)}/{target_train_neg}")
+    
     train_neg_df = create_neg_df(sampled_train_neg, get_child_id_from_filename, class_columns)
-    val_neg_df = create_neg_df(sampled_val_neg, get_child_id_from_filename, class_columns)
-    test_neg_df = create_neg_df(test_negative_candidates, get_child_id_from_filename, class_columns)
-    
-    # 2e. Finalize Train and Val DataFrames
     train_df = pd.concat([train_df_pos, train_neg_df], ignore_index=True)
+    
+    # 3b. VALIDATION: Naturally Imbalanced (Take ALL available)
+    val_neg_df = create_neg_df(val_neg_candidates, get_child_id_from_filename, class_columns)
     val_df = pd.concat([val_df_pos, val_neg_df], ignore_index=True)
     
-    # The test set must consist of ALL sampled frames for the test children,
-    # regardless of whether they were annotated (positive) or clean sampled (negative).
-    
-    test_sampled_frames = get_sampled_frames_for_children(test_ids, FaceDetection.IMAGES_INPUT_DIR)
-    test_df = df[df['filename'].isin(test_sampled_frames) & df["child_id"].isin(test_ids)].copy()
-    # Add any sampled negatives that weren't in the original POSITIVE-only DF to ensure all sampled negatives are included
-    test_df_final = pd.concat([test_df, test_neg_df[~test_neg_df['filename'].isin(test_df['filename'])]], ignore_index=True)
-    
-    return (train_df['filename'].tolist(), val_df['filename'].tolist(), test_df_final['filename'].tolist(),
-                train_df, val_df, test_df_final)
+    # 3c. TEST: Naturally Imbalanced (Take ALL available)
+    test_neg_df = create_neg_df(test_neg_candidates, get_child_id_from_filename, class_columns)
+    test_df = pd.concat([test_df_pos, test_neg_df], ignore_index=True)
+
+    # --- 4. RETURN ---
+    return (
+        train_df['filename'].tolist(), val_df['filename'].tolist(), test_df['filename'].tolist(),
+        train_df, val_df, test_df)
 
 def move_images(image_names: list,
                 split_type: str,
