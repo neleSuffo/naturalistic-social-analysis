@@ -503,120 +503,6 @@ def get_class_distribution(total_images: list, annotation_folder: Path, mode: st
     
     return df
 
-def get_first_n_minutes_frames(child_ids: List[str], image_folder: Path, minutes: int) -> Tuple[List[Tuple[str, str]], List[Tuple[str, str]]]:
-    """
-    Get frames from the first N minutes of recordings for specified child IDs.
-    Filters based on actual frame numbers, not just file count.
-    Splits them between training (first 80%) and validation (remaining 20%).
-
-    Parameters
-    ----------
-    child_ids : List[str]
-        List of child IDs to get frames for
-    image_folder : Path
-        Path to the image folder
-    minutes : int
-        Number of minutes from the beginning to extract
-        
-    Returns
-    -------
-    Tuple[List[Tuple[str, str]], List[Tuple[str, str]]]
-        Two lists of tuples: (train_frames, val_frames) containing (image_path, image_id)
-    """
-    train_frames = []
-    val_frames = []
-    
-    # Calculate the maximum frame number for N minutes
-    max_frame_number = minutes * 60 * DataConfig.FPS  # e.g., 5 * 60 * 30 = 9000
-    
-    # Calculate frame number splits (80% for training, 20% for validation)
-    train_frame_max = int(max_frame_number * 0.8)  # e.g., frame 7200 for 4 minutes
-    val_frame_max = max_frame_number  # e.g., frame 9000 for 5 minutes total
-    
-    for child_id in child_ids:
-        child_train_frames = []
-        child_val_frames = []
-        
-        # Find all video folders for this child
-        for video_folder in sorted(image_folder.iterdir()):
-            if video_folder.is_dir() and child_id in video_folder.name:
-                # Get all frames from this video folder and filter by frame number
-                video_frames = []
-                for frame in video_folder.iterdir():
-                    if frame.is_file() and frame.suffix.lower() in ['.jpg', '.jpeg', '.png']:
-                        # Extract frame number from filename
-                        # Example: quantex_at_home_id255237_2022_05_08_04_000240.jpg -> frame 240
-                        parts = frame.stem.split("_")
-                        if len(parts) >= 9:
-                            try:
-                                frame_number = int(parts[-1])  # Last part should be frame number
-                                
-                                # Only include frames within the first N minutes
-                                if frame_number <= max_frame_number:
-                                    video_frames.append((frame, frame_number))
-                            except ValueError:
-                                logging.warning(f"Could not extract frame number from {frame.name}")
-                                continue
-                
-                # Sort by frame number to ensure chronological order
-                video_frames.sort(key=lambda x: x[1])
-                
-                # Assign frames based on frame number thresholds
-                for frame_path, frame_number in video_frames:
-                    # Extract image ID
-                    parts = frame_path.name.split("_")
-                    if len(parts) > 3 and parts[3].startswith('id'):
-                        image_id = parts[3].replace("id", "")
-                    else:
-                        image_id = frame_path.stem
-                    
-                    # Assign to training (first 80% of time) or validation (remaining 20%)
-                    if frame_number <= train_frame_max:
-                        child_train_frames.append((str(frame_path.resolve()), image_id))
-                    elif frame_number <= val_frame_max:
-                        child_val_frames.append((str(frame_path.resolve()), image_id))
-        
-        train_frames.extend(child_train_frames)
-        val_frames.extend(child_val_frames)
-        
-    return train_frames, val_frames
-
-def get_all_frames_for_children(child_ids: List[str], image_folder: Path) -> List[Tuple[str, str]]:
-    """
-    Get ALL frames (not just annotated ones) for specified child IDs from all their videos.
-    
-    Parameters
-    ----------
-    child_ids : List[str]
-        List of child IDs to get frames for
-    image_folder : Path
-        Path to the image folder
-        
-    Returns
-    -------
-    List[Tuple[str, str]]
-        List of tuples containing (image_path, image_id)
-    """
-    all_frames = []
-    
-    for child_id in child_ids:
-        # Find all video folders for this child
-        for video_folder in image_folder.iterdir():
-            if video_folder.is_dir() and child_id in video_folder.name:
-                # Get all frames from this video folder
-                for frame in video_folder.iterdir():
-                    if frame.is_file() and frame.suffix.lower() in ['.jpg', '.jpeg', '.png']:
-                        # Extract image ID
-                        parts = frame.name.split("_")
-                        if len(parts) > 3 and parts[3].startswith('id'):
-                            image_id = parts[3].replace("id", "")
-                        else:
-                            image_id = frame.stem
-                        
-                        all_frames.append((str(frame.resolve()), image_id))
-    
-    return all_frames
-
 def get_sampled_frames_for_children(child_ids: List[str], image_folder: Path) -> List[str]:
     """
     Get all sampled frames (positive and negative) for specified child IDs from all their videos,
@@ -677,184 +563,8 @@ def get_sampled_frames_for_children(child_ids: List[str], image_folder: Path) ->
                             sampled_frames.append(stem)
     
     return sampled_frames
-
-# =======================================================
-# Retrain Split Function (Uses Fixed IDs and HNM List)
-# =======================================================
-
-def retrain_split_by_child_id(df: pd.DataFrame, negative_candidates: Dict[str, List[Tuple[str, str]]], train_ids: List[str], val_ids: List[str], test_ids: List[str], hard_neg_file: Path, labels_input_dir: Path = None, mode: str = "face-only") -> Tuple[List[str], List[str], List[str], pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    """
-    Splits data using FIXED child IDs loaded from a file, incorporates Hard Negatives 
-    into the training set, and samples the remaining negative frames. 
-    The script copies frames and labels for validation and testing from the existing training set.
     
-    Parameters
-    ----------
-    df : pd.DataFrame
-        DataFrame with image data and annotations
-    negative_candidates : Dict[str, List[Tuple[str, str]]]
-        Dictionary of potential negative frame candidates per video
-    train_ids : List[str]   
-        List of child IDs for training set
-    val_ids : List[str]
-        List of child IDs for validation set
-    test_ids : List[str]
-        List of child IDs for test set
-    hard_neg_file : Path
-        Path to the hard negative file
-    labels_input_dir : Path
-        Path to the labels input directory
-    mode : str
-        Mode for the retraining process ('face-only' or 'age-binary')
-        
-    Returns
-    -------
-    Tuple[List[str], List[str], List[str], pd.DataFrame, pd.DataFrame, pd.DataFrame]
-        - List of child IDs for training set
-        - List of child IDs for validation set
-        - List of child IDs for test set
-        - DataFrame for training set
-        - DataFrame for validation set
-        - DataFrame for test set
-    """
-    logging.info("Running RETRAIN mode with fixed ID distribution.")
-
-    if labels_input_dir is None:
-        labels_input_dir = FaceDetection.LABELS_INPUT_DIR
-
-    # --- Infer Detection Mode and Get Correct Mapping ---
-    if mode == "face-only":
-        id_to_label_map = FaceConfig.MODEL_CLASS_ID_TO_LABEL_FACE_ONLY
-    elif mode == "age-binary":
-        id_to_label_map = FaceConfig.MODEL_CLASS_ID_TO_LABEL_AGE_BINARY
-    else:
-        id_to_label_map = {} 
-    
-    def get_child_id_from_filename(filename: str) -> str:
-        match = re.search(r'id(\d+)_', filename)
-        return 'id' + match.group(1) if match else None
-
-    df['child_id'] = df['filename'].apply(get_child_id_from_filename)
-    df.dropna(subset=['child_id'], inplace=True)
-
-    # --- Prepare Split DataFrames (Positive Frames Only) ---
-    # The DF only contains positive frames (from get_class_distribution), so we slice by ID.
-    train_df_pos = df[df["child_id"].isin(train_ids)].copy()
-
-    # Val/Test DF slices are necessary only to generate statistics later.
-    val_df = df[df["child_id"].isin(val_ids)].copy()
-    test_df = df[df["child_id"].isin(test_ids)].copy()
-    
-    class_columns = [col for col in df.columns if col not in ['filename', 'id', 'has_annotation', 'child_id']]    
-    # --- 2. Compile Negative Pools and Load Hard Negatives ---
-    
-    hard_negative_stems = set()
-
-    try:
-        # Load Hard Negatives from the provided file
-        hard_neg_content = hard_neg_file.read_text().splitlines()
-        hard_negative_stems = {line.strip() for line in hard_neg_content if line.strip()}
-        logging.info(f"Loaded {len(hard_negative_stems)} Hard Negative image stems.")
-    except Exception as e:
-        logging.warning(f"Could not load Hard Negative file {hard_neg_file}: {e}")
-
-    def get_child_id_from_video_name(video_name):
-        match = re.search(r'id(\d+)', video_name)
-        return 'id' + match.group(1) if match else None
-        
-    hard_negatives = []
-    soft_negatives = []
-
-   # Filter negative candidates into Hard (in file) and Soft (not in file)
-    for video_name, candidates in negative_candidates.items():
-        child_id = get_child_id_from_video_name(video_name)
-        
-        # Only process candidates belonging to the Training IDs
-        if child_id in train_ids:
-            for image_path, image_id in candidates:
-                filename = Path(image_path).stem
-                if filename in hard_negative_stems:
-                    hard_negatives.append((image_path, image_id))
-                else:
-                    soft_negatives.append((image_path, image_id))
-
-    logging.info(f"Train negative pool: {len(hard_negatives)} Hard Negatives, {len(soft_negatives)} Soft Negatives.")
-    
-    # --- 3. Apply Negative Sampling (HNM Priority for Train) ---
-    random.seed(DataConfig.RANDOM_SEED)
-    
-    # TRAIN NEGATIVE SAMPLING (Prioritize HNM)
-    num_train_pos = len(train_df_pos)
-    target_train_neg = int(num_train_pos * FaceConfig.NEGATIVE_SAMPLING_RATIO)
-    
-    # 3.1. Start with ALL Hard Negatives
-    sampled_train_neg = hard_negatives[:]
-    
-    # 3.2. Fill remaining quota with Soft Negatives
-    remaining_quota = target_train_neg - len(sampled_train_neg)
-    
-    if remaining_quota > 0:
-        if len(soft_negatives) >= remaining_quota:
-            sampled_train_neg.extend(random.sample(soft_negatives, remaining_quota))
-        else:
-            sampled_train_neg.extend(soft_negatives)
-            logging.warning(f"Train: Only {len(sampled_train_neg)} negative frames available after hard negs, target was {target_train_neg}.")
-    
-    # --- 4. Finalize Train DataFrame ---
-    
-    def create_neg_df(sampled_neg_list, child_id_getter, class_cols):
-        entries = []
-        for image_path, image_id in sampled_neg_list:
-            filename = Path(image_path).stem
-            entries.append({
-                "filename": filename,
-                "id": image_id,
-                "has_annotation": False,
-                "child_id": child_id_getter(filename),
-                **{col: 0 for col in class_cols}
-            })
-        return pd.DataFrame(entries)
-
-    train_neg_df = create_neg_df(sampled_train_neg, get_child_id_from_filename, class_columns)
-    
-    # Final Train DataFrame: Positives + HNM/Soft Negatives
-    train_df = pd.concat([train_df_pos, train_neg_df], ignore_index=True)
-
-    # For Val/Test, we return all filenames that belong to their IDs,
-    # but the actual file movement will copy the existing directories.
-    val_df_all_frames = df[df["child_id"].isin(val_ids)].copy()
-    test_df_all_frames = df[df["child_id"].isin(test_ids)].copy()
-    
-    # 1. Compile ALL sampled negative candidates belonging to the Test IDs
-    test_negative_candidates = []
-    for video_name, candidates in negative_candidates.items():
-        child_id = get_child_id_from_video_name(video_name)
-        if child_id in test_ids:
-            test_negative_candidates.extend(candidates)
-            
-    # 2. Create the DataFrame for test negatives (needed for test_df_final)
-    test_neg_df = create_neg_df(test_negative_candidates, get_child_id_from_filename, class_columns)
-    
-    # 3. Build the final Test DataFrame (Positives + ALL Sampled Negatives)
-    test_sampled_frames = get_sampled_frames_for_children(test_ids, FaceDetection.IMAGES_INPUT_DIR)
-    
-    # Filter the overall DF (positives only) to include only sampled positive frames for test
-    test_df = df[df['filename'].isin(test_sampled_frames) & df["child_id"].isin(test_ids)].copy()
-    
-    # Add any sampled negatives that weren't in the original POSITIVE-only DF (i.e., the clean negatives)
-    test_df_final = pd.concat([test_df, test_neg_df[~test_neg_df['filename'].isin(test_df['filename'])]], ignore_index=True)
-    
-    # ------------------------------------------------------------------
-    
-    # The returned lists are now only for the files we MUST move (Train) or files that exist (Val/Test).
-    return (train_df['filename'].tolist(), 
-            val_df_all_frames['filename'].tolist(), 
-            test_df_final['filename'].tolist(),
-            train_df, 
-            val_df_all_frames, 
-            test_df_final)
-    
-def split_by_child_id(df: pd.DataFrame, negative_candidates: Dict[str, List[Tuple[str, str]]], train_ratio: float = FaceConfig.TRAIN_SPLIT_RATIO, labels_input_dir: Path = None, mode: str = "face-only") -> Tuple[List[str], List[str], List[str], pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def split_by_child_id(df: pd.DataFrame, negative_candidates: Dict[str, List[Tuple[str, str]]], train_ratio: float = FaceConfig.TRAIN_SPLIT_RATIO, labels_input_dir: Path = None, mode: str = "face-only", data_type: str = "detection") -> Tuple[List[str], List[str], List[str], pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
     Splits the DataFrame into training, validation, and test sets using child IDs as the unit, while balancing class distributions.
 
@@ -1346,122 +1056,10 @@ def generate_statistics_file(df: pd.DataFrame, df_train: pd.DataFrame, df_val: p
             f.write("Overlap found: Yes\n")
         else:
             f.write("Overlap found: No\n")
-
-def fixed_id_split_logic(df: pd.DataFrame, negative_candidates: Dict[str, List[Tuple[str, str]]], train_ids: List[str], val_ids: List[str], test_ids: List[str], mode: str = "face-only") -> Tuple[List[str], List[str], List[str], pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    """
-    Creates fresh train/val/test splits using fixed, pre-defined child IDs.
-    Applies standard negative sampling ratio to train/val and uses ALL sampled negatives for test.
-    
-    Parameters
-    ----------
-    df : pd.DataFrame
-        DataFrame with image data and annotations   
-    negative_candidates : Dict[str, List[Tuple[str, str]]]
-        Dictionary of potential negative frame candidates per video
-    train_ids : List[str]   
-        List of child IDs for training set
-    val_ids : List[str]
-        List of child IDs for validation set
-    test_ids : List[str]    
-        List of child IDs for test set
-    mode : str
-        Mode for the retraining process ('face-only' or 'age-binary')
         
-    Returns
-    -------
-    Tuple[List[str], List[str], List[str], pd.DataFrame, pd.DataFrame, pd.DataFrame]
-        - List of child IDs for training set
-        - List of child IDs for validation set
-        - List of child IDs for test set
-        - DataFrame for training set
-        - DataFrame for validation set
-        - DataFrame for test set
-    """
-    logging.info("Executing fresh sampling and DF creation using fixed IDs.")
-
-    def get_child_id_from_filename(filename: str) -> str:
-        match = re.search(r'id(\d+)_', filename)
-        if match:
-            return 'id' + match.group(1)
-        return None
-
-    def get_child_id_from_video_name(video_name):
-        match = re.search(r'id(\d+)', video_name)
-        return 'id' + match.group(1) if match else None
-
-    df['child_id'] = df['filename'].apply(get_child_id_from_filename)
-    df.dropna(subset=['child_id'], inplace=True)
+        logging.info(f"Statistics file generated at: {file_path}")
     
-    # Helper for creating negative dataframes
-    class_columns = [col for col in df.columns if col not in ['filename', 'id', 'has_annotation', 'child_id']]
-    def create_neg_df(sampled_neg_list, child_id_getter, class_cols):
-        entries = []
-        for image_path, image_id in sampled_neg_list:
-            filename = Path(image_path).stem
-            entries.append({
-                "filename": filename,
-                "id": image_id,
-                "has_annotation": False,
-                "child_id": child_id_getter(filename),
-                **{col: 0 for col in class_cols}
-            })
-        return pd.DataFrame(entries)
-
-    random.seed(DataConfig.RANDOM_SEED)
-
-    # 1. Initial split of POSITIVE/ANNOTATED images based on fixed IDs
-    train_df_pos = df[df["child_id"].isin(train_ids) & (df["has_annotation"] == True)].copy()
-    val_df_pos = df[df["child_id"].isin(val_ids) & (df["has_annotation"] == True)].copy()
-
-    # 2. Compile negative pools for Train, Val, and Test
-    train_negative_candidates = []
-    val_negative_candidates = []
-    test_negative_candidates = []
-    
-    for video_name, candidates in negative_candidates.items():
-        child_id = get_child_id_from_video_name(video_name)
-        if child_id in train_ids:
-            train_negative_candidates.extend(candidates)
-        elif child_id in val_ids:
-            val_negative_candidates.extend(candidates)
-        elif child_id in test_ids:
-            test_negative_candidates.extend(candidates)
-
-    # 3. Apply standard negative sampling ratio to Train and Val sets
-    # TRAIN NEGATIVE SAMPLING
-    num_train_pos = len(train_df_pos)
-    target_train_neg = int(num_train_pos * FaceConfig.NEGATIVE_SAMPLING_RATIO)
-    sampled_train_neg = random.sample(train_negative_candidates, target_train_neg) if len(train_negative_candidates) >= target_train_neg else train_negative_candidates
-    train_neg_df = create_neg_df(sampled_train_neg, get_child_id_from_filename, class_columns)
-    
-    # VAL NEGATIVE SAMPLING
-    num_val_pos = len(val_df_pos)
-    target_val_neg = int(num_val_pos * FaceConfig.NEGATIVE_SAMPLING_RATIO)
-    sampled_val_neg = random.sample(val_negative_candidates, target_val_neg) if len(val_negative_candidates) >= target_val_neg else val_negative_candidates
-    val_neg_df = create_neg_df(sampled_val_neg, get_child_id_from_filename, class_columns)
-    
-    # TEST NEGATIVE SAMPLING (Take all candidates to reflect real-world distribution)
-    test_neg_df = create_neg_df(test_negative_candidates, get_child_id_from_filename, class_columns)
-    
-    # 4. Finalize Train and Val DataFrames
-    train_df = pd.concat([train_df_pos, train_neg_df], ignore_index=True)
-    val_df = pd.concat([val_df_pos, val_neg_df], ignore_index=True)
-
-    # 5. Finalize Test DataFrames (sampled positives + all sampled negatives)
-    test_sampled_frames = get_sampled_frames_for_children(test_ids, FaceDetection.IMAGES_INPUT_DIR)
-    test_df_pos_sampled = df[df['filename'].isin(test_sampled_frames) & df["child_id"].isin(test_ids)].copy()
-    
-    # Combine sampled positives and sampled negatives
-    test_df_final = pd.concat([test_df_pos_sampled, test_neg_df[~test_neg_df['filename'].isin(test_df_pos_sampled['filename'])]], ignore_index=True)
-
-    return (train_df['filename'].tolist(), 
-            val_df['filename'].tolist(), 
-            test_df_final['filename'].tolist(),
-            train_df, 
-            val_df, 
-            test_df_final)
-    
-def split_data(annotation_folder: Path, mode: str = "face-only", data_distribution_file: Path = None, hard_neg_file: Path = None, data_type: str = "detection"):
+def split_data(annotation_folder: Path, mode: str = "face-only", data_type: str = "detection"):
     """
     This function prepares the dataset for face detection YOLO training by splitting the images into train, val, and test sets.
     
@@ -1471,21 +1069,10 @@ def split_data(annotation_folder: Path, mode: str = "face-only", data_distributi
         Path to the directory containing label files.
     mode: str
         The mode for class mapping ('face-only' or 'age-binary').
-    data_distribution_file: Path
-        Path to data distribution file (if any).
-    hard_neg_file: Path
-        Path to hard negative samples file (if any).
     data_type: str
         Type of data processing ('detection' or 'classification').
     """
     logging.info(f"Starting dataset preparation for face detection in mode: {mode}")
-
-    # --- 1. Determine Output Directory ---
-    if data_distribution_file and hard_neg_file:
-        input_dir = FaceDetection.INPUT_DIR.parent / (FaceDetection.INPUT_DIR.name + "_retrain")
-        original_input_dir = FaceDetection.INPUT_DIR
-    else:
-        input_dir = FaceDetection.INPUT_DIR
     
     try:
         # --- 2. Get All Positive Images and Negative Candidates ---
@@ -1496,7 +1083,6 @@ def split_data(annotation_folder: Path, mode: str = "face-only", data_distributi
         with open(neg_cand_file, 'w') as f:
             for child_id, frames in negative_candidates.items():
                 f.write(f"{child_id}: {frames}\n")
-        logging.info(f"Negative candidates saved to {neg_cand_file}")
         
         if not positive_images:
             logging.error("No annotated images found.")
@@ -1509,52 +1095,9 @@ def split_data(annotation_folder: Path, mode: str = "face-only", data_distributi
             logging.error("DataFrame is empty. Check class distribution function.")
             return
         
-        # --- 4. Select Splitting Strategy ---
-        if data_distribution_file and hard_neg_file:
-            # RETRAIN MODE: Load fixed IDs, use HNM sampling, and COPY Val/Test
-            id_data = parse_retrain_file(data_distribution_file)
-            train, val, test, df_train, df_val, df_test = retrain_split_by_child_id(
-                df, negative_candidates, id_data['train_ids'], id_data['val_ids'], id_data['test_ids'],
-                            hard_neg_file, mode)
-            
-            logging.info("Copying original fixed Val and Test directories to the retrain folder...")
-            for split_name in ["val", "test"]:
-                original_images_dir = original_input_dir / "images" / split_name
-                original_labels_dir = original_input_dir / "labels" / split_name
-                
-                target_images_dir = input_dir / "images" / split_name
-                target_labels_dir = input_dir / "labels" / split_name
-                
-                # Use rmtree to delete and then copytree to create fresh copies
-                if target_images_dir.exists():
-                    shutil.rmtree(target_images_dir)
-                if target_labels_dir.exists():
-                    shutil.rmtree(target_labels_dir)
-                    
-                if original_images_dir.exists():
-                    shutil.copytree(original_images_dir, target_images_dir)
-                if original_labels_dir.exists():
-                    shutil.copytree(original_labels_dir, target_labels_dir)
-            
-            logging.info("Val and Test sets copied and remain immutable.")
-            
-            # We only need to move the new Training set files
-            splits_to_move = [("train", train)]
-            
-        elif data_distribution_file:
-            logging.info("Mode: Creating NEW split using FIXED ID distribution from file.")
-            id_data = parse_retrain_file(data_distribution_file)
-
-            train, val, test, df_train, df_val, df_test = fixed_id_split_logic(
-                df, negative_candidates, id_data['train_ids'], id_data['val_ids'], id_data['test_ids'], mode
-            )
-            
-            # All splits must be moved freshly in this mode
-            splits_to_move = [("train", train), ("val", val), ("test", test)]
-        else:
-            splits_to_move = []
-            train, val, test, df_train, df_val, df_test = split_by_child_id(df, negative_candidates, len(positive_images), annotation_folder, mode)
-            splits_to_move = [("train", train), ("val", val), ("test", test)]
+        splits_to_move = []
+        train, val, test, df_train, df_val, df_test = split_by_child_id(df, negative_candidates, len(positive_images), annotation_folder, mode, data_type)
+        splits_to_move = [("train", train), ("val", val), ("test", test)]
 
         # Get the IDs for logging
         train_ids = df_train['child_id'].unique().tolist() if 'child_id' in df_train.columns else []
@@ -1586,48 +1129,6 @@ def split_data(annotation_folder: Path, mode: str = "face-only", data_distributi
     
     logging.info(f"Completed dataset preparation for face detection in mode: {mode}")
 
-def generate_false_positive_list():
-    with open(FaceDetection.PREDICTIONS_JSON_PATH, "r") as f:
-        pred = json.load(f)
-        
-    # collect image_ids where category_id == 1
-    image_ids = [d["image_id"] for d in pred if int(d.get("category_id", -1)) == 1]
-    # make unique while preserving order
-    seen = set()
-    pred_frames = []
-    for img in image_ids:
-        if img not in seen:
-            seen.add(img)
-            pred_frames.append(img)
-        
-        
-    # get gt files
-    gt_train_dir = FaceDetection.INPUT_DIR/ "labels/train"
-    
-    gt_frames = []
-
-    for f in os.listdir(gt_train_dir):
-        if f.endswith(".txt"):
-            file_path = os.path.join(gt_train_dir, f)
-            
-            # Check if the file is not empty (ignoring whitespace)
-            with open(file_path, "r") as file:
-                content = file.read().strip()
-                if content:  # only include non-empty annotation files
-                    gt_frames.append(f[:-4])  # remove ".txt"
-    
-    # now from the two lists gt_files , pred_frames give me the list of images that are in pred but not in gt
-    false_positive_frames = [f for f in pred_frames if f not in gt_frames]
-
-    with open(FaceDetection.RETRAIN_FALSE_POSITIVES_PATH, "w") as f:
-        for item in false_positive_frames:
-            f.write(f"{item}\n")
-    logging.info(f"Saved {len(false_positive_frames)} false positive frames to {FaceDetection.RETRAIN_FALSE_POSITIVES_PATH}")
-        
-# ==============================
-# Main
-# ==============================
-
 def main():
     parser = argparse.ArgumentParser(description='Create input files for face detection YOLO training')
     parser.add_argument('--mode', choices=["face-only", "age-binary"], default="face-only",
@@ -1636,10 +1137,6 @@ def main():
                         help='Select the output data format type (detection for YOLO, classification for single class ID)') # ADDED argument
     parser.add_argument('--fetch-annotations', action='store_true',
                         help='Fetch and save annotations from database (default: False)')
-    parser.add_argument('--retrain', action='store_true', default=False,
-                        help='Activate retrain mode using fixed IDs and hard negative files defined in FaceConfig.')
-    parser.add_argument('--fixed-split-file', action='store_true', default=False,
-                        help='Use fixed split file for data splitting.')
     args = parser.parse_args()
     
     # The classification logic is specifically tied to 'age-binary' mode, which is 2+1 classes (adult, child, no_face)
@@ -1649,15 +1146,6 @@ def main():
     
     CONSTANTS = get_data_constants(args.type)
     
-    data_distribution_file = FaceDetection.DATA_DISTRIBUTION_PATH if args.retrain or args.fixed_split_file else None
-    hard_neg_file = FaceDetection.RETRAIN_FALSE_POSITIVES_PATH if args.retrain else None
-    is_retrain_mode = args.retrain
-
-    if is_retrain_mode:
-        logging.info("Retrain mode activated. Using fixed IDs and hard negative files from config.")
-            
-        # Generate false positive list first
-        generate_false_positive_list()  
     try:            
         if args.fetch_annotations:
             # Output annotations to the correct location (standard or retrain folder)
@@ -1667,8 +1155,6 @@ def main():
         
         split_data(CONSTANTS.LABELS_INPUT_DIR,
                    mode=args.mode,
-                   data_distribution_file=data_distribution_file,
-                   hard_neg_file=hard_neg_file,
                    data_type=args.type)
                                    
     except Exception as e:
