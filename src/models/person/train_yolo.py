@@ -48,12 +48,12 @@ def main():
         # Load appropriate pre-trained model for the task type
         if args.type == "classification":
             # For classification, start from a pre-trained classification model
-            model = YOLO('yolo11l-cls.pt')
+            model = YOLO('yolo12l-cls.pt')
             model_name = str(PersonConfig.MODEL_NAME) + "_cls"
             data_path = PersonClassification.INPUT_DIR / "images"
 
         else: 
-            model = YOLO('yolo11l.pt')
+            model = YOLO('yolo12l.pt')
             model_name = str(PersonConfig.MODEL_NAME)
             data_path = PersonDetection.DATA_CONFIG_PATH
 
@@ -72,18 +72,10 @@ def main():
         project=str(base_output_dir),
         name=experiment_name,
         augment=True,
-
-        # Early stopping with more patience
         patience=20,
-
-        # Training settings
         device=args.device,
         plots=True,
-
-        # Validation settings
         val=True,
-
-        # Workspace settings
         exist_ok=True,
         pretrained=True,
         verbose=True,
