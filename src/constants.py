@@ -48,7 +48,7 @@ class Vocalizations:
     OTH_OUTPUT_FILE = ALICE_OUTPUT_DIR / "OTH_output_utterances.txt"
 
 class PersonClassification:
-    TRAINED_WEIGHTS_PATH = Path(BasePaths.OUTPUT_DIR/'person_classification/yolo12l_cls_20251110_210415/weights/best.pt')
+    TRAINED_WEIGHTS_PATH = Path(BasePaths.MODELS_DIR/"best_yolo_person_cls.pt")
     EXTRACTION_PROGRESS_FILE_PATH = Path(BasePaths.DATA_DIR/"person_cls_extraction_progress.txt")
     MISSING_FRAMES_FILE_PATH = Path(BasePaths.DATA_DIR/"person_cls_missing_frames.txt")
     LABELS_INPUT_DIR = Path(BasePaths.DATA_DIR/"person_cls_labels")
@@ -59,7 +59,7 @@ class PersonClassification:
     DATA_DISTRIBUTION_PATH = Path(BasePaths.OUTPUT_DIR/"dataset_statistics/split_distribution_person_cls_20251110_114134.txt")
 
 class PersonDetection:
-    TRAINED_WEIGHTS_PATH = Path(BasePaths.OUTPUT_DIR/'person_detection/yolo12l_20251029_204358/weights/best.pt')
+    TRAINED_WEIGHTS_PATH = Path(BasePaths.MODELS_DIR/"best_yolo_person_det.pt")
     EXTRACTION_PROGRESS_FILE_PATH = Path(BasePaths.DATA_DIR/"person_det_extraction_progress.txt")
     MISSING_FRAMES_FILE_PATH = Path(BasePaths.DATA_DIR/"person_det_missing_frames.txt")
     LABELS_INPUT_DIR = Path(BasePaths.DATA_DIR/"person_det_labels")
@@ -71,20 +71,20 @@ class PersonDetection:
     DATA_DISTRIBUTION_PATH = Path(BasePaths.OUTPUT_DIR/"dataset_statistics/split_distribution_person_det_20251029_202741.txt")
 
 class FaceClassification:
-    TRAINED_WEIGHTS_PATH = Path(BasePaths.OUTPUT_DIR/'face_classification/yolo12l_cls_20251110_210415/weights/best.pt')
+    TRAINED_WEIGHTS_PATH = Path(BasePaths.MODELS_DIR/"best_yolo_face_cls.pt")
     EXTRACTION_PROGRESS_FILE_PATH = Path(BasePaths.DATA_DIR/"face_cls_extraction_progress.txt")
     MISSING_FRAMES_FILE_PATH = Path(BasePaths.DATA_DIR/"face_cls_missing_frames.txt")
     LABELS_INPUT_DIR = Path(BasePaths.DATA_DIR/"face_cls_labels")
     IMAGES_INPUT_DIR = Path(BasePaths.DATA_DIR/"quantex_annotated_rawframes")
     INPUT_DIR = Path(BasePaths.DATA_DIR/"face_cls_input")
     OUTPUT_DIR = Path(BasePaths.OUTPUT_DIR/"face_classifications/")
-    
     DATA_DISTRIBUTION_PATH = Path(BasePaths.OUTPUT_DIR/"dataset_statistics/split_distribution_face_cls_20251110_114134.txt")
 
 class FaceDetection:
+    FACE_MODEL_PATH = Path(BasePaths.MODELS_DIR/"yolov12l-face.pt") # pretrained face detection model from ultralytics hub
     INPUT_DIR = Path(BasePaths.DATA_DIR/"face_det_input")
     OUTPUT_DIR = Path(BasePaths.OUTPUT_DIR/"face_detections/")
-    TRAINED_WEIGHTS_PATH = Path(OUTPUT_DIR/"yolo12l_20251111_133740/weights/best.pt")
+    TRAINED_WEIGHTS_PATH = Path(BasePaths.MODELS_DIR/"best_yolo_face_det.pt")
     DATA_CONFIG_PATH = Path(BasePaths.HOME_DIR/"src/models/face/dataset.yaml")
     LABELS_INPUT_DIR = Path(BasePaths.DATA_DIR/"face_det_labels")
     IMAGES_INPUT_DIR = Path(BasePaths.DATA_DIR/"quantex_annotated_rawframes")
