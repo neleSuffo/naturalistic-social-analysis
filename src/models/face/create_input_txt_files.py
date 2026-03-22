@@ -4,7 +4,6 @@ import sqlite3
 import cv2
 import re
 import json
-import os
 import shutil
 import random
 import pandas as pd

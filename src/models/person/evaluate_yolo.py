@@ -4,8 +4,7 @@ import argparse
 from pathlib import Path
 from datetime import datetime
 from ultralytics import YOLO
-# Assuming these constants are defined in your environment:
-from constants import DataPaths, BasePaths, PersonDetection, PersonClassification 
+from constants import PersonDetection, PersonClassification 
 from config import PersonConfig
 
 # Logging configuration

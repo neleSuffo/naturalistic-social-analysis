@@ -1,10 +1,8 @@
 import os
-import sys
 import torch
 import shutil
 import argparse
 from datetime import datetime
-from pathlib import Path
 from ultralytics import YOLO
 from constants import FaceDetection
 from config import FaceConfig
