@@ -7,9 +7,19 @@ from ultralytics import YOLO
 from constants import PersonDetection, PersonClassification 
 from config import PersonConfig
 
-# --- Utility to get the correct constants object ---
 def get_data_constants(data_type: str):
-    """Returns the correct constants object based on the data_type flag."""
+    """Returns the correct constants object based on the data_type flag.
+    
+    Parameters
+    -----------
+    data_type : str
+        The type of data/task, either "detection" or "classification".
+        
+    Returns
+    --------
+    PersonDetection or PersonClassification
+        The corresponding constants object for the specified data type.
+    """
     if data_type == "detection":
         return PersonDetection
     elif data_type == "classification":
@@ -45,7 +55,6 @@ def main():
     else:
         # Load appropriate pre-trained model for the task type
         if args.type == "classification":
-            # For classification, start from a pre-trained classification model
             model = YOLO('yolo12l-cls.pt')
             model_name = str(PersonConfig.MODEL_NAME) + "_cls"
             data_path = PersonClassification.INPUT_DIR / "images"

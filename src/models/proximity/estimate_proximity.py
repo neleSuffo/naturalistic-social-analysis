@@ -71,18 +71,18 @@ class Proximity:
         return np.clip(proximity, 0.0, 1.0)
 
 
-# --- Main function for external calls ---
 def calculate_proximity(bbox, class_id, aspect_ratio_threshold=1):
     """
     Calculate proximity for a single bounding box with age information.
 
-    Args:
-        bbox: (x1, y1, x2, y2) tuple or list
-        class_id: class ID (0 for child, 1 for adult)
-        aspect_ratio_threshold: max deviation from reference aspect ratio
-
-    Returns:
-        float: normalized proximity value
+    Parameters
+    ----------
+    bbox: list or tuple of (x1, y1, x2, y2)
+        Bounding box coordinates.
+    class_id: int
+        Class ID (0 for child, 1 for adult).
+    aspect_ratio_threshold: float
+        Maximum allowed deviation from reference aspect ratio for partial face detection.
     """
     prox = Proximity()
     proximity = prox.calculate(bbox, class_id=class_id, aspect_ratio_threshold=aspect_ratio_threshold)

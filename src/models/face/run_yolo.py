@@ -14,7 +14,20 @@ from models.proximity.estimate_proximity import calculate_proximity
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     
 def process_image(model: YOLO, image_path: Path) -> Tuple[np.ndarray, Detections]:
-    """Process image with YOLO model"""
+    """Process image with YOLO model
+    
+    Parameters
+    ----------
+    model: YOLO
+        The YOLO model to use for inference.
+    image_path: Path
+        Path to the input image file.
+    
+    Returns
+    -------
+    Tuple[np.ndarray, Detections]
+        The original image as a NumPy array and the detections as a Detections object.
+    """
     image = cv2.imread(str(image_path))
     if image is None:
         raise ValueError(f"Failed to load image from {image_path}")
@@ -24,10 +37,28 @@ def process_image(model: YOLO, image_path: Path) -> Tuple[np.ndarray, Detections
     logging.info(f"{len(results.xyxy)} face detection(s)")
     return image, results
 
-def draw_detections_and_ground_truth(image: np.ndarray, predictions: Detections,
+def draw_detections_and_ground_truth(image: np.ndarray, 
+                                     predictions: Detections,
                                      ground_truth_boxes: np.ndarray = None,
                                      ground_truth_classes: np.ndarray = None) -> np.ndarray:
-    """Draw predictions and (optionally) ground truth boxes on image"""
+    """Draw predictions and (optionally) ground truth boxes on image
+    
+    Parameters
+    ----------
+    image: np.ndarray
+        The original image as a NumPy array.
+    predictions: Detections
+        The detected bounding boxes, confidence scores, and class IDs.
+    ground_truth_boxes: np.ndarray, optional
+        Ground truth bounding boxes in the format [x1, y1, x2, y2].
+    ground_truth_classes: np.ndarray, optional
+        Class IDs corresponding to the ground truth boxes.
+        
+    Returns
+    -------
+    np.ndarray
+        The annotated image with predictions and ground truth boxes drawn.
+    """
     annotated_image = image.copy()
     
     # Draw ground truth boxes in blue (if provided)
@@ -51,7 +82,20 @@ def draw_detections_and_ground_truth(image: np.ndarray, predictions: Detections,
     return annotated_image
 
 def calculate_iou(boxA: np.ndarray, boxB: np.ndarray) -> float:
-    """Calculate Intersection over Union (IoU) between two bounding boxes"""
+    """Calculate Intersection over Union (IoU) between two bounding boxes
+    
+    Parameters
+    ----------
+    boxA: np.ndarray
+        Bounding box A in the format [x1, y1, x2, y2].
+    boxB: np.ndarray
+        Bounding box B in the format [x1, y1, x2, y2].
+        
+    Returns
+    -------
+    float
+        The IoU score between the two boxes.
+    """
     xA, yA = max(boxA[0], boxB[0]), max(boxA[1], boxB[1])
     xB, yB = min(boxA[2], boxB[2]), min(boxA[3], boxB[3])
     
@@ -63,7 +107,22 @@ def calculate_iou(boxA: np.ndarray, boxB: np.ndarray) -> float:
     return interArea / unionArea if unionArea > 0 else 0
 
 def load_ground_truth(label_path: str, img_width: int, img_height: int) -> Tuple[np.ndarray, np.ndarray]:
-    """Load ground truth bounding boxes and class IDs from label file"""
+    """Load ground truth bounding boxes and class IDs from label file
+    
+    Parameters    
+    ----------
+    label_path: str
+        Path to the label file.
+    img_width: int
+        Width of the image.
+    img_height: int
+        Height of the image.
+
+    Returns
+    -------
+    Tuple[np.ndarray, np.ndarray]
+        A tuple containing the ground truth bounding boxes and class IDs.
+    """
     ground_truth_boxes = []
     ground_truth_classes = []
     with open(label_path, 'r') as f:
