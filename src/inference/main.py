@@ -76,7 +76,7 @@ def main(video_path: Path, db_path: Path, frame_step: int, models: list = None):
                 return False
             
             logging.info(f"Processing {len(video_files)} video files from directory: {video_path}")
-            selected_videos = [f.stem for f in video_files]  # Use stems (filenames without extensions)
+            selected_videos = [f.stem for f in video_files]
             
         else:
             logging.error(f"Path is neither a file, a directory, nor a valid text list: {video_path}")

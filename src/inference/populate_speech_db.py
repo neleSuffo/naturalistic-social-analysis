@@ -59,7 +59,6 @@ def parse_rttm_file_to_snippets(rttm_path: Path) -> Dict[str, List[Dict]]:
 
     return snippets_by_file
 
-
 def aggregate_and_save_results(snippets: List[Dict], db_cursor: sqlite3.Cursor, video_id: int):
     """
     Saves classification results to the database by applying the RTTM label 
