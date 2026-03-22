@@ -2,6 +2,7 @@ import cv2
 import logging
 import argparse
 import sqlite3
+import shutil
 from typing import List, Callable
 from pathlib import Path
 from ultralytics import YOLO
@@ -103,9 +104,23 @@ def process_frame(frame_path: Path, video_id: int, frame_number: int,
     """
     Process a single frame for face detection
     
+    Parameters:
+    ----------
+    frame_path : Path
+        Path to the frame image
+    video_id : int
+        ID of the video in the database
+    frame_number : int
+        Frame number extracted from the filename
+    model : YOLO
+        Loaded YOLO model for face detection
+    cursor : sqlite3.Cursor
+        SQLite cursor for database operations   
+        
     Returns:
     -------
-    int: Number of faces detected
+    int
+        Number of faces detected in the frame
     """
     # Read frame
     frame = cv2.imread(str(frame_path))
@@ -198,7 +213,6 @@ if __name__ == "__main__":
         if LOG_FILE_PATH.exists():
             # Create backup of current log
             backup_path = LOG_FILE_PATH.with_suffix('.txt.backup')
-            import shutil
             shutil.copy2(LOG_FILE_PATH, backup_path)
             LOG_FILE_PATH.unlink()  # Remove current log
             

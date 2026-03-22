@@ -6,12 +6,25 @@ from pathlib import Path
 from PIL import Image
 from ultralytics import YOLO
 from supervision import Detections
-from constants import PersonClassification
+from constants import BasePaths
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 def process_image(model: YOLO, image_path: Path) -> np.ndarray:
-    """Run YOLO on an image and return the annotated version."""
+    """Run YOLO on an image and return the annotated version.
+    
+    Parameters
+    ----------
+    model: YOLO
+        The YOLO model to use for inference.
+    image_path: Path
+        Path to the input image file.
+        
+    Returns
+    -------
+    np.ndarray
+        The annotated image as a NumPy array.
+    """
     image = cv2.imread(str(image_path))
     if image is None:
         raise ValueError(f"Failed to load image: {image_path}")
@@ -33,7 +46,17 @@ def process_image(model: YOLO, image_path: Path) -> np.ndarray:
     return annotated_image
 
 def save_annotated_image(annotated_image: np.ndarray, image_path: Path, output_dir: Path):
-    """Save annotated image."""
+    """Save annotated image.
+    
+    Parameters
+    ----------
+    annotated_image: np.ndarray
+        The annotated image to save.
+    image_path: Path    
+        Original image path (used for naming).
+    output_dir: Path
+        Directory to save the annotated image.
+    """
     output_dir.mkdir(parents=True, exist_ok=True)
     output_path = output_dir / f"{image_path.stem}_annotated.jpg"
     success = cv2.imwrite(str(output_path), annotated_image, [cv2.IMWRITE_JPEG_QUALITY, 95])
@@ -48,10 +71,9 @@ def main():
 
     model = YOLO("yolo12l.pt")
     input_path = Path(args.image_path)
-    output_dir = Path("/home/nele_pauline_suffo/outputs")
 
     if input_path.is_dir():
-        folder_output = output_dir / f"{input_path.name}_annotated"
+        folder_output = BasePaths.OUTPUTS / f"{input_path.name}_annotated"
         folder_output.mkdir(parents=True, exist_ok=True)
         image_files = list(input_path.glob("*.jpg")) + list(input_path.glob("*.png"))
         for img_file in image_files:
@@ -59,7 +81,7 @@ def main():
             save_annotated_image(annotated_image, img_file, folder_output)
     else:
         annotated_image = process_image(model, input_path)
-        save_annotated_image(annotated_image, input_path, output_dir)
+        save_annotated_image(annotated_image, input_path, BasePaths.OUTPUTS)
 
 if __name__ == "__main__":
     main()

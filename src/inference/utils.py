@@ -6,7 +6,20 @@ from typing import Set
 from config import DataConfig
 
 def get_video_id(video_name: str, cursor: sqlite3.Cursor) -> int:
-    """Get video_id from Videos table using video name"""
+    """Get video_id from Videos table using video name
+    
+    Parameters:
+    ----------
+    video_name : str
+        Name of the video (without extension)
+    cursor : sqlite3.Cursor
+        Active cursor to the SQLite database
+        
+    Returns:
+    -------
+    int or None
+        The video_id corresponding to the video_name, or None if not found
+    """
     cursor.execute('SELECT video_id FROM Videos WHERE video_name = ?', (video_name,))
     result = cursor.fetchone()
     if result:
@@ -16,7 +29,18 @@ def get_video_id(video_name: str, cursor: sqlite3.Cursor) -> int:
         return None
     
 def extract_frame_number(filename: str) -> int:
-    """Extract frame number from filename using regex"""
+    """Extract frame number from filename using regex
+    
+    Parameters:
+    ----------
+    filename : str
+        The filename from which to extract the frame number (e.g., 'frame_001.jpg')
+        
+    Returns:
+    -------
+    int
+        The extracted frame number, or 0 if no number is found.
+    """
     # Try to extract numbers from filename (e.g., frame_001.jpg -> 1, video_name_0042.jpg -> 42)
     numbers = re.findall(r'\d+', filename)
     if numbers:
@@ -28,6 +52,16 @@ def get_frame_paths(video_frame_dir: Path):
     """
     Returns a sorted list of frame paths in video_frame_dir
     for all valid extensions defined in DataConfig.VALID_EXTENSIONS.
+    
+    Parameters:
+    ----------
+    video_frame_dir : Path
+        Directory containing the video frames
+        
+    Returns:
+    -------
+    List[Path]
+        Sorted list of frame paths
     """
     frame_paths = []
     for ext in DataConfig.VALID_EXTENSIONS:
@@ -39,11 +73,6 @@ def get_frame_paths(video_frame_dir: Path):
         key=lambda x: int(x.stem.split('_')[-1])
     )
     return frame_paths
-
-
-# ---------------------------
-# Processing Log Functions
-# ---------------------------
 
 def load_processed_videos(log_file_path: Path) -> Set[str]:
     """

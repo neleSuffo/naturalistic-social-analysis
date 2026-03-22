@@ -102,9 +102,23 @@ def process_frame(frame_path: Path, video_id: int, frame_number: int,
     """
     Process a single frame for face detection
     
+    Parameters:
+    ----------
+    frame_path : Path
+        Path to the frame image file.
+    video_id : int
+        ID of the video in the database.
+    frame_number : int
+        Frame number extracted from the filename.
+    model : YOLO
+        Pretrained YOLO model for book detection.
+    cursor : sqlite3.Cursor
+        SQLite cursor for database operations.
+        
     Returns:
     -------
-    int: Number of faces detected
+    int
+        The number of books detected in the frame.
     """
     # Read frame
     frame = cv2.imread(str(frame_path))

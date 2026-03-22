@@ -11,6 +11,16 @@ def get_max_frame_count(video_path: Path) -> int:
     """
     Returns the maximum number of frames in a video using OpenCV.
     If the video cannot be opened, returns None.
+    
+    Parameters:
+    ----------
+    video_path : Path
+        Path to the video file.
+        
+    Returns:
+    -------
+    int or None
+        The maximum number of frames in the video, or None if the video cannot be opened.
     """
     if not video_path.exists():
         logging.error(f"Video not found: {video_path}")
@@ -30,6 +40,13 @@ def store_video_data(age_group_df: pd.DataFrame, conn: sqlite3.Connection):
     """
     Stores video information from age_group.csv directly in the Videos table.
     Also computes and stores max_frame for each video.
+    
+    Parameters:
+    ----------
+    age_group_df : pd.DataFrame
+        DataFrame containing video information from age_group.csv.
+    conn : sqlite3.Connection
+        Active connection to the SQLite database where video data will be stored.
     """
     cursor = conn.cursor()
     video_data = []
@@ -104,6 +121,11 @@ def setup_interaction_db(db_path: Path):
     """
     Sets up the SQLite database for storing detection results.
     Only creates database and tables if they don't exist.
+    
+    Parameters:
+    ----------
+    db_path : Path
+        Path to the SQLite database file.
     """
     if db_path.exists():
         logging.info(f"Database already exists at {db_path}. Skipping creation.")
