@@ -15,19 +15,66 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 
-from pandera import parser
-
 from constants import DataPaths, BasePaths, PersonDetection, PersonClassification
 from config import PersonConfig, DataConfig
 
 # Logging configuration
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
-# --- Utility to get the correct constants object ---
-def get_data_constants(data_type: str):
+# =======================================================
+# Helper Functions
+# =======================================================
+def get_child_id_from_filename(filename: str) -> str:
+    """
+    Get child ID from filename using regex. Assumes filename contains a pattern like 'id123456'.
+
+    Parameters
+    ----------
+    filename : str
+        The name of the file from which to extract the child ID.
+
+    Returns
+    -------
+    str
+        The extracted child ID or None if not found.
+    """
+    match = re.search(r'id(\d+)_', filename)
+    return 'id' + match.group(1) if match else None
+
+def create_neg_df(sampled_neg_list: List[Tuple[str, str]], child_id_getter: callable, class_cols: List[str]) -> pd.DataFrame:
+    """
+    Creates a DataFrame for negative samples with the specified class columns set to 0.
+
+    Parameters
+    ----------
+    sampled_neg_list : List[Tuple[str, str]]
+        List of tuples containing image paths and IDs.
+    child_id_getter : callable
+        Function to extract child ID from filename.
+    class_cols : List[str]
+        List of class column names.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame containing negative samples.
+    """
+    entries = []
+    for image_path, image_id in sampled_neg_list:
+        filename = Path(image_path).stem
+        entries.append({
+            "filename": filename,
+            "id": image_id,
+            "has_annotation": False,
+            "child_id": child_id_getter(filename),
+            **{col: 0 for col in class_cols}
+        })
+    return pd.DataFrame(entries)
+
+def get_data_constants(data_type: str) -> type:
     """
     Returns the correct constants object based on the data_type flag.
-    
+
     Parameters
     ----------
     data_type : str
@@ -45,57 +92,12 @@ def get_data_constants(data_type: str):
     else:
         raise ValueError(f"Unknown data type: {data_type}. Must be 'detection' or 'classification'.")
     
-def parse_retrain_file(retrain_file: Path) -> Dict[str, List[str]]:
-    """
-    Parses the ID Distribution section from the statistics file.
-    
-    Parameters
-    ----------
-    retrain_file : Path
-        Path to the "Dataset Split Information" text file.
-        
-    Returns
-    -------
-    Dict[str, List[str]]
-        Dictionary containing 'train_ids', 'val_ids', 'test_ids'.
-    """
-    logging.info(f"Parsing existing split IDs from {retrain_file.name}")
-    data = {}
-    try:
-        content = retrain_file.read_text()
-        
-        # Regex to find ID Distribution block
-        train_match = re.search(r"Training IDs: \d+, \[(.*?)\]", content)
-        val_match = re.search(r"Validation IDs: \d+, \[(.*?)\]", content)
-        test_match = re.search(r"Test IDs: \d+, \[(.*?)\]", content)
-        
-        if not train_match or not val_match or not test_match:
-            raise ValueError("Could not find all required ID distribution blocks.")
-            
-        def parse_ids(match):
-            # Strip quotes and split by comma, then strip whitespace
-            ids_str = match.group(1).replace("'", "").replace('"', "")
-            return [i.strip() for i in ids_str.split(',') if i.strip()]
-
-        data['train_ids'] = parse_ids(train_match)
-        data['val_ids'] = parse_ids(val_match)
-        data['test_ids'] = parse_ids(test_match)
-
-        logging.info(f"Loaded {len(data['train_ids'])} Train IDs, {len(data['val_ids'])} Val IDs, {len(data['test_ids'])} Test IDs.")
-        return data
-
-    except FileNotFoundError:
-        logging.error(f"Retrain file not found at {retrain_file}")
-        raise
-    except Exception as e:
-        logging.error(f"Error parsing retrain file: {e}")
-        raise
-    
 # ==============================
 # Database and Query
 # ==============================
 def fetch_all_annotations(category_ids: List[int]) -> List[Tuple]:
-    """Fetch annotations for given category IDs from the SQLite database.
+    """
+    Fetch annotations for given category IDs from the SQLite database.
     
     Parameters
     ----------
@@ -112,28 +114,51 @@ def fetch_all_annotations(category_ids: List[int]) -> List[Tuple]:
 
     query = f"""
     SELECT DISTINCT 
-        a.category_id, a.bbox, i.file_name, a.person_age
+        a.category_id, a.bbox, v.file_name as video_file, a.image_id as raw_frame, a.person_age, v.id as video_id
     FROM annotations a
-    JOIN images i ON a.image_id = i.frame_id AND a.video_id = i.video_id
     JOIN videos v ON a.video_id = v.id
     WHERE a.category_id IN ({placeholders})
       AND a.outside = 0
     ORDER BY a.video_id, a.image_id
     """
 
+    # set up correct mapping for shifted videos
+    corrected_results = []
+    exception_map = DataConfig.SHIFTED_VIDEOS_OFFSETS
+    
     with sqlite3.connect(DataPaths.ANNO_DB_PATH) as conn:
         cursor = conn.cursor()
         cursor.execute(query, category_ids)
-        results = cursor.fetchall()
-     
-    logging.info(f"Found {len(results)} annotations.")   
-    return results
+        rows = cursor.fetchall()
+        
+    for cat_id, bbox, video_file, raw_frame, age, v_id in rows:
+        video_name = video_file.replace('.mp4', '')
+        
+        # 2. Apply logical correction
+        adjusted_frame = raw_frame
+        if video_name in exception_map:
+            start_frame, shift = exception_map[video_name]
+            # If annotation is at or after the shift point, reverse the shift
+            if raw_frame >= start_frame:
+                # subtract shift because DB has "wrong" frame 
+                # and we need "real" frame on disk.
+                # Example: raw_frame 28, shift -2 -> 28 - (-2) = 30.
+                adjusted_frame = raw_frame - shift 
+        
+        # 3. Reconstruct the image filename to match the disk
+        corrected_img_name = f"{video_name}_{adjusted_frame:06d}"
+        
+        corrected_results.append((cat_id, bbox, corrected_img_name, age))
+
+    logging.info(f"Found and corrected {len(corrected_results)} annotations.")   
+    return corrected_results
 
 # ==============================
 # Image and Bounding Box Utilities
 # ==============================
 def convert_to_yolo_format(width: int, height: int, bbox: List[float]) -> Tuple[float, float, float, float]:
-    """Convert [xtl, ytl, xbr, ybr] to YOLO (x_center, y_center, width, height).
+    """
+    Convert [xtl, ytl, xbr, ybr] to YOLO (x_center, y_center, width, height).
     
     Parameters
     ----------
@@ -175,7 +200,9 @@ def write_annotations(file_path: Path, lines: List[str]) -> None:
     file_path.write_text("".join(lines))
 
 def save_annotations(annotations: List[Tuple], output_dir: Path = None, mode: str = "person-only", data_type: str = "detection") -> None:
-    """    
+    """
+    Save annotations to text files in the specified directory.
+    
     Parameters
     ----------
     annotations : List[Tuple]
@@ -185,7 +212,7 @@ def save_annotations(annotations: List[Tuple], output_dir: Path = None, mode: st
     mode : str
         Detection mode to use for saving annotations (default: "person-only")
     data_type : str
-        Type of data being processed (default: "detection")
+        Type of data processing ("detection" or "classification")
     """
     CONSTANTS = get_data_constants(data_type)
     
@@ -194,7 +221,7 @@ def save_annotations(annotations: List[Tuple], output_dir: Path = None, mode: st
     
     output_dir.mkdir(parents=True, exist_ok=True)
     
-    files = defaultdict(set)
+    files = defaultdict(list)
     processed, skipped = 0, 0
 
     if mode == "person-only":
@@ -204,7 +231,7 @@ def save_annotations(annotations: List[Tuple], output_dir: Path = None, mode: st
     else:
         logging.error(f"Unknown mode: {mode}")
         return
-
+    
     for _, bbox_json, img_name, age in annotations:
         
         class_id = mode_config.get(age, 99)
@@ -213,57 +240,64 @@ def save_annotations(annotations: List[Tuple], output_dir: Path = None, mode: st
             logging.warning(f"Unknown age group '{age}' for {img_name}")
             skipped += 1
             continue
-
-        if data_type == "classification":
-            # Classification output: Only class ID needed.
-            files[img_name].add(f"{class_id}\n")
+        
+        # --- CLASSIFICATION (Single class ID line) ---
+        if data_type == "classification" and mode == "age-binary":
+            # For classification, we only care if a person is present, and its class (child/adult).
+            # The classification label is only the class ID, and we assume the image is positive.
+            files[img_name].append(f"{class_id}\n")
             processed += 1
             continue
-            
-        # --- DETECTION (YOLO) MODE LOGIC BELOW ---
         
+        # --- DETECTION (YOLO) MODE LOGIC ---
+        # img_name comes from database and should be the image filename without extension
+        # Example: quantex_at_home_id255237_2022_05_08_04_000240 -> quantex_at_home_id255237_2022_05_08_04
         img_name_parts = img_name.split("_")
         if len(img_name_parts) < 9:
-            logging.warning(f"Invalid image name format: {img_name}")
+            logging.warning(f"Invalid image name format: {img_name} (expected at least 9 parts)")
             skipped += 1
             continue
 
         video_folder_name = "_".join(img_name.split("_")[:-1])
+        
         img_path = None
         for ext in DataConfig.VALID_EXTENSIONS:
-            # Use the correct constant for images folder
-            potential_path = CONSTANTS.IMAGES_INPUT_DIR / video_folder_name / f"{img_name}{ext}"
+            potential_path = PersonDetection.IMAGES_INPUT_DIR / video_folder_name / f"{img_name}{ext}"
             if potential_path.exists():
                 img_path = potential_path
                 break
         
         if img_path is None:
-            logging.debug(f"Image not found: {img_name}")
+            logging.warning(f"Image not found: {img_name} in folder {video_folder_name}")
+            logging.debug(f"Searched paths: {[PersonDetection.IMAGES_INPUT_DIR / video_folder_name / f'{img_name}{ext}' for ext in DataConfig.VALID_EXTENSIONS]}")
             skipped += 1
             continue
 
         try:
             img = cv2.imread(str(img_path))
             if img is None:
+                logging.warning(f"Failed to load image: {img_path}")
                 skipped += 1
                 continue
             
             height, width = img.shape[:2]
-            bbox = json.loads(bbox_json)
-            yolo_bbox = convert_to_yolo_format(width, height, bbox) 
             
-            files[img_name].add(f"{class_id} " + " ".join(map(str, yolo_bbox)) + "\n")
+            bbox = json.loads(bbox_json)
+            yolo_bbox = convert_to_yolo_format(width, height, bbox)
+            
+            files[img_name].append(f"{class_id} " + " ".join(map(str, yolo_bbox)) + "\n")
             processed += 1
         except Exception as e:
             logging.error(f"Error processing {img_path}: {e}")
             skipped += 1
 
+    # Save annotation files in parallel
     with ThreadPoolExecutor(max_workers=4) as executor:
         for img_name, lines in files.items():
             output_file = output_dir / f"{img_name}.txt"
-            executor.submit(write_annotations, output_file, list(lines))
+            executor.submit(write_annotations, output_file, lines)
 
-    logging.info(f"Processed {processed} labels for {len(files)} image files, skipped {skipped}")
+    logging.info(f"Processed {processed}, skipped {skipped}")
 
 def fetch_noisy_frames() -> List[str]:
     """
@@ -293,7 +327,7 @@ def fetch_noisy_frames() -> List[str]:
 
     return results
 
-def get_total_number_of_annotated_frames(label_path: Path, image_folder: Path) -> Tuple[List[Tuple[str, str]], Dict[str, List[Tuple[str, str]]]]:
+def get_total_number_of_annotated_frames(label_path: Path, image_folder: Path = PersonDetection.IMAGES_INPUT_DIR) -> Tuple[List[Tuple[str, str]], Dict[str, List[Tuple[str, str]]]]:
     """
     Returns ALL annotated (positive) frames and ALL potential clean negative frame candidates (sampled by frame offset).
     
@@ -347,7 +381,6 @@ def get_total_number_of_annotated_frames(label_path: Path, image_folder: Path) -
         if video_path.exists() and video_path.is_dir():
             
             exception_map = DataConfig.SHIFTED_VIDEOS_OFFSETS
-            
             # Get the frame interval for this video (default is DataConfig.FPS)
             frame_interval = DataConfig.NON_STANDARD_FRAME_STEPS.get(video_name, DataConfig.FPS)
             
@@ -384,6 +417,7 @@ def get_total_number_of_annotated_frames(label_path: Path, image_folder: Path) -
                             
                     else:
                         # Default rule for all other videos: multiples of frame_interval
+                        # This assumes DEFAULT_OFFSET = 0 and the step size is constant.
                         if frame_number % frame_interval == DEFAULT_OFFSET:
                             is_sampled_frame = True
                     
@@ -402,7 +436,7 @@ def get_total_number_of_annotated_frames(label_path: Path, image_folder: Path) -
     # Return positive images list and the dict of negative candidates
     return positive_images, dict(video_negative_candidates)
 
-def get_class_distribution(total_images: list, annotation_folder: Path, mode: str, data_type: str) -> pd.DataFrame:
+def get_class_distribution(total_images: list, annotation_folder: Path, mode: str) -> pd.DataFrame:
     """
     Reads label files and groups images based on their class distribution for the given detection mode.
 
@@ -477,42 +511,6 @@ def get_class_distribution(total_images: list, annotation_folder: Path, mode: st
     
     return df
 
-def get_all_frames_for_children(child_ids: List[str], image_folder: Path) -> List[Tuple[str, str]]:
-    """
-    Get ALL frames (not just annotated ones) for specified child IDs from all their videos.
-    
-    Parameters
-    ----------
-    child_ids : List[str]
-        List of child IDs to get frames for
-    image_folder : Path
-        Path to the image folder
-        
-    Returns
-    -------
-    List[Tuple[str, str]]
-        List of tuples containing (image_path, image_id)
-    """
-    all_frames = []
-    
-    for child_id in child_ids:
-        # Find all video folders for this child
-        for video_folder in image_folder.iterdir():
-            if video_folder.is_dir() and child_id in video_folder.name:
-                # Get all frames from this video folder
-                for frame in video_folder.iterdir():
-                    if frame.is_file() and frame.suffix.lower() in ['.jpg', '.jpeg', '.png']:
-                        # Extract image ID
-                        parts = frame.name.split("_")
-                        if len(parts) > 3 and parts[3].startswith('id'):
-                            image_id = parts[3].replace("id", "")
-                        else:
-                            image_id = frame.stem
-                        
-                        all_frames.append((str(frame.resolve()), image_id))
-    
-    return all_frames
-
 def get_sampled_frames_for_children(child_ids: List[str], image_folder: Path) -> List[str]:
     """
     Get all sampled frames (positive and negative) for specified child IDs from all their videos,
@@ -573,186 +571,7 @@ def get_sampled_frames_for_children(child_ids: List[str], image_folder: Path) ->
                             sampled_frames.append(stem)
     
     return sampled_frames
-
-# =======================================================
-# Retrain Split Function (Uses Fixed IDs and HNM List)
-# =======================================================
-
-def retrain_split_by_child_id(df: pd.DataFrame, negative_candidates: Dict[str, List[Tuple[str, str]]], train_ids: List[str], val_ids: List[str], test_ids: List[str], hard_neg_file: Path, labels_input_dir: Path = None, mode: str = "person-only", data_type: str = "detection") -> Tuple[List[str], List[str], List[str], pd.DataFrame, pd.DataFrame, pd.DataFrame]:   
-    """
-    Splits data using FIXED child IDs loaded from a file, incorporates Hard Negatives 
-    into the training set, and samples the remaining negative frames. 
-    The script copies frames and labels for validation and testing from the existing training set.
     
-    Parameters
-    ----------
-    df : pd.DataFrame
-        DataFrame with image data and annotations
-    negative_candidates : Dict[str, List[Tuple[str, str]]]
-        Dictionary of potential negative frame candidates per video
-    train_ids : List[str]   
-        List of child IDs for training set
-    val_ids : List[str]
-        List of child IDs for validation set
-    test_ids : List[str]
-        List of child IDs for test set
-    hard_neg_file : Path
-        Path to the hard negative file
-    labels_input_dir : Path
-        Path to the labels input directory
-    mode : str
-        Mode for the retraining process ("person-only" or "age-binary")
-    data_type : str
-        Type of data being processed (default: "detection")
-        
-    Returns
-    -------
-    Tuple[List[str], List[str], List[str], pd.DataFrame, pd.DataFrame, pd.DataFrame]
-        - List of child IDs for training set
-        - List of child IDs for validation set
-        - List of child IDs for test set
-        - DataFrame for training set
-        - DataFrame for validation set
-        - DataFrame for test set
-    """
-    logging.info("Running RETRAIN mode with fixed ID distribution.")
-
-    CONSTANTS = get_data_constants(data_type)
-
-    if labels_input_dir is None:
-        labels_input_dir = CONSTANTS.LABELS_INPUT_DIR
-
-    # --- Infer Detection Mode and Get Correct Mapping ---
-    if mode == "person-only":
-        id_to_label_map = PersonConfig.MODEL_CLASS_ID_TO_LABEL_PERSON_ONLY
-    elif mode == "age-binary":
-        id_to_label_map = PersonConfig.MODEL_CLASS_ID_TO_LABEL_AGE_BINARY
-    else:
-        id_to_label_map = {} 
-    
-    def get_child_id_from_filename(filename: str) -> str:
-        match = re.search(r'id(\d+)_', filename)
-        return 'id' + match.group(1) if match else None
-
-    df['child_id'] = df['filename'].apply(get_child_id_from_filename)
-    df.dropna(subset=['child_id'], inplace=True)
-
-    # --- Prepare Split DataFrames (Positive Frames Only) ---
-    # The DF only contains positive frames (from get_class_distribution), so we slice by ID.
-    train_df_pos = df[df["child_id"].isin(train_ids)].copy()
-
-    # Val/Test DF slices are necessary only to generate statistics later.
-    val_df = df[df["child_id"].isin(val_ids)].copy()
-    test_df = df[df["child_id"].isin(test_ids)].copy()
-    
-    class_columns = [col for col in df.columns if col not in ['filename', 'id', 'has_annotation', 'child_id']]    
-    # --- 2. Compile Negative Pools and Load Hard Negatives ---
-    
-    hard_negative_stems = set()
-
-    try:
-        # Load Hard Negatives from the provided file
-        hard_neg_content = hard_neg_file.read_text().splitlines()
-        hard_negative_stems = {line.strip() for line in hard_neg_content if line.strip()}
-        logging.info(f"Loaded {len(hard_negative_stems)} Hard Negative image stems.")
-    except Exception as e:
-        logging.warning(f"Could not load Hard Negative file {hard_neg_file}: {e}")
-
-    def get_child_id_from_video_name(video_name):
-        match = re.search(r'id(\d+)', video_name)
-        return 'id' + match.group(1) if match else None
-        
-    hard_negatives = []
-    soft_negatives = []
-
-    # Filter negative candidates into Hard (in file) and Soft (not in file)
-    for video_name, candidates in negative_candidates.items():
-        child_id = get_child_id_from_video_name(video_name)
-        
-        # Only process candidates belonging to the Training IDs
-        if child_id in train_ids:
-            for image_path, image_id in candidates:
-                filename = Path(image_path).stem
-                if filename in hard_negative_stems:
-                    hard_negatives.append((image_path, image_id))
-                else:
-                    soft_negatives.append((image_path, image_id))
-
-    logging.info(f"Train negative pool: {len(hard_negatives)} Hard Negatives, {len(soft_negatives)} Soft Negatives.")
-    
-    # --- 3. Apply Negative Sampling (HNM Priority for Train) ---
-    random.seed(DataConfig.RANDOM_SEED)
-    
-    # TRAIN NEGATIVE SAMPLING (Prioritize HNM)
-    num_train_pos = len(train_df_pos)
-    target_train_neg = int(num_train_pos * PersonConfig.NEGATIVE_SAMPLING_RATIO)
-    
-    # 3.1. Start with ALL Hard Negatives
-    sampled_train_neg = hard_negatives[:]
-    
-    # 3.2. Fill remaining quota with Soft Negatives
-    remaining_quota = target_train_neg - len(sampled_train_neg)
-    
-    if remaining_quota > 0:
-        if len(soft_negatives) >= remaining_quota:
-            sampled_train_neg.extend(random.sample(soft_negatives, remaining_quota))
-        else:
-            sampled_train_neg.extend(soft_negatives)
-            logging.warning(f"Train: Only {len(sampled_train_neg)} negative frames available after hard negs, target was {target_train_neg}.")
-    
-    # --- 4. Finalize Train DataFrame ---
-    
-    def create_neg_df(sampled_neg_list, child_id_getter, class_cols):
-        entries = []
-        for image_path, image_id in sampled_neg_list:
-            filename = Path(image_path).stem
-            entries.append({
-                "filename": filename,
-                "id": image_id,
-                "has_annotation": False,
-                "child_id": child_id_getter(filename),
-                **{col: 0 for col in class_cols}
-            })
-        return pd.DataFrame(entries)
-
-    train_neg_df = create_neg_df(sampled_train_neg, get_child_id_from_filename, class_columns)
-    
-    # Final Train DataFrame: Positives + HNM/Soft Negatives
-    train_df = pd.concat([train_df_pos, train_neg_df], ignore_index=True)
-    
-    # For Val/Test, we return all filenames that belong to their IDs,
-    # but the actual file movement will copy the existing directories.
-    val_df_all_frames = df[df["child_id"].isin(val_ids)].copy()
-    test_df_all_frames = df[df["child_id"].isin(test_ids)].copy()
-    
-    # 1. Compile ALL sampled negative candidates belonging to the Test IDs
-    test_negative_candidates = []
-    for video_name, candidates in negative_candidates.items():
-        child_id = get_child_id_from_video_name(video_name)
-        if child_id in test_ids:
-            test_negative_candidates.extend(candidates)
-            
-    # 2. Create the DataFrame for test negatives (needed for test_df_final)
-    test_neg_df = create_neg_df(test_negative_candidates, get_child_id_from_filename, class_columns)
-    
-    # 3. Build the final Test DataFrame (Positives + ALL Sampled Negatives)
-    test_sampled_frames = get_sampled_frames_for_children(test_ids, CONSTANTS.IMAGES_INPUT_DIR)
-    # Filter the overall DF (positives only) to include only sampled positive frames for test
-    test_df = df[df['filename'].isin(test_sampled_frames) & df["child_id"].isin(test_ids)].copy()
-    
-    # Add any sampled negatives that weren't in the original POSITIVE-only DF (i.e., the clean negatives)
-    test_df_final = pd.concat([test_df, test_neg_df[~test_neg_df['filename'].isin(test_df['filename'])]], ignore_index=True)
-    
-    # ------------------------------------------------------------------
-    
-    # The returned lists are now only for the files we MUST move (Train) or files that exist (Val/Test).
-    return (train_df['filename'].tolist(), 
-            val_df_all_frames['filename'].tolist(), 
-            test_df_final['filename'].tolist(),
-            train_df, 
-            val_df_all_frames, 
-            test_df_final)
-
 def split_by_child_id(df: pd.DataFrame, negative_candidates: Dict[str, List[Tuple[str, str]]], train_ratio: float = PersonConfig.TRAIN_SPLIT_RATIO, labels_input_dir: Path = None, mode: str = "person-only", data_type: str = "detection") -> Tuple[List[str], List[str], List[str], pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
     Splits the DataFrame into training, validation, and test sets using child IDs as the unit, while balancing class distributions.
@@ -768,297 +587,185 @@ def split_by_child_id(df: pd.DataFrame, negative_candidates: Dict[str, List[Tupl
     train_ratio : float
         Ratio for training split
     labels_input_dir : Path
-        Path to labels directory
+        Path to labels directory (if None, uses default PersonDetection.LABELS_INPUT_DIR)
     mode : str
         Detection mode to use for splitting ('person-only' or 'age-binary')
+    data_type : str
+        Type of data processing ("detection" or "classification")
     """
-    CONSTANTS = get_data_constants(data_type)
     # Define minimum number of person images required in the test set as fixed percentage of positive images
     if labels_input_dir is None:
-        labels_input_dir = CONSTANTS.LABELS_INPUT_DIR
-
+        labels_input_dir = PersonDetection.LABELS_INPUT_DIR
+        
     if 'filename' not in df.columns:
         logging.error(f"'filename' column not found in DataFrame. Available columns: {df.columns.tolist()}")
         return [], [], [], pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
     
-    # --- Infer Detection Mode and Get Correct Mapping ---
-    if mode == "person-only":
-        id_to_label_map = PersonConfig.MODEL_CLASS_ID_TO_LABEL_PERSON_ONLY
-    elif mode == "age-binary":
-        id_to_label_map = PersonConfig.MODEL_CLASS_ID_TO_LABEL_AGE_BINARY
-    else:
-        id_to_label_map = {} 
-        logging.error("Unknown detection mode specified.")
-
-    def get_child_id_from_filename(filename: str) -> str:
-        match = re.search(r'id(\d+)_', filename)
-        if match:
-            return 'id' + match.group(1)
-        return None
-    
+    # Prepare IDS and Columns
     df['child_id'] = df['filename'].apply(get_child_id_from_filename)
     df.dropna(subset=['child_id'], inplace=True)
-
-    # --- Calculate Counts per Child ---
     class_columns = [col for col in df.columns if col not in ['filename', 'id', 'has_annotation', 'child_id']]
-    if not class_columns:
-        logging.error("No class columns found in DataFrame")
-        return [], [], [], pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+    sorted_child_ids = df['child_id'].unique().tolist()
+
+    # --- 1. ID SELECTION ---
+    train_ids, val_ids, test_ids = [], [], []    
+    image_dir = PersonDetection.IMAGES_INPUT_DIR if data_type == "detection" else PersonClassification.IMAGES_INPUT_DIR
     
-    child_group_counts = df.groupby('child_id')[class_columns].sum()
-    child_person_coverage = df.groupby('child_id').agg({'has_annotation': ['sum', 'count']})
-    child_person_coverage.columns = ['persons_count', 'total_count']
+    # Group children by video count
+    child_video_map = defaultdict(list)
+    for folder in image_dir.iterdir():
+        if folder.is_dir():
+            cid = get_child_id_from_filename(folder.name)
+            if cid in sorted_child_ids:
+                child_video_map[cid].append(folder.name)
 
-    sorted_child_ids = child_group_counts.index.tolist()
-    n_total = len(sorted_child_ids)
+    # Buckets: Single vs Multi video children
+    single_video_pool = [cid for cid, vids in child_video_map.items() if len(vids) == 1]
+    multi_video_pool = [cid for cid, vids in child_video_map.items() if len(vids) > 1]
 
-    if n_total < 3 * PersonConfig.MIN_IDS_PER_SPLIT:
-        logging.error(f"Not enough unique children to create splits. Found {n_total}, need at least {3 * PersonConfig.MIN_IDS_PER_SPLIT}.")
-        return [], [], [], pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
-
-    # --- Prepare Child Person Counts Sorted ---
-    child_person_counts_sorted = [(child_id, child_person_coverage.loc[child_id, 'persons_count']) 
-                                for child_id in sorted_child_ids]
-    child_person_counts_sorted.sort(key=lambda x: x[1], reverse=True) 
-
-    global_counts = child_group_counts[class_columns].sum()
-    target_class_0_ratio = global_counts[class_columns[0]] / global_counts.sum() if global_counts.sum() > 0 else 0
-
-    # --- Utility Functions for Balancing ---
-    def deviation_from_target(current_counts, child_counts):
-        new_counts = current_counts + child_counts
-        if new_counts.sum() == 0: return 0
-        new_ratio = new_counts[class_columns[0]] / new_counts.sum()
-        return abs(new_ratio - target_class_0_ratio)
-
-    def person_coverage_deviation(current_person_count, current_total_count, child_person_count, child_total_count):
-        new_person_count = current_person_count + child_person_count
-        new_total_count = current_total_count + child_total_count
-        if new_total_count == 0: return 0
-        new_person_ratio = new_person_count / new_total_count
-        return abs(new_person_ratio - 0.5)
-
-    # --- 1. ID SELECTION (Weighted Balancing for ALL three splits) ---
-    train_ids = []
-    val_ids = []
-    test_ids = []
-    
-    # Calculate target split sizes based on the total children
-    n_train_target = max(int(n_total * train_ratio), PersonConfig.MIN_IDS_PER_SPLIT)
-    remaining_ids = n_total - n_train_target
-    n_val_target = max(int(remaining_ids / 2), PersonConfig.MIN_IDS_PER_SPLIT)
-    n_test_target = max(n_total - n_train_target - n_val_target, PersonConfig.MIN_IDS_PER_SPLIT)
-
-    # Adjust targets if necessary to ensure sum is n_total
-    n_sum = n_train_target + n_val_target + n_test_target
-    if n_sum > n_total:
-        n_test_target = max(n_total - n_train_target - n_val_target, PersonConfig.MIN_IDS_PER_SPLIT)
-        n_train_target = max(n_total - n_val_target - n_test_target, PersonConfig.MIN_IDS_PER_SPLIT)
-        n_val_target = max(n_total - n_train_target - n_test_target, PersonConfig.MIN_IDS_PER_SPLIT)
-
-    split_targets = {'train': n_train_target, 'val': n_val_target, 'test': n_test_target}
-    
-    split_info_all = {
-        s: {'ids': [], 'current_counts': pd.Series([0] * len(class_columns), index=class_columns), 'person_count': 0, 'total_count': 0, 'target': split_targets[s]}
-        for s in ['train', 'val', 'test']
-    }
-
-    # Iterate over all children, assigning the highest person-count children first to the split
-    for child_id, child_person_count in child_person_counts_sorted:
-        child_counts = child_group_counts.loc[child_id, class_columns]
-        child_total_count = child_person_coverage.loc[child_id, 'total_count']
-
-        eligible_splits = []
-        for s in ['train', 'val', 'test']:
-            if len(split_info_all[s]['ids']) < split_info_all[s]['target']:
-                eligible_splits.append(s)
-
-        if not eligible_splits:
-            logging.warning(f"No space left for child {child_id}. Skipping.")
-            continue
-
-        # Pick split that minimizes the weighted deviation (0.3 class + 0.7 coverage)
-        best_split = min(
-            eligible_splits,
-            key=lambda s: (
-                deviation_from_target(split_info_all[s]['current_counts'], child_counts) * 0.3 +
-                person_coverage_deviation(split_info_all[s]['person_count'], split_info_all[s]['total_count'],
-                                           child_person_count, child_total_count) * 0.7
-            )
-        )
-
-        # Assign child
-        split_info_all[best_split]['ids'].append(child_id)
-        split_info_all[best_split]['current_counts'] += child_counts
-        split_info_all[best_split]['person_count'] += child_person_count
-        split_info_all[best_split]['total_count'] += child_total_count
-
-    train_ids = split_info_all['train']['ids']
-    val_ids = split_info_all['val']['ids']
-    test_ids = split_info_all['test']['ids']
-
-    current_test_persons = split_info_all['test']['person_count']
-
-    logging.info(f"Test split person coverage: {current_test_persons} persons from {len(test_ids)} children.")
-    logging.info(f"Train/Val split: {len(train_ids)} train IDs, {len(val_ids)} val IDs.")
-
-    # --- 2. Build Final DataFrames and Apply Negative Sampling ---
-
-    # 2a. Initial split of POSITIVE/ANNOTATED images based on IDs
-    train_df_pos = df[df["child_id"].isin(train_ids) & (df["has_annotation"] == True)].copy()
-    val_df_pos = df[df["child_id"].isin(val_ids) & (df["has_annotation"] == True)].copy()
-    
-    # Test DF will be built later to include ALL frames from test children
-    test_df = df[df["child_id"].isin(test_ids)].copy() 
-
-    # 2b. Compile negative pools for Train and Val (Uses negative_candidates passed to the function)
-    train_negative_candidates = []
-    val_negative_candidates = []
-    test_negative_candidates = []
-    
-    def get_child_id_from_video_name(video_name):
-        match = re.search(r'id(\d+)', video_name)
-        return 'id' + match.group(1) if match else None
-
-    for video_name, candidates in negative_candidates.items():
-        child_id = get_child_id_from_video_name(video_name)
-        if child_id in train_ids:
-            train_negative_candidates.extend(candidates)
-        elif child_id in val_ids:
-            val_negative_candidates.extend(candidates)
-        elif child_id in test_ids:
-            test_negative_candidates.extend(candidates)
-                
-    # 2c. Apply 75% negative sampling to Train and Val sets
+    # Shuffle to ensure randomness within the categories
     random.seed(DataConfig.RANDOM_SEED)
+    random.shuffle(single_video_pool)
+    random.shuffle(multi_video_pool)
     
-    # TRAIN NEGATIVE SAMPLING
-    # 75% of positive samples
-    num_train_pos = len(train_df_pos)
-    target_train_neg = int(num_train_pos * PersonConfig.NEGATIVE_SAMPLING_RATIO)
+    # Target: 3 children for Val, 3 for Test (using single-video children first)
+    for _ in range(3):
+        if single_video_pool:
+            val_ids.append(single_video_pool.pop())
+        else:
+            val_ids.append(multi_video_pool.pop())
+            
+        if single_video_pool:
+            test_ids.append(single_video_pool.pop())
+        else:
+            test_ids.append(multi_video_pool.pop())
 
-    if len(train_negative_candidates) >= target_train_neg:
-        sampled_train_neg = random.sample(train_negative_candidates, target_train_neg)
-    else:
-        sampled_train_neg = train_negative_candidates
-        logging.warning(f"Train: Only {len(sampled_train_neg)} negative frames available, target was {target_train_neg}.")
+    # Everyone else goes to Train
+    train_ids = single_video_pool + multi_video_pool
+    logging.info(f"Split Summary: Train={len(train_ids)}, Val={len(val_ids)}, Test={len(test_ids)}")
+
+    # --- 2. COMPILE POOLS ---
+    # Positives (from the annotated dataframe)
+    train_df_pos = df[df["child_id"].isin(train_ids)].copy()
+    val_df_pos = df[df["child_id"].isin(val_ids)].copy()
+    test_df_pos = df[df["child_id"].isin(test_ids)].copy()
+
+    # Negatives (from candidate lists)
+    train_neg_candidates, val_neg_candidates, test_neg_candidates = [], [], []
+    for video_name, candidates in negative_candidates.items():
+        cid = get_child_id_from_filename(video_name)
+        if cid in train_ids:
+            train_neg_candidates.extend(candidates)
+        elif cid in val_ids:
+            val_neg_candidates.extend(candidates)
+        elif cid in test_ids:
+            test_neg_candidates.extend(candidates)
+            
+    # --- 3. APPLY SAMPLING (Balance Train, Keep Val/Test Natural) ---
     
-    # VAL NEGATIVE SAMPLING
-    # 75% of positive samples
-    num_val_pos = len(val_df_pos)
-    target_val_neg = int(num_val_pos * PersonConfig.NEGATIVE_SAMPLING_RATIO)
-
-    if len(val_negative_candidates) >= target_val_neg:
-        sampled_val_neg = random.sample(val_negative_candidates, target_val_neg)
+    # 3a. TRAIN: Balanced
+    target_train_neg = int(len(train_df_pos) * PersonConfig.NEGATIVE_SAMPLING_RATIO)
+    if len(train_neg_candidates) >= target_train_neg:
+        sampled_train_neg = random.sample(train_neg_candidates, target_train_neg)
     else:
-        sampled_val_neg = val_negative_candidates
-        logging.warning(f"Val: Only {len(sampled_val_neg)} negative frames available, target was {target_val_neg}.")
-
-    # TEST NEGATIVE SAMPLING
-    # For test set, we include ALL negative candidates to reflect real-world distribution
-    # No sampling needed, we take all test_negative_candidates
-
-    # 2d. Convert sampled negative list to DataFrame rows
-    def create_neg_df(sampled_neg_list, child_id_getter, class_cols):
-        entries = []
-        for image_path, image_id in sampled_neg_list:
-            filename = Path(image_path).stem
-            entries.append({
-                "filename": filename,
-                "id": image_id,
-                "has_annotation": False,
-                "child_id": child_id_getter(filename),
-                **{col: 0 for col in class_cols}
-            })
-        return pd.DataFrame(entries)
-
+        sampled_train_neg = train_neg_candidates
+        logging.warning(f"Train set under-sampled: {len(sampled_train_neg)}/{target_train_neg}")
+    
     train_neg_df = create_neg_df(sampled_train_neg, get_child_id_from_filename, class_columns)
-    val_neg_df = create_neg_df(sampled_val_neg, get_child_id_from_filename, class_columns)
-    test_neg_df = create_neg_df(test_negative_candidates, get_child_id_from_filename, class_columns)
-    
-    # 2e. Finalize Train and Val DataFrames
     train_df = pd.concat([train_df_pos, train_neg_df], ignore_index=True)
+    
+    # 3b. VALIDATION: Naturally Imbalanced (Take ALL available)
+    val_neg_df = create_neg_df(val_neg_candidates, get_child_id_from_filename, class_columns)
     val_df = pd.concat([val_df_pos, val_neg_df], ignore_index=True)
     
-    # The test set must consist of ALL sampled frames for the test children,
-    # regardless of whether they were annotated (positive) or clean sampled (negative).
+    # 3c. TEST: Naturally Imbalanced (Take ALL available)
+    test_neg_df = create_neg_df(test_neg_candidates, get_child_id_from_filename, class_columns)
+    test_df = pd.concat([test_df_pos, test_neg_df], ignore_index=True)
 
-    test_sampled_frames = get_sampled_frames_for_children(test_ids, CONSTANTS.IMAGES_INPUT_DIR)
-    test_df = df[df['filename'].isin(test_sampled_frames) & df["child_id"].isin(test_ids)].copy()
-    # Add any sampled negatives that weren't in the original POSITIVE-only DF to ensure all sampled negatives are included
-    test_df_final = pd.concat([test_df, test_neg_df[~test_neg_df['filename'].isin(test_df['filename'])]], ignore_index=True)
-    
-    return (train_df['filename'].tolist(), val_df['filename'].tolist(), test_df_final['filename'].tolist(),
-                train_df, val_df, test_df_final)
+    # --- 4. RETURN ---
+    return (
+        train_df['filename'].tolist(), val_df['filename'].tolist(), test_df['filename'].tolist(),
+        train_df, val_df, test_df)
 
-def move_images(image_names: list, 
-                split_type: str, 
-                label_path: Path, 
-                input_dir: Path, 
-                n_workers: int = 4, 
+def move_images(image_names: list,
+                split_type: str,
+                label_path: Path,
+                n_workers: int = 4,
                 data_type: str = "detection",
+                mode: str = "person-only",
                 df_split: pd.DataFrame = None) -> Tuple[int, int]:
     """
-    Move images and their corresponding labels/folders for person data.
+    Move images and their corresponding labels to the specified split directory for person detection.
+    Uses multithreading for faster processing.
     
     Parameters
     ----------
-    images_names: list
-        List of image file stems (filenames without extension) to move.
+    image_names: list
+        List of image names to process
     split_type: str
-        "train", "val", or "test"
+        Split type (train, val, or test)
     label_path: Path
-        Path to the directory containing label files.
-    input_dir: Path, optional
-        Base input directory. If None, uses default from constants.
+        Path to label directory
     n_workers: int
-        Number of parallel workers to use.
+        Number of worker threads for parallel processing
     data_type: str
-        "detection" or "classification"
-    df_split: pd.DataFrame, optional
-        DataFrame containing 'filename', 'has_annotation', and class columns for the current split.
-        Required for classification to determine the target class subdirectory.
+        Type of data ('detection' or 'classification')
+    mode: str
+        Mode for classification ('age-binary' supported)
+    df_split: pd.DataFrame
+        DataFrame for the current split (required for classification)
+        
+    Returns
+    -------
+    Tuple[int, int]
+        Number of successful and failed moves
     """
     CONSTANTS = get_data_constants(data_type)
-
-    if not image_names:
-        logging.info(f"No images to move for person data {split_type}")
-        return (0, 0)
-
-    image_src_root = CONSTANTS.IMAGES_INPUT_DIR
     
+    if not image_names:
+        logging.info(f"No images to move for person detection {split_type}")
+        return (0, 0)
+    
+    image_src_root = CONSTANTS.IMAGES_INPUT_DIR
+
     # --- Classification Mode Setup ---
     if data_type == "classification":
+        if mode != "age-binary":
+            logging.error("Classification is only supported in 'age-binary' mode for this script logic.")
+            return (0, len(image_names))
+            
         # Check if we have the DataFrame needed to map filenames to classes
         if df_split is None or df_split.empty:
              logging.error("DataFrame is required for classification to determine image class!")
              return (0, len(image_names))
 
-        # Determine class column dynamically (e.g., 'person' or 'child'/'adult')
-        # Assuming binary: 0=No Person, 1=Person Present (has_annotation=True)
-        class_map = {
-            True: PersonConfig.TARGET_LABELS_CLS[1],
-            False: PersonConfig.TARGET_LABELS_CLS[0]
-        }
-        
-        # Create a mapping from filename to the target class folder name (e.g., 'image_0001' -> '1_Person_Present')
+        # Map filenames to class folders based on df_split
+        class_map = {}
+        target_labels = PersonConfig.TARGET_LABELS_AGE_BINARY
+        # Map class name to folder name (e.g., 'child' -> 'child' folder)
+        for class_name in target_labels:
+            class_map[class_name] = class_name
+                    
         file_to_class_folder = {}
-        for index, row in df_split.iterrows():
-            # You might need to adjust '0_No_Person_Class' based on your PersonConfig setup.
-            is_present = row['has_annotation']
-            file_to_class_folder[row['filename']] = class_map[is_present]
-
-
+        for _, row in df_split.iterrows():
+            # Positive case (should only be one class flag true for classification)
+            if row[target_labels[0]] == 1:
+                file_to_class_folder[row['filename']] = target_labels[0]
+            elif row[target_labels[1]] == 1:
+                file_to_class_folder[row['filename']] = class_map[target_labels[1]]
+            else:
+                logging.warning(f"Positive image {row['filename']} has no class label set. Skipping.")
+                continue
+                
     # --- Setup Destination Directories ---
-    image_dst_base_dir = input_dir / "images" / split_type
+    image_dst_base_dir = CONSTANTS.INPUT_DIR / "images" / split_type
     
     if data_type == "detection":
-        label_dst_dir = input_dir / "labels" / split_type
+        label_dst_dir = CONSTANTS.INPUT_DIR / "labels" / split_type
         label_dst_dir.mkdir(parents=True, exist_ok=True)
     else:
-        # Ensure the main split directory exists for classification, labels are folders inside it
-        image_dst_base_dir.mkdir(parents=True, exist_ok=True)
-
+        # For classification, the final destination is within a class folder inside 'images/split_type'
+        image_dst_base_dir.mkdir(parents=True, exist_ok=True) # Ensure split dir exists
 
     def process_single_image(image_name: str) -> bool:
         """Process a single image and move it to the final location."""
@@ -1066,40 +773,40 @@ def move_images(image_names: list,
             image_parts = image_name.split("_")
             if len(image_parts) < 9:
                 return False
-            
-            image_folder = "_".join(image_parts[:8])
+
+            image_folder = image_name.rsplit('_', 1)[0]
             image_src = None
-            
+
             for ext in DataConfig.VALID_EXTENSIONS:
                 potential_path = image_src_root / image_folder / f"{image_name}{ext}"
                 if potential_path.exists():
                     image_src = potential_path
                     break
-            
+
             if image_src is None:
                 return False
-            
+
             # --- 1. Determine Image Destination ---
             if data_type == "classification":
                 class_folder_name = file_to_class_folder.get(image_name)
                 if not class_folder_name:
-                    logging.warning(f"Classification class not found for {image_name}")
+                    # Already logged a warning in file_to_class_folder creation, just return False
                     return False
 
                 # Destination is [base_dir]/[split]/[class_folder]/[image_file]
                 final_image_dst_dir = image_dst_base_dir / class_folder_name
                 final_image_dst_dir.mkdir(parents=True, exist_ok=True)
                 image_dst = final_image_dst_dir / f"{image_name}{image_src.suffix}"
-                
+
             else: # Detection Mode
                 # Destination is [base_dir]/[split]/[image_file]
                 image_dst = image_dst_base_dir / f"{image_name}{image_src.suffix}"
                 image_dst_base_dir.mkdir(parents=True, exist_ok=True) # Ensure split dir exists
-                
+
                 # --- 2. Handle Label File (Detection Only) ---
                 label_src = label_path / f"{image_name}.txt"
                 label_dst = label_dst_dir / f"{image_name}.txt"
-                
+
                 if not label_src.exists():
                     label_dst.touch()
                 else:
@@ -1115,10 +822,9 @@ def move_images(image_names: list,
 
     # Process images in parallel
     successful = failed = 0
-    # (Parallel executor logic remains the same)
     with ThreadPoolExecutor(max_workers=n_workers) as executor:
         futures = [executor.submit(process_single_image, img) for img in image_names]
-        
+
         from concurrent.futures import as_completed
         from tqdm import tqdm
         with tqdm(total=len(image_names), desc=f"Moving {split_type} {data_type} files") as pbar:
@@ -1129,10 +835,10 @@ def move_images(image_names: list,
                     failed += 1
                 pbar.update(1)
 
-    logging.info(f"\nCompleted moving {split_type} images:")    
+    logging.info(f"\nCompleted moving {split_type} images:")
     return successful, failed
     
-def generate_statistics_file(df: pd.DataFrame, df_train: pd.DataFrame, df_val: pd.DataFrame, df_test: pd.DataFrame, train_ids: List, val_ids: List, test_ids: List, mode: str = "person-only", data_type: str = "detection"):
+def generate_statistics_file(df: pd.DataFrame, df_train: pd.DataFrame, df_val: pd.DataFrame, df_test: pd.DataFrame, train_ids: List, val_ids: List, test_ids: List, mode: str = "person-only"):
     """
     Generates a statistics file with dataset split information, including percentages.
     
@@ -1154,9 +860,7 @@ def generate_statistics_file(df: pd.DataFrame, df_train: pd.DataFrame, df_val: p
         List of test child IDs.
     """
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    
-    log_type = "cls" if data_type == "classification" else "det"
-    file_path = BasePaths.LOGGING_DIR / f"split_distribution_person_{log_type}_{timestamp}.txt"
+    file_path = BasePaths.LOGGING_DIR / f"split_distribution_person_det_{timestamp}.txt"
     
     class_columns = [col for col in df.columns if col not in ['filename', 'id', 'has_annotation', 'child_id']]
     
@@ -1175,10 +879,7 @@ def generate_statistics_file(df: pd.DataFrame, df_train: pd.DataFrame, df_val: p
         if class_columns:
             # If age-binary, include class id numbers using PersonConfig mapping if available
             try:
-                if mode == "person-only":
-                    label_to_id = {v: k for k, v in PersonConfig.MODEL_CLASS_ID_TO_LABEL_PERSON_ONLY.items()}
-                elif mode == "age-binary":
-                    label_to_id = {v: k for k, v in PersonConfig.MODEL_CLASS_ID_TO_LABEL_AGE_BINARY.items()}
+                label_to_id = {v: k for k, v in PersonConfig.MODEL_CLASS_ID_TO_LABEL.items()}
             except Exception:
                 label_to_id = {}
 
@@ -1200,16 +901,16 @@ def generate_statistics_file(df: pd.DataFrame, df_train: pd.DataFrame, df_val: p
 
         def write_split_info(split_name, split_df):
             total_split = len(split_df)
-
+            
             # Calculate person coverage (frames with any persons)
             frames_with_persons = split_df[split_df['has_annotation'] == True]
             person_coverage = len(frames_with_persons) / total_split if total_split > 0 else 0
-
+            
             f.write(f"{split_name} Set:\n")
             f.write(f"Total Images: {total_split}\n")
             f.write(f"Person Coverage: {len(frames_with_persons)} ({person_coverage:.2%}) - frames with any persons\n")
             f.write(f"No Person: {total_split - len(frames_with_persons)} ({1-person_coverage:.2%}) - frames without persons\n")
-
+            
             for col in class_columns:
                 count = split_df[col].sum()
                 ratio = count / total_split if total_split > 0 else 0
@@ -1234,221 +935,48 @@ def generate_statistics_file(df: pd.DataFrame, df_train: pd.DataFrame, df_val: p
             f.write("Overlap found: Yes\n")
         else:
             f.write("Overlap found: No\n")
-
-def fixed_id_split_logic(df: pd.DataFrame, negative_candidates: Dict[str, List[Tuple[str, str]]], train_ids: List[str], val_ids: List[str], test_ids: List[str], mode: str = "person-only", data_type: str = "detection") -> Tuple[List[str], List[str], List[str], pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    """
-    Creates fresh train/val/test splits using fixed, pre-defined child IDs.
-    Applies standard negative sampling ratio to train/val and uses ALL sampled negatives for test.
-    
-    Parameters
-    ----------
-    df : pd.DataFrame
-        DataFrame with image data and annotations   
-    negative_candidates : Dict[str, List[Tuple[str, str]]]
-        Dictionary of potential negative frame candidates per video
-    train_ids : List[str]   
-        List of child IDs for training set
-    val_ids : List[str]
-        List of child IDs for validation set
-    test_ids : List[str]    
-        List of child IDs for test set
-    mode : str
-        Mode for the retraining process ('person-only' or 'age-binary')
-    data_type : str
-        Type of data being processed (default: "detection")
         
-    Returns
-    -------
-    Tuple[List[str], List[str], List[str], pd.DataFrame, pd.DataFrame, pd.DataFrame]
-        - List of child IDs for training set
-        - List of child IDs for validation set
-        - List of child IDs for test set
-        - DataFrame for training set
-        - DataFrame for validation set
-        - DataFrame for test set
-    """
-    logging.info("Executing fresh sampling and DF creation using fixed IDs.")
-
-    CONSTANTS = get_data_constants(data_type)
-
-    def get_child_id_from_filename(filename: str) -> str:
-        match = re.search(r'id(\d+)_', filename)
-        if match:
-            return 'id' + match.group(1)
-        return None
-
-    def get_child_id_from_video_name(video_name):
-        match = re.search(r'id(\d+)', video_name)
-        return 'id' + match.group(1) if match else None
-
-    df['child_id'] = df['filename'].apply(get_child_id_from_filename)
-    df.dropna(subset=['child_id'], inplace=True)
+        logging.info(f"Statistics file generated at: {file_path}")
     
-    # Helper for creating negative dataframes
-    class_columns = [col for col in df.columns if col not in ['filename', 'id', 'has_annotation', 'child_id']]
-    def create_neg_df(sampled_neg_list, child_id_getter, class_cols):
-        entries = []
-        for image_path, image_id in sampled_neg_list:
-            filename = Path(image_path).stem
-            entries.append({
-                "filename": filename,
-                "id": image_id,
-                "has_annotation": False,
-                "child_id": child_id_getter(filename),
-                **{col: 0 for col in class_cols}
-            })
-        return pd.DataFrame(entries)
-
-    random.seed(DataConfig.RANDOM_SEED)
-
-    # 1. Initial split of POSITIVE/ANNOTATED images based on fixed IDs
-    train_df_pos = df[df["child_id"].isin(train_ids) & (df["has_annotation"] == True)].copy()
-    val_df_pos = df[df["child_id"].isin(val_ids) & (df["has_annotation"] == True)].copy()
-
-    # 2. Compile negative pools for Train, Val, and Test
-    train_negative_candidates = []
-    val_negative_candidates = []
-    test_negative_candidates = []
-    
-    for video_name, candidates in negative_candidates.items():
-        child_id = get_child_id_from_video_name(video_name)
-        if child_id in train_ids:
-            train_negative_candidates.extend(candidates)
-        elif child_id in val_ids:
-            val_negative_candidates.extend(candidates)
-        elif child_id in test_ids:
-            test_negative_candidates.extend(candidates)
-
-    # 3. Apply standard negative sampling ratio to Train and Val sets
-    # TRAIN NEGATIVE SAMPLING
-    num_train_pos = len(train_df_pos)
-    target_train_neg = int(num_train_pos * PersonConfig.NEGATIVE_SAMPLING_RATIO)
-    sampled_train_neg = random.sample(train_negative_candidates, target_train_neg) if len(train_negative_candidates) >= target_train_neg else train_negative_candidates
-    train_neg_df = create_neg_df(sampled_train_neg, get_child_id_from_filename, class_columns)
-    
-    # VAL NEGATIVE SAMPLING
-    num_val_pos = len(val_df_pos)
-    target_val_neg = int(num_val_pos * PersonConfig.NEGATIVE_SAMPLING_RATIO)
-    sampled_val_neg = random.sample(val_negative_candidates, target_val_neg) if len(val_negative_candidates) >= target_val_neg else val_negative_candidates
-    val_neg_df = create_neg_df(sampled_val_neg, get_child_id_from_filename, class_columns)
-    
-    # TEST NEGATIVE SAMPLING (Take all candidates to reflect real-world distribution)
-    test_neg_df = create_neg_df(test_negative_candidates, get_child_id_from_filename, class_columns)
-    
-    # 4. Finalize Train and Val DataFrames
-    train_df = pd.concat([train_df_pos, train_neg_df], ignore_index=True)
-    val_df = pd.concat([val_df_pos, val_neg_df], ignore_index=True)
-
-    # 5. Finalize Test DataFrames (sampled positives + all sampled negatives)
-    test_sampled_frames = get_sampled_frames_for_children(test_ids, PersonClassification.IMAGES_INPUT_DIR)
-    test_df_pos_sampled = df[df['filename'].isin(test_sampled_frames) & df["child_id"].isin(test_ids)].copy()
-    
-    # Combine sampled positives and sampled negatives
-    test_df_final = pd.concat([test_df_pos_sampled, test_neg_df[~test_neg_df['filename'].isin(test_df_pos_sampled['filename'])]], ignore_index=True)
-
-    return (train_df['filename'].tolist(), 
-            val_df['filename'].tolist(), 
-            test_df_final['filename'].tolist(),
-            train_df, 
-            val_df, 
-            test_df_final)
-
-def split_data(annotation_folder: Path, mode: str = "person-only", data_distribution_file: Path = None, hard_neg_file: Path = None, data_type: str = "detection"):
+def split_data(annotation_folder: Path, mode: str = "person-only", data_type: str = "detection"):
     """
     This function prepares the dataset for person detection YOLO training by splitting the images into train, val, and test sets.
-
+    
     Parameters:
     ----------
     annotation_folder: Path
         Path to the directory containing label files.
     mode: str
         The mode for class mapping ('person-only' or 'age-binary').
-    data_distribution_file: Path
-        Path to data distribution file (if any).
-    hard_neg_file: Path
-        Path to hard negative samples file (if any).
+    data_type: str
+        Type of data processing ('detection' or 'classification').
     """
     logging.info(f"Starting dataset preparation for person detection in mode: {mode}")
-
-    CONSTANTS = get_data_constants(data_type)
-
-    # --- 1. Determine Output Directory ---
-    if data_distribution_file and hard_neg_file:
-        input_dir = CONSTANTS.INPUT_DIR.parent / (CONSTANTS.INPUT_DIR.name + "_retrain")
-        original_input_dir = CONSTANTS.INPUT_DIR
-    else:
-        input_dir = CONSTANTS.INPUT_DIR
-
+    
     try:
         # --- 2. Get All Positive Images and Negative Candidates ---
-        positive_images, negative_candidates = get_total_number_of_annotated_frames(annotation_folder, image_folder=CONSTANTS.IMAGES_INPUT_DIR)        
+        positive_images, negative_candidates = get_total_number_of_annotated_frames(annotation_folder)
         
         # save negative candidates for debugging
-        log_type = "cls" if data_type == "classification" else "det"
         neg_cand_file = BasePaths.LOGGING_DIR / f"negative_candidates_person_det_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
         with open(neg_cand_file, 'w') as f:
             for child_id, frames in negative_candidates.items():
                 f.write(f"{child_id}: {frames}\n")
-        logging.info(f"Negative candidates saved to {neg_cand_file}")
         
         if not positive_images:
             logging.error("No annotated images found.")
             return
         
         # --- 3. Get initial DataFrame from POSITIVE images ---
-        df = get_class_distribution(positive_images, annotation_folder, mode, data_type)
+        df = get_class_distribution(positive_images, annotation_folder, mode)
         
         if df.empty:
             logging.error("DataFrame is empty. Check class distribution function.")
             return
         
-        # --- 4. Select Splitting Strategy ---
-        if data_distribution_file and hard_neg_file:
-            # Load fixed IDs, use HNM sampling, and COPY Val/Test
-            id_data = parse_retrain_file(data_distribution_file)
-            train, val, test, df_train, df_val, df_test = retrain_split_by_child_id(
-                df, negative_candidates, id_data['train_ids'], id_data['val_ids'], id_data['test_ids'],
-                            hard_neg_file, mode, data_type)
-            
-            logging.info("Copying original fixed Val and Test directories to the retrain folder...")
-            for split_name in ["val", "test"]:
-                original_images_dir = original_input_dir / "images" / split_name
-                original_labels_dir = original_input_dir / "labels" / split_name
-                
-                target_images_dir = input_dir / "images" / split_name
-                target_labels_dir = input_dir / "labels" / split_name
-                
-                # Use rmtree to delete and then copytree to create fresh copies
-                if target_images_dir.exists():
-                    shutil.rmtree(target_images_dir)
-                if target_labels_dir.exists():
-                    shutil.rmtree(target_labels_dir)
-                    
-                if original_images_dir.exists():
-                    shutil.copytree(original_images_dir, target_images_dir)
-                if original_labels_dir.exists():
-                    shutil.copytree(original_labels_dir, target_labels_dir)
-            
-            logging.info("Val and Test sets copied and remain immutable.")
-            
-            # We only need to move the new Training set files
-            splits_to_move = [("train", train)]
-            
-        elif data_distribution_file:
-            logging.info("Mode: Creating new split using FIXED ID distribution from file.")
-            id_data = parse_retrain_file(data_distribution_file)
-
-            train, val, test, df_train, df_val, df_test = fixed_id_split_logic(
-                df, negative_candidates, id_data['train_ids'], id_data['val_ids'], id_data['test_ids'], mode, data_type
-            )
-            
-            # All splits must be moved freshly in this mode
-            splits_to_move = [("train", train), ("val", val), ("test", test)]
-        else:
-            # Standard splitting logic
-            splits_to_move = []
-            train, val, test, df_train, df_val, df_test = split_by_child_id(df, negative_candidates, len(positive_images), annotation_folder, mode, data_type)
-            splits_to_move = [("train", train), ("val", val), ("test", test)]
+        splits_to_move = []
+        train, val, test, df_train, df_val, df_test = split_by_child_id(df, negative_candidates, len(positive_images), annotation_folder, mode, data_type)
+        splits_to_move = [("train", train), ("val", val), ("test", test)]
 
         # Get the IDs for logging
         train_ids = df_train['child_id'].unique().tolist() if 'child_id' in df_train.columns else []
@@ -1456,25 +984,18 @@ def split_data(annotation_folder: Path, mode: str = "person-only", data_distribu
         test_ids = df_test['child_id'].unique().tolist() if 'child_id' in df_test.columns else []
 
         # --- 5. Generate Statistics and Move Files ---
-        generate_statistics_file(df, df_train, df_val, df_test, train_ids, val_ids, test_ids, mode=mode, data_type=data_type)        
+        generate_statistics_file(df, df_train, df_val, df_test, train_ids, val_ids, test_ids, mode=mode)
         
-        # Prepare splits for iteration (name, filename list, corresponding dataframe)
-        splits_to_process = [
-            ("train", train, df_train), 
-            ("val", val, df_val), 
-            ("test", test, df_test)
-        ]
-        
-        for split_name, split_set, df_split in splits_to_process:
+        for split_name, split_set in splits_to_move:
             if split_set:
                 successful, failed = move_images(
                     image_names=split_set,
                     split_type=split_name,
                     label_path=annotation_folder,
-                    input_dir=input_dir,
                     n_workers=4,
                     data_type=data_type,
-                    df_split=df_split
+                    mode=mode,
+                    df_split={'train': df_train, 'val': df_val, 'test': df_test}.get(split_name) if data_type == "classification" else None
                 )
                 logging.info(f"{split_name}: Moved {successful}, Failed {failed}")
             else:
@@ -1486,77 +1007,23 @@ def split_data(annotation_folder: Path, mode: str = "person-only", data_distribu
     
     logging.info(f"Completed dataset preparation for person detection in mode: {mode}")
 
-def generate_false_positive_list(data_type: str = "detection"):
-    """
-    Generate a list of false positive frames based on model predictions and ground truth annotations.
-    """
-    CONSTANTS = get_data_constants(data_type)
-    with open(CONSTANTS.PREDICTIONS_JSON_PATH, "r") as f:
-        pred = json.load(f)
-        
-    # collect image_ids where category_id == 1
-    image_ids = [d["image_id"] for d in pred if int(d.get("category_id", -1)) == 1]
-    # make unique while preserving order
-    seen = set()
-    pred_frames = []
-    for img in image_ids:
-        if img not in seen:
-            seen.add(img)
-            pred_frames.append(img)
-        
-        
-    # get gt files
-    gt_train_dir = CONSTANTS.INPUT_DIR / "labels/train"
-    
-    gt_frames = []
-
-    for f in os.listdir(gt_train_dir):
-        if f.endswith(".txt"):
-            file_path = os.path.join(gt_train_dir, f)
-            
-            # Check if the file is not empty (ignoring whitespace)
-            with open(file_path, "r") as file:
-                content = file.read().strip()
-                if content:  # only include non-empty annotation files
-                    gt_frames.append(f[:-4])  # remove ".txt"
-    
-    # now from the two lists gt_files , pred_frames give me the list of images that are in pred but not in gt
-    false_positive_frames = [f for f in pred_frames if f not in gt_frames]
-
-    with open(CONSTANTS.RETRAIN_FALSE_POSITIVES_PATH, "w") as f:
-        for item in false_positive_frames:
-            f.write(f"{item}\n")
-    logging.info(f"Saved {len(false_positive_frames)} false positive frames to {CONSTANTS.RETRAIN_FALSE_POSITIVES_PATH}")
-
-# ==============================
-# Main
-# ==============================
-
 def main():
     parser = argparse.ArgumentParser(description='Create input files for person detection YOLO training')
     parser.add_argument('--mode', choices=["person-only", "age-binary"], default="person-only",
-                       help='Select the detection mode')
+                        help='Select the detection mode')
     parser.add_argument('--type', choices=["detection", "classification"], default="detection",
-                       help='Select the output data format type (detection for YOLO, classification for single class ID)')
+                        help='Select the output data format type (detection for YOLO, classification for single class ID)') # ADDED argument
     parser.add_argument('--fetch-annotations', action='store_true',
-                       help='Fetch and save annotations from database (default: False)')
-    parser.add_argument('--retrain', action='store_true', default=False,
-                       help='Activate retrain mode using fixed IDs and hard negative files defined in PersonConfig.')
-    parser.add_argument('--fixed-split-file', action='store_true', default=False,
-                       help='Use fixed split file for data splitting.')
+                        help='Fetch and save annotations from database (default: False)')
     args = parser.parse_args()
-
+    
+    # The classification logic is specifically tied to 'age-binary' mode, which is 2+1 classes (adult, child, no_person)
+    if args.type == "classification" and args.mode == "person-only":
+        logging.error("Classification mode is only supported with '--mode age-binary'. Falling back to detection.")
+        args.type = "detection"
+    
     CONSTANTS = get_data_constants(args.type)
-
-    data_distribution_file = CONSTANTS.DATA_DISTRIBUTION_PATH if args.retrain or args.fixed_split_file else None
-    hard_neg_file = CONSTANTS.RETRAIN_FALSE_POSITIVES_PATH if args.retrain else None
-    is_retrain_mode = args.retrain
-
-    if is_retrain_mode:
-        logging.info("Retrain mode activated. Using fixed IDs and hard negative files from config.")
-            
-        # Generate false positive list first
-        generate_false_positive_list(args.type)  
+    
     try:            
         if args.fetch_annotations:
             # Output annotations to the correct location (standard or retrain folder)
@@ -1566,8 +1033,6 @@ def main():
         
         split_data(CONSTANTS.LABELS_INPUT_DIR,
                    mode=args.mode,
-                   data_distribution_file=data_distribution_file,
-                   hard_neg_file=hard_neg_file,
                    data_type=args.type)
                                    
     except Exception as e:
