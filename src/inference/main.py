@@ -7,7 +7,7 @@ import run_book
 from pathlib import Path
 from setup_inference_db import main as setup_inference_db
 from constants import DataPaths, Inference
-from config import InferenceConfig, DataConfig, FaceConfig
+from config import InferenceConfig, DataConfig, FaceConfig, PersonConfig
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
