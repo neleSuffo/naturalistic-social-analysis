@@ -7,7 +7,7 @@ import run_book
 from pathlib import Path
 from setup_inference_db import main as setup_inference_db
 from constants import DataPaths, Inference
-from config import InferenceConfig, DataConfig
+from config import InferenceConfig, DataConfig, FaceConfig
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -90,7 +90,7 @@ def main(video_path: Path, db_path: Path, frame_step: int, models: list = None):
         
         # Run selected models
         if 'person' in models_to_run:
-            logging.info("Running person detection model")
+            logging.info("Running person detection model using confidence threshold of " + str(PersonConfig.CONFIDENCE_THRESHOLD))
             run_person.main(selected_videos)
         
         if 'book' in models_to_run:
@@ -98,7 +98,7 @@ def main(video_path: Path, db_path: Path, frame_step: int, models: list = None):
             run_book.main(selected_videos)
         
         if 'face_proximity' in models_to_run:
-            logging.info("Running face model with proximity heuristic")
+            logging.info("Running face model with proximity heuristic using confidence threshold of " + str(FaceConfig.CONFIDENCE_THRESHOLD))
             run_face_proximity.main(selected_videos, frame_step)
         
         if 'speech_type' in models_to_run:
