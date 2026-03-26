@@ -28,7 +28,7 @@ def main():
         config_file_path = FaceDetection.DATA_CONFIG_PATH.parent / args.config
 
     # Validate the model
-    metrics = model.val(
+    results = model.val(
         data=config_file_path,
         save_json=True,
         plots=True,
@@ -38,21 +38,25 @@ def main():
         visualize=args.visualize,
     )
 
-    # Extract precision and recall
-    precision = metrics.results_dict['metrics/precision(B)']
-    recall = metrics.results_dict['metrics/recall(B)']
-    f1_score = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
+    # 2. Extract standard metrics
+    precision = results.box.mp      
+    recall = results.box.mr         
+    f1_score = results.box.f1[0]    
+    map50 = results.box.map50       
+    map50_95 = results.box.map      
 
     # Log results
     logging.info(f"Precision: {precision:.4f}")
     logging.info(f"Recall: {recall:.4f}")
     logging.info(f"F1 Score: {f1_score:.4f}")
-
+    
     # Save precision and recall to a file
     with open(output_dir / folder_name / "precision_recall.txt", "w") as f:
         f.write(f"Precision: {precision}\n")
         f.write(f"Recall: {recall}\n")
         f.write(f"F1 Score: {f1_score}\n")
-            
+        f.write(f"mAP@0.5: {map50}\n")
+        f.write(f"mAP@0.5:0.95: {map50_95}\n")
+        
 if __name__ == '__main__':
     main()
