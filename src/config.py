@@ -135,13 +135,13 @@ class PersonConfig:
     BIDIRECTIONAL = True
     NUM_OUTPUTS = 1
     BACKBONE = 'efficientnet_b0'
-    CONFIDENCE_THRESHOLD = 0.5
     BATCH_SIZE_INFERENCE = 64
     WINDOW_SIZE = 6 # frames (6 extracted frames = 60 original frames = 2 seconds)
     STRIDE = 1 # frames (every 1st extracted frame = every 10 original frames)
     CHILD_POS_WEIGHT = 3.08  
     ADULT_POS_WEIGHT = 2.60
     MODEL_ID = 2
+    CONFIDENCE_THRESHOLD = 0.170
 
 class FaceConfig:
     """Configuration for face detection and classification."""
@@ -183,6 +183,7 @@ class FaceConfig:
     DEEPFACE_BACKEND = "retinaface"
     FINAL_CONFIRMATION_DISTANCE_THRESHOLD = 0.6
     VERIFIED_DISTANCE_THRESHOLD = 0.68
+    CONFIDENCE_THRESHOLD = 0.528
 
 class AudioConfig:
     """Configuration for audio classification."""
@@ -209,51 +210,66 @@ class InferenceConfig:
     # -- General Analysis Settings --
     EXCLUSION_SECONDS = 30           # Seconds to exclude at start and end of videos
     INTERACTION_CLASSES = ['Interacting', 'Available', 'Alone']
-    STATE_MAP = {"Interacting": 1, "Available": 2, "Alone": 3}
     SAMPLE_RATE = 10                 # Processing interval (only every n-th frame is analyzed)
     
     # -- Audio-Lead Interaction (Rule 1: Turn-Taking) --
-    MAX_TURN_TAKING_GAP_SEC = 8      # Max gap to link KCHI and CDS into an interaction window
-    MAX_SAME_SPEAKER_GAP_SEC = 1.5   # Max silence allowed between same-speaker segments before splitting
-    
+    MAX_TURN_TAKING_GAP_SEC = 8      # Max gap to link KCHI and CDS
+    MAX_SAME_SPEAKER_GAP_SEC = 2.25     # Max silence allowed between same-speaker segments
     # -- Visual Interaction (Rule 2: Proximity) --
-    PROXIMITY_THRESHOLD = 0.8        # Min face proximity score to trigger "Interacting" via Rule 2
-    INSTANT_CONFIDENCE_THRESHOLD = 0.4 # Min confidence for a single-frame detection to be "real" (Rule 2/Memory)
+    PROXIMITY_THRESHOLD = 0.65        # Min proximity for direct 'Interacting' label
+    INSTANT_CONFIDENCE_THRESHOLD = 0.4 # Confidence floor for a 'real' detection
 
-    # -- Sustained Audio Interaction (Rule 3: KCDS & Rule 4: KCHI + Visual) --
-    SUSTAINED_KCDS_WINDOW_SEC = 1.0    # Rolling window size to check for sustained adult speech
-    SUSTAINED_KCDS_THRESHOLD = 0.8  # % of KCDS required in window to activate Rule 3
-    VISUAL_PERSISTENCE_SEC = 0.0     # Temporal buffer to maintain visual presence (Memory/Rule 4)
-    PERSON_AUDIO_WINDOW_SEC = 2.0    # Window size for checking recent child speech in Rule 4
-
-    # -- Presence & Hysteresis Logic (Available vs. Alone) --
-    MIN_PRESENCE_CONFIDENCE_THRESHOLD = 0.28 # Entry threshold: Presence score must reach this to start "Available"
-    STANDARD_EXIT_MULTIPLIER = 0.55   # Exit threshold multiplier for standard drop to "Alone" (% of entry)
-    SOCIAL_COOLDOWN_EXIT_MULTIPLIER = 0.15 # Exit multiplier during social context (% of entry; bridges gaps)
-    SOCIAL_CONTEXT_THRESHOLD = 0.5   # Weighted interaction history required to trigger Social Cooldown exit
-    SOCIAL_COOLDOWN_SEC = 45         # Duration of the "social echo" window following an interaction
-    EDGE_MARGIN = 0.05               # Normalized frame margin (%) for exit tripwire kill-switch
+    # -- Sustained Audio Interaction (Rule 3: KCDS) --
+    SUSTAINED_KCDS_WINDOW_SEC = 6.5    # Window for sustained adult speech
+    SUSTAINED_KCDS_THRESHOLD = 0.8    # Density of KCDS required in window
     
-    # -- Presence Detection Gating (Robust Person Flag) --
-    PERSON_AVAILABLE_WINDOW_SEC = 45 # Window size for calculating the average presence (Confidence Mass)
-    MIN_PRESENCE_PERSON_FRACTION = 0.15 # Min % of detection in window for person-based availability
-    MIN_PRESENCE_OHS_FRACTION = 0.03 # Min % of OHS in window for audio-based availability
-    AUDIO_VISUAL_GATING_FLOOR = 0.18 # Min visual presence score required to validate OHS as "Available"
-    MAX_OHS_FOR_AVAILABLE = 0.65      # % OHS above which audio is treated as noise/audiobook rather than presence
+    # -- Sustained Visual Interaction (Rule 4: OHS) --
+    VISUAL_PERSISTENCE_SEC = 3.0    # Temporal buffer to maintain visual presenced
 
-    # -- Alone Signal Robustness --
-    ROBUST_ALONE_WINDOW_SEC = 2      # Window to check for consistent lack of social signals
-    MAX_ALONE_FALSE_POSITIVE_FRACTION = 0.45 # Max social signals allowed in window to maintain "Alone" status
+    # -- Presence Detection Gating --
+    # Used as a visual floor to validate audio signals (KCDS and OHS)
+    AUDIO_VISUAL_GATING_FLOOR = 0.08 # Minimum visual presence required to validate audio-based 'Interacting' or 'Available'
+    MIN_PRESENCE_OHS_FRACTION = 0.025 # Density of OHS required to flag 'is_sustained_ohs'
 
-    # -- Segment Post-Processing & Reclassification --
-    #MIN_INTERACTING_SEGMENT_DURATION_SEC = 2 # Min duration for an interacting segment to be kept
-    #MIN_ALONE_SEGMENT_DURATION_SEC = 30     # Min duration for an alone segment to be kept
-    #MIN_AVAILABLE_SEGMENT_DURATION_SEC = 12    # Min duration for an available segment to be kept
-    ROLLING_SMOOTH_WINDO_SEC = 3.0          # Window size for rolling mode smoothing to remove jitter
-    GAP_STRETCH_THRESHOLD = 0.1     # Max gap to automatically bridge/fill between segments
-        
-    INTERACTION_PERMISSION_GATE = 1.15 # Multiplier (%) for Presence Mass required to upgrade to "Interacting"
+    # -- Segment Post-Processing & CPD --
+    # These control the final statistical grouping of frames
+    CPD_PENALTY = 2.8                  # PELT algorithm penalty
+    CPD_INTERACTING_THRESHOLD = 0.45 # Segment density to claim 'Interacting'
+    CPD_INTERACTING_THRESHOLD_LOW = 0.25
+    CPD_TOTAL_PRESENCE_FLOOR = 0.45  # Combined density (1+2) to claim 'Available'
+
+    MIN_INTERACTING_SEGMENT_DURATION_SEC = 1.5
+    MIN_ALONE_SEGMENT_DURATION_SEC = 10
+    MIN_AVAILABLE_SEGMENT_DURATION_SEC = 10
+    MIN_NOT_INTERACTING_SEGMENT_DURATION_SEC = 10
+
+    # Max gap to bridge same-type segments in final consolidation
+    GAP_STRETCH_THRESHOLD = 1     
 
     # -- Hyperparameter Tuning Settings --
-    MAX_COMBINATIONS_TUNING = 20      # Max hyperparameter combinations to test per run
     RANDOM_SAMPLING = True            # Use random sampling instead of grid search for tuning
+    
+    
+    ALONE_RECLASSIFY_AUDIO_THRESHOLD = 0.24
+    ALONE_RECLASSIFY_VISUAL_THRESHOLD = 0.25
+    GHOST_VISUAL_THRESHOLD_AVAILABLE = 0.02
+    GHOST_VISUAL_THRESHOLD_INTERACTING = 0.01
+    KCHI_ONLY_FRACTION_THRESHOLD = 0.55
+    KCHI_PERSON_BUFFER_FRAMES = 2
+    MAX_ALONE_FALSE_POSITIVE_FRACTION = 0.25
+    MAX_COMBINATIONS_TUNING = 20
+    MAX_KCHI_FRACTION_FOR_MEDIA = 0.08
+    MAX_MEDIA_ALONE_GAP_SEC = 300
+    MAX_OHS_FOR_AVAILABLE = 0.4
+    MEDIA_WINDOW_SEC = 25
+    MIN_BOOK_PRESENCE_FRACTION = 0.7
+    MIN_GHOST_CHECK_DURATION_AVAILABLE = 8.0
+    MIN_GHOST_CHECK_DURATION_INTERACTING = 3.0
+    MIN_MEDIA_FACE_MATCH_FRACTION = 0.1
+    MIN_PERSON_PRESENCE_FRACTION = 0.08
+    MIN_PRESENCE_OHS_KCDS_FRACTION_MEDIA = 0.05
+    MIN_PRESENCE_PERSON_FRACTION = 0.05
+    MIN_RECLASSIFY_DURATION_SEC = 3.0
+    PERSON_AUDIO_WINDOW_SEC = 2.0
+    PERSON_AVAILABLE_WINDOW_SEC = 15
+    ROBUST_ALONE_WINDOW_SEC = 4
