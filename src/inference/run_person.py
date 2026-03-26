@@ -44,19 +44,18 @@ def process_video(
     # Get video_id
     video_id = get_video_id(video_name, cursor)
     if video_id is None:
-        return
+        # raise value for videos that are excluded from analysis
+        raise ValueError(f"Video {video_name} not found in Videos table")
 
     # Frames directory
     frames_dir = DataPaths.QUANTEX_IMAGES_INPUT_DIR / video_name
     if not frames_dir.exists():
-        logging.error(f"Frames directory not found: {frames_dir}")
-        return
+        raise ValueError(f"Frames directory not found for video: {video_name}")
     
     frame_files = get_frame_paths(frames_dir)
     
     if not frame_files:
-        logging.warning(f"No frame files found for video: {video_name}")
-        return
+        raise ValueError(f"No frame files found for video {video_name}")
 
     # Filter frames (respecting frame_step)
     frames_to_process = []
