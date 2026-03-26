@@ -19,7 +19,7 @@ def mark_video_as_processed(video_path: Path, processed_videos_file: Path) -> No
     """Append a processed video name to the tracking file."""
     processed_videos_file.parent.mkdir(parents=True, exist_ok=True)
     with processed_videos_file.open("a") as f:
-        f.write(f"{video_path.name}\n")
+        f.write(f"{video_path.stem}\n")
 
 def generate_image_name(video_path: Path, frame_idx: int) -> str:
     """Generate standardized frame filename."""
@@ -81,14 +81,17 @@ def extract_every_nth_frame_from_videos_in_folder(
     Extract frames from all videos in a folder that haven't been processed yet.
     """
     output_root_folder.mkdir(parents=True, exist_ok=True)
-    video_files = sorted(input_folder.glob("*.MP4"))
+    # get all .MP4 and .mp4 files in input_folder
+    video_files = sorted(
+    [f for f in input_folder.glob("*") if f.suffix.lower() == ".mp4"]
+)
 
     if not video_files:
-        logging.info(f"No .MP4 files found in: {input_folder}")
+        logging.info(f"No video files found in: {input_folder}")
         return
 
     processed_videos = get_processed_videos(processed_videos_file)
-    videos_to_process = [v for v in video_files if v.name not in processed_videos]
+    videos_to_process = [v for v in video_files if v.stem not in processed_videos]
 
     logging.info(f"Total videos: {len(video_files)} | Processed: {len(processed_videos)} | Remaining: {len(videos_to_process)}")
 
@@ -103,11 +106,11 @@ def extract_every_nth_frame_from_videos_in_folder(
 def main() -> None:
     logging.info("Starting frame extraction...")
     extract_every_nth_frame_from_videos_in_folder(
-        DataPaths.VIDEOS_INPUT_DIR,
-        DetectionPaths.images_input_dir,
+        DataPaths.QUANTEX_VIDEOS_INPUT_DIR,
+        DataPaths.QUANTEX_IMAGES_INPUT_DIR,
         DataConfig.FRAME_STEP_INTERVAL,
-        DataPaths.RAWFRAMES_EXTRACTION_ERROR_LOG,
-        DataPaths.PROCESSED_VIDEOS_LOG,
+        DataPaths.QUANTEX_RAWFRAMES_EXTRACTION_ERROR_LOG,
+        DataPaths.QUANTEX_PROCESSED_VIDEOS_LOG,
     )
     logging.info("Frame extraction complete.")
 
