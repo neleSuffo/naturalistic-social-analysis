@@ -20,8 +20,8 @@ class DataPaths:
     ANNO_DB_PATH = Path(ANNO_DIR/"annotations.db")
     QUANTEX_RAWFRAMES_EXTRACTION_ERROR_LOG = Path(BasePaths.DATA_DIR/"quantex_rawframes_extraction_error.log")
     CHILDLENS_RAWFRAMES_EXTRACTION_ERROR_LOG = Path(BasePaths.DATA_DIR/"childlens_rawframes_extraction_error.log")
-    QUANTEX_PROCESSED_VIDEOS_LOG = Path(BasePaths.DATA_DIR/"quantex_processed_videos.log")
-    CHILDLENS_PROCESSED_VIDEOS_LOG = Path(BasePaths.DATA_DIR/"childlens_processed_videos.log")
+    QUANTEX_PROCESSED_VIDEOS_LOG = Path(BasePaths.DATA_DIR/"quantex_processed_videos.txt")
+    CHILDLENS_PROCESSED_VIDEOS_LOG = Path(BasePaths.DATA_DIR/"childlens_processed_videos.txt")
     SUBJECTS_CSV_PATH = Path(BasePaths.DATA_DIR/"age_group.csv")
     INFERENCE_DIR = Path(BasePaths.OUTPUT_DIR/"quantex_inference/")
     INFERENCE_DB_PATH = Path(INFERENCE_DIR/"inference.db")
@@ -105,7 +105,7 @@ class Proximity:
 class Inference:
     QUANTEX_VIDEOS_LIST_FILE = Path(BasePaths.DATA_DIR/"quantex_video_list_inference.txt") # list of all quantex videos for inference
     BASE_OUTPUT_DIR = BasePaths.OUTPUT_DIR / "quantex_inference"
-    FINAL_OUTPUT_FOLDER = Path(BASE_OUTPUT_DIR/"interaction_analysis_20260302_202450")
+    FINAL_OUTPUT_FOLDER = Path(BASE_OUTPUT_DIR/"interaction_analysis_20260309_195151")
     PERSON_LOG_FILE_PATH = BasePaths.OUTPUT_DIR / "logs" / "person_processed.txt"
     FACE_LOG_FILE_PATH = BasePaths.OUTPUT_DIR / "logs" / "face_processed.txt"
     SPEECH_LOG_FILE_PATH = BasePaths.OUTPUT_DIR / "logs" / "speech_processed.txt"
