@@ -65,7 +65,7 @@ def store_video_data(age_group_df: pd.DataFrame, conn: sqlite3.Connection):
             # Determine max frame
             # check for .MP4 and .mp4
             
-            video_base = Path(DataPaths.QUANTEX_VIDEOS_INPUT_DIR) / video_name
+            video_base = DataPaths.QUANTEX_VIDEOS_INPUT_DIR / video_name
 
             # Find the actual file independent of extension
             matched_files = list(video_base.parent.glob(f"{video_base.stem}.*"))
