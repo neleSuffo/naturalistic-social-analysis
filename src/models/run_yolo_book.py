@@ -35,7 +35,7 @@ def process_image(model: YOLO, image_path: Path) -> np.ndarray:
     annotated_image = image.copy()
     for bbox, conf, class_id in zip(detections.xyxy, detections.confidence, detections.class_id):
         class_name = model.names[int(class_id)]
-        if class_id != 73:  # Assuming class ID 73 corresponds to 'book'
+        if class_id != 73:
             continue
         x1, y1, x2, y2 = map(int, bbox)
         label = f"{class_name} {conf:.2f}"
@@ -65,11 +65,11 @@ def save_annotated_image(annotated_image: np.ndarray, image_path: Path, output_d
     logging.info(f"Saved annotated ima ge: {output_path}")
 
 def main():
-    parser = argparse.ArgumentParser(description="YOLO Person Detection Inference")
+    parser = argparse.ArgumentParser(description="YOLO Book Detection Inference")
     parser.add_argument("--image_path", type=str, required=True, help="Image file or folder")
     args = parser.parse_args()
 
-    model = YOLO("yolo12l.pt")
+    model = YOLO("yolo26x.pt")
     input_path = Path(args.image_path)
 
     if input_path.is_dir():

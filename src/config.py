@@ -79,15 +79,15 @@ class LabelMapping:
 
 class BookConfig:
     """Configuration for book detection."""
-    MODEL_NAME = "yolo12l"
+    MODEL_NAME = "yolo26x"
     DATABASE_CATEGORY_IDS = [73]  # COCO category ID for 'book'
     MODEL_ID = 5
     
 # Specific Task Configurations
 class PersonConfig:
     """Configuration for person detection and classification."""
-    MODEL_SIZE = 'l'  # Default model size
-    MODEL_NAME = f"yolo12{MODEL_SIZE}"
+    MODEL_SIZE = 'x'
+    MODEL_NAME = f"yolo26{MODEL_SIZE}"
     # Ratio of training data to use for training
     TRAIN_SPLIT_RATIO = 0.6
     # Ratio of class-to-class samples in each dataset split
@@ -119,13 +119,15 @@ class PersonConfig:
     MIN_IDS_PER_SPLIT = 2
 
     NUM_EPOCHS = 300
-    BATCH_SIZE = 20
-    IMG_SIZE = 832
-    
+    BATCH_SIZE = 64
+    IMG_SIZE = 640
+    PATIENCE = 25
+    NUM_WORKERS = 24
+    DEGREES = 15
+
     # number of videos per batch
     LR = 1e-3
     FREEZE_CNN = True
-    PATIENCE = 15
     SEQUENCE_LENGTH = 60
     DROPOUT = 0.5
     WEIGHT_DECAY = 1e-5
@@ -145,8 +147,8 @@ class PersonConfig:
 
 class FaceConfig:
     """Configuration for face detection and classification."""
-    MODEL_SIZE = 'l'  # Default model size
-    MODEL_NAME = f"yolo12{MODEL_SIZE}"
+    MODEL_SIZE = 'x'
+    MODEL_NAME = f"yolo26{MODEL_SIZE}"
     AGE_GROUP_TO_CLASS_ID_AGE_BINARY = {
         'infant': 0,
         'child': 0,
@@ -171,11 +173,14 @@ class FaceConfig:
 
     TRAIN_SPLIT_RATIO = 0.6
     MIN_IDS_PER_SPLIT = 2
+    
     NUM_EPOCHS = 300
-    BATCH_SIZE = 20
+    BATCH_SIZE = 128
     IMG_SIZE = 832
-    LR = 1e-4
+    PATIENCE = 55
     MODEL_ID = 1
+    NUM_WORKERS = 24
+    DEGREES = 15
     
     CLUSTER_CONSECUTIVE_FRAMES = 1
     REPRESENTATIVE_BLUR_THRESHOLD = 60
