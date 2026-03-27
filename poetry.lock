@@ -3108,6 +3108,47 @@ test = ["appdirs (==1.4.4)", "covdefaults (>=2.3)", "pytest (>=8.3.2)", "pytest-
 type = ["mypy (>=1.11.2)"]
 
 [[package]]
+name = "polars"
+version = "1.8.2"
+description = "Blazingly fast DataFrame library"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "polars-1.8.2-cp38-abi3-macosx_10_12_x86_64.whl", hash = "sha256:114be1ebfb051b794fb9e1f15999430c79cc0824595e237d3f45632be3e56d73"},
+    {file = "polars-1.8.2-cp38-abi3-macosx_11_0_arm64.whl", hash = "sha256:e4fc36cfe48972d4c5be21a7cb119d6378fb7af0bb3eeb61456b66a1f43228e3"},
+    {file = "polars-1.8.2-cp38-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:67c1e448d6e38697650b22dd359f13c40b567c0b66686c8602e4367400e87801"},
+    {file = "polars-1.8.2-cp38-abi3-manylinux_2_24_aarch64.whl", hash = "sha256:570ee86b033dc5a6dbe2cb0df48522301642f304dda3da48f53d7488899a2206"},
+    {file = "polars-1.8.2-cp38-abi3-win_amd64.whl", hash = "sha256:ce1a1c1e2150ffcc44a5f1c461d738e1dcd95abbd0f210af0271c7ac0c9f7ef9"},
+    {file = "polars-1.8.2.tar.gz", hash = "sha256:42f69277d5be2833b0b826af5e75dcf430222d65c9633872856e176a0bed27a0"},
+]
+
+[package.extras]
+adbc = ["adbc-driver-manager[dbapi]", "adbc-driver-sqlite[dbapi]"]
+all = ["polars[async,cloudpickle,database,deltalake,excel,fsspec,graph,iceberg,numpy,pandas,plot,pyarrow,pydantic,style,timezone]"]
+async = ["gevent"]
+calamine = ["fastexcel (>=0.9)"]
+cloudpickle = ["cloudpickle"]
+connectorx = ["connectorx (>=0.3.2)"]
+database = ["nest-asyncio", "polars[adbc,connectorx,sqlalchemy]"]
+deltalake = ["deltalake (>=0.15.0)"]
+excel = ["polars[calamine,openpyxl,xlsx2csv,xlsxwriter]"]
+fsspec = ["fsspec"]
+gpu = ["cudf-polars-cu12"]
+graph = ["matplotlib"]
+iceberg = ["pyiceberg (>=0.5.0)"]
+numpy = ["numpy (>=1.16.0)"]
+openpyxl = ["openpyxl (>=3.0.0)"]
+pandas = ["pandas", "polars[pyarrow]"]
+plot = ["altair (>=5.4.0)"]
+pyarrow = ["pyarrow (>=7.0.0)"]
+pydantic = ["pydantic"]
+sqlalchemy = ["polars[pandas]", "sqlalchemy"]
+style = ["great-tables (>=0.8.0)"]
+timezone = ["backports-zoneinfo", "tzdata"]
+xlsx2csv = ["xlsx2csv (>=0.8.0)"]
+xlsxwriter = ["xlsxwriter"]
+
+[[package]]
 name = "pooch"
 version = "1.8.2"
 description = "A friend to fetch your data files"
@@ -3261,17 +3302,6 @@ files = [
 
 [package.extras]
 tests = ["pytest"]
-
-[[package]]
-name = "py-cpuinfo"
-version = "9.0.0"
-description = "Get CPU info with pure Python"
-optional = false
-python-versions = "*"
-files = [
-    {file = "py-cpuinfo-9.0.0.tar.gz", hash = "sha256:3cdbbf3fac90dc6f118bfd64384f309edeadd902d7c8fb17f02ffa1fc3f49690"},
-    {file = "py_cpuinfo-9.0.0-py3-none-any.whl", hash = "sha256:859625bc251f64e21f077d099d4162689c762b5d6a4c3c97553d56241c9674d5"},
-]
 
 [[package]]
 name = "pyannote-core"
@@ -4194,6 +4224,51 @@ files = [
 
 [package.dependencies]
 pyasn1 = ">=0.1.3"
+
+[[package]]
+name = "ruptures"
+version = "1.1.7"
+description = "Change point detection for signals in Python."
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "ruptures-1.1.7-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:50f9287f41083936282fab710b9a7575ca8caed5f87e914c3b987a5f9da45091"},
+    {file = "ruptures-1.1.7-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:2d38158866f0d2c77b99abd1c592d707d06841ee08c557489d0bf01b51580dbb"},
+    {file = "ruptures-1.1.7-cp310-cp310-win_amd64.whl", hash = "sha256:79b1d3bf70b6e2dc5cb7655ec0a8c8f2044c1eb9c418bc82d763aa19c3e3579b"},
+    {file = "ruptures-1.1.7-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:5bd9f2e07549dcdf4680a4e62ec0ff2a7609b2d2077d311af8105dff11edd397"},
+    {file = "ruptures-1.1.7-cp36-cp36m-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:53ecdbe1855d6ce6b19ad0b10db9ef47aba936701c7eabe04213703d448cd26a"},
+    {file = "ruptures-1.1.7-cp36-cp36m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:77a23136987a9462715e45b9809dafc7d2c147b24344eaae5c111a61f38c0f1c"},
+    {file = "ruptures-1.1.7-cp36-cp36m-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:15798c374cc34b77aad31e34d5b3df171611a3bc5c3860a2a5fa75e87d40e197"},
+    {file = "ruptures-1.1.7-cp36-cp36m-win32.whl", hash = "sha256:cdd017dc764b50b63f23d7746a5fd56cd9375708c52c0ce0e371409ee295e008"},
+    {file = "ruptures-1.1.7-cp36-cp36m-win_amd64.whl", hash = "sha256:9bae92edfec8b316b175b9cee9212c7cf7c6c1cb7cec2ae617a9aefe68a743eb"},
+    {file = "ruptures-1.1.7-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:0ea08c711620340d90f62f1f64b548c7d8668151538a8b484b1441fdc78a9e1f"},
+    {file = "ruptures-1.1.7-cp37-cp37m-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:9937a6159e9a90f90b33ee615744f7614bc7b016b9229d72ae0480b739c8a68d"},
+    {file = "ruptures-1.1.7-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:026653b8fe25efe94ce286b4778d5e4ebb01ac20ccf766a37dd49388caa30cfb"},
+    {file = "ruptures-1.1.7-cp37-cp37m-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:e0c6295db118a0c9c179f1840b6bfd2bd6940c805bfbaffdf0a74cda8dd7aea9"},
+    {file = "ruptures-1.1.7-cp37-cp37m-win32.whl", hash = "sha256:85914155d5710bf0a06cd6450c3dae05765ab5387d1d452169d3048d9f4f0366"},
+    {file = "ruptures-1.1.7-cp37-cp37m-win_amd64.whl", hash = "sha256:91dca88504be4b85360a969c9852976507fe3db1faba21d6a61772b7b0fa5f1a"},
+    {file = "ruptures-1.1.7-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:a152cfe810bba7f44135162656a5da8d94ce8387a78e5b7305fa3677e405f79b"},
+    {file = "ruptures-1.1.7-cp38-cp38-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:94081f7323cc887ca90b0b3e58a592af7c1e31c3f14913018f4a159033271a12"},
+    {file = "ruptures-1.1.7-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:f4395c87318d86190087aa40653dffca48e1f4f8056e477011f1797c1739957a"},
+    {file = "ruptures-1.1.7-cp38-cp38-win32.whl", hash = "sha256:ad59a29598a281356fb37db78cf795bd85384d2e1d2aa280c5d4d5d16ed2d46c"},
+    {file = "ruptures-1.1.7-cp38-cp38-win_amd64.whl", hash = "sha256:efe446ff37b0a13b71b0453518415786e70bf696a82527b11f8e4bf79ce7425f"},
+    {file = "ruptures-1.1.7-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:a663f64ff57219f760ab2e029365c1d5d194701690c477072c774aa0dd5f13e8"},
+    {file = "ruptures-1.1.7-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:1e6a920747e3aa64f1527a5cefa2662501887bf723597f0f37936c5bd7aa5a7a"},
+    {file = "ruptures-1.1.7-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:51b98ddd159d5da43241a5045f3df83c3b898b9630e8d1022725fef5d6f87b08"},
+    {file = "ruptures-1.1.7-cp39-cp39-win32.whl", hash = "sha256:aa6684ecdce29295da8d0ef84da49d8d05c086a38dac1004ad7f45943323de51"},
+    {file = "ruptures-1.1.7-cp39-cp39-win_amd64.whl", hash = "sha256:82557cc173c38b35fc02f458431f67befec53cb298994c238d98a1e477c224b1"},
+    {file = "ruptures-1.1.7.tar.gz", hash = "sha256:a114a17bcc3e5a3ab609c9e5e2a8d23f407f8031604330867d0ca47ad53fff97"},
+]
+
+[package.dependencies]
+numpy = "*"
+scipy = "*"
+
+[package.extras]
+dev = ["pre-commit"]
+display = ["matplotlib"]
+docs = ["jupyter", "librosa", "matplotlib", "mkdocs", "mkdocs-macros-plugin", "mkdocs-material", "mkdocs-section-index", "mkdocstrings[python] (>=0.18)", "mknotebooks", "nltk", "pymdown-extensions"]
+test = ["pytest", "pytest-cov"]
 
 [[package]]
 name = "safetensors"
@@ -5344,23 +5419,22 @@ files = [
 
 [[package]]
 name = "ultralytics"
-version = "8.3.172"
+version = "8.4.30"
 description = "Ultralytics YOLO 🚀 for SOTA object detection, multi-object tracking, instance segmentation, pose estimation and image classification."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "ultralytics-8.3.172-py3-none-any.whl", hash = "sha256:f93854f7adeb2bea4a7f8ad0f29e0b70d40cf393ce0ede4a494a02f3bb069239"},
-    {file = "ultralytics-8.3.172.tar.gz", hash = "sha256:68f04ed622e41c99fb0f22e0afd92bc2e07d4300dc2a035ce678070b0c74530f"},
+    {file = "ultralytics-8.4.30-py3-none-any.whl", hash = "sha256:8a667d6c0a828f7da3d3fe778eba705e1ffd67aa19131f94b05d81c478e647c7"},
+    {file = "ultralytics-8.4.30.tar.gz", hash = "sha256:fcc0579e35c537fa2093d8a10fed01e78cf1ad78af4924310e82138ff125f001"},
 ]
 
 [package.dependencies]
 matplotlib = ">=3.3.0"
 numpy = ">=1.23.0"
 opencv-python = ">=4.6.0"
-pandas = ">=1.1.4"
 pillow = ">=7.1.2"
-psutil = "*"
-py-cpuinfo = "*"
+polars = ">=0.20.0"
+psutil = ">=5.8.0"
 pyyaml = ">=5.3.1"
 requests = ">=2.23.0"
 scipy = ">=1.4.1"
@@ -5369,26 +5443,25 @@ torch = [
     {version = ">=1.8.0", markers = "sys_platform != \"win32\""},
 ]
 torchvision = ">=0.9.0"
-tqdm = ">=4.64.0"
-ultralytics-thop = ">=2.0.0"
+ultralytics-thop = ">=2.0.18"
 
 [package.extras]
-dev = ["coverage[toml]", "ipython", "mkdocs (>=1.6.0)", "mkdocs-macros-plugin (>=1.0.5)", "mkdocs-material (>=9.5.9)", "mkdocs-ultralytics-plugin (>=0.1.19)", "mkdocstrings[python]", "pytest", "pytest-cov"]
-export = ["coremltools (>=8.0)", "h5py (!=3.11.0)", "onnx (>=1.12.0,<1.18.0)", "openvino (>=2024.0.0)", "scikit-learn (>=1.3.2)", "tensorflow (>=2.0.0)", "tensorflowjs (>=2.0.0)", "tensorstore (>=0.1.63)"]
-extra = ["albumentations (>=1.4.6)", "faster-coco-eval (>=1.6.7)", "hub-sdk (>=0.0.12)", "ipython"]
+dev = ["coverage[toml]", "ipython", "minijinja (>=2.0.0)", "mkdocs-ultralytics-plugin (>=0.2.4)", "pytest", "pytest-cov", "zensical (>=0.0.15)"]
+export = ["coremltools (>=9.0)", "h5py (!=3.11.0)", "numpy (<2.0.0)", "onnx (>=1.12.0)", "onnx (>=1.12.0,<1.18.0)", "onnxslim (>=0.1.82)", "openvino (>=2024.0.0)", "packaging (>=26.0)", "scikit-learn (>=1.3.2)", "setuptools (<=81.0.0)", "tensorflow (>=2.0.0,<=2.19.0)", "tensorflowjs (>=2.0.0)", "tensorstore (>=0.1.63)", "ydf (<0.13.0)"]
+extra = ["albumentations (>=1.4.6)", "faster-coco-eval (>=1.6.7)", "ipython"]
 logging = ["mlflow", "tensorboard", "wandb"]
-solutions = ["flask (>=3.0.1)", "shapely (>=2.0.0)", "streamlit (>=1.29.0)"]
-typing = ["pandas-stubs", "scipy-stubs", "types-pillow", "types-psutil", "types-pyyaml", "types-requests", "types-shapely"]
+solutions = ["flask (>=3.0.1)", "shapely (>=2.0.0)", "streamlit (>=1.29.0,<1.51.0)", "streamlit (>=1.51.0)"]
+typing = ["scipy-stubs (>=1.14.1.4)", "types-pillow", "types-psutil", "types-pyyaml", "types-requests", "types-shapely"]
 
 [[package]]
 name = "ultralytics-thop"
-version = "2.0.14"
+version = "2.0.18"
 description = "Ultralytics THOP package for fast computation of PyTorch model FLOPs and parameters."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "ultralytics_thop-2.0.14-py3-none-any.whl", hash = "sha256:720b421e2459179fee21ec8f730d242a20774cd4b0a00a58d02351a39ec3881c"},
-    {file = "ultralytics_thop-2.0.14.tar.gz", hash = "sha256:38ebfdbd3cd8dafdc3d26ec3a7d4f604fbeed5e69a74e61a48060b39736c945c"},
+    {file = "ultralytics_thop-2.0.18-py3-none-any.whl", hash = "sha256:2bb44851ad224b116c3995b02dd5e474a5ccf00acf237fe0edb9e1506ede04ec"},
+    {file = "ultralytics_thop-2.0.18.tar.gz", hash = "sha256:21103bcd39cc9928477dc3d9374561749b66a1781b35f46256c8d8c4ac01d9cf"},
 ]
 
 [package.dependencies]
@@ -5619,4 +5692,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "~3.8"
-content-hash = "5706e7053c7419470db256361e5b25aa65a5912d542314ed677fb54eed306dc7"
+content-hash = "93dc1aac49e09fa7cd9cf35c9e8a9a016911089aac54c9d83063b80043fb9b73"
