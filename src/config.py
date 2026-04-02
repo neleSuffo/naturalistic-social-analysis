@@ -236,7 +236,10 @@ class AnalysisConfig:
     SUSTAINED_KCDS_THRESHOLD = 0.8    
     
     # -- Rule 4: Visual Persistence --
-    VISUAL_PERSISTENCE_SEC = 3.0    
+    HIGH_CONFIDENCE_PROXIMITY_THRESHOLD = 0.5
+    HIGH_CONFIDENCE_FACE_CONFIDENCE = 0.6
+    VISUAL_PERSISTENCE_SEC = 3.0 # long memory duration in seconds
+    SHORT_TERM_VISUAL_MEMORY_SEC = 2.0  # Short memory (Flicker)
 
     # -- Audio-Visual Gating --
     AUDIO_VISUAL_GATING_FLOOR = 0.08 
@@ -261,44 +264,39 @@ class HyperparameterConfig:
     """
     HYPERPARAMETER_RANGES = {
         # --- 1. Audio-Visual Gating & Confidence ---
-        # The visual 'floor' required to trust audio rules.
-        'AUDIO_VISUAL_GATING_FLOOR': [0.04, 0.08, 0.15],
-        # Minimum raw confidence for any face/person detection.
-        'INSTANT_CONFIDENCE_THRESHOLD': [0.25, 0.4, 0.6],
+        # Shifted Higher: We need more visual evidence before trusting audio.
+        'AUDIO_VISUAL_GATING_FLOOR': [0.15, 0.22, 0.30], 
+        'INSTANT_CONFIDENCE_THRESHOLD': [0.25, 0.35, 0.5],
         
         # --- 2. Turn-Taking (Rule 1) ---
-        # Max gap to link Child and Adult speech.
-        'MAX_TURN_TAKING_GAP_SEC': [5.0, 8.0, 12.0],
-        # Max silence allowed within a single person's turn.
-        'MAX_SAME_SPEAKER_GAP_SEC': [1.5, 2.25, 3.5],
+        # Shifted Lower: 12s is too long; it's likely catching coincidental noises.
+        'MAX_TURN_TAKING_GAP_SEC': [4.0, 6.0, 8.0],
+        'MAX_SAME_SPEAKER_GAP_SEC': [1.5, 2.25, 3.0],
         
         # --- 3. Proximity (Rule 2) ---
-        # How 'large' a face must be. 0.55 is far; 0.75 is very close.
-        'PROXIMITY_THRESHOLD': [0.55, 0.65, 0.75],
+        'PROXIMITY_THRESHOLD': [0.60, 0.70, 0.80],
         
         # --- 4. Sustained Adult Speech (Rule 3) ---
-        # The temporal window and the required density of speech within it.
-        'SUSTAINED_KCDS_WINDOW_SEC': [4.0, 6.5, 10.0],
-        'SUSTAINED_KCDS_THRESHOLD': [0.6, 0.8, 0.9],
+        'SUSTAINED_KCDS_WINDOW_SEC': [6.0, 8.0, 10.0],
+        'SUSTAINED_KCDS_THRESHOLD': [0.75, 0.85, 0.95], # Stricter 'fill' requirement
         
-        # --- 5. Visual Persistence & OHS (Rule 4 / Available) ---
-        # How long to 'remember' a person after they leave the frame.
-        'VISUAL_PERSISTENCE_SEC': [1.0, 3.0, 6.0],
-        # Density of Overheard Speech required to flag 'Available'.
-        'MIN_PRESENCE_OHS_FRACTION': [0.01, 0.025, 0.05],
+        # --- 5. Visual Persistence & OHS ---
+        'HIGH_CONFIDENCE_PROXIMITY_THRESHOLD': [0.5, 0.6, 0.7],
+        'HIGH_CONFIDENCE_FACE_CONFIDENCE': [0.6, 0.7, 0.8],
+        # Shifted Lower: 6s 'memory' is causing the Alone -> Interacting bleed.
+        'VISUAL_PERSISTENCE_SEC': [1.5, 3.0, 4.5],
+        'SHORT_TERM_VISUAL_MEMORY_SEC': [1.0, 2.0, 3.0], 
+        'MIN_PRESENCE_OHS_FRACTION': [0.02, 0.04, 0.06],
 
         # --- 6. CPD Smoothing (Video Level) ---
-        # PELT penalty. Lower = more segments (jittery); Higher = stable.
-        'CPD_PENALTY': [1.4, 2.8, 4.2],
-        # Density thresholds to claim a specific state for a whole segment.
-        'CPD_INTERACTING_THRESHOLD': [0.35, 0.45, 0.55],
-        'CPD_INTERACTING_THRESHOLD_LOW': [0.15, 0.25, 0.35],
-        # Total presence (Interacting + Available) to stay out of 'Alone'.
-        'CPD_TOTAL_PRESENCE_FLOOR': [0.35, 0.45, 0.55],
+        # Shifted Lower: 4.2 was too 'stubborn'. Lower penalty allows state changes.
+        'CPD_PENALTY': [1.5, 2.5, 3.5],
+        # Shifted Higher: Raise the 'bar' for a segment to be called Interacting.
+        'CPD_INTERACTING_THRESHOLD': [0.50, 0.60, 0.70],
+        'CPD_INTERACTING_THRESHOLD_LOW': [0.05, 0.10, 0.20],
+        'CPD_TOTAL_PRESENCE_FLOOR': [0.40, 0.50, 0.60],
         
         # --- 7. Timeline Post-Processing ---
-        # Max gap to bridge segments of the EXACT SAME type.
-        'SAME_SEGMENT_MERGE_THRESHOLD': [0.5, 1.0, 3.0],
-        # Max gap to stretch a segment to fill a generic hole.
-        'GAP_STRETCH_THRESHOLD': [0.5, 1.0, 2.0],
+        'SAME_SEGMENT_MERGE_THRESHOLD': [0.5, 1.0, 2.0],
+        'GAP_STRETCH_THRESHOLD': [0.5, 1.0, 1.5],
     }

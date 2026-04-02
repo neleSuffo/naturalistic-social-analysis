@@ -87,8 +87,14 @@ def run_cross_validation(mode="validation", social_state_mode="tertiary", max_co
                     
                     if current_f1 > best_f1:
                         best_f1 = current_f1
-                        best_params = combo
+                        best_params = combo                
             
+            # save best params for this fold
+            if best_params is not None:
+                with open(output_root / f"fold_{fold_id}_best_params.txt", "w") as f:
+                    for key, value in best_params.items():
+                        f.write(f"{key}: {value}\n")
+                        
             print(f"✅ Best Train F1: {best_f1:.4f}. Now validating on unseen test videos...")
 
             # --- PHASE 2: Evaluate 'Winner' on TEST Videos ---
