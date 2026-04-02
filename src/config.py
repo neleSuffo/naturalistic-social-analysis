@@ -255,13 +255,50 @@ class AnalysisConfig:
     GAP_STRETCH_THRESHOLD = 1   
       
 class HyperparameterConfig:
-    """Defines the search space for hyperparameter optimization."""
+    """
+    Complete Search Grid for Social Interaction Analysis.
+    Includes all 15 active parameters from the frame-level and video-level engines.
+    """
     HYPERPARAMETER_RANGES = {
-        'AUDIO_VISUAL_GATING_FLOOR': [0.22, 0.28, 0.34], 
-        'MIN_AVAILABLE_SEGMENT_DURATION_SEC': [8.0, 12.0, 16.0],
-        'CPD_PENALTY': [1.4, 2.0, 2.6],
-        'GAP_STRETCH_THRESHOLD': [0.5, 2.0],
-        'CPD_INTERACTING_THRESHOLD_LOW': [0.15, 0.25],
-        'MAX_TURN_TAKING_GAP_SEC': [6.0, 8.0, 10.0],
-        'MIN_ALONE_SEGMENT_DURATION_SEC': [8.0, 10.0, 15.0],
+        # --- 1. Audio-Visual Gating & Confidence ---
+        # The visual 'floor' required to trust audio rules.
+        'AUDIO_VISUAL_GATING_FLOOR': [0.04, 0.08, 0.15],
+        # Minimum raw confidence for any face/person detection.
+        'INSTANT_CONFIDENCE_THRESHOLD': [0.25, 0.4, 0.6],
+        
+        # --- 2. Turn-Taking (Rule 1) ---
+        # Max gap to link Child and Adult speech.
+        'MAX_TURN_TAKING_GAP_SEC': [5.0, 8.0, 12.0],
+        # Max silence allowed within a single person's turn.
+        'MAX_SAME_SPEAKER_GAP_SEC': [1.5, 2.25, 3.5],
+        
+        # --- 3. Proximity (Rule 2) ---
+        # How 'large' a face must be. 0.55 is far; 0.75 is very close.
+        'PROXIMITY_THRESHOLD': [0.55, 0.65, 0.75],
+        
+        # --- 4. Sustained Adult Speech (Rule 3) ---
+        # The temporal window and the required density of speech within it.
+        'SUSTAINED_KCDS_WINDOW_SEC': [4.0, 6.5, 10.0],
+        'SUSTAINED_KCDS_THRESHOLD': [0.6, 0.8, 0.9],
+        
+        # --- 5. Visual Persistence & OHS (Rule 4 / Available) ---
+        # How long to 'remember' a person after they leave the frame.
+        'VISUAL_PERSISTENCE_SEC': [1.0, 3.0, 6.0],
+        # Density of Overheard Speech required to flag 'Available'.
+        'MIN_PRESENCE_OHS_FRACTION': [0.01, 0.025, 0.05],
+
+        # --- 6. CPD Smoothing (Video Level) ---
+        # PELT penalty. Lower = more segments (jittery); Higher = stable.
+        'CPD_PENALTY': [1.4, 2.8, 4.2],
+        # Density thresholds to claim a specific state for a whole segment.
+        'CPD_INTERACTING_THRESHOLD': [0.35, 0.45, 0.55],
+        'CPD_INTERACTING_THRESHOLD_LOW': [0.15, 0.25, 0.35],
+        # Total presence (Interacting + Available) to stay out of 'Alone'.
+        'CPD_TOTAL_PRESENCE_FLOOR': [0.35, 0.45, 0.55],
+        
+        # --- 7. Timeline Post-Processing ---
+        # Max gap to bridge segments of the EXACT SAME type.
+        'SAME_SEGMENT_MERGE_THRESHOLD': [0.5, 1.0, 3.0],
+        # Max gap to stretch a segment to fill a generic hole.
+        'GAP_STRETCH_THRESHOLD': [0.5, 1.0, 2.0],
     }

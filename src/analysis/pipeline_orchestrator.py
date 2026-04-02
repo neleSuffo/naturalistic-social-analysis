@@ -42,7 +42,7 @@ def run_cross_validation(mode="validation", social_state_mode="tertiary", max_co
     social_state_mode: str
         "tertiary" or "binary" evaluation mode (affects evaluation metrics and thresholds)
     max_combos: int
-        Maximum number of hyperparameter combinations to evaluate during tuning (only applicable in "tuning"
+        Maximum number of hyperparameter combinations to evaluate during tuning (only applicable in "tuning")
     """
     folds, df = get_folds()
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -60,8 +60,48 @@ def run_cross_validation(mode="validation", social_state_mode="tertiary", max_co
         print(f"\n🚀 FOLD {fold_id}/{AnalysisConfig.NUM_FOLDS}")
 
         if mode == "tuning":
-            # (Tuning logic removed for brevity, but ensure it uses the same fix as below)
-            pass
+            # --- NESTED TUNING: Find best params using ONLY Train Videos ---
+            print(f"🔎 Phase 1: Tuning on {len(train_videos)} training videos...")
+            
+            # Generate combinations (Random Search)
+            combos = generate_hyperparameter_combinations(max_combinations=max_combos, random_sample=True)
+            
+            best_f1 = -1
+            best_params = None
+            
+            tuning_dir = output_root / f"fold_{fold_id}_tuning_search"
+
+            for c_idx, combo in enumerate(combos):
+                # Run the pipeline on TRAINING videos only
+                success, _, seg_path, error = run_analysis_with_config(
+                    combo, c_idx, tuning_dir, 
+                    hyperparameter_tuning=True,
+                    social_state_mode=social_state_mode,
+                    video_list=train_videos
+                )
+                
+                if success:
+                    # Score the combo on TRAINING videos
+                    res = evaluate_combination(seg_path, video_list=train_videos)
+                    current_f1 = res['overall_metrics'].get('macro_avg_f1_score', 0)
+                    
+                    if current_f1 > best_f1:
+                        best_f1 = current_f1
+                        best_params = combo
+            
+            print(f"✅ Best Train F1: {best_f1:.4f}. Now validating on unseen test videos...")
+
+            # --- PHASE 2: Evaluate 'Winner' on TEST Videos ---
+            success, _, seg_path, error = run_analysis_with_config(
+                best_params, fold_id, output_root / f"fold_{fold_id}_final_test", 
+                hyperparameter_tuning=False,
+                social_state_mode=social_state_mode,
+                video_list=test_videos
+            )
+            
+            if success:
+                final_res = evaluate_combination(seg_path, video_list=test_videos)
+                fold_results.append(final_res['overall_metrics'])
         else:
             print(f"📊 Validating on: {len(test_videos)} videos")
             
@@ -100,14 +140,32 @@ def run_cross_validation(mode="validation", social_state_mode="tertiary", max_co
     results_df = pd.DataFrame(fold_results)
     print("\n" + "="*40 + "\n🏁 SUMMARY\n" + "="*40)
     
-    # Safety check for describe
+    # print cv summary and store results
     stats = results_df.describe()
-    if not stats.empty and 'mean' in stats.index:
-        print(stats.loc[['mean', 'std']])
+
+    if not stats.empty and "mean" in stats.index:
+        summary_rows = stats.loc[["mean", "std", "min", "max"]]
+        print(summary_rows)
+
+        # Append summary rows to fold results
+        output_df = pd.concat([results_df, summary_rows])
     else:
         print(results_df)
-        
-    results_df.to_csv(output_root / "cv_summary.csv")
+        output_df = results_df
+
+    # also add what videos were in each fold for reference
+    fold_video_info = []
+    for i, (train_idx, test_idx) in enumerate(folds):
+        fold_id = i + 1
+        test_videos = df.iloc[test_idx]['video_name'].tolist()
+        fold_video_info.append({
+            "fold_id": fold_id,
+            "num_test_videos": len(test_videos),
+            "test_videos": ", ".join(test_videos)
+        })
+    fold_video_df = pd.DataFrame(fold_video_info)
+    fold_video_df.to_csv(output_root / "fold_video_info.csv", index=False)
+    output_df.to_csv(output_root / "cv_summary.csv", index=True)
     
     # save copy of pipeline_frame_level_analysis.py and pipeline_video_level_analysis.py for reference
     shutil.copy("pipeline_frame_level_analysis.py", output_root / "pipeline_frame_level_analysis.py")
@@ -117,6 +175,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--max_combos', type=int, default=20, help='Maximum number of hyperparameter combinations to evaluate during tuning (only applicable in "tuning" mode)')
     parser.add_argument('--social_state_mode', type=str, default='tertiary', help='Evaluation mode for social state analysis')
+    parser.add_argument('--mode', type=str, default='validation', choices=['validation', 'tuning'], help='Whether to run standard cross-validation or hyperparameter tuning')
     args = parser.parse_args()
     
-    run_cross_validation(mode="validation", social_state_mode=args.social_state_mode, max_combos=args.max_combos)
+    run_cross_validation(mode=args.mode, social_state_mode=args.social_state_mode, max_combos=args.max_combos)

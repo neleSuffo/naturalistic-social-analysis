@@ -43,7 +43,6 @@ def prepare_persistent_tables(conn):
     3. CachedPersonAgg: A pre-aggregated table of maximum person confidence per frame (after exclusions).
     Indexes are created on these tables to speed up JOIN operations in the main query.
     """
-    logging.info("Preparing persistent exclusion and aggregation tables...")
     sample_rate = AnalysisConfig.SAMPLE_RATE
 
     # 1. Persistent Exclusion Table (Detections inside Books)
@@ -401,7 +400,6 @@ def main(db_path: Path,
     with sqlite3.connect(db_path) as conn:
         prepare_persistent_tables(conn)
         
-        logging.info("Integrating multimodal data...")
         all_data = get_all_analysis_data(conn, video_list)
         
         # Audio Interaction Logic (Turn-taking)

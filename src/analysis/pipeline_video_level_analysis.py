@@ -242,7 +242,6 @@ def main(output_file_path: Path, frame_data_path: Path, hyperparameter_tuning: b
     """
     # Load frame-level data
     frame_data = pd.read_csv(frame_data_path)
-    print("Smoothing frame-level data with CPD...")
     frame_data = apply_cpd_smoothing(frame_data, social_state_mode)
     
     # Map numeric states to labels based on mode
