@@ -30,50 +30,16 @@ from config import InferenceConfig
 from analysis.validation.eval_segment_performance import run_evaluation
 from analysis.pipeline_frame_level_analysis import main as frame_analysis_main
 from analysis.pipeline_video_level_analysis import main as segment_analysis_main
-
 class HyperparameterConfig:
     HYPERPARAMETER_RANGES = {
-        # --- 1. Audio-Lead Interaction (Rule 1, 3, & 4) ---
-        # Goal: Sharpen the distinction between 'Interacting' and 'Available'
+        # The key to the Alone vs. Available trade-off
+        'AUDIO_VISUAL_GATING_FLOOR': [0.22, 0.28, 0.34], 
+        'MIN_AVAILABLE_SEGMENT_DURATION_SEC': [8.0, 12.0, 16.0],
+        'CPD_PENALTY': [1.4, 2.0, 2.6],
+        'GAP_STRETCH_THRESHOLD': [0.5, 2.0],
+        'CPD_INTERACTING_THRESHOLD_LOW': [0.15, 0.25],
         'MAX_TURN_TAKING_GAP_SEC': [6.0, 8.0, 10.0],
-        'MAX_SAME_SPEAKER_GAP_SEC': [1.0, 1.5, 2.0],
-        'SUSTAINED_KCDS_THRESHOLD': [0.75, 0.80, 0.90],
-        'SUSTAINED_KCDS_WINDOW_SEC': [0.5, 1.0, 1.5],
-        'PERSON_AUDIO_WINDOW_SEC': [1.5, 2.0, 3.0],
-
-        # --- 2. Visual & Proximity Rules (Rule 2) ---
-        'PROXIMITY_THRESHOLD': [0.75, 0.80, 0.85],
-        'INSTANT_CONFIDENCE_THRESHOLD': [0.35, 0.40, 0.45],
-        'VISUAL_PERSISTENCE_SEC': [0.0, 0.5, 1.0],
-
-        # --- 3. Presence & Hysteresis (Available vs. Alone) ---
-        # Goal: "Harden" the entry and exit boundaries to reduce 'Alone' false positives
-        'MIN_PRESENCE_CONFIDENCE_THRESHOLD': [0.26, 0.28, 0.32],
-        'STANDARD_EXIT_MULTIPLIER': [0.45, 0.55, 0.65],
-        'SOCIAL_COOLDOWN_EXIT_MULTIPLIER': [0.10, 0.15, 0.25],
-        'SOCIAL_CONTEXT_THRESHOLD': [0.4, 0.5, 0.6],
-        'SOCIAL_COOLDOWN_SEC': [30, 45, 60],
-        'EDGE_MARGIN': [0.03, 0.05, 0.07],
-
-        # --- 4. Gating & Robustness (Presence Mass) ---
-        # Goal: Ensure 'Available' requires significant visual evidence
-        'INTERACTION_PERMISSION_GATE': [1.12, 1.15, 1.25],
-        'PERSON_AVAILABLE_WINDOW_SEC': [35, 45, 55],
-        'MIN_PRESENCE_PERSON_FRACTION': [0.10, 0.15, 0.20],
-        'AUDIO_VISUAL_GATING_FLOOR': [0.15, 0.18, 0.22],
-        'MAX_OHS_FOR_AVAILABLE': [0.55, 0.65, 0.75],
-        'MIN_PRESENCE_OHS_FRACTION': [0.02, 0.03, 0.05],
-
-        # --- 5. Segment Post-Processing & Smoothing ---
-        # Goal: Optimize 'Biased Mode' thresholds to reduce jitter/flicker
-        'ROLLING_SMOOTH_WINDO_SEC': [2.0, 3.0, 4.0],
-        'GAP_STRETCH_THRESHOLD': [0.05, 0.10, 0.20],
-        'ROBUST_ALONE_WINDOW_SEC': [1.0, 2.0, 3.0],
-        'MAX_ALONE_FALSE_POSITIVE_FRACTION': [0.35, 0.45, 0.55],
-        
-        # Internal Thresholds for biased_conservative_mode (if parameterized in your script)
-        'AVAILABLE_MAJORITY_THRESHOLD': [0.40, 0.45, 0.55],
-        'INTERACTING_PROTECTION_THRESHOLD': [0.15, 0.20, 0.30]
+        'MIN_ALONE_SEGMENT_DURATION_SEC': [8.0, 10.0, 15.0],
     }
 
 def generate_hyperparameter_combinations(max_combinations=None, random_sample=False):
@@ -97,20 +63,27 @@ def generate_hyperparameter_combinations(max_combinations=None, random_sample=Fa
     ranges = HyperparameterConfig.HYPERPARAMETER_RANGES
     param_names = list(ranges.keys())
     
-    valid_combinations = []
-    seen_combos = set()
+    # 1. Generate ALL possible combinations using Cartesian Product
+    all_combinations = [
+        dict(zip(param_names, combo)) 
+        for combo in product(*[ranges[p] for p in param_names])
+    ]
     
-    # If we want a specific number of random samples
+    # 2. Handle Random Sampling Case
     if random_sample and max_combinations:
-        print(f"   🎲 Generating {max_combinations} unique random samples...")
-        while len(valid_combinations) < max_combinations:
-            # Pick one random value for every parameter
-            combo = tuple(random.choice(ranges[p]) for p in param_names)
-            
-            if combo not in seen_combos:
-                seen_combos.add(combo)
-                valid_combinations.append(dict(zip(param_names, combo)))
-        return valid_combinations
+        print(f"   🎲 Randomly sampling {max_combinations} combinations...")
+        if max_combinations >= len(all_combinations):
+            return all_combinations
+        return random.sample(all_combinations, max_combinations)
+    
+    # 3. Handle Full or Capped Systematic Case
+    if max_combinations:
+        print(f"   📊 Capping to first {max_combinations} combinations...")
+        return all_combinations[:max_combinations]
+    
+    # 4. Handle Full Case (max_combinations is None)
+    print(f"   📈 Returning all {len(all_combinations)} combinations...")
+    return all_combinations
 
 def run_pipeline_for_combo(hyperparameters, combo_dir):
     """
@@ -466,11 +439,7 @@ def parse_args():
         max_combinations = args.max_combos
         print(f"🚀 Running hyperparameter tuning with {max_combinations} combinations (custom)")
     else:
-        # Default behavior: uses InferenceConfig.MAX_COMBINATIONS_TUNING
-        try:
-            max_combinations = InferenceConfig.MAX_COMBINATIONS_TUNING 
-        except AttributeError:
-            max_combinations = 20 # Fallback default
+        max_combinations = 20
 
         print(f"🚀 Running hyperparameter tuning with {max_combinations} combinations (default)")
 

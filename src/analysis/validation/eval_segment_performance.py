@@ -191,18 +191,26 @@ def plot_segment_timeline(predictions_df, ground_truth_df, video_name, save_path
     plt.savefig(save_path)
     plt.close(fig)
     
-def evaluate_performance_by_seconds(predictions_df, ground_truth_df):
+def evaluate_performance_by_seconds(predictions_df, ground_truth_df, video_subset=None):
     """
     Evaluates model performance by comparing second-by-second classifications,
     excluding the first and last x seconds, as defined in InferenceConfig.EXCLUSION_SECONDS.
     ...
     """    
     # Identify videos present in both predictions and ground truth
+    
+    # Identify videos present in both
     videos_with_gt = set(ground_truth_df['video_name'].unique())
     videos_with_pred = set(predictions_df['video_name'].unique())
     videos_to_evaluate = videos_with_gt.intersection(videos_with_pred)
     
-    print(f"Evaluating {len(videos_to_evaluate)} videos with both GT and Predictions...")
+    if video_subset:
+        # Only evaluate videos that are in our 10% (or 90%) list AND have data
+        videos_to_evaluate = set(video_subset).intersection(videos_with_gt).intersection(videos_with_pred)
+        print(f"📊 FOLD MODE: Evaluating {len(videos_to_evaluate)} specific videos from the provided list.")
+    else:
+        videos_to_evaluate = videos_with_gt.intersection(videos_with_pred)
+        print(f"📊 FULL MODE: Evaluating all {len(videos_to_evaluate)} available videos.")
 
     # Determine interaction types based on the data present (will be 2 classes if run in binary mode)
     gt_interaction_types = [str(t).lower() for t in ground_truth_df['interaction_type'].unique()]
@@ -579,18 +587,21 @@ def extract_misclassification_segments(predictions_df, ground_truth_df, results_
     
     return pd.DataFrame()
 
-def run_evaluation(predictions_path: Path, output_folder: Path, mode: str):
-    """Loads data, runs evaluation, and saves outputs in the same folder.
+def run_evaluation(predictions_path: Path, output_folder: Path, mode: str, video_list: list = None):
+    """
+    Loads data, runs evaluation, and saves outputs in the same folder.
     
     Parameters
     ----------
     predictions_path : Path
-        Path to the predictions CSV file (e.g. 02_interaction_segments.csv).
+        Path to the predictions CSV file.
     output_folder : Path
-        Path to the folder where all outputs (metrics, confusion matrices, misclassified segments) will
-        be saved.
+        Path to the folder where all outputs will be saved.
     mode : str
-        Evaluation mode, either 'binary' or 'tertiary', which determines how labels are processed and evaluated.
+        Evaluation mode ('binary' or 'tertiary').
+    video_list : list, optional
+        A specific list of video names to evaluate. If None, evaluates all 
+        overlapping videos between GT and Pred.
     """
     output_folder.mkdir(parents=True, exist_ok=True)
 
@@ -608,14 +619,10 @@ def run_evaluation(predictions_path: Path, output_folder: Path, mode: str):
         sys.exit(1)
 
     # --- Clean up GT DataFrame for potential malformed columns ---
-    # Drop columns that are completely empty and have default Pandas names (Unnamed: X)
     ground_truth_df = ground_truth_df.loc[:, ~ground_truth_df.columns.str.contains('^Unnamed')]
     ground_truth_df.dropna(axis=1, how='all', inplace=True)
-    
-    # Ensure all column headers are stripped of whitespace
     ground_truth_df.columns = ground_truth_df.columns.str.strip()
     
-    # Apply global string strip on data to eliminate invisible chars that prevent matching/parsing
     for col in ground_truth_df.columns:
         if ground_truth_df[col].dtype == 'object':
             ground_truth_df[col] = ground_truth_df[col].str.strip()
@@ -624,11 +631,11 @@ def run_evaluation(predictions_path: Path, output_folder: Path, mode: str):
     if mode == 'binary':
         predictions_df = reclassify_to_binary(predictions_df)
         ground_truth_df = reclassify_to_binary(ground_truth_df)
-        print("📊 Running evaluation in BINARY mode: 'Available' and 'Alone' are mapped to 'Not Interacting'.")
+        print("📊 Mode: BINARY")
     else:
-        print("📊 Running evaluation in TERTIARY mode (Interacting, Available, Alone).")
+        print("📊 Mode: TERTIARY")
 
-    # Convert ground truth times to seconds
+    # Standardize times
     if 'start_time_min' in ground_truth_df.columns and 'end_time_min' in ground_truth_df.columns:
         ground_truth_df['start_time_sec'] = ground_truth_df['start_time_min'].apply(time_to_seconds)
         ground_truth_df['end_time_sec'] = ground_truth_df['end_time_min'].apply(time_to_seconds)
@@ -637,53 +644,40 @@ def run_evaluation(predictions_path: Path, output_folder: Path, mode: str):
             predictions_df['start_time_sec'] = predictions_df['start_time_min'].apply(time_to_seconds)
             predictions_df['end_time_sec'] = predictions_df['end_time_min'].apply(time_to_seconds)
         
-    # Sa
-    save_second_wise_labels(
-        predictions_df.copy(), 
-        Evaluation.BASE_OUTPUT_DIR, 
-        f"pred_secondwise.csv"
-    )
+    # --- CORE EVALUATION ---
+    # Pass the video_list into the evaluation logic
+    results = evaluate_performance_by_seconds(predictions_df, ground_truth_df, video_subset=video_list)
     
-    # 2. Save Ground Truth
-    save_second_wise_labels(
-        ground_truth_df.copy(), 
-        Evaluation.BASE_OUTPUT_DIR, 
-        f"gt_secondwise.csv"
-    )
-    
-    # Evaluate
-    results = evaluate_performance_by_seconds(predictions_df, ground_truth_df)
     total_seconds = results['total_seconds']
     total_hours = total_seconds / 3600
     detailed_metrics = calculate_detailed_metrics(results)
 
     # --- Misclassification Analysis ---
+    # Extract segments only for the evaluated subset
     df_misclassified = extract_misclassification_segments(predictions_df, ground_truth_df, results)
-    misclassified_path = output_folder / f"misclassified_segments.csv"
     
+    # Filter misclassifications to only include the requested video_list if provided
+    if video_list and not df_misclassified.empty:
+        df_misclassified = df_misclassified[df_misclassified['video_name'].isin(video_list)]
+
+    misclassified_path = output_folder / f"misclassified_segments.csv"
     if not df_misclassified.empty:
         df_misclassified.to_csv(misclassified_path, index=False)
         print(f"✅ Misclassified segments saved to: {misclassified_path}")
-    else:
-        print("✅ No misclassified segments found (or all metrics are zero).")
         
-    # Generate outputs
+    # Generate Plots and Results
     generate_confusion_matrix_plots(results, output_folder)
-
     performance_path = output_folder / (Evaluation.PERFORMANCE_RESULTS_TXT.stem + Evaluation.PERFORMANCE_RESULTS_TXT.suffix)
-    
     save_performance_results(results, detailed_metrics, total_seconds, total_hours, filename=performance_path)
     
-    # Print F1-scores to console
-    print("\n--- F1-Scores by Category ---")
+    # Console Output
+    print("\n--- F1-Scores for Evaluated Subset ---")
     for category, metrics in detailed_metrics.items():
         if category != 'macro_avg':
-            print(f"{category.capitalize()}: F1-Score = {metrics['f1_score']:.4f}")
+            print(f"{category.capitalize()}: F1 = {metrics['f1_score']:.4f}")
+            
     if 'macro_avg' in detailed_metrics:
-        # print empty line
-        print("")
-        print("\n--- Overall Macro Average ---")
-        print(f"Macro Average: F1-Score = {detailed_metrics['macro_avg']['f1_score']:.4f}")
+        print(f"\nMacro Average F1: {detailed_metrics['macro_avg']['f1_score']:.4f}")
 
     return predictions_df, ground_truth_df, detailed_metrics
 
@@ -694,13 +688,14 @@ if __name__ == "__main__":
                                                                               'If specified without value: plots all videos.\n' 
                                                                               'If a video name is given: plots only that video.'))
     parser.add_argument('--mode', type=str, choices=['binary', 'tertiary'], default='tertiary', help="Choose evaluation mode: 'binary' (interacting vs not interacting) or 'tertiary' (interacting, available, alone). Default is 'tertiary'.")
+    parser.add_argument('--video_list', type=str, nargs='+', default=None, 
+                        help='List of video names to include in this specific evaluation.')
     args = parser.parse_args()
     predictions_path = Path(args.folder_path) / Inference.INTERACTION_SEGMENTS_CSV.name
 
     # 1. Run evaluation (loads data, runs metrics, prints/saves results)
-    output_folder = predictions_path.parent
-    predictions_df, ground_truth_df, _ = run_evaluation(predictions_path, output_folder, args.mode)
-    
+    output_folder = predictions_path.parent    
+    predictions_df, ground_truth_df, _ = run_evaluation(predictions_path, output_folder, args.mode, video_list=args.video_list)
 
     # 2. Plotting logic
     if args.plot and args.plot.lower() == 'all':
