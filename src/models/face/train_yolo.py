@@ -51,7 +51,6 @@ def main():
         patience=FaceConfig.PATIENCE,
         workers=FaceConfig.NUM_WORKERS,
         device=args.device,
-        cos_lr=True,
         degrees=FaceConfig.DEGREES,
 
         augment=True,
