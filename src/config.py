@@ -144,11 +144,11 @@ class PersonConfig:
     ADULT_POS_WEIGHT = 2.60
     MODEL_ID = 2
     CONFIDENCE_THRESHOLD = 0.170
-
+    
 class FaceConfig:
     """Configuration for face detection and classification."""
-    MODEL_SIZE = 'x'
-    MODEL_NAME = f"yolo26{MODEL_SIZE}"
+    MODEL_SIZE = 'l'
+    MODEL_NAME = f"yolo12{MODEL_SIZE}"
     AGE_GROUP_TO_CLASS_ID_AGE_BINARY = {
         'infant': 0,
         'child': 0,
@@ -175,11 +175,11 @@ class FaceConfig:
     MIN_IDS_PER_SPLIT = 2
     
     NUM_EPOCHS = 300
-    BATCH_SIZE = 128
-    IMG_SIZE = 832
-    PATIENCE = 55
+    BATCH_SIZE = 64
+    IMG_SIZE = 640
+    PATIENCE = 30
     MODEL_ID = 1
-    NUM_WORKERS = 24
+    NUM_WORKERS = 12
     DEGREES = 15
     
     CLUSTER_CONSECUTIVE_FRAMES = 1
@@ -188,7 +188,7 @@ class FaceConfig:
     DEEPFACE_BACKEND = "retinaface"
     FINAL_CONFIRMATION_DISTANCE_THRESHOLD = 0.6
     VERIFIED_DISTANCE_THRESHOLD = 0.68
-    CONFIDENCE_THRESHOLD = 0.528
+    CONFIDENCE_THRESHOLD = 0.55
 
 class AudioConfig:
     """Configuration for audio classification."""
@@ -210,71 +210,58 @@ class KchiVoc_Config:
     """Configuration for KCHI vocalizations."""
     MODEL_ID = 4
     
-class InferenceConfig:
-    """Configuration for inference settings."""
-    # -- General Analysis Settings --
-    EXCLUSION_SECONDS = 30           # Seconds to exclude at start and end of videos
-    INTERACTION_CLASSES = ['Interacting', 'Available', 'Alone']
-    SAMPLE_RATE = 10                 # Processing interval (only every n-th frame is analyzed)
+class AnalysisConfig:
+    """Consolidated configuration for active social analysis rules."""
     
-    # -- Audio-Lead Interaction (Rule 1: Turn-Taking) --
-    MAX_TURN_TAKING_GAP_SEC = 8      # Max gap to link KCHI and CDS
-    MAX_SAME_SPEAKER_GAP_SEC = 2.25     # Max silence allowed between same-speaker segments
-    # -- Visual Interaction (Rule 2: Proximity) --
-    PROXIMITY_THRESHOLD = 0.65        # Min proximity for direct 'Interacting' label
-    INSTANT_CONFIDENCE_THRESHOLD = 0.4 # Confidence floor for a 'real' detection
+    # -- General --
+    SOCIAL_STATE_MAPPING_BINARY = {1: 'Interacting', 2: 'Not Interacting'} 
+    SOCIAL_STATE_MAPPING_TERTIARY = {1: 'Interacting', 2: 'Available', 3: 'Alone'}
 
-    # -- Sustained Audio Interaction (Rule 3: KCDS) --
-    SUSTAINED_KCDS_WINDOW_SEC = 6.5    # Window for sustained adult speech
-    SUSTAINED_KCDS_THRESHOLD = 0.8    # Density of KCDS required in window
+    NUM_FOLDS = 5
+    EXCLUSION_SECONDS = 30           
+    SAMPLE_RATE = 10                 
     
-    # -- Sustained Visual Interaction (Rule 4: OHS) --
-    VISUAL_PERSISTENCE_SEC = 3.0    # Temporal buffer to maintain visual presenced
+    # -- Turn-Taking --
+    MAX_TURN_TAKING_GAP_SEC = 8      
+    MAX_SAME_SPEAKER_GAP_SEC = 2.25     
 
-    # -- Presence Detection Gating --
-    # Used as a visual floor to validate audio signals (KCDS and OHS)
-    AUDIO_VISUAL_GATING_FLOOR = 0.08 # Minimum visual presence required to validate audio-based 'Interacting' or 'Available'
-    MIN_PRESENCE_OHS_FRACTION = 0.025 # Density of OHS required to flag 'is_sustained_ohs'
+    # -- Proximity --
+    PROXIMITY_THRESHOLD = 0.65    
+    
+    # Presence threshold  
+    INSTANT_CONFIDENCE_THRESHOLD = 0.4 
 
-    # -- Segment Post-Processing & CPD --
-    # These control the final statistical grouping of frames
-    CPD_PENALTY = 2.8                  # PELT algorithm penalty
-    CPD_INTERACTING_THRESHOLD = 0.45 # Segment density to claim 'Interacting'
+    # -- KCDS (Adult Speech) --
+    SUSTAINED_KCDS_WINDOW_SEC = 6.5    
+    SUSTAINED_KCDS_THRESHOLD = 0.8    
+    
+    # -- Rule 4: Visual Persistence --
+    VISUAL_PERSISTENCE_SEC = 3.0    
+
+    # -- Audio-Visual Gating --
+    AUDIO_VISUAL_GATING_FLOOR = 0.08 
+    MIN_PRESENCE_OHS_FRACTION = 0.025 
+
+    # -- CPD & Post-Processing --
+    CPD_PENALTY = 2.8                  
+    CPD_INTERACTING_THRESHOLD = 0.45 
     CPD_INTERACTING_THRESHOLD_LOW = 0.25
-    CPD_TOTAL_PRESENCE_FLOOR = 0.45  # Combined density (1+2) to claim 'Available'
+    CPD_TOTAL_PRESENCE_FLOOR = 0.45  
 
-    MIN_INTERACTING_SEGMENT_DURATION_SEC = 1.5
-    MIN_ALONE_SEGMENT_DURATION_SEC = 10
-    MIN_AVAILABLE_SEGMENT_DURATION_SEC = 10
-    MIN_NOT_INTERACTING_SEGMENT_DURATION_SEC = 10
+    SAME_SEGMENT_MERGE_THRESHOLD = 1   
 
-    # Max gap to bridge same-type segments in final consolidation
-    GAP_STRETCH_THRESHOLD = 1     
-
-    # -- Hyperparameter Tuning Settings --
-    RANDOM_SAMPLING = True            # Use random sampling instead of grid search for tuning
-    
-    
-    ALONE_RECLASSIFY_AUDIO_THRESHOLD = 0.24
-    ALONE_RECLASSIFY_VISUAL_THRESHOLD = 0.25
-    GHOST_VISUAL_THRESHOLD_AVAILABLE = 0.02
-    GHOST_VISUAL_THRESHOLD_INTERACTING = 0.01
-    KCHI_ONLY_FRACTION_THRESHOLD = 0.55
-    KCHI_PERSON_BUFFER_FRAMES = 2
-    MAX_ALONE_FALSE_POSITIVE_FRACTION = 0.25
-    MAX_COMBINATIONS_TUNING = 20
-    MAX_KCHI_FRACTION_FOR_MEDIA = 0.08
-    MAX_MEDIA_ALONE_GAP_SEC = 300
-    MAX_OHS_FOR_AVAILABLE = 0.4
-    MEDIA_WINDOW_SEC = 25
-    MIN_BOOK_PRESENCE_FRACTION = 0.7
-    MIN_GHOST_CHECK_DURATION_AVAILABLE = 8.0
-    MIN_GHOST_CHECK_DURATION_INTERACTING = 3.0
-    MIN_MEDIA_FACE_MATCH_FRACTION = 0.1
-    MIN_PERSON_PRESENCE_FRACTION = 0.08
-    MIN_PRESENCE_OHS_KCDS_FRACTION_MEDIA = 0.05
-    MIN_PRESENCE_PERSON_FRACTION = 0.05
-    MIN_RECLASSIFY_DURATION_SEC = 3.0
-    PERSON_AUDIO_WINDOW_SEC = 2.0
-    PERSON_AVAILABLE_WINDOW_SEC = 15
-    ROBUST_ALONE_WINDOW_SEC = 4
+    GAP_DEFAULT_LABEL_BINARY = "Not Interacting"
+    GAP_DEFAULT_LABEL_TERTIARY = "Alone"
+    GAP_STRETCH_THRESHOLD = 1   
+      
+class HyperparameterConfig:
+    """Defines the search space for hyperparameter optimization."""
+    HYPERPARAMETER_RANGES = {
+        'AUDIO_VISUAL_GATING_FLOOR': [0.22, 0.28, 0.34], 
+        'MIN_AVAILABLE_SEGMENT_DURATION_SEC': [8.0, 12.0, 16.0],
+        'CPD_PENALTY': [1.4, 2.0, 2.6],
+        'GAP_STRETCH_THRESHOLD': [0.5, 2.0],
+        'CPD_INTERACTING_THRESHOLD_LOW': [0.15, 0.25],
+        'MAX_TURN_TAKING_GAP_SEC': [6.0, 8.0, 10.0],
+        'MIN_ALONE_SEGMENT_DURATION_SEC': [8.0, 10.0, 15.0],
+    }

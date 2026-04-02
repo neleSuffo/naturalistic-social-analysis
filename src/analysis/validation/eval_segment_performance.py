@@ -12,8 +12,8 @@ from collections import defaultdict
 src_path = Path(__file__).parent.parent.parent if '__file__' in globals() else Path.cwd().parent.parent
 sys.path.append(str(src_path))
 
-from constants import Evaluation, Inference
-from config import InferenceConfig
+from constants import Analysis, Inference
+from config import AnalysisConfig
 from analysis.utils import time_to_seconds, create_second_level_labels
 
 # Define a label for unclassified/unannotated time for saving purposes
@@ -194,7 +194,7 @@ def plot_segment_timeline(predictions_df, ground_truth_df, video_name, save_path
 def evaluate_performance_by_seconds(predictions_df, ground_truth_df, video_subset=None):
     """
     Evaluates model performance by comparing second-by-second classifications,
-    excluding the first and last x seconds, as defined in InferenceConfig.EXCLUSION_SECONDS.
+    excluding the first and last x seconds, as defined in AnalysisConfig.EXCLUSION_SECONDS.
     ...
     """    
     # Identify videos present in both predictions and ground truth
@@ -251,13 +251,13 @@ def evaluate_performance_by_seconds(predictions_df, ground_truth_df, video_subse
         video_duration_seconds = int(max_end_gt) + 1
         
         # Skip videos that are too short to have a central evaluation segment
-        if video_duration_seconds < InferenceConfig.EXCLUSION_SECONDS * 2:
-            print(f"⚠️ Warning: Video {video} is too short ({video_duration_seconds}s) for {InferenceConfig.EXCLUSION_SECONDS * 2}s exclusion, skipping evaluation.")
+        if video_duration_seconds < AnalysisConfig.EXCLUSION_SECONDS * 2:
+            print(f"⚠️ Warning: Video {video} is too short ({video_duration_seconds}s) for {AnalysisConfig.EXCLUSION_SECONDS * 2}s exclusion, skipping evaluation.")
             continue
 
         # Define the evaluation range: from 30s (inclusive) to end-30s (exclusive)
-        start_sec_to_evaluate = InferenceConfig.EXCLUSION_SECONDS
-        end_sec_to_evaluate = video_duration_seconds - InferenceConfig.EXCLUSION_SECONDS
+        start_sec_to_evaluate = AnalysisConfig.EXCLUSION_SECONDS
+        end_sec_to_evaluate = video_duration_seconds - AnalysisConfig.EXCLUSION_SECONDS
 
         pred_labels = create_second_level_labels(pred_video, video_duration_seconds)
         gt_labels = create_second_level_labels(gt_video, video_duration_seconds)
@@ -414,8 +414,8 @@ def generate_confusion_matrix_plots(results, output_folder: Path):
 
     # --- Save plots ---
     output_folder.mkdir(parents=True, exist_ok=True)
-    conf_matrix_counts_path = output_folder / Evaluation.CONF_MATRIX_COUNTS
-    conf_matrix_percentages_path = output_folder / Evaluation.CONF_MATRIX_PERCENTAGES
+    conf_matrix_counts_path = output_folder / Analysis.CONF_MATRIX_COUNTS
+    conf_matrix_percentages_path = output_folder / Analysis.CONF_MATRIX_PERCENTAGES
 
     # Absolute counts
     plt.figure(figsize=(10, 8))
@@ -446,9 +446,6 @@ def generate_confusion_matrix_plots(results, output_folder: Path):
     plt.tight_layout()
     plt.savefig(conf_matrix_percentages_path, dpi=300, bbox_inches='tight')
     plt.close()
-
-    print(f"✅ Confusion matrices saved to: {conf_matrix_percentages_path}")
-
 
 def save_performance_results(results, detailed_metrics, total_seconds, total_hours, filename: Path):
     """Save performance summary and detailed metrics to a text file."""
@@ -520,8 +517,8 @@ def extract_misclassification_segments(predictions_df, ground_truth_df, results_
         video_duration_seconds = int(max_end_gt) + 1
         
         # Skip exclusion seconds to match evaluation window
-        start_sec = InferenceConfig.EXCLUSION_SECONDS
-        end_sec = video_duration_seconds - InferenceConfig.EXCLUSION_SECONDS
+        start_sec = AnalysisConfig.EXCLUSION_SECONDS
+        end_sec = video_duration_seconds - AnalysisConfig.EXCLUSION_SECONDS
         
         pred_labels = create_second_level_labels(pred_video, video_duration_seconds)
         gt_labels = create_second_level_labels(gt_video, video_duration_seconds)
@@ -611,7 +608,7 @@ def run_evaluation(predictions_path: Path, output_folder: Path, mode: str, video
         print(f"❌ Error: Predictions file not found at {predictions_path}")
         sys.exit(1)
 
-    ground_truth_path = Evaluation.GROUND_TRUTH_SEGMENTS_CSV
+    ground_truth_path = Analysis.GROUND_TRUTH_SEGMENTS_CSV
     try:
         ground_truth_df = pd.read_csv(ground_truth_path, delimiter=';')
     except FileNotFoundError:
@@ -631,9 +628,6 @@ def run_evaluation(predictions_path: Path, output_folder: Path, mode: str, video
     if mode == 'binary':
         predictions_df = reclassify_to_binary(predictions_df)
         ground_truth_df = reclassify_to_binary(ground_truth_df)
-        print("📊 Mode: BINARY")
-    else:
-        print("📊 Mode: TERTIARY")
 
     # Standardize times
     if 'start_time_min' in ground_truth_df.columns and 'end_time_min' in ground_truth_df.columns:
@@ -663,11 +657,10 @@ def run_evaluation(predictions_path: Path, output_folder: Path, mode: str, video
     misclassified_path = output_folder / f"misclassified_segments.csv"
     if not df_misclassified.empty:
         df_misclassified.to_csv(misclassified_path, index=False)
-        print(f"✅ Misclassified segments saved to: {misclassified_path}")
         
     # Generate Plots and Results
     generate_confusion_matrix_plots(results, output_folder)
-    performance_path = output_folder / (Evaluation.PERFORMANCE_RESULTS_TXT.stem + Evaluation.PERFORMANCE_RESULTS_TXT.suffix)
+    performance_path = output_folder / (Analysis.PERFORMANCE_RESULTS_TXT.stem + Analysis.PERFORMANCE_RESULTS_TXT.suffix)
     save_performance_results(results, detailed_metrics, total_seconds, total_hours, filename=performance_path)
     
     # Console Output

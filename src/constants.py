@@ -103,13 +103,26 @@ class Proximity:
                         }
     
 class Inference:
-    QUANTEX_VIDEOS_LIST_FILE = Path(BasePaths.DATA_DIR/"quantex_video_list_inference.txt") # list of all quantex videos for inference
-    BASE_OUTPUT_DIR = BasePaths.OUTPUT_DIR / "quantex_inference"
-    FINAL_OUTPUT_FOLDER = Path(BASE_OUTPUT_DIR/"interaction_analysis_20260309_195151")
     PERSON_LOG_FILE_PATH = BasePaths.OUTPUT_DIR / "logs" / "person_processed.txt"
     FACE_LOG_FILE_PATH = BasePaths.OUTPUT_DIR / "logs" / "face_processed.txt"
     SPEECH_LOG_FILE_PATH = BasePaths.OUTPUT_DIR / "logs" / "speech_processed.txt"
     BOOK_LOG_FILE_PATH = BasePaths.OUTPUT_DIR / "logs" / "book_processed.txt"
+    
+class Analysis:
+    QUANTEX_VIDEOS_LIST_FILE = Path(BasePaths.DATA_DIR/"quantex_video_list_inference_tuning.txt") # list of all quantex videos for inference
+    BASE_OUTPUT_DIR = BasePaths.OUTPUT_DIR / "quantex_analysis"
+    FINAL_OUTPUT_FOLDER = Path(BASE_OUTPUT_DIR/"interaction_analysis_20260309_195151")
+    CONF_MATRIX_COUNTS = Path("confusion_matrix_counts.png")
+    CONF_MATRIX_PERCENTAGES = Path("confusion_matrix_percentages.png")
+    PERFORMANCE_RESULTS_TXT = Path("performance_results.txt")
+    RULE_ABLATION_SUMMARY_CSV = BASE_OUTPUT_DIR / "rule_ablation_summary.csv"
+    RULE_ABLATION_PLOT = BASE_OUTPUT_DIR/ "rule_ablation_plot.png"
+    GROUND_TRUTH_SEGMENTS_CSV = BASE_OUTPUT_DIR / "01_interaction_segments_gt.csv"
+    GT_1_FILE_PATH = BASE_OUTPUT_DIR / "interaction_segments_clara.csv"
+    GT_2_FILE_PATH = BASE_OUTPUT_DIR / "interaction_segments_lotta.csv"
+    GT_1_SECONDWISE_FILE_PATH = BASE_OUTPUT_DIR / "gt_ann1_secondwise.csv"
+    GT_2_SECONDWISE_FILE_PATH = BASE_OUTPUT_DIR / "gt_ann2_secondwise.csv"
+    PRED_SECONDWISE_FILE_PATH = BASE_OUTPUT_DIR / "pred_secondwise.csv"
     FRAME_LEVEL_INTERACTIONS_CSV = Path(FINAL_OUTPUT_FOLDER/"frame_level_social_interactions.csv")
     INTERACTION_SEGMENTS_CSV = Path(FINAL_OUTPUT_FOLDER/"interaction_segments.csv")
     #UTTERANCE_SEGMENTS_CSV = FINAL_OUTPUT_FOLDER / "00_utterance_segments.csv"
@@ -122,18 +135,3 @@ class Inference:
     TURN_DURATION_CSV = FINAL_OUTPUT_FOLDER / "04b_turn_durations_summary.csv"
     INTERACTION_COMPOSITION_CSV = FINAL_OUTPUT_FOLDER / "05_interaction_composition.csv"
     TEMP_CUT_FACE_DIR = BASE_OUTPUT_DIR / "temp_cut_faces"
-    
-class Evaluation:
-    BASE_OUTPUT_DIR = BasePaths.OUTPUT_DIR / "segment_evaluation"
-    HYPERPARAMETER_OUTPUT_DIR = BASE_OUTPUT_DIR / "hyperparameter_tuning"
-    CONF_MATRIX_COUNTS = Path("confusion_matrix_counts.png")
-    CONF_MATRIX_PERCENTAGES = Path("confusion_matrix_percentages.png")
-    PERFORMANCE_RESULTS_TXT = Path("performance_results.txt")
-    RULE_ABLATION_SUMMARY_CSV = BASE_OUTPUT_DIR / "rule_ablation_summary.csv"
-    RULE_ABLATION_PLOT = BASE_OUTPUT_DIR/ "rule_ablation_plot.png"
-    GROUND_TRUTH_SEGMENTS_CSV = BASE_OUTPUT_DIR / "01_interaction_segments_gt.csv"
-    GT_1_FILE_PATH = BASE_OUTPUT_DIR / "interaction_segments_clara.csv"
-    GT_2_FILE_PATH = BASE_OUTPUT_DIR / "interaction_segments_lotta.csv"
-    GT_1_SECONDWISE_FILE_PATH = BASE_OUTPUT_DIR / "gt_ann1_secondwise.csv"
-    GT_2_SECONDWISE_FILE_PATH = BASE_OUTPUT_DIR / "gt_ann2_secondwise.csv"
-    PRED_SECONDWISE_FILE_PATH = BASE_OUTPUT_DIR / "pred_secondwise.csv"
