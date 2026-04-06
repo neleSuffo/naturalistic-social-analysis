@@ -13,6 +13,7 @@ import sys
 import pandas as pd
 import numpy as np
 from pathlib import Path
+from datetime import datetime
 from typing import List, Dict
 
 # Path configuration
@@ -21,6 +22,7 @@ sys.path.append(str(src_path))
 
 from constants import DataPaths, Analysis
 from config import AnalysisConfig, DataConfig
+from inference.utils import load_processed_videos
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -57,7 +59,6 @@ def prepare_persistent_tables(conn):
     conn.execute("CREATE INDEX IF NOT EXISTS idx_pers_excl ON PersistentExclusions(detection_id);")
 
     # 2. Aggregated Face Table (Filtered and Sampled)
-    # choose MAX() for proximity and confidence to capture the strongest signal per frame, after exclusions
     conn.execute(f"""
     CREATE TABLE IF NOT EXISTS CachedFaceAgg AS
     SELECT frame_number, video_id, MAX(proximity) AS proximity, MAX(confidence_score) AS face_conf
@@ -69,7 +70,6 @@ def prepare_persistent_tables(conn):
     conn.execute("CREATE INDEX IF NOT EXISTS idx_face_agg ON CachedFaceAgg(video_id, frame_number);")
 
     # 3. Aggregated Person Table (Filtered and Sampled)
-    # choose MAX() for confidence to capture the strongest signal per frame, after exclusions
     conn.execute(f"""
     CREATE TABLE IF NOT EXISTS CachedPersonAgg AS
     SELECT frame_number, video_id, MAX(confidence_score) AS person_conf
@@ -156,16 +156,13 @@ def calculate_window_features(df: pd.DataFrame) -> pd.DataFrame:
     sr = AnalysisConfig.SAMPLE_RATE
     samples_per_sec = fps / sr
     
-    # Rolling presence signal for CPD 
-    # calculate a smoothed presence score using a rolling average of the instant presence confidence
+    # Rolling presence signal for CPD
     df['presence_score'] = df['instant_presence_conf'].rolling(
         window=int(samples_per_sec), min_periods=1, center=True
     ).mean().fillna(0)
 
     # Visual Persistence
     df['is_high_conf_anchor'] = ((df['proximity'] > AnalysisConfig.HIGH_CONFIDENCE_PROXIMITY_THRESHOLD) | (df['face_conf'] > AnalysisConfig.HIGH_CONFIDENCE_FACE_CONFIDENCE)).astype(int)  
-    
-    # Use rolling max to determine if a person has been seen recently, either through a high-confidence anchor (long memory) or short-term presence (flicker)
     long_mem = df['is_high_conf_anchor'].rolling(
         window=int(AnalysisConfig.VISUAL_PERSISTENCE_SEC * samples_per_sec), 
         min_periods=1, center=True
@@ -178,32 +175,23 @@ def calculate_window_features(df: pd.DataFrame) -> pd.DataFrame:
     df['person_seen_recently'] = (long_mem == 1) | (short_mem)
 
     # Sustained Audio Windowing
-    sustained_window = int(AnalysisConfig.SUSTAINED_KCDS_WINDOW_SEC * samples_per_sec)
-    df['is_sustained_kcds'] = df['has_cds'].rolling(window=sustained_window).mean() >= AnalysisConfig.SUSTAINED_KCDS_THRESHOLD
-    df['is_sustained_ohs'] = df['has_ohs'].rolling(window=sustained_window).mean() >= AnalysisConfig.MIN_PRESENCE_OHS_FRACTION
+    sustained_win = int(AnalysisConfig.SUSTAINED_KCDS_WINDOW_SEC * samples_per_sec)
+    df['is_sustained_kcds'] = df['has_cds'].rolling(window=sustained_win).mean() >= AnalysisConfig.SUSTAINED_KCDS_THRESHOLD
+    df['is_sustained_ohs'] = df['has_ohs'].rolling(window=sustained_win).mean() >= AnalysisConfig.MIN_PRESENCE_OHS_FRACTION
 
     return df
 
 def classify_frames(df: pd.DataFrame, social_state_mode: str = "tertiary") -> pd.DataFrame:
     """
-    Applies vectorized Boolean logic to classify each frame into social states based on the defined rules.
-    The classification is done in a single pass using Pandas operations, following the priority of rules:
-    1. Interacting (1): If any of the turn-taking, close proximity, or sustained KCDS rules are met.
-    2. Available (2): If the person is seen recently (visual persistence) or if there is sustained OHS presence.
-    3. Alone (3): Default state if neither of the above conditions are met.
-    In "binary" mode, Available and Alone are merged into a single Not-Interacting class (2), while Interacting remains 1.
-        
+    High-speed social state classifier using Boolean masking.
+    Hierarchy: 1 (Interacting) > 2 (Available) > 3 (Alone)
+    
     Parameters
     ----------
     df: pd.DataFrame
         Input DataFrame with calculated features.
     social_state_mode: str
         "tertiary" for three-class classification, "binary" to merge Available and Alone into one class.
-        
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame with an additional 'interaction_type' column indicating the classified social state for each frame.
     """
     # 1. Define Boolean Logic Filters
     is_visual_anchor = df['presence_score'] >= AnalysisConfig.AUDIO_VISUAL_GATING_FLOOR
@@ -226,15 +214,10 @@ def classify_frames(df: pd.DataFrame, social_state_mode: str = "tertiary") -> pd
     df['interaction_type'] = 3
     
     # 3. Apply 'Available' (2)
-    # A frame is classified as Available if it meets the visual persistence criteria (person seen recently) or if there is sustained OHS presence, but does not meet the criteria for Interacting.
     available_mask = is_available_visual | (rule4_ohs & is_visual_anchor)
     df.loc[available_mask, 'interaction_type'] = 2
     
     # 4. Apply 'Interacting' (1)
-    # A frame is classified as Interacting if it meets any of the following criteria:
-    # - Turn-taking: Identified as part of an audio interaction bout based on the turn-taking logic.
-    # - Close Proximity: The proximity feature exceeds the defined threshold, indicating close physical proximity to another person.
-    # - Sustained KCDS: There is sustained CDS presence over the defined window, and the presence score meets the gating threshold, indicating a strong likelihood of interaction
     interacting_mask = (
         rule1_tt | 
         df['rule3_kcds_speaking'] | # Use the gated rule we just saved
@@ -248,18 +231,10 @@ def classify_frames(df: pd.DataFrame, social_state_mode: str = "tertiary") -> pd
         
     return df
 
-def find_speech_segments(video_df: pd.DataFrame, column_name: str) -> List[Dict]:
+def find_segments(video_df: pd.DataFrame, column_name: str) -> List[Dict]:
     """
-    Identifies continuous segments in a video DataFrame where the specified column is 1.
-    Segments are defined as consecutive frames where the column is 1, allowing for gaps up to the sample rate (to account for the sampling of frames).
-    Returns a list of dictionaries with 'start', 'end', and 'type' for each segment.
-    
-    Parameters
-    ----------
-    video_df: pd.DataFrame
-        DataFrame containing frame-level data for a single video, indexed by frame_number.
-    column_name: str
-        The name of the column to analyze for segment detection (e.g., 'has_kchi').
+    Identifies continuous segments using vectorized operations.
+    (Optimized: Replaced Python loop with NumPy diff)
     """
     segments = []
 
@@ -312,10 +287,10 @@ def find_speech_segments(video_df: pd.DataFrame, column_name: str) -> List[Dict]
 
     return segments
 
-def check_audio_interaction_turn_taking(df: pd.DataFrame, fps: int) -> pd.Series:
+def check_audio_interaction_turn_taking(df, fps):
     """
     Identifies continuous audio interaction bouts where KCHI and CDS segments 
-    are linked by a small gap (<= MAX_TURN_TAKING_GAP_SEC) or inter-sperspeaker gap (<= MAX_SAME_SPEAKER_GAP_SEC).
+    are linked by a small gap (<= MAX_TURN_TAKING_GAP_SEC) or inter-sperspeaker gap (<= MAX_SAME_SPEAKER_GAP_SEC) if they are the same type.
     Only segments that contain both KCHI and CDS are classified as Interacting.
     
     Parameters
@@ -336,15 +311,14 @@ def check_audio_interaction_turn_taking(df: pd.DataFrame, fps: int) -> pd.Series
     MAX_SAME_SPEAKER_GAP_FRAMES = AnalysisConfig.MAX_SAME_SPEAKER_GAP_SEC * fps
     all_results = []
 
-    # Process each video separately
-    for _, video_df in df.groupby('video_id'):
+    for video_id, video_df in df.groupby('video_id'):
         video_df = video_df.copy() 
         video_df.set_index('frame_number', inplace=True) 
         video_df['is_audio_interaction'] = False
         
         # Identify KCHI and KCDS segments
-        kchi_segments = find_speech_segments(video_df, 'has_kchi')
-        kcds_segments = find_speech_segments(video_df, 'has_cds')
+        kchi_segments = find_segments(video_df, 'has_kchi')
+        kcds_segments = find_segments(video_df, 'has_cds')
         all_segments = sorted(kchi_segments + kcds_segments, key=lambda x: x['start'])
         
         if not all_segments:
@@ -403,6 +377,7 @@ def check_audio_interaction_turn_taking(df: pd.DataFrame, fps: int) -> pd.Series
 
 def main(db_path: Path, 
          output_dir: Path, 
+         hyperparameter_tuning: bool = False, 
          video_list: list = None, 
          social_state_mode: str = "tertiary"):
     """
@@ -414,6 +389,8 @@ def main(db_path: Path,
         Path to the SQLite database containing multimodal data.
     output_dir: Path
         Directory where the output CSV will be saved.
+    hyperparameter_tuning: bool
+        If True, the function is being called as part of hyperparameter tuning (affects output directory structure).
     video_list: list
         Optional list of video names to process. If None, processes all videos in the database.
     social_state_mode: str

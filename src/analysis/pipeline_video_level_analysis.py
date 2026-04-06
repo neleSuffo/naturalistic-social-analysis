@@ -41,27 +41,24 @@ def apply_cpd_smoothing(frame_data: pd.DataFrame, social_state_mode: str):
         video_df = video_df.sort_values('frame_number').copy()
         signal = video_df['presence_score'].values.reshape(-1, 1)
         
-        algorithm = rpt.Pelt(model="l2").fit(signal)
-        # The penalty value controls the sensitivity of change point detection. 
-        # A higher value results in fewer detected change points (smoother), while a lower value allows for more change points (more sensitive to fluctuations). 
-        breakpoints = algorithm.predict(pen=AnalysisConfig.CPD_PENALTY)
+        algo = rpt.Pelt(model="l2").fit(signal)
+        breakpoints = algo.predict(pen=AnalysisConfig.CPD_PENALTY)
 
         start_idx = 0
-        # Iterate through detected breakpoints to assign interaction types based on the distribution of presence scores and multimodal flags within each segment
         for end_idx in breakpoints:
             segment_slice = video_df.iloc[start_idx:end_idx]
             if not segment_slice.empty:
                 counts = segment_slice['interaction_type'].value_counts(normalize=True)
-                has_engagement = (segment_slice['rule1_turn_taking'].any() | 
-                                  segment_slice['rule2_close_proximity'].any() | 
-                                  segment_slice['rule3_kcds_speaking'].any())
+                has_eng = (segment_slice['rule1_turn_taking'].any() | 
+                           segment_slice['rule2_close_proximity'].any() | 
+                           segment_slice['rule3_kcds_speaking'].any())
                 
                 if social_state_mode == "binary":
                     # Logic: If high-level rules triggered or density meets threshold
-                    state = 1 if (has_engagement or counts.get(1, 0) >= AnalysisConfig.CPD_INTERACTING_THRESHOLD) else 2
+                    state = 1 if (has_eng or counts.get(1, 0) >= AnalysisConfig.CPD_INTERACTING_THRESHOLD) else 2
                 else:
                     # Hierarchical tertiary consensus logic
-                    if has_engagement and counts.get(1, 0) >= AnalysisConfig.CPD_INTERACTING_THRESHOLD_LOW:
+                    if has_eng and counts.get(1, 0) >= AnalysisConfig.CPD_INTERACTING_THRESHOLD_LOW:
                         state = 1
                     elif counts.get(1, 0) >= AnalysisConfig.CPD_INTERACTING_THRESHOLD:
                         state = 1
@@ -78,7 +75,7 @@ def apply_cpd_smoothing(frame_data: pd.DataFrame, social_state_mode: str):
 
 def create_segments_for_video(video_id, video_df):
     """
-    Creates interaction segments for a single video based on changes in the 'interaction_type' column.
+    Create segments for a single video. Enforces type-specific minimum durations.
     
     Parameters
     ----------
@@ -228,7 +225,7 @@ def print_segment_summary(segments_df, social_state_mode):
     else:
         print("\n📊 No segments created")
 
-def main(output_file_path: Path, frame_data_path: Path, social_state_mode: str = "tertiary"):
+def main(output_file_path: Path, frame_data_path: Path, hyperparameter_tuning: bool = False, social_state_mode: str = "tertiary"):
     """
     Main entry point for segment analysis. Loads data, smooths, segments, and saves.
     
@@ -238,6 +235,8 @@ def main(output_file_path: Path, frame_data_path: Path, social_state_mode: str =
         Path to save the final segments CSV.
     frame_data_path : Path
         Path to the intermediate frame-level data CSV.
+    hyperparameter_tuning : bool
+        Whether this run is part of hyperparameter tuning (affects output organization).
     social_state_mode : str
         "binary" or "tertiary" classification mode for social state analysis.
     """

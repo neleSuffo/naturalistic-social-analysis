@@ -87,14 +87,8 @@ def run_cross_validation(mode="validation", social_state_mode="tertiary", max_co
                     
                     if current_f1 > best_f1:
                         best_f1 = current_f1
-                        best_params = combo                
+                        best_params = combo
             
-            # save best params for this fold
-            if best_params is not None:
-                with open(output_root / f"fold_{fold_id}_best_params.txt", "w") as f:
-                    for key, value in best_params.items():
-                        f.write(f"{key}: {value}\n")
-                        
             print(f"✅ Best Train F1: {best_f1:.4f}. Now validating on unseen test videos...")
 
             # --- PHASE 2: Evaluate 'Winner' on TEST Videos ---
@@ -174,8 +168,8 @@ def run_cross_validation(mode="validation", social_state_mode="tertiary", max_co
     output_df.to_csv(output_root / "cv_summary.csv", index=True)
     
     # save copy of pipeline_frame_level_analysis.py and pipeline_video_level_analysis.py for reference
-    shutil.copy("pipeline_frame_level_analysis.py", output_root / "pipeline_frame_level_analysis.py")
-    shutil.copy("pipeline_video_level_analysis.py", output_root / "pipeline_video_level_analysis.py")
+    shutil.copy("/home/nele_pauline_suffo/projects/naturalistic-social-analysis/src/analysis/pipeline_frame_level_analysis.py", output_root / "pipeline_frame_level_analysis.py")
+    shutil.copy("/home/nele_pauline_suffo/projects/naturalistic-social-analysis/src/analysis/pipeline_video_level_analysis.py", output_root / "pipeline_video_level_analysis.py")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

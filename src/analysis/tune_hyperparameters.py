@@ -27,40 +27,45 @@ from analysis.validation.eval_segment_performance import run_evaluation
 from analysis.pipeline_frame_level_analysis import main as frame_analysis_main
 from analysis.pipeline_video_level_analysis import main as segment_analysis_main
 
-def generate_hyperparameter_combinations(max_combinations=None, random_sample=False):
+import random
+
+def generate_hyperparameter_combinations(max_combinations=20, random_sample=True):
     """
-    Generates a list of hyperparameter combinations based on the defined ranges in HyperparameterConfig.
-    
-    Parameters
-    ----------
-    max_combinations: int or None
-        Maximum number of combinations to generate. If None, generates all possible combinations.
-    random_sample: bool
-        Whether to randomly sample combinations instead of taking the first N.
-        
-    Returns
-    -------
-    List of dictionaries, where each dictionary contains a unique combination of hyperparameters.
+    Memory-efficient hyperparameter generation. 
+    Avoids Cartesian product to prevent OOM errors.
     """
-    # Generate all possible combinations using Cartesian product
     ranges = HyperparameterConfig.HYPERPARAMETER_RANGES
     param_names = list(ranges.keys())
     
-    all_combinations = [
-        dict(zip(param_names, combo)) 
-        for combo in product(*[ranges[p] for p in param_names])
-    ]
+    # If you aren't doing a random sample and want the full grid, 
+    # only then should you use the product (and only if the grid is small).
+    if not random_sample:
+        # Standard Cartesian product (only use if you know the grid is small!)
+        from itertools import product
+        all_combos = [dict(zip(param_names, c)) for c in product(*[ranges[p] for p in param_names])]
+        return all_combos[:max_combinations] if max_combinations else all_combos
+
+    # --- MEMORY EFFICIENT RANDOM SEARCH ---
+    combinations = []
+    seen = set() # To ensure uniqueness
     
-    # If random sampling is enabled, randomly select a subset of combinations
-    if random_sample and max_combinations:
-        if max_combinations >= len(all_combinations):
-            return all_combinations
-        return random.sample(all_combinations, max_combinations)
-    
-    if max_combinations:
-        return all_combinations[:max_combinations]
-    
-    return all_combinations
+    # Safety break to avoid infinite loops if max_combos > possible combos
+    total_possible = 1
+    for r in ranges.values(): total_possible *= len(r)
+    limit = min(max_combinations, total_possible)
+
+    while len(combinations) < limit:
+        # Pick one random value for every parameter
+        combo = {p: random.choice(ranges[p]) for p in param_names}
+        
+        # Convert to a frozenset of items to make it hashable for the 'seen' check
+        combo_frozen = tuple(sorted(combo.items()))
+        
+        if combo_frozen not in seen:
+            seen.add(combo_frozen)
+            combinations.append(combo)
+            
+    return combinations
 
 def run_pipeline_for_combo(hyperparameters, combo_dir, hyperparameter_tuning, social_state_mode,video_list=None):
     """

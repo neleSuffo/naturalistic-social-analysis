@@ -222,40 +222,40 @@ class AnalysisConfig:
     SAMPLE_RATE = 10                 
     
     # -- Turn-Taking --
-    MAX_TURN_TAKING_GAP_SEC = 8      
-    MAX_SAME_SPEAKER_GAP_SEC = 2.25     
+    MAX_TURN_TAKING_GAP_SEC = 10.0     
+    MAX_SAME_SPEAKER_GAP_SEC = 1
 
     # -- Proximity --
-    PROXIMITY_THRESHOLD = 0.65    
+    PROXIMITY_THRESHOLD = 0.55  
     
     # Presence threshold  
-    INSTANT_CONFIDENCE_THRESHOLD = 0.4 
+    INSTANT_CONFIDENCE_THRESHOLD = 0.20
 
     # -- KCDS (Adult Speech) --
-    SUSTAINED_KCDS_WINDOW_SEC = 6.5    
-    SUSTAINED_KCDS_THRESHOLD = 0.8    
+    SUSTAINED_KCDS_WINDOW_SEC = 8.0   
+    SUSTAINED_KCDS_THRESHOLD = 0.9
     
     # -- Rule 4: Visual Persistence --
-    HIGH_CONFIDENCE_PROXIMITY_THRESHOLD = 0.5
-    HIGH_CONFIDENCE_FACE_CONFIDENCE = 0.6
-    VISUAL_PERSISTENCE_SEC = 3.0 # long memory duration in seconds
-    SHORT_TERM_VISUAL_MEMORY_SEC = 2.0  # Short memory (Flicker)
+    HIGH_CONFIDENCE_PROXIMITY_THRESHOLD = 0.75
+    HIGH_CONFIDENCE_FACE_CONFIDENCE = 0.85
+    VISUAL_PERSISTENCE_SEC = 2 # long memory duration in seconds
+    SHORT_TERM_VISUAL_MEMORY_SEC = 3.5  # Short memory (Flicker)
 
     # -- Audio-Visual Gating --
-    AUDIO_VISUAL_GATING_FLOOR = 0.08 
-    MIN_PRESENCE_OHS_FRACTION = 0.025 
+    AUDIO_VISUAL_GATING_FLOOR = 0.25
+    MIN_PRESENCE_OHS_FRACTION = 0.02
 
     # -- CPD & Post-Processing --
-    CPD_PENALTY = 2.8                  
-    CPD_INTERACTING_THRESHOLD = 0.45 
-    CPD_INTERACTING_THRESHOLD_LOW = 0.25
-    CPD_TOTAL_PRESENCE_FLOOR = 0.45  
+    CPD_PENALTY = 4              
+    CPD_INTERACTING_THRESHOLD = 0.75
+    CPD_INTERACTING_THRESHOLD_LOW = 0.3
+    CPD_TOTAL_PRESENCE_FLOOR = 0.4
 
-    SAME_SEGMENT_MERGE_THRESHOLD = 1   
+    SAME_SEGMENT_MERGE_THRESHOLD = 2.0   
 
     GAP_DEFAULT_LABEL_BINARY = "Not Interacting"
     GAP_DEFAULT_LABEL_TERTIARY = "Alone"
-    GAP_STRETCH_THRESHOLD = 1   
+    GAP_STRETCH_THRESHOLD = 1.5
       
 class HyperparameterConfig:
     """
@@ -263,40 +263,39 @@ class HyperparameterConfig:
     Includes all 15 active parameters from the frame-level and video-level engines.
     """
     HYPERPARAMETER_RANGES = {
-        # --- 1. Audio-Visual Gating & Confidence ---
-        # Shifted Higher: We need more visual evidence before trusting audio.
-        'AUDIO_VISUAL_GATING_FLOOR': [0.15, 0.22, 0.30], 
-        'INSTANT_CONFIDENCE_THRESHOLD': [0.25, 0.35, 0.5],
-        
-        # --- 2. Turn-Taking (Rule 1) ---
-        # Shifted Lower: 12s is too long; it's likely catching coincidental noises.
-        'MAX_TURN_TAKING_GAP_SEC': [4.0, 6.0, 8.0],
-        'MAX_SAME_SPEAKER_GAP_SEC': [1.5, 2.25, 3.0],
-        
-        # --- 3. Proximity (Rule 2) ---
-        'PROXIMITY_THRESHOLD': [0.60, 0.70, 0.80],
-        
-        # --- 4. Sustained Adult Speech (Rule 3) ---
-        'SUSTAINED_KCDS_WINDOW_SEC': [6.0, 8.0, 10.0],
-        'SUSTAINED_KCDS_THRESHOLD': [0.75, 0.85, 0.95], # Stricter 'fill' requirement
-        
-        # --- 5. Visual Persistence & OHS ---
-        'HIGH_CONFIDENCE_PROXIMITY_THRESHOLD': [0.5, 0.6, 0.7],
-        'HIGH_CONFIDENCE_FACE_CONFIDENCE': [0.6, 0.7, 0.8],
-        # Shifted Lower: 6s 'memory' is causing the Alone -> Interacting bleed.
-        'VISUAL_PERSISTENCE_SEC': [1.5, 3.0, 4.5],
-        'SHORT_TERM_VISUAL_MEMORY_SEC': [1.0, 2.0, 3.0], 
-        'MIN_PRESENCE_OHS_FRACTION': [0.02, 0.04, 0.06],
+    # --- 1. Audio-Visual Gating & Confidence ---
+    # Shifted center higher since 0.3 was the winner.
+    'AUDIO_VISUAL_GATING_FLOOR': [0.25, 0.35, 0.45], 
+    'INSTANT_CONFIDENCE_THRESHOLD': [0.20, 0.25, 0.30], # 0.25 won; staying tight here
+    
+    # --- 2. Turn-Taking ---
+    'MAX_TURN_TAKING_GAP_SEC': [6.0, 8.0, 10.0], # 8.0 won
+    'MAX_SAME_SPEAKER_GAP_SEC': [1.0, 1.5, 2.0], # 1.5 won
+    
+    # --- 3. Proximity ---
+    'PROXIMITY_THRESHOLD': [0.55, 0.60, 0.65], # 0.6 won
+    
+    # --- 4. Sustained Adult Speech ---
+    'SUSTAINED_KCDS_WINDOW_SEC': [8.0, 10.0, 12.0], # 10.0 won
+    'SUSTAINED_KCDS_THRESHOLD': [0.80, 0.85, 0.90], # 0.85 won
+    
+    # --- 5. Visual Persistence & OHS ---
+    # Pushing these higher because the 'winner' was at the previous max
+    'HIGH_CONFIDENCE_PROXIMITY_THRESHOLD': [0.65, 0.70, 0.75],
+    'HIGH_CONFIDENCE_FACE_CONFIDENCE': [0.75, 0.80, 0.85],
+    'VISUAL_PERSISTENCE_SEC': [2.0, 3.0, 4.0], # 3.0 won
+    'SHORT_TERM_VISUAL_MEMORY_SEC': [2.5, 3.0, 3.5], # 3.0 won
+    'MIN_PRESENCE_OHS_FRACTION': [0.01, 0.02, 0.03], # 0.02 won
 
-        # --- 6. CPD Smoothing (Video Level) ---
-        # Shifted Lower: 4.2 was too 'stubborn'. Lower penalty allows state changes.
-        'CPD_PENALTY': [1.5, 2.5, 3.5],
-        # Shifted Higher: Raise the 'bar' for a segment to be called Interacting.
-        'CPD_INTERACTING_THRESHOLD': [0.50, 0.60, 0.70],
-        'CPD_INTERACTING_THRESHOLD_LOW': [0.05, 0.10, 0.20],
-        'CPD_TOTAL_PRESENCE_FLOOR': [0.40, 0.50, 0.60],
-        
-        # --- 7. Timeline Post-Processing ---
-        'SAME_SEGMENT_MERGE_THRESHOLD': [0.5, 1.0, 2.0],
-        'GAP_STRETCH_THRESHOLD': [0.5, 1.0, 1.5],
-    }
+    # --- 6. CPD Smoothing ---
+    # Pushing penalty higher since 3.5 won.
+    'CPD_PENALTY': [3.0, 4.0, 5.0],
+    # Pushing threshold higher since 0.7 won.
+    'CPD_INTERACTING_THRESHOLD': [0.65, 0.75, 0.85],
+    'CPD_INTERACTING_THRESHOLD_LOW': [0.10, 0.20, 0.30], # 0.20 won
+    'CPD_TOTAL_PRESENCE_FLOOR': [0.35, 0.40, 0.45], # 0.40 won
+    
+    # --- 7. Timeline Post-Processing ---
+    'SAME_SEGMENT_MERGE_THRESHOLD': [1.5, 2.0, 2.5], # 2.0 won
+    'GAP_STRETCH_THRESHOLD': [1.0, 1.5, 2.0], # 1.5 won
+}
