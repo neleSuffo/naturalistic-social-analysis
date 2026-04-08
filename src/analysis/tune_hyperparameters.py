@@ -167,7 +167,7 @@ def run_analysis_with_config(hyperparameters, combo_id, output_base_dir, hyperpa
         
     return success, frame_out, seg_out, error
 
-def evaluate_combination(segment_output_path, video_list=None):
+def evaluate_combination(segment_output_path, social_state_mode, video_list=None):
     """
     Evaluates the performance of a specific hyperparameter combination by comparing
     the generated segments against ground truth annotations for the specified videos.
@@ -176,6 +176,8 @@ def evaluate_combination(segment_output_path, video_list=None):
     ----------
     segment_output_path: Path
         Path to the CSV file containing the predicted interaction segments for this combination.
+    social_state_mode: str
+        "tertiary" or "binary" evaluation mode (affects evaluation metrics and thresholds
     video_list: list, optional
         Specific videos to evaluate. If None, evaluates on all videos in the segment_output_path.
         
@@ -193,7 +195,7 @@ def evaluate_combination(segment_output_path, video_list=None):
         _, _, detailed_metrics = run_evaluation(
             predictions_path=segment_output_path, 
             output_folder=segment_output_path.parent,
-            mode='tertiary', 
+            mode=social_state_mode, 
             video_list=video_list
         )
 
@@ -212,7 +214,7 @@ def find_best_configuration(results):
     """Finds the configuration with the highest Macro F1 score."""
     return max(results, key=lambda x: x['evaluation']['overall_metrics']['macro_f1'])
 
-def main(max_combinations=None, video_list=None): 
+def main(max_combinations=None, video_list=None, social_state_mode="tertiary"):
     """Main hyperparameter tuning loop."""
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_base_dir = Path(f"{Inference.HYPERPARAMETER_OUTPUT_DIR}_{timestamp}")
@@ -240,7 +242,7 @@ def main(max_combinations=None, video_list=None):
             continue
         
         # Evaluate performance for the specific video subset
-        eval_res = evaluate_combination(seg_out, video_list=video_list)
+        eval_res = evaluate_combination(seg_out, social_state_mode=social_state_mode, video_list=video_list)
         
         if eval_res['success']:
             result_record = {
@@ -283,6 +285,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--max-combos', type=int, default=20)
     parser.add_argument('--video_list', type=str, nargs='+', default=None)
+    parser.add_argument('--social_state_mode', type=str, default='tertiary', choices=['binary', 'tertiary'])
     args = parser.parse_args()
     
-    main(max_combinations=args.max_combos, video_list=args.video_list)
+    main(max_combinations=args.max_combos, video_list=args.video_list, social_state_mode=args.social_state_mode)

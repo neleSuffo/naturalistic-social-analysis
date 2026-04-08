@@ -116,12 +116,19 @@ def run_cross_validation(mode="validation", social_state_mode="tertiary", max_co
                 fold_results.append(final_res['overall_metrics'])
         else:
             print(f"📊 Validating on: {len(test_videos)} videos")
-            
-            # Use ALL params from AnalysisConfig
+
+            if social_state_mode == "binary":
+                print("⚠️ Running in BINARY mode: Social states will be evaluated as 'Interacting' vs 'Not Interacting' (Available + Alone combined).")
+                AnalysisConfig.apply_mode("binary")
+            else:
+                AnalysisConfig.apply_mode("tertiary")
+
+            # now read all active parameters
             current_params = {
-                item: getattr(AnalysisConfig, item) 
-                for item in dir(AnalysisConfig) 
-                if not item.startswith("__") and not callable(getattr(AnalysisConfig, item))
+                item: getattr(AnalysisConfig, item)
+                for item in dir(AnalysisConfig)
+                if not item.startswith("__")
+                and not callable(getattr(AnalysisConfig, item))
             }
             
             # 1. Run the pipeline

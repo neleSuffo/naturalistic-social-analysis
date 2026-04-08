@@ -256,6 +256,35 @@ class AnalysisConfig:
     GAP_DEFAULT_LABEL_BINARY = "Not Interacting"
     GAP_DEFAULT_LABEL_TERTIARY = "Alone"
     GAP_STRETCH_THRESHOLD = 1.5
+    
+    # Define the "Binary Specials"
+    BINARY_OVERRIDES = {
+        "AUDIO_VISUAL_GATING_FLOOR": 0.4,
+        "INSTANT_CONFIDENCE_THRESHOLD": 0.6,
+        "MIN_PRESENCE_OHS_FRACTION": 0.1,
+        "MAX_TURN_TAKING_GAP_SEC": 7.0,
+        "MAX_SAME_SPEAKER_GAP_SEC": 2.0,
+        "PROXIMITY_THRESHOLD": 0.7,
+        "SUSTAINED_KCDS_WINDOW_SEC": 15.0,
+        "SUSTAINED_KCDS_THRESHOLD": 0.95,
+        "VISUAL_PERSISTENCE_SEC": 1.5,
+        "SHORT_TERM_VISUAL_MEMORY_SEC": 2.0,
+        "HIGH_CONFIDENCE_PROXIMITY_THRESHOLD": 0.5,
+        "HIGH_CONFIDENCE_FACE_CONFIDENCE": 0.9,
+        "CPD_PENALTY": 3.0,
+        "CPD_INTERACTING_THRESHOLD": 0.95,
+        "CPD_INTERACTING_THRESHOLD_LOW": 0.35,
+        "CPD_TOTAL_PRESENCE_FLOOR": 0.5,
+        "SAME_SEGMENT_MERGE_THRESHOLD": 2.0,
+        "GAP_STRETCH_THRESHOLD": 1.5
+    }
+
+    @classmethod
+    def apply_mode(cls, mode="tertiary"):
+        """Call this at the start of your script to hot-swap values."""
+        if mode == "binary":
+            for key, value in cls.BINARY_OVERRIDES.items():
+                setattr(cls, key, value)
       
 class HyperparameterConfig:
     """
