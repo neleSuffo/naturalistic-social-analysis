@@ -199,16 +199,13 @@ def evaluate_combination(segment_output_path, social_state_mode, video_list=None
             video_list=video_list
         )
 
-        if detailed_metrics and 'macro_avg' in detailed_metrics:
-            overall_metrics = {
-                'macro_avg_f1_score': detailed_metrics['macro_avg']['f1_score'],
-                'macro_avg_precision': detailed_metrics['macro_avg']['precision'],
-                'macro_avg_recall': detailed_metrics['macro_avg']['recall'],
-            }
-            return {'success': True, 'overall_metrics': overall_metrics, 'error': None}
-        return {'success': False, 'overall_metrics': None, 'error': "No metrics"}
+        if detailed_metrics:
+            # We return the whole dictionary now so the CV script can see 
+            return {'success': True, 'detailed_metrics': detailed_metrics, 'error': None}
+        
+        return {'success': False, 'detailed_metrics': None, 'error': "No metrics returned"}
     except Exception as e:
-        return {'success': False, 'overall_metrics': None, 'error': str(e)}
+        return {'success': False, 'detailed_metrics': None, 'error': str(e)}
 
 def find_best_configuration(results):
     """Finds the configuration with the highest Macro F1 score."""
