@@ -227,7 +227,9 @@ def classify_frames(df: pd.DataFrame, social_state_mode: str = "tertiary") -> pd
 
     # 5. Handle Binary Mode
     if social_state_mode == "binary":
-        df.loc[df['interaction_type'] == 3, 'interaction_type'] = 2
+    # Everything that is NOT Interacting (1) must become Not Interacting (2)
+    # This includes both 'Available' (2) and 'Alone' (3)
+        df.loc[df['interaction_type'] != 1, 'interaction_type'] = 2
         
     return df
 
