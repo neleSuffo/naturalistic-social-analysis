@@ -53,20 +53,17 @@ def apply_cpd_smoothing(frame_data: pd.DataFrame, social_state_mode: str):
                            segment_slice['rule2_close_proximity'].any() | 
                            segment_slice['rule3_kcds_speaking'].any())
                 
-                if social_state_mode == "binary":
-                    # Logic: If high-level rules triggered or density meets threshold
-                    state = 1 if (has_eng or counts.get(1, 0) >= AnalysisConfig.CPD_INTERACTING_THRESHOLD) else 2
+                if has_eng and counts.get(1, 0) >= AnalysisConfig.CPD_INTERACTING_THRESHOLD_LOW:
+                    state = 1  # Interacting (Rule-supported)
+                elif counts.get(1, 0) >= AnalysisConfig.CPD_INTERACTING_THRESHOLD:
+                    state = 1  # Interacting (Density-supported)
+                elif (counts.get(1, 0) + counts.get(2, 0)) >= AnalysisConfig.CPD_TOTAL_PRESENCE_FLOOR:
+                    state = 2  # Available (or "Not Interacting" in binary)
                 else:
-                    # Hierarchical tertiary consensus logic
-                    if has_eng and counts.get(1, 0) >= AnalysisConfig.CPD_INTERACTING_THRESHOLD_LOW:
-                        state = 1
-                    elif counts.get(1, 0) >= AnalysisConfig.CPD_INTERACTING_THRESHOLD:
-                        state = 1
-                    elif (counts.get(1, 0) + counts.get(2, 0)) >= AnalysisConfig.CPD_TOTAL_PRESENCE_FLOOR:
-                        state = 2
-                    else:
-                        state = 3
-                
+                    # This is the "Alone" path. 
+                    # In Binary mode, there is no state 3, so it MUST be state 2.
+                    state = 3 if social_state_mode == "tertiary" else 2
+    
                 video_df.iloc[start_idx:end_idx, video_df.columns.get_loc('interaction_type')] = state
             start_idx = end_idx
         smoothed_results.append(video_df)
