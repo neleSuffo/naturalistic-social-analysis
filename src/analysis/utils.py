@@ -1,18 +1,26 @@
 import re
 import pandas as pd
 import numpy as np
+from pathlib import Path
+from typing import List, Tuple
+from constants import AudioClassification
 
-def create_second_level_labels(segments_df: pd.DataFrame, video_duration_seconds: int) -> np.ndarray:
+def create_second_level_labels(segments_df: pd.DataFrame, 
+                               video_duration_seconds: int) -> np.ndarray:
     """
     Creates a second-by-second label array for a video based on segments. 
     
     Parameters:
-    - segments_df: DataFrame with 'start_time_sec', 'end_time_sec', and 'interaction_type'.
-    - video_duration_seconds: The total length of the video in seconds.
+    ----------
+    segments_df: pd.DataFrame
+        DataFrame containing 'start_time_sec', 'end_time_sec', and 'interaction_type' columns.
+    video_duration_seconds: int
+        Total duration of the video in seconds.
     
     Returns:
-    - A numpy array where each index corresponds to a second and the value is the label, 
-      or None if unclassified.
+    -------
+    np.ndarray
+        An array of shape (video_duration_seconds,) where each index corresponds to a second in the
     """
     labels = np.full(video_duration_seconds, None, dtype=object)
     
@@ -52,8 +60,9 @@ def create_second_level_labels(segments_df: pd.DataFrame, video_duration_seconds
            
     return labels
 
-def time_to_seconds(time_str):
-    """Converts MM:SS or float seconds string to float seconds.
+def time_to_seconds(time_str: str) -> float:
+    """
+    Converts MM:SS or float seconds string to float seconds.
     
     Parameters:
     ----------
@@ -80,16 +89,40 @@ def time_to_seconds(time_str):
     except:
         return None
     
-def extract_child_id(video_name):
+def extract_child_id(video_name: str) -> str:
     """
     Extracts the 6-digit child ID from a video name string.
     Example: 'id123456_video.mp4' -> '123456'
+    
+    Parameters:
+    ----------
+    video_name : str
+        The name of the video file.
+        
+    Returns:
+    -------
+    str or None
+        The extracted child ID, or None if not found.
     """
     match = re.search(r'id(\d{6})', video_name)
     return match.group(1) if match else None
 
-def merge_overlapping_vocalizations(vocs_df):
-    """Merge overlapping vocalizations from the same speaker in the same video."""
+def merge_overlapping_vocalizations(vocs_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Merge overlapping vocalizations from the same speaker in the same video.
+    
+    Parameters:
+    ----------
+    vocs_df : pd.DataFrame
+        DataFrame containing vocalization information with columns: 'video_name', 'speaker', 'start
+        _time_seconds', 'end_time_seconds', and 'speech_type'.
+    
+    Returns:
+    -------
+    pd.DataFrame
+        A DataFrame with merged vocalizations, where overlapping vocalizations from the same speaker
+        in the same video are merged into a single vocalization with the earliest start time and latest
+    """
     merged_vocs = []
     
     # Group by video and speaker
@@ -121,3 +154,68 @@ def merge_overlapping_vocalizations(vocs_df):
         merged_vocs.append(current_vocalization)
     
     return pd.DataFrame(merged_vocs).reset_index(drop=True)
+
+def parse_rttm(file_path: Path = AudioClassification.VTC_RTTM_FILE, target_speech_types: list = None) -> pd.DataFrame:
+    """
+    Parse a RTTM file and return a DataFrame with vocalization information.
+
+    Parameters
+    ----------
+    file_path : Path, optional
+        Path to the RTTM file, by default AudioClassification.VTC_RTTM_FILE
+    target_speech_types : list, optional
+        List of speech types to include (e.g., ['KCDS', 'OHS']), by default None (include all)
+        
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with vocalization information
+    """
+    data = []
+    if not file_path.exists(): return pd.DataFrame()
+    with open(file_path, 'r') as f:
+        # We expect lines in the format: SPEAKER <video_name> <channel> <start_time> <duration> <ortho> <stype> <speaker_type> <speaker_name>
+        for line in f:
+            parts = line.strip().split()
+            if len(parts) >= 8:
+                speech_type = parts[7]
+                # We are only interested in KCDS and OHS vocalizations for this analysis
+                if target_speech_types is not None and speech_type not in target_speech_types:
+                    continue
+                data.append({
+                    'video_name': parts[1],
+                    'start_time_seconds': float(parts[3]),
+                    'end_time_seconds': float(parts[3]) + float(parts[4]),
+                    'duration_seconds': float(parts[4]),
+                    'speech_type': speech_type
+                })
+    return pd.DataFrame(data)
+
+def merge_overlapping_intervals(intervals: List[Tuple[float, float]]):
+    """
+    Merges overlapping or adjacent intervals and calculates total duration.
+
+    Parameters
+    ----------
+    intervals : list of tuples
+        List of (start_time, end_time) tuples representing intervals.
+
+    Returns
+    -------
+    merged : list of tuples
+        List of merged (start_time, end_time) intervals.
+    total_duration : float
+        Total duration covered by the merged intervals.
+    """
+    if not intervals: return [], 0.0
+    intervals = sorted(intervals)
+    merged = [intervals[0]]
+    # Iterate through sorted intervals and merge as needed
+    for current_start, current_end in intervals[1:]:
+        last_start, last_end = merged[-1]
+        if current_start <= last_end:
+            merged[-1] = (last_start, max(last_end, current_end))
+        else:
+            merged.append((current_start, current_end))
+    total_duration = sum(end - start for start, end in merged)
+    return merged, total_duration
