@@ -2,9 +2,7 @@ import re
 import argparse
 import sys
 import pandas as pd
-import shutil
 import ruptures as rpt
-import numpy as np
 from pathlib import Path
 
 # Get the src directory (2 levels up from current notebook location)
@@ -17,7 +15,8 @@ from config import AnalysisConfig, DataConfig
 # Constants
 FPS = DataConfig.FPS # frames per second
 
-def apply_cpd_smoothing(frame_data: pd.DataFrame, social_state_mode: str):
+def apply_cpd_smoothing(frame_data: pd.DataFrame, 
+                        social_state_mode: str):
     """
     Applies Change Point Detection (CPD) smoothing to the frame-level data.
     Uses the PELT algorithm to identify regime changes based on presence scores.
@@ -70,7 +69,8 @@ def apply_cpd_smoothing(frame_data: pd.DataFrame, social_state_mode: str):
         
     return pd.concat(smoothed_results)
 
-def create_segments_for_video(video_id, video_df):
+def create_segments_for_video(video_id: int, 
+                              video_df: pd.DataFrame) -> list:
     """
     Create segments for a single video. Enforces type-specific minimum durations.
     
@@ -199,7 +199,8 @@ def fill_gaps_with_default(segments_df):
                     })
     return pd.DataFrame(filled_segments)
 
-def print_segment_summary(segments_df, social_state_mode):
+def print_segment_summary(segments_df: pd.DataFrame, 
+                          social_state_mode: str):
     """
     Print detailed summary statistics (minutes and percentages) for segments.
     
@@ -222,7 +223,9 @@ def print_segment_summary(segments_df, social_state_mode):
     else:
         print("\n📊 No segments created")
 
-def main(output_file_path: Path, frame_data_path: Path, hyperparameter_tuning: bool = False, social_state_mode: str = "tertiary"):
+def main(output_file_path: Path, 
+         frame_data_path: Path, 
+         social_state_mode: str):
     """
     Main entry point for segment analysis. Loads data, smooths, segments, and saves.
     
@@ -232,11 +235,12 @@ def main(output_file_path: Path, frame_data_path: Path, hyperparameter_tuning: b
         Path to save the final segments CSV.
     frame_data_path : Path
         Path to the intermediate frame-level data CSV.
-    hyperparameter_tuning : bool
-        Whether this run is part of hyperparameter tuning (affects output organization).
     social_state_mode : str
         "binary" or "tertiary" classification mode for social state analysis.
     """
+    # Ensure the class attributes match the requested mode
+    AnalysisConfig.apply_mode(social_state_mode)
+    
     # Load frame-level data
     frame_data = pd.read_csv(frame_data_path)
     frame_data = apply_cpd_smoothing(frame_data, social_state_mode)

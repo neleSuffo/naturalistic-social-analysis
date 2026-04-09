@@ -12,6 +12,7 @@ import sys
 import random
 import json
 import time
+import random
 import argparse 
 from datetime import datetime
 from pathlib import Path
@@ -27,12 +28,23 @@ from analysis.validation.eval_segment_performance import run_evaluation
 from analysis.pipeline_frame_level_analysis import main as frame_analysis_main
 from analysis.pipeline_video_level_analysis import main as segment_analysis_main
 
-import random
 
-def generate_hyperparameter_combinations(max_combinations=20, random_sample=True):
+def generate_hyperparameter_combinations(max_combinations=20, 
+                                         random_sample=True):
     """
-    Memory-efficient hyperparameter generation. 
-    Avoids Cartesian product to prevent OOM errors.
+    Generates a list of hyperparameter combinations to evaluate. 
+    
+    Parameters
+    ----------
+    max_combinations: int
+        Maximum number of combinations to generate. If random_sample is False, this is ignored and all combinations are generated.
+    random_sample: bool
+        If True, generates a random sample of combinations. If False, generates the full Cartesian product of the hyperparameter ranges.
+        
+    Returns    
+    -------
+    list of dict
+        Each dict contains a unique combination of hyperparameters.
     """
     ranges = HyperparameterConfig.HYPERPARAMETER_RANGES
     param_names = list(ranges.keys())
@@ -67,7 +79,10 @@ def generate_hyperparameter_combinations(max_combinations=20, random_sample=True
             
     return combinations
 
-def run_pipeline_for_combo(hyperparameters, combo_dir, hyperparameter_tuning, social_state_mode,video_list=None):
+def run_pipeline_for_combo(hyperparameters: dict,
+                           combo_dir: Path, 
+                           social_state_mode: str,
+                           video_list=None):
     """
     Runs the full analysis pipeline by temporarily setting AnalysisConfig 
     attributes and executing the analysis functions.
@@ -78,8 +93,6 @@ def run_pipeline_for_combo(hyperparameters, combo_dir, hyperparameter_tuning, so
         Hyperparameters to set for this run.
     combo_dir: Path
         Directory where outputs for this combination will be stored.
-    hyperparameter_tuning: bool
-        Whether to enable hyperparameter tuning.
     social_state_mode: str
         tertiary or binary evaluation mode (affects evaluation metrics and thresholds)
     video_list: list, optional
@@ -101,7 +114,6 @@ def run_pipeline_for_combo(hyperparameters, combo_dir, hyperparameter_tuning, so
         frame_analysis_main(
             db_path=DataPaths.INFERENCE_DB_PATH,
             output_dir=combo_dir,
-            hyperparameter_tuning=hyperparameter_tuning,
             video_list=video_list,
             social_state_mode=social_state_mode
         )
@@ -110,7 +122,6 @@ def run_pipeline_for_combo(hyperparameters, combo_dir, hyperparameter_tuning, so
         segment_analysis_main(
             output_file_path=segment_output_path, 
             frame_data_path=frame_output_path,
-            hyperparameter_tuning=hyperparameter_tuning,
             social_state_mode=social_state_mode
         )
         
@@ -124,7 +135,11 @@ def run_pipeline_for_combo(hyperparameters, combo_dir, hyperparameter_tuning, so
         for key, value in original_config.items():
             setattr(AnalysisConfig, key, value)
 
-def run_analysis_with_config(hyperparameters, combo_id, output_base_dir, hyperparameter_tuning, social_state_mode, video_list=None):
+def run_analysis_with_config(hyperparameters: dict,
+                             combo_id: int,
+                             output_base_dir: Path,
+                             social_state_mode: str,
+                             video_list=None):
     """
     Wrapper function to manage directory creation and pipeline execution for a combination.
     
@@ -136,8 +151,6 @@ def run_analysis_with_config(hyperparameters, combo_id, output_base_dir, hyperpa
         Unique identifier for this combination (used for directory naming).
     output_base_dir: Path
         Base directory where results for this combination will be stored.
-    hyperparameter_tuning: bool
-        Whether to enable hyperparameter tuning.
     social_state_mode: str
         tertiary or binary evaluation mode (affects evaluation metrics and thresholds)
     video_list: list, optional
@@ -162,12 +175,14 @@ def run_analysis_with_config(hyperparameters, combo_id, output_base_dir, hyperpa
         
     # Run the pipeline with the specified hyperparameters and video filter
     success, frame_out, seg_out, error = run_pipeline_for_combo(
-        hyperparameters, combo_dir, hyperparameter_tuning, social_state_mode, video_list=video_list
+        hyperparameters, combo_dir, social_state_mode, video_list=video_list
     )
         
     return success, frame_out, seg_out, error
 
-def evaluate_combination(segment_output_path, social_state_mode, video_list=None):
+def evaluate_combination(segment_output_path: Path, 
+                         social_state_mode: str,
+                         video_list=None):
     """
     Evaluates the performance of a specific hyperparameter combination by comparing
     the generated segments against ground truth annotations for the specified videos.
@@ -177,7 +192,7 @@ def evaluate_combination(segment_output_path, social_state_mode, video_list=None
     segment_output_path: Path
         Path to the CSV file containing the predicted interaction segments for this combination.
     social_state_mode: str
-        "tertiary" or "binary" evaluation mode (affects evaluation metrics and thresholds
+        "tertiary" or "binary" evaluation mode (affects evaluation metrics and thresholds).
     video_list: list, optional
         Specific videos to evaluate. If None, evaluates on all videos in the segment_output_path.
         
@@ -186,7 +201,7 @@ def evaluate_combination(segment_output_path, social_state_mode, video_list=None
     dict containing:
         success: bool
             Whether the evaluation ran successfully.
-        overall_metrics: dict or None
+        detailed_metrics: dict or None
             Dictionary of overall performance metrics (e.g., macro_avg_f1_score) if successful, else None.
         error: str or None
             Error message if evaluation failed, else None.
@@ -200,30 +215,100 @@ def evaluate_combination(segment_output_path, social_state_mode, video_list=None
         )
 
         if detailed_metrics:
-            # We return the whole dictionary now so the CV script can see 
+            # We return the whole dictionary now so the CV script can see all metrics
             return {'success': True, 'detailed_metrics': detailed_metrics, 'error': None}
         
         return {'success': False, 'detailed_metrics': None, 'error': "No metrics returned"}
     except Exception as e:
         return {'success': False, 'detailed_metrics': None, 'error': str(e)}
 
-def find_best_configuration(results):
-    """Finds the configuration with the highest Macro F1 score."""
-    return max(results, key=lambda x: x['evaluation']['overall_metrics']['macro_f1'])
+def find_best_configuration(results: list):
+    """
+    Finds the configuration with the highest Macro F1 score.
+    
+    Parameters
+    ----------
+    results: list of dict
+        Each dict should contain 'combo_id', 'hyperparameters', and 'evaluation' with '
+        detailed_metrics' that includes 'macro_f1'.
+        
+    Returns
+    -------
+    dict
+        The result dict corresponding to the best configuration.
+    """
+    return max(results, key=lambda x: x['evaluation']['detailed_metrics']['macro_avg']['f1_score'])
 
-def main(max_combinations=None, video_list=None, social_state_mode="tertiary"):
-    """Main hyperparameter tuning loop."""
+def save_final_results(all_results: list,
+                       best_config: dict,
+                       output_dir: Path):
+    """
+    Saves result summary CSV and best configuration JSON.
+    
+    Parameters
+    ----------
+    all_results: list of dict
+        List of all evaluated combinations with their hyperparameters and evaluation metrics.
+    best_config: dict
+        The best configuration found.
+    output_dir: Path
+        Directory where the results will be saved.
+    """
+    summary_data = []
+    for res in all_results:
+        row = {
+            'combo_id': res['combo_id'],
+            'macro_f1': res['evaluation']['detailed_metrics']['macro_avg']['f1_score'],
+            **res['hyperparameters']
+        }
+        summary_data.append(row)
+    
+    pd.DataFrame(summary_data).to_csv(output_dir / "results_summary.csv", index=False)
+    with open(output_dir / "best_configuration.json", 'w') as f:
+        json.dump(best_config, f, indent=2)
+
+def print_results_summary(all_results: list, 
+                          best_config: dict):
+    """
+    Prints best performance metrics to console.
+    
+    Parameters
+    ----------
+    all_results: list of dict
+        List of all evaluated combinations with their hyperparameters and evaluation metrics.
+    best_config: dict
+        The best configuration found.
+    """
+    print("\n" + "=" * 30 + "\n🏆 WINNER: Combo", best_config['combo_id'])
+    for k, v in best_config['hyperparameters'].items():
+        print(f"  {k}: {v}")
+    print(f"  F1: {best_config['evaluation']['detailed_metrics']['macro_avg']['f1_score']:.4f}")
+
+def main(max_combinations=None, 
+         video_list=None, 
+         social_state_mode="tertiary"):
+    """
+    Main hyperparameter tuning loop.
+    
+    Parameters
+    ----------
+    max_combinations: int or None
+        Maximum number of hyperparameter combinations to evaluate. If None, evaluates all possible combinations.
+    video_list: list or None
+        Optional list of specific video filenames to evaluate (e.g. ['video1.mp4', 'video2.mp4']). If None, evaluates on all videos in the segment output.
+    social_state_mode: str
+        "tertiary" or "binary" evaluation mode (affects evaluation metrics and thresholds).
+    """
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_base_dir = Path(f"{Inference.HYPERPARAMETER_OUTPUT_DIR}_{timestamp}")
     output_base_dir.mkdir(exist_ok=True, parents=True)
     
     combinations = generate_hyperparameter_combinations(
         max_combinations=max_combinations, 
-        random_sample=getattr(AnalysisConfig, 'RANDOM_SAMPLING', False)
+        random_sample=getattr(AnalysisConfig, 'RANDOM_SAMPLING', True)
     )
     
     all_results = []
-    start_time = time.time()
     
     for i, hyperparams in enumerate(combinations):
         combo_id = i + 1
@@ -231,8 +316,11 @@ def main(max_combinations=None, video_list=None, social_state_mode="tertiary"):
         
         # Run Analysis
         success, _, seg_out, error = run_analysis_with_config(
-            hyperparams, combo_id, output_base_dir, video_list=video_list
-        )
+            hyperparameters=hyperparams,
+            combo_id=combo_id,
+            output_base_dir=output_base_dir,
+            social_state_mode=social_state_mode,
+            video_list=video_list)
         
         if not success:
             print(f"❌ Failed: {error}")
@@ -248,35 +336,13 @@ def main(max_combinations=None, video_list=None, social_state_mode="tertiary"):
                 'evaluation': eval_res
             }
             all_results.append(result_record)
-            print(f"✅ Macro F1: {eval_res['overall_metrics']['macro_f1']:.4f}")
+            print(f"✅ Macro F1: {eval_res['detailed_metrics']['macro_avg']['f1_score']:.4f}")
 
     # Final Summaries
     if all_results:
         best_config = find_best_configuration(all_results)
         save_final_results(all_results, best_config, output_base_dir)
         print_results_summary(all_results, best_config)
-
-def save_final_results(all_results, best_config, output_dir):
-    """Saves result summary CSV and best configuration JSON."""
-    summary_data = []
-    for res in all_results:
-        row = {
-            'combo_id': res['combo_id'],
-            'macro_f1': res['evaluation']['overall_metrics']['macro_f1'],
-            **res['hyperparameters']
-        }
-        summary_data.append(row)
-    
-    pd.DataFrame(summary_data).to_csv(output_dir / "results_summary.csv", index=False)
-    with open(output_dir / "best_configuration.json", 'w') as f:
-        json.dump(best_config, f, indent=2)
-
-def print_results_summary(all_results, best_config):
-    """Prints best performance metrics to console."""
-    print("\n" + "=" * 30 + "\n🏆 WINNER: Combo", best_config['combo_id'])
-    for k, v in best_config['hyperparameters'].items():
-        print(f"  {k}: {v}")
-    print(f"  F1: {best_config['evaluation']['overall_metrics']['macro_f1']:.4f}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

@@ -31,7 +31,7 @@ def get_folds():
     gkf = GroupKFold(n_splits=AnalysisConfig.NUM_FOLDS)
     return list(gkf.split(df, groups=df['child_id'])), df
 
-def run_cross_validation(mode="validation", social_state_mode="tertiary", max_combos=20):
+def run_cross_validation(mode="validation", social_state_mode="tertiary", max_combos=20):  
     """
     Runs NUM_FOLDS-fold cross-validation for the analysis pipeline.
     
@@ -44,6 +44,9 @@ def run_cross_validation(mode="validation", social_state_mode="tertiary", max_co
     max_combos: int
         Maximum number of hyperparameter combinations to evaluate during tuning (only applicable in "tuning")
     """
+    # get correct mode applied to config (tertiary vs binary) for the rest of the pipeline and evaluation
+    AnalysisConfig.apply_mode(social_state_mode)
+    
     folds, df = get_folds()
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_root = Analysis.BASE_OUTPUT_DIR / f"cv_{mode}_{timestamp}"
@@ -87,7 +90,6 @@ def run_cross_validation(mode="validation", social_state_mode="tertiary", max_co
                 # Run the pipeline on TRAINING videos only
                 success, _, seg_path, error = run_analysis_with_config(
                     combo, c_idx, tuning_dir, 
-                    hyperparameter_tuning=True,
                     social_state_mode=social_state_mode,
                     video_list=train_videos
                 )
@@ -95,7 +97,7 @@ def run_cross_validation(mode="validation", social_state_mode="tertiary", max_co
                 if success:
                     # Score the combo on TRAINING videos
                     res = evaluate_combination(seg_path, video_list=train_videos, social_state_mode=social_state_mode)
-                    current_f1 = res['overall_metrics'].get('macro_avg_f1_score', 0)
+                    current_f1 = res['detailed_metrics']['macro_avg'].get('f1_score', 0)
                     
                     if current_f1 > best_f1:
                         best_f1 = current_f1
@@ -106,14 +108,13 @@ def run_cross_validation(mode="validation", social_state_mode="tertiary", max_co
             # --- PHASE 2: Evaluate 'Winner' on TEST Videos ---
             success, _, seg_path, error = run_analysis_with_config(
                 best_params, fold_id, output_root / f"fold_{fold_id}_final_test", 
-                hyperparameter_tuning=False,
                 social_state_mode=social_state_mode,
                 video_list=test_videos
             )
             
             if success:
                 final_res = evaluate_combination(seg_path, video_list=test_videos, social_state_mode=social_state_mode)
-                fold_results.append(final_res['overall_metrics'])
+                fold_results.append(final_res['detailed_metrics'])
         else:
             print(f"📊 Validating on: {len(test_videos)} videos")
 
@@ -131,12 +132,10 @@ def run_cross_validation(mode="validation", social_state_mode="tertiary", max_co
                 and not callable(getattr(AnalysisConfig, item))
             }
             
-            # 1. Run the pipeline
             success, _, seg_path, error = run_analysis_with_config(
                 current_params, 
                 fold_id, 
                 output_root, 
-                hyperparameter_tuning=False,
                 social_state_mode=social_state_mode,
                 video_list=test_videos
             )
@@ -189,8 +188,8 @@ def run_cross_validation(mode="validation", social_state_mode="tertiary", max_co
     output_df.to_csv(output_root / "cv_summary.csv", index=True)
     
     # save copy of pipeline_frame_level_analysis.py and pipeline_video_level_analysis.py for reference
-    shutil.copy("/home/nele_pauline_suffo/projects/naturalistic-social-analysis/src/analysis/pipeline_frame_level_analysis.py", output_root / "pipeline_frame_level_analysis.py")
-    shutil.copy("/home/nele_pauline_suffo/projects/naturalistic-social-analysis/src/analysis/pipeline_video_level_analysis.py", output_root / "pipeline_video_level_analysis.py")
+    shutil.copy(Analysis.FRAME_ANALYSIS_SCRIPT, output_root / Analysis.FRAME_ANALYSIS_SCRIPT.name)
+    shutil.copy(Analysis.SEGMENT_CREATION_SCRIPT, output_root / Analysis.SEGMENT_CREATION_SCRIPT.name)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

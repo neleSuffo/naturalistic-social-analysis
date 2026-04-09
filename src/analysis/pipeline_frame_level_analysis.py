@@ -27,7 +27,7 @@ from inference.utils import load_processed_videos
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-def prepare_persistent_tables(conn):
+def prepare_persistent_tables(conn: sqlite3.Connection):
     """
     Creates persistent indexed tables in SQLite to optimize repeated queries.
     Pre-aggregates detections to avoid re-calculating exclusions and MAX() values.
@@ -80,7 +80,8 @@ def prepare_persistent_tables(conn):
     """)
     conn.execute("CREATE INDEX IF NOT EXISTS idx_person_agg ON CachedPersonAgg(video_id, frame_number);")
 
-def get_all_analysis_data(conn, video_list: list) -> pd.DataFrame:
+def get_all_analysis_data(conn: sqlite3.Connection, 
+                          video_list: list) -> pd.DataFrame:
     """
     Fetches and integrates all necessary data for frame-level analysis in a single optimized query.
     
@@ -181,7 +182,8 @@ def calculate_window_features(df: pd.DataFrame) -> pd.DataFrame:
 
     return df
 
-def classify_frames(df: pd.DataFrame, social_state_mode: str = "tertiary") -> pd.DataFrame:
+def classify_frames(df: pd.DataFrame, 
+                    social_state_mode: str = "tertiary") -> pd.DataFrame:
     """
     High-speed social state classifier using Boolean masking.
     Hierarchy: 1 (Interacting) > 2 (Available) > 3 (Alone)
@@ -233,7 +235,8 @@ def classify_frames(df: pd.DataFrame, social_state_mode: str = "tertiary") -> pd
         
     return df
 
-def find_segments(video_df: pd.DataFrame, column_name: str) -> List[Dict]:
+def find_segments(video_df: pd.DataFrame, 
+                  column_name: str) -> List[Dict]:
     """
     Identifies continuous segments using vectorized operations.
     (Optimized: Replaced Python loop with NumPy diff)
@@ -289,7 +292,8 @@ def find_segments(video_df: pd.DataFrame, column_name: str) -> List[Dict]:
 
     return segments
 
-def check_audio_interaction_turn_taking(df, fps):
+def check_audio_interaction_turn_taking(df: pd.DataFrame, 
+                                        fps: int) -> pd.Series:
     """
     Identifies continuous audio interaction bouts where KCHI and CDS segments 
     are linked by a small gap (<= MAX_TURN_TAKING_GAP_SEC) or inter-sperspeaker gap (<= MAX_SAME_SPEAKER_GAP_SEC) if they are the same type.
@@ -379,9 +383,8 @@ def check_audio_interaction_turn_taking(df, fps):
 
 def main(db_path: Path, 
          output_dir: Path, 
-         hyperparameter_tuning: bool = False, 
-         video_list: list = None, 
-         social_state_mode: str = "tertiary"):
+         social_state_mode: str,
+         video_list: list = None):
     """
     Orchestrates the frame-level processing pipeline.
     
@@ -391,14 +394,15 @@ def main(db_path: Path,
         Path to the SQLite database containing multimodal data.
     output_dir: Path
         Directory where the output CSV will be saved.
-    hyperparameter_tuning: bool
-        If True, the function is being called as part of hyperparameter tuning (affects output directory structure).
-    video_list: list
         Optional list of video names to process. If None, processes all videos in the database.
     social_state_mode: str
         "binary" - classifies frames into Interacting vs Not-Interacting (Available + Alone)
         "tertiary" - classifies frames into Interacting, Available, Alone (default)
+    video_list: list
+        Optional list of video names to include in the analysis. If None, includes all videos.
     """    
+    # Ensure the class attributes match the requested mode
+    AnalysisConfig.apply_mode(social_state_mode)
     with sqlite3.connect(db_path) as conn:
         prepare_persistent_tables(conn)
         
@@ -419,6 +423,24 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Vectorized Frame-Level Social Analysis")
     parser.add_argument('--social_state_mode', type=str, choices=['binary', 'tertiary'], default='tertiary')
     parser.add_argument('--video_list', type=str, nargs='+', default=None)
+    # New argument to detect if we are part of a tuning run
+    parser.add_argument('--output_dir', type=str, default=None)
     args = parser.parse_args()
     
-    main(db_path=Path(DataPaths.INFERENCE_DB_PATH), output_dir=Analysis.BASE_OUTPUT_DIR, video_list=args.video_list, social_state_mode=args.social_state_mode)
+    # --- SMART FOLDER LOGIC ---
+    if args.output_dir:
+        # Tuning/CV mode: Use the folder provided by the parent script
+        run_output_dir = Path(args.output_dir)
+    else:
+        # Inference mode: Create a new timestamped folder
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        run_output_dir = Analysis.BASE_OUTPUT_DIR / f"analysis_{timestamp}"
+    
+    run_output_dir.mkdir(parents=True, exist_ok=True)
+    
+    main(
+        db_path=Path(DataPaths.INFERENCE_DB_PATH), 
+        output_dir=run_output_dir,
+        social_state_mode=args.social_state_mode, 
+        video_list=args.video_list
+    )
