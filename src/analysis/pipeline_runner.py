@@ -1,12 +1,17 @@
 import subprocess
 import sys
+import os
 import logging
 import argparse
 from pathlib import Path
 from constants import Analysis
 
+# Configure basic logging for the runner
+logging.basicConfig(level=logging.INFO, format='%(message)s')
+
 def run_command(cmd: list, 
-                step_name: str) -> bool:
+                step_name: str,
+                run_folder: Path = None) -> bool:
     """
     Executes a subprocess command and handles output stream logging.
     
@@ -16,26 +21,33 @@ def run_command(cmd: list,
         The command to execute as a list of strings.
     step_name: str
         A descriptive name for the step being executed (used in logs).
+    run_folder: Path, optional
+        The folder where the command's output is expected to be saved.
 
     Returns
     -------
     bool
         True if the command executed successfully, False otherwise.
     """
-    print(f"\n--- Starting: {step_name} ---")
+    logging.info(f"\n--- Starting: {step_name} ---")
+    # Copy current system environment
+    env = os.environ.copy()
+    if run_folder:
+        # Inject the run_folder into the environment
+        env["RUN_FOLDER"] = str(run_folder)
+        
     try:
-        # We use capture_output=False here so you can see the 'Smoothing...' 
-        # and '✅' logs in real-time in your console.
-        result = subprocess.run(
+        subprocess.run(
             cmd,
             check=True,
             cwd=Path(__file__).parent.parent,
             text=True,
+            env=env,
             encoding='utf-8'
         )
         return True
     except subprocess.CalledProcessError as e:
-        print(f"❌ ERROR in {step_name}: Command failed.")
+        logging.error(f"❌ ERROR in {step_name}: Command failed.")
         sys.exit(1)
 
 def main(social_state_mode='tertiary', 
@@ -61,22 +73,41 @@ def main(social_state_mode='tertiary',
     run_command(frame_cmd, "Step 1: Frame-Level Analysis")
     
     # 2. --- IDENTIFY OUTPUT FOLDER ---
-    # Sort by modification time to be sure we get the one JUST created
     all_runs = sorted(Analysis.BASE_OUTPUT_DIR.glob("analysis_*"), key=lambda x: x.stat().st_mtime)
-    if not all_runs:
-        logging.error("❌ ERROR: No analysis output folder found.")
-        sys.exit(1)
-    
     run_folder = all_runs[-1]
-    logging.info(f"➡️ Processing Results in: {run_folder}")
-
-    # 3. --- STEP 2: SEGMENT CREATION ---
+    logging.info(f"➡️ Created Run Folder: {run_folder}")
+    
+    # 3. --- STEP 2: SEGMENT CREATION (CPD Smoothing) ---
     segment_cmd = [
         sys.executable, str(Analysis.SEGMENT_CREATION_SCRIPT),
         "--output_folder_path", str(run_folder),
         "--social_state_mode", social_state_mode
     ]
-    run_command(segment_cmd, "Step 2: Video-Level Smoothing")
+    run_command(segment_cmd, "Step 2: Video-Level Smoothing", run_folder=run_folder)
+    
+    # 4. --- STEP 3: RESEARCH QUESTION ANALYSIS ---
+    # We pass the run_folder to scripts that need to find the specific CSVs
+    # Note: Ensure your RQ scripts can accept a folder path or update constants
+
+    # RQ 02: KCS (Production)
+    run_command([sys.executable, "analysis/rq_02_kcs.py"], "RQ 02: Child Production", run_folder=run_folder)
+
+    # RQ 03: KCDS (Exposure)
+    run_command([sys.executable, "analysis/rq_03_kcds.py"], "RQ 03: Speech Exposure", run_folder=run_folder)
+
+    # RQ 04: Turn-Taking
+    run_command([
+        sys.executable, "analysis/rq_04_turn_taking.py", 
+        "--social_state_mode", social_state_mode
+    ], "RQ 04: Conversational Dynamics",
+                run_folder=run_folder)
+    
+    # RQ 05: Interaction Composition
+    run_command([
+        sys.executable, "analysis/rq_05_interaction_composition.py", 
+        "--social_state_mode", social_state_mode
+    ], "RQ 05: Final Composition", 
+                run_folder=run_folder)
     
     logging.info("\n" + "="*40)
     logging.info(f"🎉 INFERENCE COMPLETE")
