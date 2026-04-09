@@ -213,6 +213,7 @@ class KchiVoc_Config:
 class AnalysisConfig:
     """Consolidated configuration for active social analysis rules."""
     
+    RANDOM_SAMPLING = True
     # -- General --
     SOCIAL_STATE_MAPPING_BINARY = {1: 'Interacting', 2: 'Not Interacting'} 
     SOCIAL_STATE_MAPPING_TERTIARY = {1: 'Interacting', 2: 'Available', 3: 'Alone'}
@@ -221,44 +222,32 @@ class AnalysisConfig:
     EXCLUSION_SECONDS = 30           
     SAMPLE_RATE = 10                 
     
-    # -- Turn-Taking --
-    MAX_TURN_TAKING_GAP_SEC = 10.0     
-    MAX_SAME_SPEAKER_GAP_SEC = 1
-
-    # -- Proximity --
-    PROXIMITY_THRESHOLD = 0.55  
-    
-    # Presence threshold  
-    INSTANT_CONFIDENCE_THRESHOLD = 0.20
-
-    # -- KCDS (Adult Speech) --
-    SUSTAINED_KCDS_WINDOW_SEC = 8.0   
-    SUSTAINED_KCDS_THRESHOLD = 0.9
-    
-    # -- Rule 4: Visual Persistence --
-    HIGH_CONFIDENCE_PROXIMITY_THRESHOLD = 0.75
-    HIGH_CONFIDENCE_FACE_CONFIDENCE = 0.85
-    VISUAL_PERSISTENCE_SEC = 2 # long memory duration in seconds
-    SHORT_TERM_VISUAL_MEMORY_SEC = 3.5  # Short memory (Flicker)
-
-    # -- Audio-Visual Gating --
-    AUDIO_VISUAL_GATING_FLOOR = 0.25
-    MIN_PRESENCE_OHS_FRACTION = 0.02
-
-    # -- CPD & Post-Processing --
-    CPD_PENALTY = 4              
-    CPD_INTERACTING_THRESHOLD = 0.75
-    CPD_INTERACTING_THRESHOLD_LOW = 0.3
-    CPD_TOTAL_PRESENCE_FLOOR = 0.4
-
-    SAME_SEGMENT_MERGE_THRESHOLD = 2.0   
-
     GAP_DEFAULT_LABEL_BINARY = "Not Interacting"
     GAP_DEFAULT_LABEL_TERTIARY = "Alone"
-    GAP_STRETCH_THRESHOLD = 1.5
+    
+    TERTIARY_PARAMETERS = {
+        "AUDIO_VISUAL_GATING_FLOOR": 0.25,
+        "INSTANT_CONFIDENCE_THRESHOLD": 0.2,
+        "MAX_TURN_TAKING_GAP_SEC": 10.0,
+        "MAX_SAME_SPEAKER_GAP_SEC": 1.0,
+        "PROXIMITY_THRESHOLD": 0.55,
+        "SUSTAINED_KCDS_WINDOW_SEC": 8.0,
+        "SUSTAINED_KCDS_THRESHOLD": 0.9,
+        "HIGH_CONFIDENCE_PROXIMITY_THRESHOLD": 0.75,
+        "HIGH_CONFIDENCE_FACE_CONFIDENCE": 0.85,
+        "VISUAL_PERSISTENCE_SEC": 2,
+        "SHORT_TERM_VISUAL_MEMORY_SEC": 3.5,
+        "MIN_PRESENCE_OHS_FRACTION": 0.02,
+        "CPD_PENALTY": 4,
+        "CPD_INTERACTING_THRESHOLD": 0.75,
+        "CPD_INTERACTING_THRESHOLD_LOW": 0.3,
+        "CPD_TOTAL_PRESENCE_FLOOR": 0.4,
+        "SAME_SEGMENT_MERGE_THRESHOLD": 2.0,
+        "GAP_STRETCH_THRESHOLD": 1.5
+    }
     
     # Define the "Binary Specials"
-    BINARY_OVERRIDES = {
+    BINARY_PARAMETERS = {
         "AUDIO_VISUAL_GATING_FLOOR": 0.4,
         "INSTANT_CONFIDENCE_THRESHOLD": 0.6,
         "MIN_PRESENCE_OHS_FRACTION": 0.1,
@@ -283,9 +272,12 @@ class AnalysisConfig:
     def apply_mode(cls, mode="tertiary"):
         """Call this at the start of your script to hot-swap values."""
         if mode == "binary":
-            for key, value in cls.BINARY_OVERRIDES.items():
+            for key, value in cls.BINARY_PARAMETERS.items():
                 setattr(cls, key, value)
-      
+        elif mode == "tertiary":
+            for key, value in cls.TERTIARY_PARAMETERS.items():
+                setattr(cls, key, value)
+
 class HyperparameterConfig:
     """
     Complete Search Grid for Social Interaction Analysis.
@@ -293,38 +285,34 @@ class HyperparameterConfig:
     """
     HYPERPARAMETER_RANGES = {
     # --- 1. Audio-Visual Gating & Confidence ---
-    # Shifted center higher since 0.3 was the winner.
-    'AUDIO_VISUAL_GATING_FLOOR': [0.25, 0.35, 0.45], 
-    'INSTANT_CONFIDENCE_THRESHOLD': [0.20, 0.25, 0.30], # 0.25 won; staying tight here
+    'AUDIO_VISUAL_GATING_FLOOR': [0.20, 0.25, 0.30], # best was 0.25
+    'INSTANT_CONFIDENCE_THRESHOLD': [0.15, 0.20, 0.25], # best was 0.20
     
-    # --- 2. Turn-Taking ---
-    'MAX_TURN_TAKING_GAP_SEC': [6.0, 8.0, 10.0], # 8.0 won
-    'MAX_SAME_SPEAKER_GAP_SEC': [1.0, 1.5, 2.0], # 1.5 won
+    # --- 2. Turn-Taking (Rule 1) ---
+    'MAX_TURN_TAKING_GAP_SEC': [8.0, 11.0, 14.0], # best was 10.0
+    'MAX_SAME_SPEAKER_GAP_SEC': [0.8, 1.0, 1.2], # best was 1.0
     
-    # --- 3. Proximity ---
-    'PROXIMITY_THRESHOLD': [0.55, 0.60, 0.65], # 0.6 won
+    # --- 3. Proximity (Rule 2) ---
+    'PROXIMITY_THRESHOLD': [0.50, 0.55, 0.60], # best was 0.55
     
-    # --- 4. Sustained Adult Speech ---
-    'SUSTAINED_KCDS_WINDOW_SEC': [8.0, 10.0, 12.0], # 10.0 won
-    'SUSTAINED_KCDS_THRESHOLD': [0.80, 0.85, 0.90], # 0.85 won
+    # --- 4. Sustained Adult Speech (Rule 3) ---
+    'SUSTAINED_KCDS_WINDOW_SEC': [6.0, 8.0, 10.0], # best was 8.0
+    'SUSTAINED_KCDS_THRESHOLD': [0.85, 0.90, 0.95], # best was 0.90
     
-    # --- 5. Visual Persistence & OHS ---
-    # Pushing these higher because the 'winner' was at the previous max
-    'HIGH_CONFIDENCE_PROXIMITY_THRESHOLD': [0.65, 0.70, 0.75],
-    'HIGH_CONFIDENCE_FACE_CONFIDENCE': [0.75, 0.80, 0.85],
-    'VISUAL_PERSISTENCE_SEC': [2.0, 3.0, 4.0], # 3.0 won
-    'SHORT_TERM_VISUAL_MEMORY_SEC': [2.5, 3.0, 3.5], # 3.0 won
-    'MIN_PRESENCE_OHS_FRACTION': [0.01, 0.02, 0.03], # 0.02 won
+    # --- 5. Visual Persistence & OHS (Rule 4) ---
+    'HIGH_CONFIDENCE_PROXIMITY_THRESHOLD': [0.75, 0.80, 0.85], # best was 0.75
+    'HIGH_CONFIDENCE_FACE_CONFIDENCE': [0.85, 0.90, 0.95], # best was 0.85
+    'VISUAL_PERSISTENCE_SEC': [1.5, 2.0, 2.5], # best was 2.0
+    'SHORT_TERM_VISUAL_MEMORY_SEC': [3.5, 4.5, 5.5], # best was 3.5
+    'MIN_PRESENCE_OHS_FRACTION': [0.015, 0.02, 0.025], # best was 0.02
 
-    # --- 6. CPD Smoothing ---
-    # Pushing penalty higher since 3.5 won.
-    'CPD_PENALTY': [3.0, 4.0, 5.0],
-    # Pushing threshold higher since 0.7 won.
-    'CPD_INTERACTING_THRESHOLD': [0.65, 0.75, 0.85],
-    'CPD_INTERACTING_THRESHOLD_LOW': [0.10, 0.20, 0.30], # 0.20 won
-    'CPD_TOTAL_PRESENCE_FLOOR': [0.35, 0.40, 0.45], # 0.40 won
+    # --- 6. Change Point Detection (CPD) ---
+    'CPD_PENALTY': [3.5, 4.5, 5.5], # best was 4.0
+    'CPD_INTERACTING_THRESHOLD': [0.70, 0.75, 0.80], # best was 0.75
+    'CPD_INTERACTING_THRESHOLD_LOW': [0.25, 0.30, 0.35], # best was 0.30
+    'CPD_TOTAL_PRESENCE_FLOOR': [0.35, 0.40, 0.45], # best was 0.40
     
     # --- 7. Timeline Post-Processing ---
-    'SAME_SEGMENT_MERGE_THRESHOLD': [1.5, 2.0, 2.5], # 2.0 won
-    'GAP_STRETCH_THRESHOLD': [1.0, 1.5, 2.0], # 1.5 won
+    'SAME_SEGMENT_MERGE_THRESHOLD': [1.5, 2.0, 2.5],  # best was 2.0
+    'GAP_STRETCH_THRESHOLD': [1.0, 1.5, 2.0], # best was 1.5
 }
