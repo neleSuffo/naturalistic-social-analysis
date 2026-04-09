@@ -225,7 +225,8 @@ def print_segment_summary(segments_df: pd.DataFrame,
 
 def main(output_file_path: Path, 
          frame_data_path: Path, 
-         social_state_mode: str):
+         social_state_mode: str,
+         hyperparameter_tuning: bool = False):
     """
     Main entry point for segment analysis. Loads data, smooths, segments, and saves.
     
@@ -237,9 +238,12 @@ def main(output_file_path: Path,
         Path to the intermediate frame-level data CSV.
     social_state_mode : str
         "binary" or "tertiary" classification mode for social state analysis.
+    hyperparameter_tuning: bool
+        If True, takes configurations from the parent tuning script and avoids overwriting tuned parameters. Default is False.
     """
-    # Ensure the class attributes match the requested mode
-    AnalysisConfig.apply_mode(social_state_mode)
+    # 2. Add the check
+    if not hyperparameter_tuning:
+        AnalysisConfig.apply_mode(social_state_mode)
     
     # Load frame-level data
     frame_data = pd.read_csv(frame_data_path)
@@ -274,10 +278,14 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--output_folder_path', type=str, required=True)
     parser.add_argument('--social_state_mode', type=str, choices=['binary', 'tertiary'], default='tertiary')
+    parser.add_argument('--hyperparameter_tuning', action='store_true')
     args = parser.parse_args()
     
     output_folder = Path(args.output_folder_path)
     frame_data_path = output_folder / Analysis.FRAME_LEVEL_INTERACTIONS_CSV.name
     output_file_path = output_folder / Analysis.INTERACTION_SEGMENTS_CSV.name
 
-    main(output_file_path, frame_data_path, social_state_mode=args.social_state_mode)
+    main(output_file_path, 
+         frame_data_path, 
+         social_state_mode=args.social_state_mode, 
+         hyperparameter_tuning=args.hyperparameter_tuning)

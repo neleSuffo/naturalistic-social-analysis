@@ -384,7 +384,8 @@ def check_audio_interaction_turn_taking(df: pd.DataFrame,
 def main(db_path: Path, 
          output_dir: Path, 
          social_state_mode: str,
-         video_list: list = None):
+         video_list: list = None,
+         hyperparameter_tuning: bool = False):
     """
     Orchestrates the frame-level processing pipeline.
     
@@ -400,9 +401,13 @@ def main(db_path: Path,
         "tertiary" - classifies frames into Interacting, Available, Alone (default)
     video_list: list
         Optional list of video names to include in the analysis. If None, includes all videos.
+    hyperparameter_tuning: bool
+        If True, takes configurations from the parent tuning script and avoids overwriting tuned parameters. Default is False.
     """    
-    # Ensure the class attributes match the requested mode
-    AnalysisConfig.apply_mode(social_state_mode)
+    # 2. Only apply mode if we aren't tuning (avoid overwriting tuned params)
+    if not hyperparameter_tuning:
+        AnalysisConfig.apply_mode(social_state_mode)
+        
     with sqlite3.connect(db_path) as conn:
         prepare_persistent_tables(conn)
         
@@ -425,6 +430,8 @@ if __name__ == "__main__":
     parser.add_argument('--video_list', type=str, nargs='+', default=None)
     # New argument to detect if we are part of a tuning run
     parser.add_argument('--output_dir', type=str, default=None)
+    parser.add_argument('--hyperparameter_tuning', action='store_true')
+
     args = parser.parse_args()
     
     # --- SMART FOLDER LOGIC ---
@@ -442,5 +449,6 @@ if __name__ == "__main__":
         db_path=Path(DataPaths.INFERENCE_DB_PATH), 
         output_dir=run_output_dir,
         social_state_mode=args.social_state_mode, 
-        video_list=args.video_list
+        video_list=args.video_list,
+        hyperparameter_tuning=args.hyperparameter_tuning
     )

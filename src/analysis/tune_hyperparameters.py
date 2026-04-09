@@ -115,14 +115,16 @@ def run_pipeline_for_combo(hyperparameters: dict,
             db_path=DataPaths.INFERENCE_DB_PATH,
             output_dir=combo_dir,
             video_list=video_list,
-            social_state_mode=social_state_mode
+            social_state_mode=social_state_mode,
+            hyperparameter_tuning=True
         )
 
         # 3. Execute Segment-Level Analysis
         segment_analysis_main(
             output_file_path=segment_output_path, 
             frame_data_path=frame_output_path,
-            social_state_mode=social_state_mode
+            social_state_mode=social_state_mode,
+            hyperparameter_tuning=True
         )
         
         return True, frame_output_path, segment_output_path, None
