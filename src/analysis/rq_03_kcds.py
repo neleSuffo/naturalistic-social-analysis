@@ -1,51 +1,26 @@
 import pandas as pd
 import numpy as np
-from pathlib import Path
-from constants import DataPaths, Inference, AudioClassification
-from utils import extract_child_id  
-
-def parse_rttm(file_path: Path = AudioClassification.VTC_RTTM_FILE) -> pd.DataFrame:
-    data = []
-    if not file_path.exists(): return pd.DataFrame()
-    with open(file_path, 'r') as f:
-        for line in f:
-            parts = line.strip().split()
-            if len(parts) >= 8:
-                speech_type = parts[7]
-                if speech_type not in ['KCDS', 'OHS']: continue 
-                data.append({
-                    'video_name': parts[1],
-                    'start_time_seconds': float(parts[3]),
-                    'end_time_seconds': float(parts[3]) + float(parts[4]),
-                    'speech_type': speech_type
-                })
-    return pd.DataFrame(data)
-
-def merge_overlapping_intervals(intervals):
-    if not intervals: return [], 0.0
-    intervals = sorted(intervals)
-    merged = [intervals[0]]
-    for current_start, current_end in intervals[1:]:
-        last_start, last_end = merged[-1]
-        if current_start <= last_end:
-            merged[-1] = (last_start, max(last_end, current_end))
-        else:
-            merged.append((current_start, current_end))
-    return merged, sum(end - start for start, end in merged)
+from constants import Analysis
+from utils import parse_rttm, merge_overlapping_intervals
 
 def main():
     print("🗣️ RESEARCH QUESTION 03: SPEECH EXPOSURE ANALYSIS")
     print("="*70)
     
-    segments_df = pd.read_csv(Inference.INTERACTION_SEGMENTS_CSV)
-    all_vocalizations = parse_rttm()
+    # 1. Load segments file
+    segments_df = pd.read_csv(Analysis.INTERACTION_SEGMENTS_CSV)
     
-    # Standardize segments_df to match RTTM video names
-    segments_df['child_id'] = segments_df['video_name'].apply(extract_child_id)
-    
+    # 2. Extract both KCDS and OHS vocalizations from RTTM file
+    all_vocalizations = parse_rttm(target_speech_types=['KCDS', 'OHS'])
+
+    if all_vocalizations.empty:
+        print("⚠️ Warning: No OHS or KCDS vocalizations found in RTTM file.")
+            
+    # 3. For each segment, calculate total speech exposure for KCDS and OHS separately, as well as combined
     exposure_categories = ['TOTAL', 'KCDS_ONLY', 'OHS_ONLY']
     final_rows = []
 
+    # 3. Iterate through EVERY segment from the segments CSV
     for _, seg in segments_df.iterrows():
         # Get vocalizations for this segment
         group = all_vocalizations[
@@ -54,13 +29,11 @@ def main():
             (all_vocalizations['end_time_seconds'] > seg['start_time_sec'])
         ].copy()
 
-        # Calculate overlap with the segment boundaries
         if not group.empty:
-            group['ov_start'] = np.maximum(group['start_time_seconds'], seg['start_time_sec'])
-            group['ov_end'] = np.minimum(group['end_time_seconds'], seg['end_time_sec'])
-
-        duration = seg['end_time_sec'] - seg['start_time_sec']
-
+            # Calculate overlap with the segment boundaries
+            group['clipped_start'] = np.maximum(group['start_time_seconds'], seg['start_time_sec'])
+            group['clipped_end'] = np.minimum(group['end_time_seconds'], seg['end_time_sec'])
+        
         for exp_type in exposure_categories:
             if group.empty:
                 speech_seconds = 0.0
@@ -72,8 +45,11 @@ def main():
                 else:
                     data = group[group['speech_type'] == 'OHS']
                 
-                intervals = list(zip(data['ov_start'], data['ov_end']))
-                _, speech_seconds = merge_overlapping_intervals(intervals)
+                if data.empty:
+                    speech_seconds = 0.0
+                else:
+                    intervals = list(zip(data['clipped_start'], data['clipped_end']))
+                    _, speech_seconds = merge_overlapping_intervals(intervals)
 
             final_rows.append({
                 'child_id': seg['child_id'],
@@ -84,8 +60,8 @@ def main():
                 'segment_end_time': seg['end_time_sec'],
                 'exposure_type': exp_type,
                 'total_speech_seconds': speech_seconds,
-                'total_segment_duration': duration,
-                'segment_duration_minutes': duration/60
+                'total_segment_duration': seg['duration_sec'],
+                'segment_duration_minutes': seg['duration_sec'] / 60
             })
 
     final_df = pd.DataFrame(final_rows)
@@ -93,8 +69,8 @@ def main():
         
     # Final cleanup and sort
     final_df = final_df.sort_values(['video_name', 'segment_start_time', 'exposure_type'])
-    final_df.to_csv(Inference.CDS_SUMMARY_CSV, index=False)
-    print(f"✅ Clean results saved to {Inference.CDS_SUMMARY_CSV}")
+    final_df.to_csv(Analysis.CDS_SUMMARY_CSV, index=False)
+    print(f"✅ Clean results saved to {Analysis.CDS_SUMMARY_CSV}")
     
     
     # ----- PART 3A: Child-Level Aggregation ------
@@ -116,9 +92,9 @@ def main():
     child_exposure_summary['total_recording_minutes'] = child_exposure_summary['total_segment_duration'] / 60
 
     # Save child-level results
-    child_exposure_summary.to_csv(Inference.GLOBAL_CDS_SUMMARY_CSV, index=False)
+    child_exposure_summary.to_csv(Analysis.GLOBAL_CDS_SUMMARY_CSV, index=False)
     
-    print(f"✅ Child-level exposure summary saved to: {Inference.GLOBAL_CDS_SUMMARY_CSV}")
+    print(f"✅ Child-level exposure summary saved to: {Analysis.GLOBAL_CDS_SUMMARY_CSV}")
 
 if __name__ == "__main__":
     main()
