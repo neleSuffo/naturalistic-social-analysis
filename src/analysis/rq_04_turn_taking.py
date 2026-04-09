@@ -1,27 +1,13 @@
+import argparse
+import logging
 import pandas as pd
-import numpy as np
-from pathlib import Path
 from typing import Tuple
-from constants import DataPaths, Inference, AudioClassification
-from config import InferenceConfig
+from constants import Analysis
+from config import AnalysisConfig
+from utils import parse_rttm
 
-def parse_rttm(file_path: Path = AudioClassification.VTC_RTTM_FILE) -> pd.DataFrame:
-    """Parses RTTM file into a DataFrame."""
-    data = []
-    if not file_path.exists():
-        return pd.DataFrame()
-    with open(file_path, 'r') as f:
-        for line in f:
-            parts = line.strip().split()
-            if len(parts) >= 8:
-                data.append({
-                    'video_name': parts[1],
-                    'start_time_seconds': float(parts[3]),
-                    'duration': float(parts[4]),
-                    'end_time_seconds': float(parts[3]) + float(parts[4]),
-                    'speaker': parts[7]
-                })
-    return pd.DataFrame(data)
+# Configure logging to show thresholds in the terminal
+logging.basicConfig(level=logging.INFO, format='%(message)s')
 
 def process_block(block):
     """
@@ -31,7 +17,30 @@ def process_block(block):
     3. Unanswered Child Bid (Child starts, no turn)
     4. Unanswered Adult Prompt (Adult starts, no turn)
     
-    A block is defined as a sequence of vocalizations from the same speaker with gaps less than the defined thresholds.
+    A block is defined as a sequence of vocalizations from the same speech_type with gaps less than the defined thresholds.
+    
+    Parameters:
+    ----------
+    block: list of dicts
+        Each dict contains:
+        - speech_type: 'KCHI' or 'KCDS'
+        - start_time_seconds
+        - end_time_seconds  
+        
+    Returns:
+    --------
+    turns: int
+        Total number of turns in the block
+    succ_init: int
+        1 if block is a successful initiation, else 0
+    succ_resp: int
+        1 if block is a successful response, else 0
+    fail_init: int
+        1 if block is an unanswered child bid, else 0
+    fail_resp: int
+        1 if block is an unanswered adult prompt, else 0
+    block_duration: float
+        Duration of the block in seconds
     """
     if not block:
         return 0, 0, 0, 0, 0, 0
@@ -41,12 +50,12 @@ def process_block(block):
     
     turns = 0
     for i in range(1, len(block)):
-        if block[i]['speaker'] != block[i-1]['speaker']:
+        if block[i]['speech_type'] != block[i-1]['speech_type']:
             turns += 1
             
     # Initialize all counters
     succ_init, succ_resp, fail_init, fail_resp  = 0, 0, 0, 0
-    first_speaker = block[0]['speaker']
+    first_speaker = block[0]['speech_type']
     
     if turns > 0:
         if first_speaker == 'KCHI':
@@ -61,7 +70,8 @@ def process_block(block):
             
     return turns, succ_init, succ_resp, fail_init, fail_resp, block_duration
 
-def count_directional_turns(vocalizations, segments_df) -> Tuple[pd.DataFrame, pd.DataFrame]:
+def count_directional_turns(vocalizations: pd.DataFrame, 
+                            segments_df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Counts directional turn-taking within each interacting segment and measures individual child turn durations.
     
@@ -72,7 +82,7 @@ def count_directional_turns(vocalizations, segments_df) -> Tuple[pd.DataFrame, p
         - video_name
         - start_time_seconds
         - end_time_seconds
-        - speaker (KCHI or KCDS)
+        - speech_type (KCHI or KCDS)
     segments_df: DataFrame
         containing interaction segment data with columns:
         - child_id
@@ -93,9 +103,8 @@ def count_directional_turns(vocalizations, segments_df) -> Tuple[pd.DataFrame, p
     results = []
     # list to store individual child turns
     raw_turns_df = []
-    block_durations_raw = []
-    MAX_TURN_GAP = InferenceConfig.MAX_TURN_TAKING_GAP_SEC
-    MAX_SAME_GAP = InferenceConfig.MAX_SAME_SPEAKER_GAP_SEC
+    MAX_TURN_GAP = AnalysisConfig.MAX_TURN_TAKING_GAP_SEC
+    MAX_SAME_GAP = AnalysisConfig.MAX_SAME_SPEAKER_GAP_SEC
 
     for _, seg in segments_df.iterrows():
         # Only analyze 'Interacting' segments to maintain focused context
@@ -110,16 +119,16 @@ def count_directional_turns(vocalizations, segments_df) -> Tuple[pd.DataFrame, p
         ].copy().sort_values('start_time_seconds').reset_index(drop=True)
         
         # Filter for the Dyad (KCHI and KCDS)
-        seg_vocs = seg_vocs[seg_vocs['speaker'].isin(['KCHI', 'KCDS'])].reset_index(drop=True)
+        seg_vocs = seg_vocs[seg_vocs['speech_type'].isin(['KCHI', 'KCDS'])].reset_index(drop=True)
 
         # Capture Individual Turn Durations
-        child_only = seg_vocs[seg_vocs['speaker'] == 'KCHI']
+        child_only = seg_vocs[seg_vocs['speech_type'] == 'KCHI']
         for _, voc in child_only.iterrows():
             raw_turns_df.append({
                 'child_id': seg['child_id'],
                 'age_at_recording': seg['age_at_recording'],
                 'video_name': seg['video_name'],
-                'vocalization_duration_sec': voc['duration'],
+                'vocalization_duration_sec': voc['duration_seconds'],
                 'start_time': voc['start_time_seconds']
             })
             
@@ -134,7 +143,7 @@ def count_directional_turns(vocalizations, segments_df) -> Tuple[pd.DataFrame, p
                 curr = seg_vocs.iloc[i]
                 gap = curr['start_time_seconds'] - prev['end_time_seconds']
                 
-                threshold = MAX_SAME_GAP if curr['speaker'] == prev['speaker'] else MAX_TURN_GAP
+                threshold = MAX_SAME_GAP if curr['speech_type'] == prev['speech_type'] else MAX_TURN_GAP
                 
                 if gap <= threshold:
                     current_block.append(curr)
@@ -169,18 +178,34 @@ def count_directional_turns(vocalizations, segments_df) -> Tuple[pd.DataFrame, p
         
     return pd.DataFrame(results), pd.DataFrame(raw_turns_df)
 
-def main():
+def main(social_state_mode: str = 'tertiary'):
+    """
+    Executes the turn-taking analysis for naturalistic social interactions, categorizing blocks of vocalizations into successful initiations, successful responses, unanswered child bids, and unanswered adult prompts. It also calculates the total number of turns and their density per minute for each segment, as well as individual child turn durations for further analysis.
+
+    Parameters
+    ----------
+    social_state_mode : str, optional
+        The mode for categorizing social states, either 'binary' (Interacting vs. Not Interacting) or 'tertiary' (Alone, Available, Interacting). Default is 'tertiary'.
+    """
     print("🗣️ RESEARCH QUESTION 4: TURN-TAKING ANALYSIS")
     print("=" * 70)
     
-    # 1. Load Segments and Vocalizations
-    segments_df = pd.read_csv(Inference.INTERACTION_SEGMENTS_CSV)
-    all_vocalizations = parse_rttm()
+    # 1. APPLY MODE AND LOG PARAMETERS
+    AnalysisConfig.apply_mode(social_state_mode)
     
-    # 2. Categorize Social Blocks
+    logging.info(f"⚙️  MODE DETECTED: {social_state_mode.upper()}")
+    logging.info(f"📏 Turn-Taking Gap: {AnalysisConfig.MAX_TURN_TAKING_GAP_SEC}s")
+    logging.info(f"📏 Same-Speaker Gap: {AnalysisConfig.MAX_SAME_SPEAKER_GAP_SEC}s")
+    logging.info("-" * 70)
+    
+    # 2. Load Segments and Vocalizations
+    segments_df = pd.read_csv(Analysis.INTERACTION_SEGMENTS_CSV)
+    all_vocalizations = parse_rttm(target_speech_types=['KCHI', 'KCDS'])
+    
+    # 3. Categorize Social Blocks
     final_df, raw_turns_df = count_directional_turns(all_vocalizations, segments_df)
     
-    # 3. Calculate Global Totals and Proportions
+    # 4. Calculate Global Totals and Proportions
     final_df['total_attempts'] = (
         final_df['successful_initiations'] + final_df['successful_responses'] +
         final_df['unanswered_child_bids'] + final_df['unanswered_adult_prompts']
@@ -193,15 +218,15 @@ def main():
     # Standard volume metric
     final_df['turns_per_minute'] = (final_df['total_turns'] / final_df['segment_duration_minutes']).fillna(0)
     
-    # 4. Metadata Cleanup and Sort
+    # 5. Metadata Cleanup and Sort
     final_df['age_at_recording'] = (
         final_df['age_at_recording'].astype(str).str.replace('"', '').str.replace(',', '.').str.strip()
     )
     final_output = final_df.sort_values(['video_name', 'segment_start'])
     
-    # 5. Save Results
-    final_output.to_csv(Inference.TURN_TAKING_CSV, index=False)
-    print(f"✅ Full four-category analysis saved to {Inference.TURN_TAKING_CSV}")
+    # 6. Save Results
+    final_output.to_csv(Analysis.TURN_TAKING_CSV, index=False)
+    print(f"✅ Full four-category analysis saved to {Analysis.TURN_TAKING_CSV}")
     
     # ----- Part 2: Child-Level Aggregation (Relative to Total Recording) -----
     # 1.G TRUE total recording duration for every child from source segments
@@ -211,8 +236,6 @@ def main():
 
     # 2. Get total turns from processed interacting segments
     child_turns_only = final_df.groupby('child_id')['total_turns'].sum().reset_index()
-
-    # 3. Merge them to calculate the global rate
     child_level_turns = pd.merge(child_turns_only, child_total_durations, on='child_id', how='right').fillna(0)
 
     # 4. Add back age metadata (taking the minimum age found in the original segments)
@@ -226,8 +249,8 @@ def main():
     ).fillna(0)
 
     # Save Child-Level Results
-    child_level_turns.to_csv(Inference.GLOBAL_TURN_TAKING_CSV, index=False)
-    print(f"✅ Child-level turn-taking (relative to total duration) saved to {Inference.GLOBAL_TURN_TAKING_CSV}")
+    child_level_turns.to_csv(Analysis.GLOBAL_TURN_TAKING_CSV, index=False)
+    print(f"✅ Child-level turn-taking (relative to total duration) saved to {Analysis.GLOBAL_TURN_TAKING_CSV}")
     
     # ----- Part 3: SAVE INDIVIDUAL TURN DURATIONS -----
     if not raw_turns_df.empty:
@@ -239,10 +262,13 @@ def main():
         )
         
         # Save to the granular output path
-        raw_turns_df.to_csv(Inference.TURN_DURATION_CSV, index=False)
-        print(f"✅ Individual child turn durations saved to {Inference.TURN_DURATION_CSV}")
+        raw_turns_df.to_csv(Analysis.TURN_DURATION_CSV, index=False)
+        print(f"✅ Individual child turn durations saved to {Analysis.TURN_DURATION_CSV}")
     else:
         print("⚠️ No child vocalizations found to save for turn duration analysis.")
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Turn-Taking Analysis for Naturalistic Social Interactions")
+    parser.add_argument('--social_state_mode', type=str, choices=['binary', 'tertiary'], default='tertiary')
+    args = parser.parse_args()
+    main(social_state_mode=args.social_state_mode)
