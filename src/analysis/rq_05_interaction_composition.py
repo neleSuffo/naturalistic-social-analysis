@@ -1,12 +1,12 @@
 import pandas as pd
 import argparse
-import numpy as np
-from pathlib import Path
-from constants import Inference, DataPaths
+from constants import Analysis
 
-def add_interaction_columns(frames_df, segments_df, mode="tertiary"):
+def add_interaction_columns(frames_df: pd.DataFrame, 
+                            segments_df: pd.DataFrame, 
+                            social_state_mode="tertiary") -> pd.DataFrame:
     """
-    Optimized version using GroupBy and Interval lookups.
+    Adds binary columns to frames_df indicating whether each frame falls within an interaction segment, and if so, what type of interaction.
     
     Parameters:
     ----------
@@ -14,14 +14,14 @@ def add_interaction_columns(frames_df, segments_df, mode="tertiary"):
         DataFrame with columns ['video_name', 'frame_number', 'proximity', ...]
     segments_df: pd.DataFrame
         DataFrame with columns ['video_name', 'segment_start', 'segment_end', 'interaction_type']
-    mode: str
+    social_state_mode: str
         "binary" for Interacting vs Not Interacting, "tertiary" for Interacting vs Alone vs Available
     """
     # 1. Setup column names
     target_cols = ['is_interaction']
     type_to_col = {'Interacting': 'is_interaction'}
     
-    if mode == "binary":
+    if social_state_mode == "binary":
         target_cols.append('is_not_interaction') 
         type_to_col['Not_Interacting'] = 'is_not_interaction'
     else:
@@ -63,49 +63,52 @@ def add_interaction_columns(frames_df, segments_df, mode="tertiary"):
     
     return final_df
 
-def main(mode="tertiary"):
-    print(f"🚀 OPTIMIZED INTERACTION PROCESSING (Mode: {mode.upper()})")
+def main(social_state_mode="tertiary"):
+    """
+    Generate frame-level interaction composition by merging segment-level interactions with frame-level metadata.
+
+    Parameters
+    ----------
+    social_state_mode : str, optional
+        Whether to use "binary" (Interacting vs Not Interacting) or "tertiary" (Interacting vs Alone vs Available) classification, by default "tertiary"
+
+    Raises
+    ------
+    FileNotFoundError
+        _description_
+    """
+    print(f"🚀 INTERACTION PROCESSING (Mode: {social_state_mode.upper()})")
     print("=" * 70)
 
-    # Step 1: Load data (Keep your existing loading logic)
-    try:
-        segments_df = pd.read_csv(Inference.INTERACTION_SEGMENTS_CSV)
-        frame_df_path = next(Path(Inference.FINAL_OUTPUT_FOLDER).glob("frame_level_social_interactions_*.csv"), None)
-        
-        if frame_df_path is None:
-            raise FileNotFoundError("Frame-level interactions file not found.")
-            
-        frames_df = pd.read_csv(frame_df_path)
-        age_df = pd.read_csv(DataPaths.SUBJECTS_CSV_PATH, sep=';')
-    except (FileNotFoundError, StopIteration) as e:
-        print(f"❌ Error loading data: {e}")
-        return
-
-    # Step 2: Optimized Processing
-    frames_df = add_interaction_columns(frames_df, segments_df, mode=mode)
+    # Step 1: Load data
+    segments_df = pd.read_csv(Analysis.INTERACTION_SEGMENTS_CSV)
+    frames_df = pd.read_csv(Analysis.FRAME_LEVEL_INTERACTIONS_CSV)
     
-    # Step 3: Fast Metadata Merge
-    # Pre-clean age_df to avoid doing it inside the main dataframe later
-    age_df = age_df[['video_name', 'age_at_recording', 'child_id']].copy()
-    age_df['age_at_recording'] = (
-        age_df['age_at_recording']
-        .astype(str)
+    # Step 2: Optimized Processing
+    frames_df = add_interaction_columns(frames_df, segments_df, social_state_mode=social_state_mode)
+    
+    # # 3. Fast Metadata Merge
+    print("📝 Syncing metadata from segments...")
+    metadata_map = segments_df[['video_name', 'age_at_recording', 'child_id']].drop_duplicates()
+
+    # Ensure age is numeric
+    metadata_map['age_at_recording'] = pd.to_numeric(
+        metadata_map['age_at_recording'].astype(str)
         .str.replace('"', '', regex=False)
         .str.replace(',', '.', regex=False)
-        .str.strip()
+        .str.strip(), 
+        errors='coerce'
     )
-    age_df['age_at_recording'] = pd.to_numeric(age_df['age_at_recording'], errors='coerce')
-
     # Vectorized operations
+    frames_df = frames_df.merge(metadata_map, on='video_name', how='left')
     frames_df['proximity_filled'] = frames_df['proximity'].fillna(-1)
-    frames_df = frames_df.merge(age_df, on='video_name', how='left')
 
     # Step 4: Save (Using compression if file is huge can be slower but saves space)
-    output_path = Inference.INTERACTION_COMPOSITION_CSV
+    output_path = Analysis.INTERACTION_COMPOSITION_CSV
     frames_df.to_csv(output_path, index=False)
 
-    # adjust print message based on mode
-    if mode == "binary":
+    # adjust print message based on social_state_mode
+    if social_state_mode == "binary":
         print(f"\n✅ Done! Interacting: {frames_df['is_interaction'].sum()} frames, Not Interacting: {frames_df['is_not_interaction'].sum()} frames.")
     else:         
         print(f"\n✅ Done! Interacting: {frames_df['is_interaction'].sum()} frames, Alone: {frames_df['is_alone'].sum()} frames, Available: {frames_df['is_available'].sum()} frames.")
@@ -113,7 +116,7 @@ def main(mode="tertiary"):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--mode', type=str, choices=['binary', 'tertiary'], default='tertiary')
+    parser.add_argument('--social_state_mode', type=str, choices=['binary', 'tertiary'], default='tertiary')
     args = parser.parse_args()
         
-    main(mode=args.mode)
+    main(social_state_mode=args.social_state_mode)
