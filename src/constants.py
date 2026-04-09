@@ -111,7 +111,6 @@ class Inference:
 class Analysis:
     QUANTEX_VIDEOS_LIST_FILE = Path(BasePaths.DATA_DIR/"quantex_video_list_inference_tuning.txt") # list of all quantex videos for inference
     BASE_OUTPUT_DIR = BasePaths.OUTPUT_DIR / "quantex_analysis"
-    FINAL_OUTPUT_FOLDER = Path(BASE_OUTPUT_DIR/"interaction_analysis_20260309_195151")
     CONF_MATRIX_COUNTS = Path("confusion_matrix_counts.png")
     CONF_MATRIX_PERCENTAGES = Path("confusion_matrix_percentages.png")
     PERFORMANCE_RESULTS_TXT = Path("performance_results.txt")
@@ -123,6 +122,10 @@ class Analysis:
     GT_1_SECONDWISE_FILE_PATH = BASE_OUTPUT_DIR / "gt_ann1_secondwise.csv"
     GT_2_SECONDWISE_FILE_PATH = BASE_OUTPUT_DIR / "gt_ann2_secondwise.csv"
     PRED_SECONDWISE_FILE_PATH = BASE_OUTPUT_DIR / "pred_secondwise.csv"
+    
+    FRAME_ANALYSIS_SCRIPT = Path("analysis/pipeline_frame_level_analysis.py")
+    SEGMENT_CREATION_SCRIPT = Path("analysis/pipeline_video_level_analysis.py")
+    FINAL_OUTPUT_FOLDER = Path(BASE_OUTPUT_DIR/"analysis_20260409_204713")
     FRAME_LEVEL_INTERACTIONS_CSV = Path(FINAL_OUTPUT_FOLDER/"frame_level_social_interactions.csv")
     INTERACTION_SEGMENTS_CSV = Path(FINAL_OUTPUT_FOLDER/"interaction_segments.csv")
     #UTTERANCE_SEGMENTS_CSV = FINAL_OUTPUT_FOLDER / "00_utterance_segments.csv"
