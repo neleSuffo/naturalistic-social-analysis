@@ -1,5 +1,5 @@
+import os
 from pathlib import Path
-
 class BasePaths:
     BASE_DIR = Path("/home/nele_pauline_suffo")
     MODELS_DIR = Path(BASE_DIR/"models")
@@ -123,9 +123,17 @@ class Analysis:
     GT_2_SECONDWISE_FILE_PATH = BASE_OUTPUT_DIR / "gt_ann2_secondwise.csv"
     PRED_SECONDWISE_FILE_PATH = BASE_OUTPUT_DIR / "pred_secondwise.csv"
     
+    # -- Dynamic Folder Logic --
+    # 1. Define the default fallback
+    DEFAULT_RUN_NAME = "analysis_20260409_232600"
+    # 2. Look for the environment variable 'RUN_FOLDER_NAME'
+    # os.getenv returns the string from the system, or the default if not found
+    active_run_name = os.getenv("RUN_FOLDER_NAME", DEFAULT_RUN_NAME)
+    # 3. Build the folder path
+    FINAL_OUTPUT_FOLDER = BASE_OUTPUT_DIR / active_run_name
+    
     FRAME_ANALYSIS_SCRIPT = Path("analysis/pipeline_frame_level_analysis.py")
     SEGMENT_CREATION_SCRIPT = Path("analysis/pipeline_video_level_analysis.py")
-    FINAL_OUTPUT_FOLDER = Path(BASE_OUTPUT_DIR/"analysis_20260409_204713")
     FRAME_LEVEL_INTERACTIONS_CSV = Path(FINAL_OUTPUT_FOLDER/"frame_level_social_interactions.csv")
     INTERACTION_SEGMENTS_CSV = Path(FINAL_OUTPUT_FOLDER/"interaction_segments.csv")
     #UTTERANCE_SEGMENTS_CSV = FINAL_OUTPUT_FOLDER / "00_utterance_segments.csv"
