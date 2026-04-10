@@ -233,6 +233,10 @@ def classify_frames(df: pd.DataFrame,
     # This includes both 'Available' (2) and 'Alone' (3)
         df.loc[df['interaction_type'] != 1, 'interaction_type'] = 2
         
+    # We use the INSTANT_CONFIDENCE_THRESHOLD to decide if a detection counts as "present"
+    df['has_face'] = (df['face_conf'] >= AnalysisConfig.INSTANT_CONFIDENCE_THRESHOLD).astype(int)
+    df['has_person'] = (df['person_conf'] >= AnalysisConfig.INSTANT_CONFIDENCE_THRESHOLD).astype(int)
+    
     return df
 
 def find_segments(video_df: pd.DataFrame, 
