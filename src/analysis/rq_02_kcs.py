@@ -1,9 +1,19 @@
+import argparse
 import pandas as pd
 import numpy as np
+from pathlib import Path
 from constants import Analysis
 from utils import parse_rttm, merge_overlapping_intervals
 
-def main():
+def main(output_folder: Path = None):
+    """
+    Generates segment-level and child-level summaries of Key Child Directed Speech (KCDS) exposure by merging segment-level interactions with vocalization data extracted from RTTM files.
+
+    Parameters
+    ----------
+    output_folder : Path, optional
+        Optional output folder path to save the interaction composition CSV. If not provided, saves to default location defined in constants, by default None
+    """
     print("🗣️ RESEARCH QUESTION 2: CHILD LANGUAGE PRODUCTION ANALYSIS")
     print("=" * 70)
     
@@ -68,8 +78,12 @@ def main():
     final_df['age_at_recording'] = pd.to_numeric(final_df['age_at_recording'], errors='coerce')
     
     # Save segment-level results
-    final_df.to_csv(Analysis.KCS_SUMMARY_CSV, index=False)
-    print(f"✅ KCS state summary saved to: {Analysis.KCS_SUMMARY_CSV}")
+    if output_folder:
+        output_path_kcs = output_folder / Analysis.KCS_SUMMARY_CSV.name
+    else:
+        output_path_kcs = Analysis.KCS_SUMMARY_CSV
+    final_df.to_csv(output_path_kcs, index=False)
+    print(f"✅ KCS state summary saved to: {output_path_kcs}")
     
     # ----- PART 2A: Child-Level Aggregation ------
     child_level_summary = final_df.groupby('child_id').agg({
@@ -89,8 +103,16 @@ def main():
     child_level_summary['total_recording_minutes'] = child_level_summary['total_segment_duration'] / 60
 
     # Save child-level results
-    child_level_summary.to_csv(Analysis.GLOBAL_KCS_SUMMARY_CSV, index=False)
-    print(f"✅ Child-level summary saved to: {Analysis.GLOBAL_KCS_SUMMARY_CSV}")
+    if output_folder:
+        output_path_gkcs = output_folder / Analysis.GLOBAL_KCS_SUMMARY_CSV.name
+    else:
+        output_path_gkcs = Analysis.GLOBAL_KCS_SUMMARY_CSV
+    child_level_summary.to_csv(output_path_gkcs, index=False)
+    print(f"✅ Child-level summary saved to: {output_path_gkcs}")
     
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--output_folder', type=str, default=None, help="Optional output folder path to save the interaction composition CSV")
+    args = parser.parse_args()
+        
+    main(output_folder=Path(args.output_folder) if args.output_folder else None)

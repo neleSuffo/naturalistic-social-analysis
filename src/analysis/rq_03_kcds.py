@@ -1,9 +1,19 @@
+import argparse
 import pandas as pd
 import numpy as np
+from pathlib import Path
 from constants import Analysis
 from utils import parse_rttm, merge_overlapping_intervals
 
-def main():
+def main(output_folder: Path = None):
+    """
+    Generates frame-level interaction composition by merging segment-level interactions with frame-level metadata.
+    
+    Parameters
+    ----------
+    output_folder : Path, optional
+        Optional output folder path to save the interaction composition CSV. If not provided, saves to default location defined in constants, by default None
+    """
     print("🗣️ RESEARCH QUESTION 03: SPEECH EXPOSURE ANALYSIS")
     print("="*70)
     
@@ -69,9 +79,14 @@ def main():
         
     # Final cleanup and sort
     final_df = final_df.sort_values(['video_name', 'segment_start_time', 'exposure_type'])
-    final_df.to_csv(Analysis.CDS_SUMMARY_CSV, index=False)
-    print(f"✅ Clean results saved to {Analysis.CDS_SUMMARY_CSV}")
     
+    # Save
+    if output_folder:
+        output_path_cds = output_folder / Analysis.CDS_SUMMARY_CSV.name
+    else:
+        output_path_cds = Analysis.CDS_SUMMARY_CSV
+    final_df.to_csv(output_path_cds, index=False)
+    print(f"✅ Clean results saved to {output_path_cds}")
     
     # ----- PART 3A: Child-Level Aggregation ------
     # We group by both child_id and exposure_type to see the breakdown per child
@@ -92,9 +107,16 @@ def main():
     child_exposure_summary['total_recording_minutes'] = child_exposure_summary['total_segment_duration'] / 60
 
     # Save child-level results
-    child_exposure_summary.to_csv(Analysis.GLOBAL_CDS_SUMMARY_CSV, index=False)
-    
-    print(f"✅ Child-level exposure summary saved to: {Analysis.GLOBAL_CDS_SUMMARY_CSV}")
+    if output_folder:
+        output_path_gcds = output_folder / Analysis.GLOBAL_CDS_SUMMARY_CSV.name
+    else:
+        output_path_gcds = Analysis.GLOBAL_CDS_SUMMARY_CSV    
+    child_exposure_summary.to_csv(output_path_gcds, index=False)
+    print(f"✅ Child-level exposure summary saved to: {output_path_gcds}")
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--output_folder', type=str, default=None, help="Optional output folder path to save the interaction composition CSV")
+    args = parser.parse_args()
+        
+    main(output_folder=Path(args.output_folder) if args.output_folder else None)

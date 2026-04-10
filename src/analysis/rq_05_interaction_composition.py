@@ -1,5 +1,6 @@
 import pandas as pd
 import argparse
+from pathlib import Path
 from constants import Analysis
 
 def add_interaction_columns(frames_df: pd.DataFrame, 
@@ -63,7 +64,8 @@ def add_interaction_columns(frames_df: pd.DataFrame,
     
     return final_df
 
-def main(social_state_mode="tertiary"):
+def main(social_state_mode: str = 'tertiary',
+         output_folder: Path = None):
     """
     Generate frame-level interaction composition by merging segment-level interactions with frame-level metadata.
 
@@ -71,7 +73,9 @@ def main(social_state_mode="tertiary"):
     ----------
     social_state_mode : str, optional
         Whether to use "binary" (Interacting vs Not Interacting) or "tertiary" (Interacting vs Alone vs Available) classification, by default "tertiary"
-
+    output_folder : Path, optional
+        Optional output folder path to save the interaction composition CSV. If not provided, saves to default location defined in constants, by default None
+        
     Raises
     ------
     FileNotFoundError
@@ -103,8 +107,11 @@ def main(social_state_mode="tertiary"):
     frames_df = frames_df.merge(metadata_map, on='video_name', how='left')
     frames_df['proximity_filled'] = frames_df['proximity'].fillna(-1)
 
-    # Step 4: Save (Using compression if file is huge can be slower but saves space)
-    output_path = Analysis.INTERACTION_COMPOSITION_CSV
+    # Step 4: Save
+    if output_folder:
+        output_path = output_folder / Analysis.INTERACTION_COMPOSITION_CSV.name
+    else:
+        output_path = Analysis.INTERACTION_COMPOSITION_CSV
     frames_df.to_csv(output_path, index=False)
 
     # adjust print message based on social_state_mode
@@ -117,6 +124,8 @@ def main(social_state_mode="tertiary"):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--social_state_mode', type=str, choices=['binary', 'tertiary'], default='tertiary')
+    parser.add_argument('--output_folder', type=str, default=None, help="Optional output folder path to save the interaction composition CSV")
     args = parser.parse_args()
         
-    main(social_state_mode=args.social_state_mode)
+    main(social_state_mode=args.social_state_mode, 
+         output_folder=Path(args.output_folder) if args.output_folder else None)

@@ -1,6 +1,7 @@
 import argparse
 import logging
 import pandas as pd
+from pathlib import Path
 from typing import Tuple
 from constants import Analysis
 from config import AnalysisConfig
@@ -178,7 +179,8 @@ def count_directional_turns(vocalizations: pd.DataFrame,
         
     return pd.DataFrame(results), pd.DataFrame(raw_turns_df)
 
-def main(social_state_mode: str = 'tertiary'):
+def main(social_state_mode: str = 'tertiary',
+         output_folder: Path = None):
     """
     Executes the turn-taking analysis for naturalistic social interactions, categorizing blocks of vocalizations into successful initiations, successful responses, unanswered child bids, and unanswered adult prompts. It also calculates the total number of turns and their density per minute for each segment, as well as individual child turn durations for further analysis.
 
@@ -186,6 +188,8 @@ def main(social_state_mode: str = 'tertiary'):
     ----------
     social_state_mode : str, optional
         The mode for categorizing social states, either 'binary' (Interacting vs. Not Interacting) or 'tertiary' (Alone, Available, Interacting). Default is 'tertiary'.
+    output_folder : Path, optional
+        Optional output folder path to save the turn-taking analysis CSV. If not provided, saves to default location defined in constants, by default None
     """
     print("🗣️ RESEARCH QUESTION 4: TURN-TAKING ANALYSIS")
     print("=" * 70)
@@ -225,9 +229,13 @@ def main(social_state_mode: str = 'tertiary'):
     final_output = final_df.sort_values(['video_name', 'segment_start'])
     
     # 6. Save Results
-    final_output.to_csv(Analysis.TURN_TAKING_CSV, index=False)
-    print(f"✅ Full four-category analysis saved to {Analysis.TURN_TAKING_CSV}")
-    
+    if output_folder:
+        output_path_tt = output_folder / Analysis.TURN_TAKING_CSV.name
+    else:
+        output_path_tt = Analysis.TURN_TAKING_CSV
+    final_output.to_csv(output_path_tt, index=False)
+    print(f"✅ Full four-category analysis saved to {output_path_tt}")
+
     # ----- Part 2: Child-Level Aggregation (Relative to Total Recording) -----
     # 1.G TRUE total recording duration for every child from source segments
     # (This includes Alone, Available, and Interacting time)
@@ -249,8 +257,12 @@ def main(social_state_mode: str = 'tertiary'):
     ).fillna(0)
 
     # Save Child-Level Results
-    child_level_turns.to_csv(Analysis.GLOBAL_TURN_TAKING_CSV, index=False)
-    print(f"✅ Child-level turn-taking (relative to total duration) saved to {Analysis.GLOBAL_TURN_TAKING_CSV}")
+    if output_folder:
+        output_path_gtt = output_folder / Analysis.GLOBAL_TURN_TAKING_CSV.name
+    else:
+        output_path_gtt = Analysis.GLOBAL_TURN_TAKING_CSV
+    child_level_turns.to_csv(output_path_gtt, index=False)
+    print(f"✅ Child-level turn-taking (relative to total duration) saved to {output_path_gtt}")
     
     # ----- Part 3: SAVE INDIVIDUAL TURN DURATIONS -----
     if not raw_turns_df.empty:
@@ -262,13 +274,19 @@ def main(social_state_mode: str = 'tertiary'):
         )
         
         # Save to the granular output path
-        raw_turns_df.to_csv(Analysis.TURN_DURATION_CSV, index=False)
-        print(f"✅ Individual child turn durations saved to {Analysis.TURN_DURATION_CSV}")
+        if output_folder:
+            output_path_td = output_folder / Analysis.TURN_DURATION_CSV.name
+        else:
+            output_path_td = Analysis.TURN_DURATION_CSV
+        raw_turns_df.to_csv(output_path_td, index=False)
+        print(f"✅ Individual child turn durations saved to {output_path_td}")
     else:
         print("⚠️ No child vocalizations found to save for turn duration analysis.")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Turn-Taking Analysis for Naturalistic Social Interactions")
     parser.add_argument('--social_state_mode', type=str, choices=['binary', 'tertiary'], default='tertiary')
+    parser.add_argument('--output_folder', type=str, default=None, help="Optional output folder path to save the interaction composition CSV")
     args = parser.parse_args()
-    main(social_state_mode=args.social_state_mode)
+    main(social_state_mode=args.social_state_mode,
+         output_folder=Path(args.output_folder) if args.output_folder else None)
