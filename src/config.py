@@ -222,10 +222,8 @@ class AnalysisConfig:
     EXCLUSION_SECONDS = 30           
     SAMPLE_RATE = 10                 
     
-    GAP_DEFAULT_LABEL_BINARY = "Not Interacting"
-    GAP_DEFAULT_LABEL_TERTIARY = "Alone"
-    
     TERTIARY_PARAMETERS = {
+        "GAP_DEFAULT_LABEL": "Alone",
         "AUDIO_VISUAL_GATING_FLOOR": 0.25,
         "INSTANT_CONFIDENCE_THRESHOLD": 0.2,
         "MAX_TURN_TAKING_GAP_SEC": 10.0,
@@ -248,6 +246,7 @@ class AnalysisConfig:
     
     # Define the "Binary Specials"
     BINARY_PARAMETERS = {
+        "GAP_DEFAULT_LABEL": "Not Interacting",
         "AUDIO_VISUAL_GATING_FLOOR": 0.4,
         "INSTANT_CONFIDENCE_THRESHOLD": 0.6,
         "MIN_PRESENCE_OHS_FRACTION": 0.1,

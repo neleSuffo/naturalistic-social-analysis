@@ -175,9 +175,9 @@ def fill_gaps_with_default(segments_df):
     -------
     pd.DataFrame
         DataFrame with a continuous timeline.
-    """
-    # Get default label based on mode
-    default_type = AnalysisConfig.GAP_DEFAULT_LABEL_BINARY if "Not Interacting" in AnalysisConfig.GAP_DEFAULT_LABEL_BINARY else AnalysisConfig.GAP_DEFAULT_LABEL_TERTIARY
+    """    
+    # Pull the current active label
+    default_type = AnalysisConfig.GAP_DEFAULT_LABEL
     
     filled_segments = []
     for video_id, video_df in segments_df.groupby('video_id'):
@@ -266,12 +266,15 @@ def main(output_file_path: Path,
     segments_df = fill_gaps_with_default(segments_df)
     segments_df = merge_same_segments(segments_df)
 
-    print_segment_summary(segments_df, social_state_mode)
+    # Ensure no zero-duration segments remain after merging/gap-filling
+    final_df = segments_df[segments_df['duration_sec'] > 0]
+
+    print_segment_summary(final_df, social_state_mode)
     
     age_df = pd.read_csv(DataPaths.SUBJECTS_CSV_PATH, sep=";", decimal=",")[["video_name", "age_at_recording", "child_id"]]
-    segments_df = segments_df.merge(age_df, on="video_name", how="left")
+    final_df = final_df.merge(age_df, on="video_name", how="left")
     
-    segments_df.to_csv(output_file_path, index=False)
+    final_df.to_csv(output_file_path, index=False)
     print(f"✅ Saved results to {output_file_path}")
 
 if __name__ == "__main__":    
