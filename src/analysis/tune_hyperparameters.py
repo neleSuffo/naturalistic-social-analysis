@@ -82,6 +82,7 @@ def generate_hyperparameter_combinations(max_combinations=20,
 def run_pipeline_for_combo(hyperparameters: dict,
                            combo_dir: Path, 
                            social_state_mode: str,
+                           hyperparameter_tuning=False,
                            video_list=None):
     """
     Runs the full analysis pipeline by temporarily setting AnalysisConfig 
@@ -95,6 +96,8 @@ def run_pipeline_for_combo(hyperparameters: dict,
         Directory where outputs for this combination will be stored.
     social_state_mode: str
         tertiary or binary evaluation mode (affects evaluation metrics and thresholds)
+    hyperparameter_tuning: bool
+        Whether this run is part of hyperparameter tuning (affects configuration settings).
     video_list: list, optional
         Specific videos to process. If provided, Step 1 will only query these videos.
     """
@@ -116,7 +119,7 @@ def run_pipeline_for_combo(hyperparameters: dict,
             output_dir=combo_dir,
             video_list=video_list,
             social_state_mode=social_state_mode,
-            hyperparameter_tuning=True
+            hyperparameter_tuning=hyperparameter_tuning
         )
 
         # 3. Execute Segment-Level Analysis
@@ -124,7 +127,7 @@ def run_pipeline_for_combo(hyperparameters: dict,
             output_file_path=segment_output_path, 
             frame_data_path=frame_output_path,
             social_state_mode=social_state_mode,
-            hyperparameter_tuning=True
+            hyperparameter_tuning=hyperparameter_tuning
         )
         
         return True, frame_output_path, segment_output_path, None
@@ -141,6 +144,7 @@ def run_analysis_with_config(hyperparameters: dict,
                              combo_id: int,
                              output_base_dir: Path,
                              social_state_mode: str,
+                             hyperparameter_tuning: bool,
                              video_list=None):
     """
     Wrapper function to manage directory creation and pipeline execution for a combination.
@@ -155,6 +159,8 @@ def run_analysis_with_config(hyperparameters: dict,
         Base directory where results for this combination will be stored.
     social_state_mode: str
         tertiary or binary evaluation mode (affects evaluation metrics and thresholds)
+    hyperparameter_tuning: bool
+        Whether this run is part of hyperparameter tuning (affects configuration settings).
     video_list: list, optional
         Specific videos to process. If provided, Step 1 will only query these videos.
         
@@ -177,7 +183,7 @@ def run_analysis_with_config(hyperparameters: dict,
         
     # Run the pipeline with the specified hyperparameters and video filter
     success, frame_out, seg_out, error = run_pipeline_for_combo(
-        hyperparameters, combo_dir, social_state_mode, video_list=video_list
+        hyperparameters, combo_dir, social_state_mode, hyperparameter_tuning=hyperparameter_tuning, video_list=video_list
     )
         
     return success, frame_out, seg_out, error
@@ -288,7 +294,8 @@ def print_results_summary(all_results: list,
 
 def main(max_combinations=None, 
          video_list=None, 
-         social_state_mode="tertiary"):
+         social_state_mode="tertiary",
+         hyperparameter_tuning=True):
     """
     Main hyperparameter tuning loop.
     
@@ -300,6 +307,8 @@ def main(max_combinations=None,
         Optional list of specific video filenames to evaluate (e.g. ['video1.mp4', 'video2.mp4']). If None, evaluates on all videos in the segment output.
     social_state_mode: str
         "tertiary" or "binary" evaluation mode (affects evaluation metrics and thresholds).
+    hyperparameter_tuning: bool
+        Whether this run is part of hyperparameter tuning (affects configuration settings and logging).
     """
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_base_dir = Path(f"{Inference.HYPERPARAMETER_OUTPUT_DIR}_{timestamp}")
@@ -322,6 +331,7 @@ def main(max_combinations=None,
             combo_id=combo_id,
             output_base_dir=output_base_dir,
             social_state_mode=social_state_mode,
+            hyperparameter_tuning=hyperparameter_tuning,
             video_list=video_list)
         
         if not success:

@@ -91,6 +91,7 @@ def run_cross_validation(mode="validation", social_state_mode="tertiary", max_co
                 success, _, seg_path, error = run_analysis_with_config(
                     combo, c_idx, tuning_dir, 
                     social_state_mode=social_state_mode,
+                    hyperparameter_tuning=True,
                     video_list=train_videos
                 )
                 
@@ -109,6 +110,7 @@ def run_cross_validation(mode="validation", social_state_mode="tertiary", max_co
             success, _, seg_path, error = run_analysis_with_config(
                 best_params, fold_id, output_root / f"fold_{fold_id}_final_test", 
                 social_state_mode=social_state_mode,
+                hyperparameter_tuning=True,
                 video_list=test_videos
             )
             
@@ -137,6 +139,7 @@ def run_cross_validation(mode="validation", social_state_mode="tertiary", max_co
                 fold_id, 
                 output_root, 
                 social_state_mode=social_state_mode,
+                hyperparameter_tuning=False,
                 video_list=test_videos
             )
             

@@ -215,37 +215,36 @@ class AnalysisConfig:
     
     RANDOM_SAMPLING = True
     # -- General --
-    SOCIAL_STATE_MAPPING_BINARY = {1: 'Interacting', 2: 'Not Interacting'} 
-    SOCIAL_STATE_MAPPING_TERTIARY = {1: 'Interacting', 2: 'Available', 3: 'Alone'}
-
     NUM_FOLDS = 5
     EXCLUSION_SECONDS = 30           
     SAMPLE_RATE = 10                 
     
     TERTIARY_PARAMETERS = {
+        "SOCIAL_STATE_MAPPING": {1: 'Interacting', 2: 'Available', 3: 'Alone'},
         "GAP_DEFAULT_LABEL": "Alone",
-        "AUDIO_VISUAL_GATING_FLOOR": 0.25,
+        "AUDIO_VISUAL_GATING_FLOOR": 0.2,
         "INSTANT_CONFIDENCE_THRESHOLD": 0.2,
-        "MAX_TURN_TAKING_GAP_SEC": 10.0,
-        "MAX_SAME_SPEAKER_GAP_SEC": 1.0,
-        "PROXIMITY_THRESHOLD": 0.55,
-        "SUSTAINED_KCDS_WINDOW_SEC": 8.0,
-        "SUSTAINED_KCDS_THRESHOLD": 0.9,
+        "MAX_TURN_TAKING_GAP_SEC": 11.0,
+        "MAX_SAME_SPEAKER_GAP_SEC": 0.8,
+        "PROXIMITY_THRESHOLD": 0.6,
+        "SUSTAINED_KCDS_WINDOW_SEC": 6.0,
+        "SUSTAINED_KCDS_THRESHOLD": 0.95,
         "HIGH_CONFIDENCE_PROXIMITY_THRESHOLD": 0.75,
         "HIGH_CONFIDENCE_FACE_CONFIDENCE": 0.85,
-        "VISUAL_PERSISTENCE_SEC": 2,
+        "VISUAL_PERSISTENCE_SEC": 1.5,
         "SHORT_TERM_VISUAL_MEMORY_SEC": 3.5,
         "MIN_PRESENCE_OHS_FRACTION": 0.02,
-        "CPD_PENALTY": 4,
-        "CPD_INTERACTING_THRESHOLD": 0.75,
+        "CPD_PENALTY": 4.5,
+        "CPD_INTERACTING_THRESHOLD": 0.8,
         "CPD_INTERACTING_THRESHOLD_LOW": 0.3,
         "CPD_TOTAL_PRESENCE_FLOOR": 0.4,
-        "SAME_SEGMENT_MERGE_THRESHOLD": 2.0,
-        "GAP_STRETCH_THRESHOLD": 1.5
+        "SAME_SEGMENT_MERGE_THRESHOLD": 2.5,
+        "GAP_STRETCH_THRESHOLD": 2.0
     }
     
     # Define the "Binary Specials"
     BINARY_PARAMETERS = {
+        "SOCIAL_STATE_MAPPING": {1: 'Interacting', 2: 'Not Interacting'},
         "GAP_DEFAULT_LABEL": "Not Interacting",
         "AUDIO_VISUAL_GATING_FLOOR": 0.4,
         "INSTANT_CONFIDENCE_THRESHOLD": 0.6,
@@ -269,13 +268,10 @@ class AnalysisConfig:
 
     @classmethod
     def apply_mode(cls, mode="tertiary"):
-        """Call this at the start of your script to hot-swap values."""
-        if mode == "binary":
-            for key, value in cls.BINARY_PARAMETERS.items():
-                setattr(cls, key, value)
-        elif mode == "tertiary":
-            for key, value in cls.TERTIARY_PARAMETERS.items():
-                setattr(cls, key, value)
+        """Hot-swaps all parameters based on mode."""
+        params = cls.BINARY_PARAMETERS if mode == "binary" else cls.TERTIARY_PARAMETERS
+        for key, value in params.items():
+            setattr(cls, key, value)
 
 class HyperparameterConfig:
     """
