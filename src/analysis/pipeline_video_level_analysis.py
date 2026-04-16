@@ -250,8 +250,9 @@ def main(output_file_path: Path,
     frame_data = apply_cpd_smoothing(frame_data, social_state_mode)
     
     # Map numeric states to labels based on mode
-    mapping = AnalysisConfig.SOCIAL_STATE_MAPPING_BINARY if social_state_mode == "binary" else AnalysisConfig.SOCIAL_STATE_MAPPING_TERTIARY
-    frame_data['interaction_type'] = frame_data['interaction_type'].map(mapping)
+    #mapping = AnalysisConfig.SOCIAL_STATE_MAPPING_BINARY if social_state_mode == "binary" else AnalysisConfig.SOCIAL_STATE_MAPPING_TERTIARY
+    #frame_data['interaction_type'] = frame_data['interaction_type'].map(mapping)
+    frame_data['interaction_type'] = frame_data['interaction_type'].map(AnalysisConfig.SOCIAL_STATE_MAPPING)
 
     # Create segments for each video and apply post-processing (merging, gap-filling)
     all_segments = []
