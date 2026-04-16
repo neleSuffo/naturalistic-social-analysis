@@ -18,7 +18,11 @@ def main(output_folder: Path = None):
     print("="*70)
     
     # 1. Load segments file
-    segments_df = pd.read_csv(Analysis.INTERACTION_SEGMENTS_CSV)
+    if output_folder:
+        segments_path = output_folder / Analysis.INTERACTION_SEGMENTS_CSV.name
+    else:
+        segments_path = Analysis.INTERACTION_SEGMENTS_CSV
+    segments_df = pd.read_csv(segments_path)
     
     # 2. Extract both KCDS and OHS vocalizations from RTTM file
     all_vocalizations = parse_rttm(target_speech_types=['KCDS', 'OHS'])

@@ -203,7 +203,11 @@ def main(social_state_mode: str = 'tertiary',
     logging.info("-" * 70)
     
     # 2. Load Segments and Vocalizations
-    segments_df = pd.read_csv(Analysis.INTERACTION_SEGMENTS_CSV)
+    if output_folder:
+        segments_path = output_folder / Analysis.INTERACTION_SEGMENTS_CSV.name
+    else:
+        segments_path = Analysis.INTERACTION_SEGMENTS_CSV
+    segments_df = pd.read_csv(segments_path)
     all_vocalizations = parse_rttm(target_speech_types=['KCHI', 'KCDS'])
     
     # 3. Categorize Social Blocks

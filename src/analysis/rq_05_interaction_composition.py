@@ -85,8 +85,14 @@ def main(social_state_mode: str = 'tertiary',
     print("=" * 70)
 
     # Step 1: Load data
-    segments_df = pd.read_csv(Analysis.INTERACTION_SEGMENTS_CSV)
-    frames_df = pd.read_csv(Analysis.FRAME_LEVEL_INTERACTIONS_CSV)
+    if output_folder:
+        segments_path = output_folder / Analysis.INTERACTION_SEGMENTS_CSV.name
+        frames_path = output_folder / Analysis.FRAME_LEVEL_INTERACTIONS_CSV.name
+    else:
+        segments_path = Analysis.INTERACTION_SEGMENTS_CSV
+        frames_path = Analysis.FRAME_LEVEL_INTERACTIONS_CSV
+    segments_df = pd.read_csv(segments_path)
+    frames_df = pd.read_csv(frames_path)
     
     # Step 2: Optimized Processing
     frames_df = add_interaction_columns(frames_df, segments_df, social_state_mode=social_state_mode)
