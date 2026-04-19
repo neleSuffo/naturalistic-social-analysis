@@ -173,15 +173,24 @@ def fill_gaps_with_default(segments_df):
         
     Returns
     -------
-    pd.DataFrame
-        DataFrame with a continuous timeline.
+    tuple[pd.DataFrame, dict]
+        - DataFrame with a continuous timeline.
+        - Dictionary with summary stats about inserted default-gap segments.
     """    
     # Pull the current active label
     default_type = AnalysisConfig.GAP_DEFAULT_LABEL
     
     filled_segments = []
+    stats_by_video = {}
+    total_default_segments = 0
+    total_default_seconds = 0.0
+
     for video_id, video_df in segments_df.groupby('video_id'):
         v_segs = video_df.sort_values('start_time_sec').to_dict('records')
+        video_name = v_segs[0]['video_name'] if v_segs else 'unknown'
+        video_default_segments = 0
+        video_default_seconds = 0.0
+
         for i in range(len(v_segs)):
             filled_segments.append(v_segs[i])
             if i < len(v_segs) - 1:
@@ -189,15 +198,62 @@ def fill_gaps_with_default(segments_df):
                 if 0 < gap <= AnalysisConfig.GAP_STRETCH_THRESHOLD:
                     filled_segments[-1]['end_time_sec'] = v_segs[i+1]['start_time_sec']
                     filled_segments[-1]['segment_end'] = v_segs[i+1]['segment_start'] - 1
+                    filled_segments[-1]['duration_sec'] = (
+                        filled_segments[-1]['end_time_sec'] - filled_segments[-1]['start_time_sec']
+                    )
                 elif gap > AnalysisConfig.GAP_STRETCH_THRESHOLD:
+                    default_duration = v_segs[i+1]['start_time_sec'] - v_segs[i]['end_time_sec']
                     filled_segments.append({
                         'video_id': video_id, 'video_name': v_segs[i]['video_name'],
                         'interaction_type': default_type, 'start_time_sec': v_segs[i]['end_time_sec'],
                         'end_time_sec': v_segs[i+1]['start_time_sec'], 
                         'segment_start': v_segs[i]['segment_end'] + 1,
-                        'segment_end': v_segs[i+1]['segment_start'] - 1
+                        'segment_end': v_segs[i+1]['segment_start'] - 1,
+                        'duration_sec': default_duration
                     })
-    return pd.DataFrame(filled_segments)
+
+                    video_default_segments += 1
+                    video_default_seconds += default_duration
+
+        stats_by_video[video_id] = {
+            'video_name': video_name,
+            'default_segments_inserted': video_default_segments,
+            'default_seconds_filled': video_default_seconds,
+            'default_minutes_filled': video_default_seconds / 60.0
+        }
+        total_default_segments += video_default_segments
+        total_default_seconds += video_default_seconds
+
+    fill_stats = {
+        'default_label': default_type,
+        'total_default_segments_inserted': total_default_segments,
+        'total_default_seconds_filled': total_default_seconds,
+        'total_default_minutes_filled': total_default_seconds / 60.0,
+        'per_video': stats_by_video
+    }
+
+    return pd.DataFrame(filled_segments), fill_stats
+
+
+def print_default_fill_summary(fill_stats: dict):
+    """Print summary of how often and how long default-gap filling was applied."""
+    print("\n📌 Gap-fill with default label summary")
+    print(
+        f"   Label='{fill_stats['default_label']}' | "
+        f"Segments inserted={fill_stats['total_default_segments_inserted']} | "
+        f"Seconds={fill_stats['total_default_seconds_filled']:.2f} | "
+        f"Minutes={fill_stats['total_default_minutes_filled']:.2f}"
+    )
+
+    for video_id, stats in fill_stats['per_video'].items():
+        if stats['default_segments_inserted'] == 0:
+            continue
+        print(
+            f"   - Video {video_id} ({stats['video_name']}): "
+            f"segments={stats['default_segments_inserted']}, "
+            f"seconds={stats['default_seconds_filled']:.2f}, "
+            f"minutes={stats['default_minutes_filled']:.2f}"
+        )
 
 def print_segment_summary(segments_df: pd.DataFrame, 
                           social_state_mode: str):
@@ -214,7 +270,7 @@ def print_segment_summary(segments_df: pd.DataFrame,
     if len(segments_df) > 0:
         total_min = round(segments_df['duration_sec'].sum() / 60, 2)
         print(f"\n📊 Final segment summary: {total_min} minutes total.")
-        target_classes = ['Interacting', 'Not Interacting'] if social_state_mode == "binary" else ['Interacting', 'Alone', 'Available']
+        target_classes = ['Interacting', 'Not_Interacting'] if social_state_mode == "binary" else ['Interacting', 'Alone', 'Available']
         for itype in target_classes:
             df_sub = segments_df[segments_df['interaction_type'] == itype]
             mins = round(df_sub['duration_sec'].sum() / 60, 2)
@@ -264,8 +320,10 @@ def main(output_file_path: Path,
 
     # Post-processing: Merge same-type segments with small gaps and fill large gaps with default labels
     segments_df = merge_same_segments(segments_df)
-    segments_df = fill_gaps_with_default(segments_df)
+    segments_df, fill_stats = fill_gaps_with_default(segments_df)
     segments_df = merge_same_segments(segments_df)
+
+    print_default_fill_summary(fill_stats)
 
     # Ensure no zero-duration segments remain after merging/gap-filling
     final_df = segments_df[segments_df['duration_sec'] > 0]
