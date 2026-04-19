@@ -244,25 +244,25 @@ class AnalysisConfig:
     
     # Define the "Binary Specials"
     BINARY_PARAMETERS = {
-        "SOCIAL_STATE_MAPPING": {1: 'Interacting', 2: 'Not Interacting'},
-        "GAP_DEFAULT_LABEL": "Not Interacting",
-        "AUDIO_VISUAL_GATING_FLOOR": 0.4,
+        "SOCIAL_STATE_MAPPING": {1: 'Interacting', 2: 'Not_Interacting'},
+        "GAP_DEFAULT_LABEL": "Not_Interacting",
+        "AUDIO_VISUAL_GATING_FLOOR": 0.45,
         "INSTANT_CONFIDENCE_THRESHOLD": 0.6,
+        "MAX_TURN_TAKING_GAP_SEC": 9.0,
+        "MAX_SAME_SPEAKER_GAP_SEC": 2.5,
+        "PROXIMITY_THRESHOLD": 0.65,
+        "SUSTAINED_KCDS_WINDOW_SEC": 18.0,
+        "SUSTAINED_KCDS_THRESHOLD": 0.98,
+        "HIGH_CONFIDENCE_PROXIMITY_THRESHOLD": 0.9,
+        "HIGH_CONFIDENCE_FACE_CONFIDENCE": 0.8,
+        "VISUAL_PERSISTENCE_SEC": 1.0,
+        "SHORT_TERM_VISUAL_MEMORY_SEC": 2.5,
         "MIN_PRESENCE_OHS_FRACTION": 0.1,
-        "MAX_TURN_TAKING_GAP_SEC": 7.0,
-        "MAX_SAME_SPEAKER_GAP_SEC": 2.0,
-        "PROXIMITY_THRESHOLD": 0.7,
-        "SUSTAINED_KCDS_WINDOW_SEC": 15.0,
-        "SUSTAINED_KCDS_THRESHOLD": 0.95,
-        "VISUAL_PERSISTENCE_SEC": 1.5,
-        "SHORT_TERM_VISUAL_MEMORY_SEC": 2.0,
-        "HIGH_CONFIDENCE_PROXIMITY_THRESHOLD": 0.5,
-        "HIGH_CONFIDENCE_FACE_CONFIDENCE": 0.9,
         "CPD_PENALTY": 3.0,
         "CPD_INTERACTING_THRESHOLD": 0.95,
         "CPD_INTERACTING_THRESHOLD_LOW": 0.35,
-        "CPD_TOTAL_PRESENCE_FLOOR": 0.5,
-        "SAME_SEGMENT_MERGE_THRESHOLD": 2.0,
+        "CPD_TOTAL_PRESENCE_FLOOR": 0.3,
+        "SAME_SEGMENT_MERGE_THRESHOLD": 1.5,
         "GAP_STRETCH_THRESHOLD": 1.5
     }
 
@@ -280,34 +280,42 @@ class HyperparameterConfig:
     """
     HYPERPARAMETER_RANGES = {
     # --- 1. Audio-Visual Gating & Confidence ---
-    'AUDIO_VISUAL_GATING_FLOOR': [0.20, 0.25, 0.30], # best was 0.25
-    'INSTANT_CONFIDENCE_THRESHOLD': [0.15, 0.20, 0.25], # best was 0.20
+    # Setup A used 0.40, Setup B used 0.55. Your current grid is too low.
+    'AUDIO_VISUAL_GATING_FLOOR': [0.35, 0.45, 0.55], 
+    # Setup A used 0.6, Setup B used 0.3. Let's bracket that range.
+    'INSTANT_CONFIDENCE_THRESHOLD': [0.30, 0.45, 0.60], 
     
     # --- 2. Turn-Taking (Rule 1) ---
-    'MAX_TURN_TAKING_GAP_SEC': [8.0, 11.0, 14.0], # best was 10.0
-    'MAX_SAME_SPEAKER_GAP_SEC': [0.8, 1.0, 1.2], # best was 1.0
+    # Setup B liked 9s, Setup A liked 7s. Your current grid goes up to 14s (too high).
+    'MAX_TURN_TAKING_GAP_SEC': [6.0, 7.5, 9.0], 
+    # Both setups used 2.0s. Your grid was stuck at 1.0s.
+    'MAX_SAME_SPEAKER_GAP_SEC': [1.5, 2.0, 2.5], 
     
     # --- 3. Proximity (Rule 2) ---
-    'PROXIMITY_THRESHOLD': [0.50, 0.55, 0.60], # best was 0.55
+    # Both setups used 0.7-0.75. Your grid was too low (0.55).
+    'PROXIMITY_THRESHOLD': [0.65, 0.70, 0.75], 
     
     # --- 4. Sustained Adult Speech (Rule 3) ---
-    'SUSTAINED_KCDS_WINDOW_SEC': [6.0, 8.0, 10.0], # best was 8.0
-    'SUSTAINED_KCDS_THRESHOLD': [0.85, 0.90, 0.95], # best was 0.90
+    # Both setups used 15s. Your grid was too short (8s).
+    'SUSTAINED_KCDS_WINDOW_SEC': [12.0, 15.0, 18.0], 
+    'SUSTAINED_KCDS_THRESHOLD': [0.90, 0.95, 0.98], 
     
     # --- 5. Visual Persistence & OHS (Rule 4) ---
-    'HIGH_CONFIDENCE_PROXIMITY_THRESHOLD': [0.75, 0.80, 0.85], # best was 0.75
-    'HIGH_CONFIDENCE_FACE_CONFIDENCE': [0.85, 0.90, 0.95], # best was 0.85
-    'VISUAL_PERSISTENCE_SEC': [1.5, 2.0, 2.5], # best was 2.0
-    'SHORT_TERM_VISUAL_MEMORY_SEC': [3.5, 4.5, 5.5], # best was 3.5
-    'MIN_PRESENCE_OHS_FRACTION': [0.015, 0.02, 0.025], # best was 0.02
+    # Wide disagreement here (0.5 vs 0.9). We need a broad search.
+    'HIGH_CONFIDENCE_PROXIMITY_THRESHOLD': [0.50, 0.70, 0.90], 
+    'HIGH_CONFIDENCE_FACE_CONFIDENCE': [0.70, 0.80, 0.90], 
+    'VISUAL_PERSISTENCE_SEC': [1.0, 1.5, 2.0], 
+    # Both liked shorter memory (1.5-2.0s). Your grid was too long (3.5s).
+    'SHORT_TERM_VISUAL_MEMORY_SEC': [1.5, 2.0, 2.5], 
+    'MIN_PRESENCE_OHS_FRACTION': [0.02, 0.05, 0.10], 
 
     # --- 6. Change Point Detection (CPD) ---
-    'CPD_PENALTY': [3.5, 4.5, 5.5], # best was 4.0
-    'CPD_INTERACTING_THRESHOLD': [0.70, 0.75, 0.80], # best was 0.75
-    'CPD_INTERACTING_THRESHOLD_LOW': [0.25, 0.30, 0.35], # best was 0.30
-    'CPD_TOTAL_PRESENCE_FLOOR': [0.35, 0.40, 0.45], # best was 0.40
+    'CPD_PENALTY': [2.5, 3.0, 3.5], 
+    'CPD_INTERACTING_THRESHOLD': [0.75, 0.85, 0.95], 
+    'CPD_INTERACTING_THRESHOLD_LOW': [0.30, 0.35, 0.40], 
+    'CPD_TOTAL_PRESENCE_FLOOR': [0.30, 0.40, 0.50], 
     
     # --- 7. Timeline Post-Processing ---
-    'SAME_SEGMENT_MERGE_THRESHOLD': [1.5, 2.0, 2.5],  # best was 2.0
-    'GAP_STRETCH_THRESHOLD': [1.0, 1.5, 2.0], # best was 1.5
+    'SAME_SEGMENT_MERGE_THRESHOLD': [1.5, 2.0, 2.5],  
+    'GAP_STRETCH_THRESHOLD': [1.5, 2.0, 2.5], 
 }
