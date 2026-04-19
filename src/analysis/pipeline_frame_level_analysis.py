@@ -236,6 +236,7 @@ def classify_frames(df: pd.DataFrame,
     # We use the INSTANT_CONFIDENCE_THRESHOLD to decide if a detection counts as "present"
     df['has_face'] = (df['face_conf'] >= AnalysisConfig.INSTANT_CONFIDENCE_THRESHOLD).astype(int)
     df['has_person'] = (df['person_conf'] >= AnalysisConfig.INSTANT_CONFIDENCE_THRESHOLD).astype(int)
+    df['person_or_face_present'] = ((df['has_face'] == 1) | (df['has_person'] == 1)).astype(int)
     
     return df
 
