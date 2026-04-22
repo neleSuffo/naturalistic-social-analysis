@@ -14,7 +14,7 @@ sys.path.append(str(src_path))
 
 from constants import Analysis, Inference
 from config import AnalysisConfig
-from analysis.utils import time_to_seconds, create_second_level_labels
+from heuristics.utils import time_to_seconds, create_second_level_labels
 
 # Define a label for unclassified/unannotated time for saving purposes
 UNCLASSIFIED_LABEL = 'unclassified'
