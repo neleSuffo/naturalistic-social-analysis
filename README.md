@@ -1,7 +1,7 @@
 # The social ecology of development: The changing structure of preschoolers' everyday experiences
 
 This repository contains the automated multimodal processing pipeline and the Bayesian statistical analysis for the paper:  
-**"The social ecology of development: The changing structure of preschoolers' everyday experiences"** (PNAS, 2026).
+**"The social ecology of development: The changing structure of preschoolers' everyday experiences"**.
 
 ## Overview
 
