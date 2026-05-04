@@ -87,28 +87,25 @@ def main(social_state_mode='tertiary',
     logging.info(f"Final segments saved: {run_folder / Analysis.INTERACTION_SEGMENTS_CSV.name}")
 
     # 4. --- STEP 3: RESEARCH QUESTION ANALYSIS ---
-    # We pass the run_folder to scripts that need to find the specific CSVs
-    # Note: Ensure your RQ scripts can accept a folder path or update constants
-
     # RQ 02: KCS (Production)
-    run_command([sys.executable, "analysis/rq_02_kcs.py",
+    run_command([sys.executable, "rq_02_kcs.py",
                  "--output_folder", str(run_folder)], 
                 "RQ 02: Child Language Production Analysis")
 
     # RQ 03: KCDS (Exposure)
-    run_command([sys.executable, "analysis/rq_03_kcds.py",
+    run_command([sys.executable, "rq_03_kcds.py",
                  "--output_folder", str(run_folder)], 
                 "RQ 03: Child-Directed Speech Exposure Analysis")
 
     # RQ 04: Turn-Taking
-    run_command([sys.executable, "analysis/rq_04_turn_taking.py", 
+    run_command([sys.executable, "rq_04_turn_taking.py", 
                  "--social_state_mode", social_state_mode,
                  "--output_folder", str(run_folder)], 
                 "RQ 04: Conversational Dynamics",
                 run_folder=run_folder)
     
     # RQ 05: Interaction Composition
-    run_command([sys.executable, "analysis/rq_05_interaction_composition.py", 
+    run_command([sys.executable, "rq_05_interaction_composition.py", 
                  "--social_state_mode", social_state_mode,
                  "--output_folder", str(run_folder)], 
                 "RQ 05: Final Composition", 
