@@ -73,7 +73,8 @@ def process_block(block):
     return turns, succ_init, succ_resp, fail_init, fail_resp, block_duration
 
 def count_directional_turns(vocalizations: pd.DataFrame, 
-                            segments_df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
+                            segments_df: pd.DataFrame,
+                            use_folds: bool = True) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Counts directional turn-taking within each interacting segment and measures individual child turn durations.
     
@@ -112,8 +113,17 @@ def count_directional_turns(vocalizations: pd.DataFrame,
     segments_df['global_start'] = segments_df['start_time_sec'] + segments_df['offset']
     segments_df['global_end'] = segments_df['end_time_sec'] + segments_df['offset']
 
-    # 2. FOLD BOUNDARIES
-    fold_map = get_child_fold_boundaries(segments_df)
+    # 2. FOLD BOUNDARIES (conditional)
+    if use_folds:
+        fold_map = get_child_fold_boundaries(segments_df)
+    else:
+        # Create a single fold covering the entire duration for each child
+        fold_map = {}
+        for child_id in segments_df['child_id'].unique():
+            child_data = segments_df[segments_df['child_id'] == child_id]
+            f_start = child_data['global_start'].min()
+            f_end = child_data['global_end'].max()
+            fold_map[child_id] = [(f_start, f_end)]
     
     results = []
     raw_turns_df = []
@@ -212,7 +222,8 @@ def count_directional_turns(vocalizations: pd.DataFrame,
     return pd.DataFrame(results), pd.DataFrame(raw_turns_df)
 
 def main(social_state_mode: str = 'tertiary',
-         output_folder: Path = None):
+         output_folder: Path = None,
+         use_folds: bool = True):
     """
     Executes the turn-taking analysis for naturalistic social interactions, categorizing blocks of vocalizations into successful initiations, successful responses, unanswered child bids, and unanswered adult prompts. It also calculates the total number of turns and their density per minute for each segment, as well as individual child turn durations for further analysis.
 
@@ -222,8 +233,12 @@ def main(social_state_mode: str = 'tertiary',
         The mode for categorizing social states, either 'binary' (Interacting vs. Not Interacting) or 'tertiary' (Alone, Available, Interacting). Default is 'tertiary'.
     output_folder : Path, optional
         Optional output folder path to save the turn-taking analysis CSV. If not provided, saves to default location defined in constants, by default None
+    use_folds : bool, optional
+        If True, calculates per-fold metrics (5-fold cross-validation style). If False, calculates metrics across entire recording, by default True
     """
+    fold_mode = "WITH per-fold metrics" if use_folds else "WITHOUT per-fold metrics (overall only)"
     print("🗣️ RESEARCH QUESTION 4: TURN-TAKING ANALYSIS")
+    print(f"   Mode: {fold_mode}")
     print("=" * 70)
     
     # 1. APPLY MODE AND LOG PARAMETERS
@@ -243,7 +258,7 @@ def main(social_state_mode: str = 'tertiary',
     all_vocalizations = parse_rttm(target_speech_types=['KCHI', 'KCDS'])
     
     # 3. Categorize Social Blocks
-    final_df, raw_turns_df = count_directional_turns(all_vocalizations, segments_df)
+    final_df, raw_turns_df = count_directional_turns(all_vocalizations, segments_df, use_folds=use_folds)
     
     # 4. Calculate Global Totals and Proportions
     final_df['total_attempts'] = (
@@ -278,12 +293,21 @@ def main(social_state_mode: str = 'tertiary',
     child_total_durations = segments_df.groupby('child_id')['duration_sec'].sum().reset_index()
     child_total_durations.rename(columns={'duration_sec': 'total_recording_duration_sec'}, inplace=True)
 
-    # ----- Child-Level Aggregation (Fold-Aware) -----
-    child_level_turns = final_df.groupby(['child_id', 'fold']).agg({
-        'total_turns': 'sum',
-        'duration_sec': 'sum',
-        'age_at_recording': 'min'
-    }).reset_index()
+    # ----- Child-Level Aggregation (Fold-Aware or Overall) -----
+    if use_folds:
+        # Group by child and fold to preserve the 5 data points per child
+        child_level_turns = final_df.groupby(['child_id', 'fold']).agg({
+            'total_turns': 'sum',
+            'duration_sec': 'sum',
+            'age_at_recording': 'min'
+        }).reset_index()
+    else:
+        # Group by child only (single fold, so fold column will be 1)
+        child_level_turns = final_df.groupby('child_id').agg({
+            'total_turns': 'sum',
+            'duration_sec': 'sum',
+            'age_at_recording': 'min'
+        }).reset_index()
 
     # 4. Add back age metadata (taking the minimum age found in the original segments)
     child_ages = segments_df.groupby('child_id')['age_at_recording'].min().reset_index()
@@ -324,6 +348,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Turn-Taking Analysis for Naturalistic Social Interactions")
     parser.add_argument('--social_state_mode', type=str, choices=['binary', 'tertiary'], default='tertiary')
     parser.add_argument('--output_folder', type=str, default=None, help="Optional output folder path to save the interaction composition CSV")
+    parser.add_argument('--use_folds', action='store_true', default=False, help="Calculate per-fold metrics (5-fold cross-validation). If not set, calculates overall metrics only.")
     args = parser.parse_args()
     main(social_state_mode=args.social_state_mode,
-         output_folder=Path(args.output_folder) if args.output_folder else None)
+         output_folder=Path(args.output_folder) if args.output_folder else None,
+         use_folds=args.use_folds)

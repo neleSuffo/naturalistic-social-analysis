@@ -5,7 +5,7 @@ from pathlib import Path
 from constants import Analysis
 from src.heuristics.utils import parse_rttm, merge_overlapping_intervals, get_child_fold_boundaries
 
-def main(output_folder: Path = None):
+def main(output_folder: Path = None, use_folds: bool = True):
     """
     Generates frame-level interaction composition by merging segment-level interactions with frame-level metadata.
     
@@ -13,8 +13,12 @@ def main(output_folder: Path = None):
     ----------
     output_folder : Path, optional
         Optional output folder path to save the interaction composition CSV. If not provided, saves to default location defined in constants, by default None
+    use_folds : bool, optional
+        If True, calculates per-fold metrics (5-fold cross-validation style). If False, calculates metrics across entire recording, by default True
     """
+    fold_mode = "WITH per-fold metrics" if use_folds else "WITHOUT per-fold metrics (overall only)"
     print("🗣️ RESEARCH QUESTION 03: SPEECH EXPOSURE ANALYSIS")
+    print(f"   Mode: {fold_mode}")
     print("="*70)
     
     # 1. Load segments file
@@ -46,8 +50,17 @@ def main(output_folder: Path = None):
     segments_df['global_start'] = segments_df['start_time_sec'] + segments_df['offset']
     segments_df['global_end'] = segments_df['end_time_sec'] + segments_df['offset']
 
-    # 4. Pre-calculate 5-fold boundaries based on total cumulative duration
-    fold_map = get_child_fold_boundaries(segments_df)
+    # 4. Pre-calculate fold boundaries (either 5-fold or single fold across entire duration)
+    if use_folds:
+        fold_map = get_child_fold_boundaries(segments_df)
+    else:
+        # Create a single fold covering the entire duration for each child
+        fold_map = {}
+        for child_id in segments_df['child_id'].unique():
+            child_data = segments_df[segments_df['child_id'] == child_id]
+            f_start = child_data['global_start'].min()
+            f_end = child_data['global_end'].max()
+            fold_map[child_id] = [(f_start, f_end)]
         
     exposure_categories = ['TOTAL', 'KCDS_ONLY', 'OHS_ONLY']
     final_rows = []
@@ -128,12 +141,21 @@ def main(output_folder: Path = None):
     print(f"✅ Clean results saved to {output_path_cds}")
     
     # ----- PART 3A: Child-Level Aggregation ------
-    # Grouping by child, fold, and exposure_type preserves the stability data points
-    child_exposure_summary = final_df.groupby(['child_id', 'fold', 'exposure_type']).agg({
-        'total_speech_seconds': 'sum',
-        'total_segment_duration': 'sum',
-        'age_at_recording': 'min'
-    }).reset_index()
+    # Aggregation strategy depends on use_folds flag
+    if use_folds:
+        # Group by child, fold, and exposure_type to preserve the stability data points
+        child_exposure_summary = final_df.groupby(['child_id', 'fold', 'exposure_type']).agg({
+            'total_speech_seconds': 'sum',
+            'total_segment_duration': 'sum',
+            'age_at_recording': 'min'
+        }).reset_index()
+    else:
+        # Group by child and exposure_type only (single fold, so fold column will be 1)
+        child_exposure_summary = final_df.groupby(['child_id', 'exposure_type']).agg({
+            'total_speech_seconds': 'sum',
+            'total_segment_duration': 'sum',
+            'age_at_recording': 'min'
+        }).reset_index()
 
     # Calculate global percentage for that specific exposure type
     child_exposure_summary['exposure_percent'] = (
@@ -154,8 +176,9 @@ def main(output_folder: Path = None):
     print(f"✅ Child-level exposure summary saved to: {output_path_gcds}")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="Generate CDS (Child Directed Speech) and OHS exposure analysis summaries")
     parser.add_argument('--output_folder', type=str, default=None, help="Optional output folder path to save the interaction composition CSV")
+    parser.add_argument('--use_folds', action='store_true', default=False, help="Calculate per-fold metrics (5-fold cross-validation). If not set, calculates overall metrics only.")
     args = parser.parse_args()
         
-    main(output_folder=Path(args.output_folder) if args.output_folder else None)
+    main(output_folder=Path(args.output_folder) if args.output_folder else None, use_folds=args.use_folds)

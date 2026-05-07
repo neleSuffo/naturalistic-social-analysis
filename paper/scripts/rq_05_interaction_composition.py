@@ -67,7 +67,8 @@ def add_interaction_columns(frames_df: pd.DataFrame,
     return final_df
 
 def main(social_state_mode: str = 'tertiary',
-         output_folder: Path = None):
+         output_folder: Path = None,
+         use_folds: bool = True):
     """
     Generate frame-level interaction composition by merging segment-level interactions with frame-level metadata.
 
@@ -77,13 +78,16 @@ def main(social_state_mode: str = 'tertiary',
         Whether to use "binary" (Interacting vs Not Interacting) or "tertiary" (Interacting vs Alone vs Available) classification, by default "tertiary"
     output_folder : Path, optional
         Optional output folder path to save the interaction composition CSV. If not provided, saves to default location defined in constants, by default None
+    use_folds : bool, optional
+        If True, calculates per-fold metrics (5-fold cross-validation style). If False, calculates metrics across entire recording, by default True
         
     Raises
     ------
     FileNotFoundError
         _description_
     """
-    print(f"🚀 INTERACTION PROCESSING (Mode: {social_state_mode.upper()})")
+    fold_mode = "WITH per-fold metrics" if use_folds else "WITHOUT per-fold metrics (overall only)"
+    print(f"🚀 INTERACTION PROCESSING (Mode: {social_state_mode.upper()}, Folds: {fold_mode})")
     print("=" * 70)
 
     # Step 1: Load data
@@ -121,19 +125,23 @@ def main(social_state_mode: str = 'tertiary',
     frames_df = frames_df.merge(video_meta[['video_name', 'sec_per_frame']], on='video_name')
     frames_df['global_sec_pos'] = (frames_df['frame_number'] * frames_df['sec_per_frame']) + frames_df['offset_sec']    
     
-    # Step 3: Assign Folds
-    fold_map = get_child_fold_boundaries(segments_df)
-    frames_df['fold'] = 0
-    
-    for child_id, folds in fold_map.items():
-        child_mask = frames_df['child_id'] == child_id
-        for fold_idx, (f_start, f_end) in enumerate(folds):
-            # Check which frames fall within the time-boundary of this fold
-            fold_mask = (frames_df['global_sec_pos'] >= f_start) & (frames_df['global_sec_pos'] < f_end)
-            if fold_idx == 4: # Last fold
-                fold_mask = (frames_df['global_sec_pos'] >= f_start) & (frames_df['global_sec_pos'] <= f_end + 0.1)
-            
-            frames_df.loc[child_mask & fold_mask, 'fold'] = fold_idx + 1
+    # Step 3: Assign Folds (conditional)
+    if use_folds:
+        fold_map = get_child_fold_boundaries(segments_df)
+        frames_df['fold'] = 0
+        
+        for child_id, folds in fold_map.items():
+            child_mask = frames_df['child_id'] == child_id
+            for fold_idx, (f_start, f_end) in enumerate(folds):
+                # Check which frames fall within the time-boundary of this fold
+                fold_mask = (frames_df['global_sec_pos'] >= f_start) & (frames_df['global_sec_pos'] < f_end)
+                if fold_idx == 4: # Last fold
+                    fold_mask = (frames_df['global_sec_pos'] >= f_start) & (frames_df['global_sec_pos'] <= f_end + 0.1)
+                
+                frames_df.loc[child_mask & fold_mask, 'fold'] = fold_idx + 1
+    else:
+        # Single fold covering entire duration for each child
+        frames_df['fold'] = 1
             
     # Step 2: Optimized Processing
     frames_df = add_interaction_columns(frames_df, segments_df, social_state_mode=social_state_mode)
@@ -169,10 +177,12 @@ def main(social_state_mode: str = 'tertiary',
     print(f"📄 Saved to: {output_path}")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="Frame-level interaction composition analysis")
     parser.add_argument('--social_state_mode', type=str, choices=['binary', 'tertiary'], default='tertiary')
     parser.add_argument('--output_folder', type=str, default=None, help="Optional output folder path to save the interaction composition CSV")
+    parser.add_argument('--use_folds', action='store_true', default=False, help="Calculate per-fold metrics (5-fold cross-validation). If not set, calculates overall metrics only.")
     args = parser.parse_args()
         
     main(social_state_mode=args.social_state_mode, 
-         output_folder=Path(args.output_folder) if args.output_folder else None)
+         output_folder=Path(args.output_folder) if args.output_folder else None,
+         use_folds=args.use_folds)
