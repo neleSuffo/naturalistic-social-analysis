@@ -1,11 +1,12 @@
 import argparse
 import logging
 import pandas as pd
+import numpy as np
 from pathlib import Path
 from typing import Tuple
 from constants import Analysis
 from config import AnalysisConfig
-from utils import parse_rttm
+from src.heuristics.utils import parse_rttm, get_child_fold_boundaries
 
 # Configure logging to show thresholds in the terminal
 logging.basicConfig(level=logging.INFO, format='%(message)s')
@@ -101,81 +102,112 @@ def count_directional_turns(vocalizations: pd.DataFrame,
     raw_turns_df: DataFrame
         containing individual child turn durations and metadata for further analysis
     """
+    # 1. GLOBAL TIMELINE OFFSETS
+    video_stats = segments_df.groupby(['child_id', 'video_name'])['duration_sec'].sum().reset_index()
+    video_stats = video_stats.sort_values(['child_id', 'video_name'])   
+    video_stats['offset_raw'] = video_stats.groupby('child_id')['duration_sec'].shift(1).fillna(0)
+    video_stats['offset'] = video_stats.groupby('child_id')['offset_raw'].transform('cumsum')
+    
+    segments_df = segments_df.merge(video_stats[['child_id', 'video_name', 'offset']], on=['child_id', 'video_name'])
+    segments_df['global_start'] = segments_df['start_time_sec'] + segments_df['offset']
+    segments_df['global_end'] = segments_df['end_time_sec'] + segments_df['offset']
+
+    # 2. FOLD BOUNDARIES
+    fold_map = get_child_fold_boundaries(segments_df)
+    
     results = []
-    # list to store individual child turns
     raw_turns_df = []
     MAX_TURN_GAP = AnalysisConfig.MAX_TURN_TAKING_GAP_SEC
     MAX_SAME_GAP = AnalysisConfig.MAX_SAME_SPEAKER_GAP_SEC
 
-    for _, seg in segments_df.iterrows():
-        # Only analyze 'Interacting' segments to maintain focused context
-        if seg['interaction_type'] != 'Interacting':
-            continue
-            
-        # Overlap Filter to capture all relevant speech within segment bounds
-        seg_vocs = vocalizations[
-            (vocalizations['video_name'] == seg['video_name']) & 
-            (vocalizations['start_time_seconds'] < seg['end_time_sec']) & 
-            (vocalizations['end_time_seconds'] > seg['start_time_sec'])
-        ].copy().sort_values('start_time_seconds').reset_index(drop=True)
+    # 3. Iterate by Child -> Fold -> Segment
+    for child_id, folds in fold_map.items():
+        child_segs = segments_df[segments_df['child_id'] == child_id]
         
-        # Filter for the Dyad (KCHI and KCDS)
-        seg_vocs = seg_vocs[seg_vocs['speech_type'].isin(['KCHI', 'KCDS'])].reset_index(drop=True)
-
-        # Capture Individual Turn Durations
-        child_only = seg_vocs[seg_vocs['speech_type'] == 'KCHI']
-        for _, voc in child_only.iterrows():
-            raw_turns_df.append({
-                'child_id': seg['child_id'],
-                'age_at_recording': seg['age_at_recording'],
-                'video_name': seg['video_name'],
-                'vocalization_duration_sec': voc['duration_seconds'],
-                'start_time': voc['start_time_seconds']
-            })
+        for fold_idx, (f_start, f_end) in enumerate(folds):
+            fold_num = fold_idx + 1
             
-        total_turns = 0
-        s_init, s_resp, f_init, f_resp = 0, 0, 0, 0
-        total_block_duration = 0
-        
-        if not seg_vocs.empty:
-            current_block = [seg_vocs.iloc[0]]
-            for i in range(1, len(seg_vocs)):
-                prev = seg_vocs.iloc[i-1]
-                curr = seg_vocs.iloc[i]
-                gap = curr['start_time_seconds'] - prev['end_time_seconds']
+            for _, seg in child_segs.iterrows():
+                if seg['interaction_type'] != 'Interacting':
+                    continue
+                # STEP A: Global Clipping
+                overlap_start = max(seg['global_start'], f_start)
+                overlap_end = min(seg['global_end'], f_end)
                 
-                threshold = MAX_SAME_GAP if curr['speech_type'] == prev['speech_type'] else MAX_TURN_GAP
-                
-                if gap <= threshold:
-                    current_block.append(curr)
-                else:
-                    t, si, sr, fi, fr, bd = process_block(current_block)
-                    total_turns += t
-                    s_init += si; s_resp += sr; f_init += fi; f_resp += fr
-                    total_block_duration += bd
-                    current_block = [curr]
-            
-            # Process final block
-            t, si, sr, fi, fr, bd = process_block(current_block)
-            total_turns += t
-            s_init += si; s_resp += sr; f_init += fi; f_resp += fr
-            total_block_duration += bd
+                if overlap_start < overlap_end:
+                    current_duration = overlap_end - overlap_start
+                    local_overlap_start = overlap_start - seg['offset']
+                    local_overlap_end = overlap_end - seg['offset']
 
-        results.append({
-            'child_id': seg['child_id'],
-            'block_duration_sec': total_block_duration,
-            'video_name': seg['video_name'],
-            'age_at_recording': seg['age_at_recording'],
-            'segment_start': seg['start_time_sec'],
-            'segment_end': seg['end_time_sec'],
-            'duration_sec': seg['duration_sec'],
-            'total_turns': total_turns,
-            'successful_initiations': s_init,
-            'successful_responses': s_resp,
-            'unanswered_child_bids': f_init,
-            'unanswered_adult_prompts': f_resp,
-            'segment_duration_minutes': seg['duration_sec'] / 60
-        })
+                    # STEP B: Local Filter
+                    seg_vocs = vocalizations[
+                        (vocalizations['video_name'] == seg['video_name']) & 
+                        (vocalizations['start_time_seconds'] < local_overlap_end) & 
+                        (vocalizations['end_time_seconds'] > local_overlap_start)
+                    ].copy().sort_values('start_time_seconds')
+
+                    # STEP C: TRIPLE CLIP
+                    seg_vocs['clipped_start'] = np.maximum(seg_vocs['start_time_seconds'], local_overlap_start)
+                    seg_vocs['clipped_end'] = np.minimum(seg_vocs['end_time_seconds'], local_overlap_end)
+                    seg_vocs['duration_seconds'] = seg_vocs['clipped_end'] - seg_vocs['clipped_start']
+                    
+                    # Update the time columns for the process_block logic
+                    seg_vocs['start_time_seconds'] = seg_vocs['clipped_start']
+                    seg_vocs['end_time_seconds'] = seg_vocs['clipped_end']
+                    
+                    seg_vocs = seg_vocs[seg_vocs['speech_type'].isin(['KCHI', 'KCDS'])].reset_index(drop=True)
+
+                    # Capture Individual Turn Durations for the fold
+                    child_only = seg_vocs[seg_vocs['speech_type'] == 'KCHI']
+                    for _, voc in child_only.iterrows():
+                        raw_turns_df.append({
+                            'child_id': child_id,
+                            'fold': fold_num,
+                            'age_at_recording': seg['age_at_recording'],
+                            'video_name': seg['video_name'],
+                            'vocalization_duration_sec': voc['duration_seconds'],
+                            'start_time': voc['start_time_seconds']
+                        })
+                    
+                    # Process Turn Blocks
+                    total_turns, s_init, s_resp, f_init, f_resp, total_block_duration = 0, 0, 0, 0, 0, 0
+                    
+                    if not seg_vocs.empty:
+                        current_block = [seg_vocs.iloc[0].to_dict()]
+                        for i in range(1, len(seg_vocs)):
+                            prev = seg_vocs.iloc[i-1]
+                            curr = seg_vocs.iloc[i]
+                            gap = curr['start_time_seconds'] - prev['end_time_seconds']
+                            threshold = MAX_SAME_GAP if curr['speech_type'] == prev['speech_type'] else MAX_TURN_GAP
+                            
+                            if gap <= threshold:
+                                current_block.append(curr.to_dict())
+                            else:
+                                t, si, sr, fi, fr, bd = process_block(current_block)
+                                total_turns += t; s_init += si; s_resp += sr; f_init += fi; f_resp += fr
+                                total_block_duration += bd
+                                current_block = [curr.to_dict()]
+                        
+                        t, si, sr, fi, fr, bd = process_block(current_block)
+                        total_turns += t; s_init += si; s_resp += sr; f_init += fi; f_resp += fr
+                        total_block_duration += bd
+
+                    results.append({
+                        'child_id': child_id,
+                        'fold': fold_num,
+                        'block_duration_sec': total_block_duration,
+                        'video_name': seg['video_name'],
+                        'age_at_recording': seg['age_at_recording'],
+                        'segment_start': seg['start_time_sec'],
+                        'segment_end': seg['end_time_sec'],
+                        'duration_sec': current_duration,
+                        'total_turns': total_turns,
+                        'successful_initiations': s_init,
+                        'successful_responses': s_resp,
+                        'unanswered_child_bids': f_init,
+                        'unanswered_adult_prompts': f_resp,
+                        'segment_duration_minutes': current_duration / 60
+                    })
         
     return pd.DataFrame(results), pd.DataFrame(raw_turns_df)
 
@@ -246,19 +278,20 @@ def main(social_state_mode: str = 'tertiary',
     child_total_durations = segments_df.groupby('child_id')['duration_sec'].sum().reset_index()
     child_total_durations.rename(columns={'duration_sec': 'total_recording_duration_sec'}, inplace=True)
 
-    # 2. Get total turns from processed interacting segments
-    child_turns_only = final_df.groupby('child_id')['total_turns'].sum().reset_index()
-    child_level_turns = pd.merge(child_turns_only, child_total_durations, on='child_id', how='right').fillna(0)
+    # ----- Child-Level Aggregation (Fold-Aware) -----
+    child_level_turns = final_df.groupby(['child_id', 'fold']).agg({
+        'total_turns': 'sum',
+        'duration_sec': 'sum',
+        'age_at_recording': 'min'
+    }).reset_index()
 
     # 4. Add back age metadata (taking the minimum age found in the original segments)
     child_ages = segments_df.groupby('child_id')['age_at_recording'].min().reset_index()
     child_level_turns = pd.merge(child_level_turns, child_ages, on='child_id')
 
     # 5. Calculate global density (turns per minute of OVERALL recording time)
-    child_level_turns['total_recording_minutes'] = child_level_turns['total_recording_duration_sec'] / 60
-    child_level_turns['turns_per_minute'] = (
-        child_level_turns['total_turns'] / child_level_turns['total_recording_minutes']
-    ).fillna(0)
+    child_level_turns['total_recording_minutes'] = child_level_turns['duration_sec'] / 60
+    child_level_turns['turns_per_minute'] = (child_level_turns['total_turns'] / child_level_turns['total_recording_minutes']).fillna(0)
 
     # Save Child-Level Results
     if output_folder:

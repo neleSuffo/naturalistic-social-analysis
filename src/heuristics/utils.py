@@ -219,3 +219,21 @@ def merge_overlapping_intervals(intervals: List[Tuple[float, float]]):
             merged.append((current_start, current_end))
     total_duration = sum(end - start for start, end in merged)
     return merged, total_duration
+
+def get_child_fold_boundaries(segments_df, num_folds=5):
+    """
+    Returns a dictionary mapping child_id to a list of (start, end) 
+    timestamps for each of the 5 folds.
+    """
+    # Calculate global duration per child
+    child_durations = segments_df.groupby('child_id')['duration_sec'].sum().to_dict()
+    
+    boundaries = {}
+    for child_id, total_dur in child_durations.items():
+        fold_size = total_dur / num_folds
+        # Generate boundaries: [0, size, 2*size, 3*size, 4*size, total]
+        points = [i * fold_size for i in range(num_folds + 1)]
+        # Create pairs: (0, 20), (20, 40), etc.
+        boundaries[child_id] = [(points[i], points[i+1]) for i in range(num_folds)]
+        
+    return boundaries

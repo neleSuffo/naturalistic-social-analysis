@@ -132,8 +132,8 @@ class Analysis:
     # 3. Build the folder path
     FINAL_OUTPUT_FOLDER = BASE_OUTPUT_DIR / active_run_name
     
-    FRAME_ANALYSIS_SCRIPT = Path("analysis/pipeline_frame_level_analysis.py")
-    SEGMENT_CREATION_SCRIPT = Path("analysis/pipeline_video_level_analysis.py")
+    FRAME_ANALYSIS_SCRIPT = Path("heuristics/pipeline_frame_level_analysis.py")
+    SEGMENT_CREATION_SCRIPT = Path("heuristics/pipeline_video_level_analysis.py")
     FRAME_LEVEL_INTERACTIONS_CSV = Path(FINAL_OUTPUT_FOLDER/"frame_level_social_interactions.csv")
     INTERACTION_SEGMENTS_CSV = Path(FINAL_OUTPUT_FOLDER/"interaction_segments.csv")
     #UTTERANCE_SEGMENTS_CSV = FINAL_OUTPUT_FOLDER / "00_utterance_segments.csv"

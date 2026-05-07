@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 from constants import Analysis
-from utils import parse_rttm, merge_overlapping_intervals
+from src.heuristics.utils import parse_rttm, merge_overlapping_intervals, get_child_fold_boundaries
 
 def main(output_folder: Path = None):
     """
@@ -30,41 +30,76 @@ def main(output_folder: Path = None):
     if kchi_vocalizations.empty:
         print("⚠️ Warning: No KCHI vocalizations found in RTTM file.")
         
-    final_rows = []
+    # 3. Pre-calculate boundaries and create global timeline offsets
+    # Summarize duration per video
+    video_stats = segments_df.groupby(['child_id', 'video_name'])['duration_sec'].sum().reset_index()
+    video_stats = video_stats.sort_values(['child_id', 'video_name'])   
     
-    # 3. Iterate through EVERY segment from the segments CSV
-    for _, seg in segments_df.iterrows():
-        # Get vocalizations for this segment
-        group = kchi_vocalizations[
-            (kchi_vocalizations['video_name'] == seg['video_name']) & 
-            (kchi_vocalizations['start_time_seconds'] < seg['end_time_sec']) & 
-            (kchi_vocalizations['end_time_seconds'] > seg['start_time_sec'])
-        ].copy()
-                        
-        if not group.empty:
-            # Calculate overlap with the segment boundaries
-            group['clipped_start'] = np.maximum(group['start_time_seconds'], seg['start_time_sec'])
-            group['clipped_end'] = np.minimum(group['end_time_seconds'], seg['end_time_sec'])
-            
-        if group.empty:
-            total_speech_seconds = 0.0
-        else:
-            intervals = list(zip(group['clipped_start'], group['clipped_end']))
-            
-            # Merge overlapping/adjacent intervals (RTTM can have overlaps)
-            _, total_speech_seconds = merge_overlapping_intervals(intervals)
-            
-        final_rows.append({
-            'child_id': seg['child_id'],
-            'video_name': seg['video_name'],
-            'age_at_recording': seg['age_at_recording'],
-            'interaction_type': seg['interaction_type'],
-            'segment_start_time': seg['start_time_sec'],
-            'segment_end_time': seg['end_time_sec'],
-            'total_speech_seconds': total_speech_seconds,
-            'total_segment_duration': seg['duration_sec'],
-            'segment_duration_minutes': seg['duration_sec'] / 60
-        })
+    # Corrected Offset Logic: Reset cumsum for every child
+    video_stats['offset_raw'] = video_stats.groupby('child_id')['duration_sec'].shift(1).fillna(0)
+    video_stats['offset'] = video_stats.groupby('child_id')['offset_raw'].transform('cumsum')
+    
+    # Merge back using both keys to be safe
+    segments_df = segments_df.merge(video_stats[['child_id', 'video_name', 'offset']], on=['child_id', 'video_name'])
+    
+    # Create local-to-global timestamps
+    segments_df['global_start'] = segments_df['start_time_sec'] + segments_df['offset']
+    segments_df['global_end'] = segments_df['end_time_sec'] + segments_df['offset']
+
+    # 4. Pre-calculate 5-fold boundaries based on total cumulative duration
+    fold_map = get_child_fold_boundaries(segments_df)
+    
+    final_rows = []
+
+    # 4. Iterate by Child -> Fold -> Segment
+    for child_id, folds in fold_map.items():
+        # Get all segments for this child
+        child_segs = segments_df[segments_df['child_id'] == child_id]
+        
+        for fold_idx, (f_start, f_end) in enumerate(folds):
+            fold_num = fold_idx + 1
+        
+            for _, seg in child_segs.iterrows():
+                # --- STEP A: Clip the segment to the fold boundaries ---
+                overlap_start = max(seg['global_start'], f_start)
+                overlap_end = min(seg['global_end'], f_end)
+                
+                if overlap_start < overlap_end:
+                    # This piece of the segment belongs to this fold!
+                    current_duration = overlap_end - overlap_start
+                    
+                    # STEP B: Convert global overlap back to local time for RTTM filtering
+                    local_overlap_start = overlap_start - seg['offset']
+                    local_overlap_end = overlap_end - seg['offset']
+        
+                    group = kchi_vocalizations[
+                        (kchi_vocalizations['video_name'] == seg['video_name']) & 
+                        (kchi_vocalizations['start_time_seconds'] < local_overlap_end) & 
+                        (kchi_vocalizations['end_time_seconds'] > local_overlap_start)
+                    ].copy()
+                                
+                    if not group.empty:
+                        # STEP C: TRIPLE CLIP (Vocal | Segment | Fold) using local times
+                        group['clipped_start'] = np.maximum(group['start_time_seconds'], local_overlap_start)
+                        group['clipped_end'] = np.minimum(group['end_time_seconds'], local_overlap_end)
+                    
+                        intervals = list(zip(group['clipped_start'], group['clipped_end']))
+                        _, total_speech_seconds = merge_overlapping_intervals(intervals)
+                    else:
+                        total_speech_seconds = 0.0
+                    
+                    final_rows.append({
+                        'child_id': seg['child_id'],
+                        'fold': fold_num,
+                        'video_name': seg['video_name'],
+                        'age_at_recording': seg['age_at_recording'],
+                        'interaction_type': seg['interaction_type'],
+                        'segment_start_time': seg['start_time_sec'],
+                        'segment_end_time': seg['end_time_sec'],
+                        'total_speech_seconds': total_speech_seconds,
+                        'total_segment_duration': current_duration,
+                        'segment_duration_minutes': current_duration / 60
+                    })
     
     # 4. Final Aggregation and Derived Columns
     final_df = pd.DataFrame(final_rows)
@@ -90,7 +125,8 @@ def main(output_folder: Path = None):
     print(f"✅ KCS state summary saved to: {output_path_kcs}")
     
     # ----- PART 2A: Child-Level Aggregation ------
-    child_level_summary = final_df.groupby('child_id').agg({
+    # We group by child AND fold to preserve the 5 data points per child
+    child_level_summary = final_df.groupby(['child_id', 'fold']).agg({
         'total_speech_seconds': 'sum',
         'total_segment_duration': 'sum',
         'age_at_recording': 'min'
