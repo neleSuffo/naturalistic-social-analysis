@@ -110,5 +110,18 @@ python paper/scripts/pipeline_runner.py --social_state_mode tertiary --video_lis
 
 ---
 ## Citation
-If you use this pipeline or data in your research, please cite:
-tbd
+If you use this pipeline or data in your research, please cite the associated preprint:
+> Suffo, N.-P., Suffo, A., Martin, P.-E., Kim, Y., Zahra, A., Haun, D., & Bohn, M. (2026). *The Social Ecology of Development: The Changing Structure of Preschoolers’ Everyday Experiences*. https://doi.org/10.31234/osf.io/bmz3e_v1
+
+```bibtex
+@online{suffoSocialEcologyDevelopment2026,
+  title = {The Social Ecology of Development: {{The}} Changing Structure of Preschoolers’ Everyday Experiences},
+  shorttitle = {The Social Ecology of Development},
+  author = {Suffo, Nele-Pauline and Suffo, Anas and Martin, Pierre-Etienne and Kim, Yujin and Zahra, Anam and Haun, Daniel and Bohn, Manuel},
+  date = {2026-06-30},
+  doi = {10.31234/osf.io/bmz3e_v1},
+  url = {https://osf.io/bmz3e_v1},
+  urldate = {2026-07-04},
+  pubstate = {prepublished}
+}
+```
